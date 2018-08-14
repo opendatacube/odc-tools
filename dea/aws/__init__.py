@@ -1,5 +1,6 @@
 import requests
 import re
+import itertools
 from urllib.parse import urlparse
 import botocore
 import botocore.session
@@ -67,7 +68,7 @@ def s3_ls(url, s3=None):
     bucket, prefix = s3_url_parse(url)
 
     s3 = s3 or make_s3_client()
-    paginator = s3.get_paginator('list_objects')
+    paginator = s3.get_paginator('list_objects_v2')
 
     n_skip = len(prefix)
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
@@ -85,11 +86,14 @@ def s3_ls_dir(uri, s3=None):
     for page in paginator.paginate(Bucket=bucket,
                                    Prefix=prefix,
                                    Delimiter='/'):
-        if 'CommonPrefixes' not in page:
-            raise ValueError('No such path: ' + uri)
+        sub_dirs = page.get('CommonPrefixes', [])
+        files = page.get('Contents', [])
 
-        for p in page['CommonPrefixes']:
+        for p in sub_dirs:
             yield 's3://{bucket}/{path}'.format(bucket=bucket, path=p['Prefix'])
+
+        for o in files:
+            yield 's3://{bucket}/{path}'.format(bucket=bucket, path=o['Key'])
 
 
 def s3_fancy_ls(url, sort=True,
