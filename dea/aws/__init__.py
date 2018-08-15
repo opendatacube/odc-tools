@@ -162,6 +162,13 @@ def get_boto3_session(region_name=None, cache=None):
     return session
 
 
+def s3_fetch(url, s3=None, **kwargs):
+    s3 = s3 or make_s3_client()
+    bucket, key = s3_url_parse(url)
+    oo = s3.get_object(Bucket=bucket, Key=key, **kwargs)
+    return oo['Body'].read()
+
+
 def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
     from botocore.session import get_session
     from botocore.auth import S3SigV4Auth
