@@ -55,6 +55,20 @@ def ds2bytes(ds):
     return (k, d)
 
 
+def doc2bytes(raw_ds):
+    ''' raw_ds is
+
+        metadata:
+          id: <uuid: string>
+          * other fields*
+        uris: [<uri:string>]
+        product: <string>
+    '''
+    k = UUID(toolz.get_in(['metadata', 'id'], raw_ds)).bytes
+    d = json.dumps(raw_ds, separators=(',', ':')).encode('utf8')
+    return (k, d)
+
+
 def doc2ds(doc, products):
     p = products.get(doc['product'], None)
     if p is None:
@@ -81,7 +95,14 @@ def save_products(products, transaction, compressor):
 
 
 def train_dictionary(dss, dict_sz=8*1024):
-    sample = [d for _, d in map(ds2bytes, dss)]
+    def to_bytes(o):
+        if isinstance(o, dict):
+            _, d = doc2bytes(o)
+        else:
+            _, d = ds2bytes(o)
+        return d
+
+    sample = list(map(to_bytes, dss))
     return zstandard.train_dictionary(dict_sz, sample).as_bytes()
 
 
@@ -131,6 +152,11 @@ class DatasetCache(object):
         d = self._comp.compress(d)
         return (k, d)
 
+    def _doc2kv(self, ds_raw):
+        k, d = doc2bytes(ds_raw)
+        d = self._comp.compress(d)
+        return (k, d)
+
     def bulk_save(self, dss):
         with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
             for ds in dss:
@@ -138,6 +164,12 @@ class DatasetCache(object):
                     self._products[ds.type.name] = ds.type
 
                 k, v = self._ds2kv(ds)
+                tr.put(k, v)
+
+    def bulk_save_raw(self, raw_dss):
+        with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
+            for raw_ds in raw_dss:
+                k, v = self._doc2kv(raw_ds)
                 tr.put(k, v)
 
     def _extract_ds(self, d):
