@@ -76,7 +76,7 @@ def doc2ds(doc, products):
     return Dataset(p, doc['metadata'], uris=doc['uris'])
 
 
-def save_products(products, transaction, compressor):
+def save_products(products, transaction, compressor, overwrite=False):
     def get_metadata_definitions(products):
         mm = {}
         for p in products:
@@ -91,7 +91,7 @@ def save_products(products, transaction, compressor):
 
     for k, d in itertools.chain(dict2jsonKV(mm, 'metadata/', compressor),
                                 dict2jsonKV(products, 'product/', compressor)):
-        transaction.put(k, d)
+        transaction.put(k, d, overwrite=overwrite, dupdata=False)
 
 
 def train_dictionary(dss, dict_sz=8*1024):
@@ -135,9 +135,12 @@ class DatasetCache(object):
         with self._dbs.main.begin(self._dbs.info, write=True) as tr:
             save_products(self._products, tr, self._comp)
 
-    def __del__(self):
+    def sync(self):
         if not self.readonly:
             self._store_products()
+
+    def __del__(self):
+        self.sync()
 
     @property
     def readonly(self):
@@ -157,14 +160,26 @@ class DatasetCache(object):
         d = self._comp.compress(d)
         return (k, d)
 
+    def _ds_save(self, ds, transaction):
+        if ds.type.name not in self._products:
+            self._products[ds.type.name] = ds.type
+
+        k, v = self._ds2kv(ds)
+        transaction.put(k, v)
+
     def bulk_save(self, dss):
         with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
             for ds in dss:
-                if ds.type.name not in self._products:
-                    self._products[ds.type.name] = ds.type
+                self._ds_save(ds, tr)
 
-                k, v = self._ds2kv(ds)
-                tr.put(k, v)
+    def tee(self, dss):
+        """Given a lazy stream of datasets persist them to disk and then pass through
+        for further processing.
+        """
+        with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
+            for ds in dss:
+                self._ds_save(ds, tr)
+                yield ds
 
     def bulk_save_raw(self, raw_dss):
         with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
@@ -277,6 +292,9 @@ def create_cache(path,
 
     if truncate:
         maybe_delete_db(path)
+
+    if max_db_sz is None:
+        max_db_sz = 10*(1 << 30)
 
     db = lmdb.open(path,
                    max_dbs=8,
