@@ -176,10 +176,16 @@ class DatasetCache(object):
         """Given a lazy stream of datasets persist them to disk and then pass through
         for further processing.
         """
-        with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-            for ds in dss:
-                self._ds_save(ds, tr)
-                yield ds
+        have_some = True
+        n_max_per_transaction = 100
+
+        while have_some:
+            with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
+                have_some = False
+                for ds in itertools.islice(dss, n_max_per_transaction):
+                    have_some = True
+                    self._ds_save(ds, tr)
+                    yield ds
 
     def bulk_save_raw(self, raw_dss):
         with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
