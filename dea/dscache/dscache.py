@@ -260,6 +260,11 @@ class DatasetCache(object):
             for _, d in tr.cursor():
                 yield self._extract_ds(d)
 
+    @property
+    def count(self):
+        with self._dbs.main.begin(self._dbs.ds) as tr:
+            return tr.stat()['entries']
+
 
 def maybe_delete_db(path):
     path = Path(path)
