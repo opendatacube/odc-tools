@@ -256,7 +256,7 @@ class DatasetCache(object):
             return self._extract_ds(d)
 
     def get_all(self):
-        with self._dbs.main.begin(self._dbs.ds) as tr:
+        with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
             for _, d in tr.cursor():
                 yield self._extract_ds(d)
 
