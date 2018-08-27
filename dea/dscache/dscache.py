@@ -282,20 +282,8 @@ def maybe_delete_db(path):
     return True
 
 
-def open_cache(path,
-               products=None,
-               readonly=True,
-               complevel=6):
-    """
-    """
-
-    subdir = Path(path).is_dir()
-
-    db = lmdb.open(path,
-                   subdir=subdir,
-                   max_dbs=8,
-                   lock=not readonly,
-                   readonly=readonly)
+def _from_existing_db(db, products=None, complevel=6):
+    readonly = db.flags().get('readonly')
 
     try:
         db_info = db.open_db(b'info', create=False)
@@ -310,6 +298,7 @@ def open_cache(path,
             raise ValueError("Unsupported on disk version: " + version.decode('utf8'))
 
         zdict = tr.get(b'zdict', None)
+
     dbs = SimpleNamespace(main=db,
                           info=db_info,
                           groups=db.open_db(b'groups', create=False),
@@ -339,6 +328,23 @@ def open_cache(path,
     return DatasetCache(state)
 
 
+def open_cache(path,
+               products=None,
+               complevel=6):
+    """
+    """
+
+    subdir = Path(path).is_dir()
+
+    db = lmdb.open(path,
+                   subdir=subdir,
+                   max_dbs=8,
+                   lock=False,
+                   readonly=True)
+
+    return _from_existing_db(db, products=products, complevel=complevel)
+
+
 def create_cache(path,
                  complevel=6,
                  zdict=None,
@@ -360,9 +366,7 @@ def create_cache(path,
 
     # If db is not empty just call open on it
     if db.stat()['entries'] > 0:
-        db.close()
-        # TODO: don't re-open, instead refactor to use `db`
-        return open_cache(path, readonly=False, complevel=complevel)
+        return _from_existing_db(db, complevel=complevel)
 
     products = {}
     db_info = db.open_db(b'info', create=True)
