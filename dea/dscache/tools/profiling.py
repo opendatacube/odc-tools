@@ -13,7 +13,13 @@ TTFB : {r.ttfb:6.3f} sec
 '''.format(r=r, fps=r.count/r.total).strip()
 
 
-def ds_stream_test_func(dss, get_uuid):
+def ds_stream_test_func(dss, get_uuid=None):
+    def default_get_uuid(ds):
+        return ds.id
+
+    if get_uuid is None:
+        get_uuid = default_get_uuid
+
     timer = timeit.default_timer
     uu = 0
     count = 0
