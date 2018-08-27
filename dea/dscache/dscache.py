@@ -33,6 +33,19 @@ def key_to_bytes(k):
     raise ValueError('Key must be one of str|bytes|int|UUID|tuple')
 
 
+def prefix_visit(tr, prefix):
+    if isinstance(prefix, str):
+        prefix = prefix.encode('utf8')
+
+    n = len(prefix)
+    cursor = tr.cursor()
+    cursor.set_range(prefix)
+    for k, v in cursor:
+        if len(k) < n or k[:n] != prefix:
+            break
+        yield k[n:], v
+
+
 def dict2jsonKV(oo, prefix=None, compressor=None):
     for k, doc in oo.items():
         data = json.dumps(doc, separators=(',', ':')).encode('utf8')
@@ -42,6 +55,16 @@ def dict2jsonKV(oo, prefix=None, compressor=None):
             k = prefix + k
 
         yield (key_to_bytes(k), data)
+
+
+def jsonKV2dict(kv, decompressor=None):
+    def decode(kv):
+        k, doc = kv
+        if decompressor is not None:
+            doc = decompressor.decompress(doc)
+        return k.decode('utf8'), json.loads(doc)
+
+    return {k: doc for k, doc in map(decode, kv)}
 
 
 def ds2bytes(ds):
@@ -92,6 +115,25 @@ def save_products(products, transaction, compressor, overwrite=False):
     for k, d in itertools.chain(dict2jsonKV(mm, 'metadata/', compressor),
                                 dict2jsonKV(products, 'product/', compressor)):
         transaction.put(k, d, overwrite=overwrite, dupdata=False)
+
+
+def build_dc_product_map(metadata_json, products_json):
+    from datacube.model import metadata_from_doc, DatasetType
+
+    mm = toolz.valmap(metadata_from_doc, metadata_json)
+
+    def mk_product(doc, name):
+        mt = doc.get('metadata_type')
+        if mt is None:
+            raise ValueError('Missing metadata_type key in product definition')
+        metadata = mm.get(mt)
+
+        if metadata is None:
+            raise ValueError('No such metadata %s for product %s' % (mt, name))
+
+        return DatasetType(metadata, doc)
+
+    return {k: mk_product(doc, k) for k, doc in products_json.items()}
 
 
 def train_dictionary(dss, dict_sz=8*1024):
@@ -240,7 +282,10 @@ def maybe_delete_db(path):
     return True
 
 
-def open_cache(path, products=None):
+def open_cache(path,
+               products=None,
+               readonly=True,
+               complevel=6):
     """
     """
 
@@ -249,8 +294,8 @@ def open_cache(path, products=None):
     db = lmdb.open(path,
                    subdir=subdir,
                    max_dbs=8,
-                   lock=False,
-                   readonly=True)
+                   lock=not readonly,
+                   readonly=readonly)
 
     try:
         db_info = db.open_db(b'info', create=False)
@@ -265,9 +310,6 @@ def open_cache(path, products=None):
             raise ValueError("Unsupported on disk version: " + version.decode('utf8'))
 
         zdict = tr.get(b'zdict', None)
-        if products is None:
-            products = {}  # TODO: load products
-
     dbs = SimpleNamespace(main=db,
                           info=db_info,
                           groups=db.open_db(b'groups', create=False),
@@ -279,8 +321,15 @@ def open_cache(path, products=None):
     else:
         comp_params = {}
 
-    comp = None
+    comp = None if readonly else zstandard.ZstdCompressor(level=complevel, **comp_params)
     decomp = zstandard.ZstdDecompressor(**comp_params)
+
+    if products is None:
+        with db.begin(db_info, write=False) as tr:
+            metadata = jsonKV2dict(prefix_visit(tr, 'metadata/'), decomp)
+            products = jsonKV2dict(prefix_visit(tr, 'product/'), decomp)
+
+        products = build_dc_product_map(metadata, products)
 
     state = SimpleNamespace(dbs=dbs,
                             comp=comp,
@@ -309,32 +358,21 @@ def create_cache(path,
                    map_size=max_db_sz,
                    readonly=False)
 
-    # If db is not empty load zdict from info
+    # If db is not empty just call open on it
     if db.stat()['entries'] > 0:
-        try:
-            db_info = db.open_db(b'info', create=False)
-        except lmdb.NotFoundError:
-            raise ValueError('Existing database is not a ds cache')
+        db.close()
+        # TODO: don't re-open, instead refactor to use `db`
+        return open_cache(path, readonly=False, complevel=complevel)
 
-        with db.begin(db_info, write=False) as tr:
-            version = tr.get(b'version', None)
-            if version is None:
-                raise ValueError('Missing format version field')
-            if version != FORMAT_VERSION:
-                raise ValueError("Unsupported on disk version: " + version.decode('utf8'))
+    products = {}
+    db_info = db.open_db(b'info', create=True)
 
-            zdict = tr.get(b'zdict', None)
-            products = {}  # TODO: load products
-    else:
-        products = {}
-        db_info = db.open_db(b'info', create=True)
+    with db.begin(db_info, write=True) as tr:
+        tr.put(b'version', FORMAT_VERSION)
 
-        with db.begin(db_info, write=True) as tr:
-            tr.put(b'version', FORMAT_VERSION)
-
-            if zdict is not None:
-                assert isinstance(zdict, bytes)
-                tr.put(b'zdict', zdict)
+        if zdict is not None:
+            assert isinstance(zdict, bytes)
+            tr.put(b'zdict', zdict)
 
     dbs = SimpleNamespace(main=db,
                           info=db_info,
