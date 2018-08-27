@@ -187,6 +187,8 @@ class DatasetCache(object):
                     self._ds_save(ds, tr)
                     yield ds
 
+        self.sync()
+
     def bulk_save_raw(self, raw_dss):
         with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
             for raw_ds in raw_dss:

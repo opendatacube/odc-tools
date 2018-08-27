@@ -36,6 +36,8 @@ def slurpy(env, output, products):
         rr = ds_stream_test_func(dss, lambda ds: ds.id)
         print(rr.text)
 
+    cache.sync()
+
 
 if __name__ == '__main__':
     slurpy()
