@@ -11,6 +11,10 @@ from dscache.tools import dictionary_from_product_list
 @click.argument('products', type=str, nargs=-1)
 def slurpy(env, output, products):
 
+    if len(products) == 0:
+        click.echo('Have to supply at least one product')
+        raise click.Abort()
+
     dc = datacube.Datacube(env=env)
     all_prods = {p.name: p
                  for p in dc.index.products.get_all()}
