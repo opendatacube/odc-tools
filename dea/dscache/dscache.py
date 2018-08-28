@@ -243,12 +243,13 @@ class DatasetCache(object):
         return doc2ds(doc, self._products)
 
     def get(self, uuid):
+        """Extract single dataset with a given uuid, or return None if not found"""
         if isinstance(uuid, str):
             uuid = UUID(uuid)
 
         key = key_to_bytes(uuid)
 
-        with self._dbs.main.begin(self._dbs.ds) as tr:
+        with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
             d = tr.get(key, None)
             if d is None:
                 return None
@@ -362,10 +363,23 @@ def _from_empty_db(db,
     return DatasetCache(state)
 
 
-def open_cache(path,
-               products=None,
-               complevel=6):
-    """
+def open_ro(path,
+            products=None,
+            lock=False):
+    """Open existing database in readonly mode.
+
+    NOTE: default mode assumes db file is static (not being modified
+    externally), if this is not the case, supply `lock=True` parameter.
+
+    :path str: Path to the db could be folder or actual file
+
+    :products: Override product dictionary with compatible products loaded from
+    the datacube database, this is generally only needed if you intend to add
+    datasets to the datacube index directly (i.e. without product matching
+    metadata documents).
+
+    :lock bool: Supply True if external process is changing DB concurrently.
+
     """
 
     subdir = Path(path).is_dir()
@@ -373,8 +387,44 @@ def open_cache(path,
     db = lmdb.open(path,
                    subdir=subdir,
                    max_dbs=8,
-                   lock=False,
+                   lock=lock,
+                   create=False,
                    readonly=True)
+
+    return _from_existing_db(db, products=products)
+
+
+def open_rw(path,
+            products=None,
+            max_db_sz=None,
+            complevel=6):
+    """Open existing database in append mode.
+
+    :path str: Path to the db could be folder or actual file
+
+    :products: Override product dictionary with compatible products loaded from
+    the datacube database, this is generally only needed if you intend to add
+    datasets to the datacube index directly (i.e. without product matching
+    metadata documents).
+
+    :max_db_sz int: Maximum size in bytes database file is allowed to grow to, defaults to 10Gb
+
+    :complevel: Compression level (Zstandard) to use when storing datasets, 1
+    fastest, 6 good and still fast, 20+ best but slower.
+    """
+
+    subdir = Path(path).is_dir()
+
+    if max_db_sz is None:
+        max_db_sz = 10*(1 << 30)
+
+    db = lmdb.open(path,
+                   subdir=subdir,
+                   max_dbs=8,
+                   map_size=max_db_sz,
+                   lock=True,
+                   create=False,
+                   readonly=False)
 
     return _from_existing_db(db, products=products, complevel=complevel)
 
@@ -396,6 +446,7 @@ def create_cache(path,
     db = lmdb.open(path,
                    max_dbs=8,
                    map_size=max_db_sz,
+                   create=True,
                    readonly=False)
 
     # If db is not empty just call open on it
@@ -419,5 +470,5 @@ def test_create_cache():
     ss = create_cache('tmp.lmdb', truncate=True)
     print(ss)
     del ss
-    ss = open_cache('tmp.lmdb')
+    ss = open_ro('tmp.lmdb')
     print(ss)
