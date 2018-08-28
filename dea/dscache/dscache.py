@@ -33,6 +33,18 @@ def key_to_bytes(k):
     raise ValueError('Key must be one of str|bytes|int|UUID|tuple')
 
 
+def uuids2bytes(uu):
+    bb = bytearray(len(uu)*16)
+    for i, u in enumerate(uu):
+        bb[i*16:(i+1)*16] = u.bytes
+    return bytes(bb)
+
+
+def bytes2uuids(bb):
+    n = len(bb)//16
+    return [UUID(bytes=bb[i*16:(i+1)*16]) for i in range(n)]
+
+
 def prefix_visit(tr, prefix):
     if isinstance(prefix, str):
         prefix = prefix.encode('utf8')
@@ -237,6 +249,27 @@ class DatasetCache(object):
                 k, v = self._doc2kv(raw_ds)
                 tr.put(k, v)
 
+    def put_group(self, name, uuids):
+        """ Group is a named list of uuids
+        """
+        data = uuids2bytes(uuids)
+        k = key_to_bytes(name)
+
+        with self._dbs.main.begin(self._dbs.groups, write=True) as tr:
+            tr.put(k, data)
+
+    def _get_group_raw(self, name):
+        k = key_to_bytes(name)
+
+        with self._dbs.main.begin(self._dbs.groups, write=False) as tr:
+            return tr.get(k)
+
+    def get_group(self, name):
+        """ Group is a named list of uuids
+        """
+        data = self._get_group_raw(key_to_bytes(name))
+        return bytes2uuids(data) if data is not None else None
+
     def _extract_ds(self, d):
         d = self._decomp.decompress(d)
         doc = json.loads(d)
@@ -259,6 +292,23 @@ class DatasetCache(object):
     def get_all(self):
         with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
             for _, d in tr.cursor():
+                yield self._extract_ds(d)
+
+    def stream_group(self, group_name):
+        uu = self._get_group_raw(group_name)
+        if uu is None:
+            raise ValueError('No such group: %s' % group_name)
+
+        if len(uu) & 0xF:
+            raise ValueError('Wrong data size for group %s' % group_name)
+
+        with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
+            for i in range(0, len(uu), 16):
+                key = uu[i:i+16]
+                d = tr.get(key, None)
+                if d is None:
+                    raise ValueError('Missing dataset for %s' % (str(UUID(bytes=key))))
+
                 yield self._extract_ds(d)
 
     @property
