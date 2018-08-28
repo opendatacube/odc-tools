@@ -350,6 +350,41 @@ def open_cache(path,
     return _from_existing_db(db, products=products, complevel=complevel)
 
 
+def _from_empty_db(db,
+                   complevel=6,
+                   zdict=None):
+    assert isinstance(zdict, (bytes, type(None)))
+
+    db_info = db.open_db(b'info', create=True)
+
+    with db.begin(db_info, write=True) as tr:
+        tr.put(b'version', FORMAT_VERSION)
+
+        if zdict is not None:
+            tr.put(b'zdict', zdict)
+
+    dbs = SimpleNamespace(main=db,
+                          info=db_info,
+                          groups=db.open_db(b'groups', create=True),
+                          ds=db.open_db(b'ds', create=True),
+                          udata=db.open_db(b'udata', create=True))
+
+    if zdict is not None:
+        comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)}
+    else:
+        comp_params = {}
+
+    comp = zstandard.ZstdCompressor(level=complevel, **comp_params)
+    decomp = zstandard.ZstdDecompressor(**comp_params)
+
+    state = SimpleNamespace(dbs=dbs,
+                            comp=comp,
+                            decomp=decomp,
+                            products={})
+
+    return DatasetCache(state)
+
+
 def create_cache(path,
                  complevel=6,
                  zdict=None,
@@ -372,37 +407,8 @@ def create_cache(path,
     # If db is not empty just call open on it
     if db.stat()['entries'] > 0:
         return _from_existing_db(db, complevel=complevel)
-
-    products = {}
-    db_info = db.open_db(b'info', create=True)
-
-    with db.begin(db_info, write=True) as tr:
-        tr.put(b'version', FORMAT_VERSION)
-
-        if zdict is not None:
-            assert isinstance(zdict, bytes)
-            tr.put(b'zdict', zdict)
-
-    dbs = SimpleNamespace(main=db,
-                          info=db_info,
-                          groups=db.open_db(b'groups', create=True),
-                          ds=db.open_db(b'ds', create=True),
-                          udata=db.open_db(b'udata', create=True))
-
-    if zdict is not None:
-        comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)}
     else:
-        comp_params = {}
-
-    comp = zstandard.ZstdCompressor(level=complevel, **comp_params)
-    decomp = zstandard.ZstdDecompressor(**comp_params)
-
-    state = SimpleNamespace(dbs=dbs,
-                            comp=comp,
-                            decomp=decomp,
-                            products=products)
-
-    return DatasetCache(state)
+        return _from_empty_db(db, complevel=complevel, zdict=zdict)
 
 
 def test_key_to_value():
