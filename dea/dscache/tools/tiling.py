@@ -27,7 +27,7 @@ def bin_dataset_stream(gridspec, dss, persist=None):
     for ds in dss:
         ds_val = persist(ds)
 
-        for tile, geobox in gridspec.tiles_inside_geopolygon(ds.extent, geobox_cache=geobox_cache):
+        for tile, geobox in gridspec.tiles_from_geopolygon(ds.extent, geobox_cache=geobox_cache):
             register(tile, geobox, ds_val)
 
     return cells
