@@ -226,17 +226,18 @@ class DatasetCache(object):
             for ds in dss:
                 self._ds_save(ds, tr)
 
-    def tee(self, dss):
+    def tee(self, dss, max_transaction_size=10000):
         """Given a lazy stream of datasets persist them to disk and then pass through
         for further processing.
+        :dss: stream of datasets
+        :max_transaction_size int: How often to commit results to disk
         """
         have_some = True
-        n_max_per_transaction = 100
 
         while have_some:
             with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
                 have_some = False
-                for ds in itertools.islice(dss, n_max_per_transaction):
+                for ds in itertools.islice(dss, max_transaction_size):
                     have_some = True
                     self._ds_save(ds, tr)
                     yield ds
