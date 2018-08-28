@@ -3,7 +3,6 @@ import datacube
 import dscache
 from dscache.tools import db_connect, raw_dataset_stream, mk_raw2ds
 from dscache.tools import dictionary_from_product_list
-from dscache.tools.profiling import ds_stream_test_func
 
 
 @click.command('slurpy')
@@ -22,7 +21,16 @@ def slurpy(env, output, products):
             raise click.Abort()
 
     raw2ds = mk_raw2ds(all_prods)
+    click.echo('Training compression dictionary')
     zdict = dictionary_from_product_list(dc, products, samples_per_product=50)
+    click.echo('..done')
+
+    click.echo('Getting dataset counts')
+    counts = {p.name: count
+              for p, count in dc.index.datasets.count_by_product(product=[p for p in products])}
+
+    for p, c in counts.items():
+        click.echo('..{}: {:8,d}'.format(p, c))
 
     # TODO: check for overwrite
     cache = dscache.create_cache(output, zdict=zdict, truncate=True)
@@ -33,8 +41,11 @@ def slurpy(env, output, products):
         dss = map(raw2ds, raw_dataset_stream(p, conn))
         dss = cache.tee(dss)
 
-        rr = ds_stream_test_func(dss, lambda ds: ds.id)
-        print(rr.text)
+        n_dss = counts.get(p, None)
+        label = 'Processing {} ({:8,d})'.format(p, n_dss)
+        with click.progressbar(dss, label=label, length=n_dss) as dss:
+            for ds in dss:
+                pass
 
     cache.sync()
 
