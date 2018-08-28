@@ -310,10 +310,7 @@ def _from_existing_db(db, products=None, complevel=6):
                           ds=db.open_db(b'ds', create=False),
                           udata=db.open_db(b'udata', create=False))
 
-    if zdict is not None:
-        comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)}
-    else:
-        comp_params = {}
+    comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)} if zdict else {}
 
     comp = None if readonly else zstandard.ZstdCompressor(level=complevel, **comp_params)
     decomp = zstandard.ZstdDecompressor(**comp_params)
@@ -331,23 +328,6 @@ def _from_existing_db(db, products=None, complevel=6):
                             products=products)
 
     return DatasetCache(state)
-
-
-def open_cache(path,
-               products=None,
-               complevel=6):
-    """
-    """
-
-    subdir = Path(path).is_dir()
-
-    db = lmdb.open(path,
-                   subdir=subdir,
-                   max_dbs=8,
-                   lock=False,
-                   readonly=True)
-
-    return _from_existing_db(db, products=products, complevel=complevel)
 
 
 def _from_empty_db(db,
@@ -369,10 +349,7 @@ def _from_empty_db(db,
                           ds=db.open_db(b'ds', create=True),
                           udata=db.open_db(b'udata', create=True))
 
-    if zdict is not None:
-        comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)}
-    else:
-        comp_params = {}
+    comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)} if zdict else {}
 
     comp = zstandard.ZstdCompressor(level=complevel, **comp_params)
     decomp = zstandard.ZstdDecompressor(**comp_params)
@@ -383,6 +360,23 @@ def _from_empty_db(db,
                             products={})
 
     return DatasetCache(state)
+
+
+def open_cache(path,
+               products=None,
+               complevel=6):
+    """
+    """
+
+    subdir = Path(path).is_dir()
+
+    db = lmdb.open(path,
+                   subdir=subdir,
+                   max_dbs=8,
+                   lock=False,
+                   readonly=True)
+
+    return _from_existing_db(db, products=products, complevel=complevel)
 
 
 def create_cache(path,
