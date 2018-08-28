@@ -270,6 +270,21 @@ class DatasetCache(object):
         data = self._get_group_raw(key_to_bytes(name))
         return bytes2uuids(data) if data is not None else None
 
+    def groups(self, raw=False):
+        """Get list of group names.
+
+        :raw bool: Normally names are returned as strings, supplying raw=True
+        would return bytes instead, this is needed if you are using group names
+        that are not strings, like integers or tuples of basic types.
+        """
+
+        def _raw():
+            with self._dbs.main.begin(self._dbs.groups, write=False, buffers=True) as tr:
+                return [bytes(k) for k, _ in tr.cursor()]
+
+        nn = _raw()
+        return nn if raw else [n.decode('utf8') for n in nn]
+
     def _extract_ds(self, d):
         d = self._decomp.decompress(d)
         doc = json.loads(d)
