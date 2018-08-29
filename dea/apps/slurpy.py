@@ -9,7 +9,7 @@ from dscache.tools import dictionary_from_product_list
 @click.option('--env', type=str, help='Datacube environment name')
 @click.argument('output', type=str, nargs=1)
 @click.argument('products', type=str, nargs=-1)
-def slurpy(env, output, products):
+def cli(env, output, products):
 
     if len(products) == 0:
         click.echo('Have to supply at least one product')
@@ -55,4 +55,4 @@ def slurpy(env, output, products):
 
 
 if __name__ == '__main__':
-    slurpy()
+    cli()
