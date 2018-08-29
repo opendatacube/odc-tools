@@ -272,7 +272,7 @@ class DatasetCache(object):
         return bytes2uuids(data) if data is not None else None
 
     def groups(self, raw=False):
-        """Get list of group names.
+        """Get list of tuples (group_name, group_size).
 
         :raw bool: Normally names are returned as strings, supplying raw=True
         would return bytes instead, this is needed if you are using group names
@@ -281,10 +281,10 @@ class DatasetCache(object):
 
         def _raw():
             with self._dbs.main.begin(self._dbs.groups, write=False, buffers=True) as tr:
-                return [bytes(k) for k, _ in tr.cursor()]
+                return [(bytes(k), len(d)//16) for k, d in tr.cursor()]
 
         nn = _raw()
-        return nn if raw else [n.decode('utf8') for n in nn]
+        return nn if raw else [(n.decode('utf8'), c) for n, c in nn]
 
     def _extract_ds(self, d):
         d = self._decomp.decompress(d)
