@@ -45,7 +45,7 @@ def bytes2uuids(bb):
     return [UUID(bytes=bb[i*16:(i+1)*16]) for i in range(n)]
 
 
-def prefix_visit(tr, prefix):
+def prefix_visit(tr, prefix, full_key=False):
     if isinstance(prefix, str):
         prefix = prefix.encode('utf8')
 
@@ -55,7 +55,7 @@ def prefix_visit(tr, prefix):
     for k, v in cursor:
         if len(k) < n or k[:n] != prefix:
             break
-        yield k[n:], v
+        yield (k if full_key else k[n:]), v
 
 
 def dict2jsonKV(oo, prefix=None, compressor=None):
@@ -271,19 +271,27 @@ class DatasetCache(object):
         data = self._get_group_raw(key_to_bytes(name))
         return bytes2uuids(data) if data is not None else None
 
-    def groups(self, raw=False):
+    def groups(self, raw=False, prefix=None):
         """Get list of tuples (group_name, group_size).
 
         :raw bool: Normally names are returned as strings, supplying raw=True
         would return bytes instead, this is needed if you are using group names
         that are not strings, like integers or tuples of basic types.
+
+        :prefix str|bytes: Only report groups with name starting with prefix
         """
 
-        def _raw():
-            with self._dbs.main.begin(self._dbs.groups, write=False, buffers=True) as tr:
-                return [(bytes(k), len(d)//16) for k, d in tr.cursor()]
+        assert isinstance(prefix, (str, bytes, type(None)))
 
-        nn = _raw()
+        def _raw(prefix):
+            with self._dbs.main.begin(self._dbs.groups, write=False, buffers=True) as tr:
+                cursor = tr.cursor() if prefix is None else prefix_visit(tr, prefix, full_key=True)
+                return [(bytes(k), len(d)//16) for k, d in cursor]
+
+        if prefix is not None:
+            prefix = key_to_bytes(prefix)
+
+        nn = _raw(prefix)
         return nn if raw else [(n.decode('utf8'), c) for n, c in nn]
 
     def _extract_ds(self, d):
