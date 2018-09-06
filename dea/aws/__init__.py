@@ -1,6 +1,5 @@
 import requests
 import re
-import itertools
 from urllib.parse import urlparse
 import botocore
 import botocore.session
