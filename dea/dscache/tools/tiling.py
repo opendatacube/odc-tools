@@ -1,8 +1,13 @@
 from types import SimpleNamespace
+import toolz
 
 
 def extract_ls_path_row(ds):
     full_id = ds.metadata_doc.get('tile_id')
+
+    if full_id is None:
+        full_id = toolz.get_in(['usgs', 'scene_id'], ds.metadata_doc)
+
     if full_id is None:
         return None
     return tuple(int(s) for s in (full_id[3:6], full_id[6:9]))
@@ -33,6 +38,10 @@ def bin_dataset_stream(gridspec, dss, persist=None):
 
     for ds in dss:
         ds_val = persist(ds)
+
+        if ds.extent is None:
+            print('WARNING: Datasets without extent info: %s', str(ds.id))
+            continue
 
         for tile, geobox in gridspec.tiles_from_geopolygon(ds.extent, geobox_cache=geobox_cache):
             register(tile, geobox, ds_val)
