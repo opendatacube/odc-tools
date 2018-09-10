@@ -40,7 +40,7 @@ def bin_dataset_stream(gridspec, dss, persist=None):
         ds_val = persist(ds)
 
         if ds.extent is None:
-            print('WARNING: Datasets without extent info: %s', str(ds.id))
+            print('WARNING: Datasets without extent info: %s' % str(ds.id))
             continue
 
         for tile, geobox in gridspec.tiles_from_geopolygon(ds.extent, geobox_cache=geobox_cache):
