@@ -1,5 +1,4 @@
 import requests
-import re
 from urllib.parse import urlparse
 import botocore
 import botocore.session
@@ -71,7 +70,7 @@ def s3_ls(url, s3=None):
 
     n_skip = len(prefix)
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        for o in page['Contents']:
+        for o in page.get('Contents', []):
             yield o['Key'][n_skip:]
 
 
@@ -95,47 +94,20 @@ def s3_ls_dir(uri, s3=None):
             yield 's3://{bucket}/{path}'.format(bucket=bucket, path=o['Key'])
 
 
-def s3_fancy_ls(url, sort=True,
-                random_prefix_length=None,
-                absolute=False,
-                predicate=None,
-                s3=None):
+def s3_find(url, glob, s3=None):
+    """ Return iterator of fully qualified s3 uris.
     """
-    predicate -- None| str -> Bool | regex string
-    random_prefix_length int -- number of characters to skip for sorting: fh4e6_0, ahfe8_1 ... 00aa3_9, if =6
-    """
-    def get_sorter():
-        if random_prefix_length is None:
-            return None
-        return lambda s: s[random_prefix_length:]
+    from fnmatch import fnmatch
 
-    def normalise_predicate(predicate):
-        if predicate is None:
-            return None
-
-        if isinstance(predicate, str):
-            regex = re.compile(predicate)
-            return lambda s: regex.match(s) is not None
-
-        return predicate
-
-    predicate = normalise_predicate(predicate)
+    def glob_predicate(path):
+        return fnmatch(path, glob)
 
     if url[-1] != '/':
         url += '/'
 
-    names = s3_ls(url, s3=s3)
-
-    if predicate:
-        names = [n for n in names if predicate(n)]
-
-    if sort:
-        names = sorted(names, key=get_sorter())
-
-    if absolute:
-        names = [url+name for name in names]
-
-    return names
+    for n in s3_ls(url, s3=s3):
+        if glob_predicate(n):
+            yield url + n
 
 
 def get_boto3_session(region_name=None, cache=None):
