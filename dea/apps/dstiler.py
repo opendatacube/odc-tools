@@ -1,6 +1,6 @@
 import click
 import dscache
-from .tiling import bin_dataset_stream, bin_by_native_tile
+from .tiling import bin_dataset_stream, bin_by_native_tile, web_gs
 from datacube.model import GridSpec
 import datacube.utils.geometry as geom
 
@@ -12,12 +12,14 @@ GS_ALBERS = GridSpec(crs=geom.CRS('EPSG:3577'),
 
 @click.command('dstiler')
 @click.option('--native', is_flag=True, help='Use Landsat Path/Row as grouping')
+@click.option('--web', type=int, help='Use web map tiling regime at supplied zoom level')
 @click.argument('dbfile', type=str, nargs=1)
-def cli(native, dbfile):
+def cli(native, web, dbfile):
     """Add spatial grouping to file db.
 
     Default grid is Australian Albers (EPSG:3577) with 100k by 100k tiles. But
-    you can also group by Landsat path/row.
+    you can also group by Landsat path/row (--native), or Google's map tiling
+    regime (--web zoom_level)
 
     """
     cache = dscache.open_rw(dbfile)
@@ -26,8 +28,11 @@ def cli(native, dbfile):
     if native:
         gs = None
         group_key_fmt = 'native/{:03d}{:03d}'
+    elif web is not None:
+        gs = web_gs(web)
+        group_key_fmt = 'web_'+str(web)+'/{:d}_{:d}'
     else:
-        gs = GS_ALBERS  # TODO: make configurable
+        gs = GS_ALBERS
         group_key_fmt = 'albers/{:+03d}{:+03d}'
 
     with click.progressbar(cache.get_all(), length=cache.count, label=label) as dss:

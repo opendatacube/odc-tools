@@ -2,6 +2,32 @@ from types import SimpleNamespace
 import toolz
 
 
+def web_gs(zoom, tile_size=256):
+    """ Construct grid spec compatible with TerriaJS requests at a given level.
+
+    Tile indexes should be the same as google maps, except that Y component is negative,
+    this is a limitation of GridSpec class, you can not have tile index direction be
+    different from axis direction, but this is what google indexing is using.
+
+    http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/
+    """
+    from datacube.utils.geometry import CRS
+    from datacube.model import GridSpec
+    from math import pi
+
+    R = 6378137
+
+    origin = pi * R
+    res0 = 2 * pi * R / tile_size
+    res = res0*(2**(-zoom))
+    tsz = 2 * pi * R * (2**(-zoom))  # res*tile_size
+
+    return GridSpec(crs=CRS('epsg:3857'),
+                    tile_size=(tsz, tsz),
+                    resolution=(-res, res),        # Y,X
+                    origin=(origin-tsz, -origin))  # Y,X
+
+
 def extract_ls_path_row(ds):
     full_id = ds.metadata_doc.get('tile_id')
 
