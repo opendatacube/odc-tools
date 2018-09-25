@@ -76,3 +76,60 @@ def affine_from_pts(X, Y):
 
     return Affine(a, b, c,
                   d, e, f)
+
+
+def get_scale_at_point(pt, tr, r=None):
+    """ Given an arbitrary locally linear transform estimate scale change around a point.
+
+    1. Approximate Y = tr(X) as Y = A*X in the neighbourhood of pt
+    2. Extract scale components of A
+
+
+    pt - estimate transform around this point
+    r  - radius around the point (default 1)
+
+    tr - List((x,y)) -> List((x,y))
+         takes list of 2-d points on input and outputs same length list of 2d on output
+
+    """
+    pts0 = [(0, 0), (-1, 0), (0, -1), (1, 0), (0, 1)]
+    x0, y0 = pt
+    if r is None:
+        XX = [(float(x+x0), float(y+y0)) for x, y in pts0]
+    else:
+        XX = [(float(x*r+x0), float(y*r+y0)) for x, y in pts0]
+    YY = tr(XX)
+    A = affine_from_pts(XX, YY)
+    _, _, S = decompose_rws(A)
+    return (S.a, S.e)
+
+
+def native_pix_transform(src, dst):
+    """
+
+    direction: from native for ds to geobox coords
+    .back: goes the other way
+    """
+    from types import SimpleNamespace
+    from osgeo import osr
+
+    # TODO: special case CRS_in == CRS_out
+    #
+    _in = SimpleNamespace(crs=src.crs._crs, A=src.transform)
+    _out = SimpleNamespace(crs=dst.crs._crs, A=dst.transform)
+
+    _fwd = osr.CoordinateTransformation(_in.crs, _out.crs)
+    _bwd = osr.CoordinateTransformation(_out.crs, _in.crs)
+
+    _fwd = (_in.A, _fwd, ~_out.A)
+    _bwd = (_out.A, _bwd, ~_in.A)
+
+    def transform(pts, params):
+        A, f, B = params
+        return [B*pt[:2] for pt in f.TransformPoints([A*pt[:2] for pt in pts])]
+
+    def tr(pts):
+        return transform(pts, _fwd)
+    tr.back = lambda pts: transform(pts, _bwd)
+
+    return tr
