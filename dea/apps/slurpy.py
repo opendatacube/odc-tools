@@ -3,6 +3,12 @@ import datacube
 import dscache
 from dscache.tools import db_connect, raw_dataset_stream, mk_raw2ds
 from dscache.tools import dictionary_from_product_list
+from threading import Thread
+import queue
+
+from . import qmap
+
+EOS = object()
 
 
 @click.command('slurpy')
@@ -42,13 +48,18 @@ def cli(env, output, products):
     # TODO: check for overwrite
     cache = dscache.create_cache(output, zdict=zdict, truncate=True)
 
-    conn = db_connect(cfg=env)
-
-    def all_dss(products, conn):
+    def db_task(products, conn, q):
         for p in products:
-            yield from map(raw2ds, raw_dataset_stream(p, conn))
+            for ds in map(raw2ds, raw_dataset_stream(p, conn)):
+                q.put(ds)
+        q.put(EOS)
 
-    dss = all_dss(products, conn)
+    conn = db_connect(cfg=env)
+    q = queue.Queue(maxsize=10_000)
+    db_thread = Thread(target=db_task, args=(products, conn, q))
+    db_thread.start()
+
+    dss = qmap(lambda ds: ds, q, eos_marker=EOS)
     dss = cache.tee(dss)
 
     label = 'Processing ({:8,d})'.format(n_total)
@@ -57,6 +68,7 @@ def cli(env, output, products):
             pass
 
     cache.sync()
+    db_thread.join()
 
 
 if __name__ == '__main__':
