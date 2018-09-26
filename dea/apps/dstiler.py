@@ -34,7 +34,7 @@ def cli(native, native_albers, web, dbfile):
         binner = lambda dss: bin_by_native_tile(dss, native_tile_id=extract_native_albers_tile)
     elif web is not None:
         gs = web_gs(web)
-        group_key_fmt = 'web_'+str(web)+'/{:d}_{:d}'
+        group_key_fmt = 'web_' + str(web) + '/{:d}_{:d}'
         binner = lambda dss: bin_dataset_stream(gs, dss)
     else:
         group_key_fmt = 'albers/{:+03d}{:+03d}'
