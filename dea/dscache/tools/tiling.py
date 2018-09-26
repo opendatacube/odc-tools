@@ -28,6 +28,12 @@ def web_gs(zoom, tile_size=256):
                     origin=(origin-tsz, -origin))  # Y,X
 
 
+def extract_native_albers_tile(ds, tile_size=100_000):
+    ll = toolz.get_in('grid_spatial.projection.geo_ref_points.ll'.split('.'),
+                      ds.metadata_doc)
+    return tuple(int(ll[k]/tile_size) for k in ('x', 'y'))
+
+
 def extract_ls_path_row(ds):
     full_id = ds.metadata_doc.get('tile_id')
 
