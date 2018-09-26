@@ -33,23 +33,28 @@ def cli(env, output, products):
     counts = {p.name: count
               for p, count in dc.index.datasets.count_by_product(product=[p for p in products])}
 
+    n_total = 0
+
     for p, c in counts.items():
         click.echo('..{}: {:8,d}'.format(p, c))
+        n_total += c
 
     # TODO: check for overwrite
     cache = dscache.create_cache(output, zdict=zdict, truncate=True)
 
     conn = db_connect(cfg=env)
 
-    for p in products:
-        dss = map(raw2ds, raw_dataset_stream(p, conn))
-        dss = cache.tee(dss)
+    def all_dss(products, conn):
+        for p in products:
+            yield from map(raw2ds, raw_dataset_stream(p, conn))
 
-        n_dss = counts.get(p, None)
-        label = 'Processing {} ({:8,d})'.format(p, n_dss)
-        with click.progressbar(dss, label=label, length=n_dss) as dss:
-            for ds in dss:
-                pass
+    dss = all_dss(products, conn)
+    dss = cache.tee(dss)
+
+    label = 'Processing ({:8,d})'.format(n_total)
+    with click.progressbar(dss, label=label, length=n_total) as dss:
+        for ds in dss:
+            pass
 
     cache.sync()
 
