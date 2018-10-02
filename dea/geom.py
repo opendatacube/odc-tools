@@ -81,7 +81,7 @@ def affine_from_pts(X, Y):
 def get_scale_at_point(pt, tr, r=None):
     """ Given an arbitrary locally linear transform estimate scale change around a point.
 
-    1. Approximate Y = tr(X) as Y = A*X in the neighbourhood of pt
+    1. Approximate Y = tr(X) as Y = A*X+t in the neighbourhood of pt, for X,Y in R2
     2. Extract scale components of A
 
 
@@ -107,7 +107,7 @@ def get_scale_at_point(pt, tr, r=None):
 def native_pix_transform(src, dst):
     """
 
-    direction: from native for ds to geobox coords
+    direction: from src to dst
     .back: goes the other way
     """
     from types import SimpleNamespace
@@ -133,3 +133,27 @@ def native_pix_transform(src, dst):
     tr.back = lambda pts: transform(pts, _bwd)
 
     return tr
+
+
+def scaled_down_geobox(src_geobox, scaler: int):
+    """Given a source geobox and integer scaler compute geobox of a scaled down image.
+
+        Output geobox will be padded when shape is not a multiple of scaler.
+        Example: 5x4, scaler=2 -> 3x2
+
+        NOTE: here we assume that pixel coordinates are 0,0 at the top-left
+              corner of a top-left pixel.
+
+    """
+    from datacube.utils.geometry import GeoBox
+
+    assert scaler > 1
+
+    H, W = [X//scaler + (1 if X % scaler else 0)
+            for X in src_geobox.shape]
+
+    # Since 0,0 is at the corner of a pixel, not center, there is no
+    # translation between pixel plane coords due to scaling
+    A = src_geobox.transform * Affine.scale(scaler, scaler)
+
+    return GeoBox(W, H, A, src_geobox.crs)

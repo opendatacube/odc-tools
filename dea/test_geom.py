@@ -1,7 +1,7 @@
 from affine import Affine
 from math import sqrt
 from random import uniform
-from .geom import affine_from_pts, decompose_rws
+from .geom import affine_from_pts, decompose_rws, scaled_down_geobox
 
 
 def mkA(rot=0, scale=(1, 1), shear=0, translation=(0, 0)):
@@ -53,3 +53,28 @@ def test_fit():
 
     run_test(mkA(), 3)
     run_test(mkA(), 10)
+
+
+def test_geobox():
+    from datacube.utils.geometry import GeoBox, CRS
+
+    crs = CRS('EPSG:3857')
+
+    A = mkA(0, (111.2, 111.2), translation=(125_671, 251_465))
+    for s in [2, 3, 4, 8, 13, 16]:
+        gbox = GeoBox(233*s, 755*s, A, crs)
+        gbox_ = scaled_down_geobox(gbox, s)
+
+        assert gbox_.width == 233
+        assert gbox_.height == 755
+        assert gbox_.crs is crs
+        assert gbox_.extent.contains(gbox.extent)
+        assert gbox.extent.difference(gbox.extent).area == 0.0
+
+    gbox = GeoBox(1, 1, A, crs)
+    for s in [2, 3, 5]:
+        gbox_ = scaled_down_geobox(gbox, 3)
+
+        assert gbox_.shape == (1, 1)
+        assert gbox_.crs is crs
+        assert gbox_.extent.contains(gbox.extent)
