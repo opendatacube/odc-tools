@@ -3,6 +3,57 @@
 from affine import Affine
 
 
+class WindowFromSlice(object):
+    def __getitem__(self, yx):
+        """ Translate numpy-like slices to rasterio window tuples.
+        """
+        assert isinstance(yx, tuple) and len(yx) == 2
+        y, x = yx
+        return ((0 if y.start is None else y.start, y.stop),
+                (0 if x.start is None else x.start, x.stop))
+
+
+w_ = WindowFromSlice()
+
+
+def polygon_path(x, y=None):
+    """A little bit like numpy.meshgrid, except returns only boundary values and
+    limited to 2d case only.
+
+    Examples:
+      [0,1], [3,4] =>
+      array([[0, 1, 1, 0, 0],
+             [3, 3, 4, 4, 3]])
+
+      [0,1] =>
+      array([[0, 1, 1, 0, 0],
+             [0, 0, 1, 1, 0]])
+    """
+    import numpy as np
+
+    if y is None:
+        y = x
+
+    return np.vstack([
+        np.vstack([x, np.full_like(x, y[0])]).T,
+        np.vstack([np.full_like(y, x[-1]), y]).T[1:],
+        np.vstack([x, np.full_like(x, y[-1])]).T[::-1][1:],
+        np.vstack([np.full_like(y, x[0]), y]).T[::-1][1:]]).T
+
+
+def gbox_boundary(gbox, pts_per_side=16):
+    """Return points in pixel space along the perimeter of a GeoBox, or a 2d array.
+
+    """
+    from numpy import linspace
+
+    H, W = gbox.shape[:2]
+    xx = linspace(0, W, pts_per_side, dtype='float32')
+    yy = linspace(0, H, pts_per_side, dtype='float32')
+
+    return polygon_path(xx, yy).T[:-1]
+
+
 def decompose_rws(A):
     """Compute decomposition Affine matrix sans translation into Rotation Shear and Scale.
 
@@ -157,3 +208,36 @@ def scaled_down_geobox(src_geobox, scaler: int):
     A = src_geobox.transform * Affine.scale(scaler, scaler)
 
     return GeoBox(W, H, A, src_geobox.crs)
+
+
+def align_down(x, align):
+    return x - (x % align)
+
+
+def align_up(x, align):
+    return align_down(x+(align-1), align)
+
+
+def compute_reproject_roi(src, dst, padding=1, align=None):
+    """ Compute ROI of src to read.
+    """
+    import numpy as np
+    pts_per_side = 5
+
+    tr = native_pix_transform(src, dst)
+    XY = np.vstack(tr.back(gbox_boundary(dst, pts_per_side)))
+
+    _in = np.floor(XY.min(axis=0)).astype('int32') - padding
+    _out = np.ceil(XY.max(axis=0)).astype('int32') + padding
+
+    if align is not None:
+        _in = align_down(_in, align)
+        _out = align_up(_out, align)
+
+    xx = np.asarray([_in[0], _out[0]])
+    yy = np.asarray([_in[1], _out[1]])
+
+    xx = np.clip(xx, 0, src.width, out=xx)
+    yy = np.clip(yy, 0, src.height, out=yy)
+
+    return (slice(yy[0], yy[1]), slice(xx[0], xx[1]))
