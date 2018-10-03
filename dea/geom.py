@@ -219,7 +219,7 @@ def align_up(x, align):
 
 
 def compute_reproject_roi(src, dst, padding=1, align=None):
-    """ Compute ROI of src to read.
+    """ Compute ROI of src to read and read scale.
     """
     import numpy as np
     pts_per_side = 5
@@ -240,4 +240,7 @@ def compute_reproject_roi(src, dst, padding=1, align=None):
     xx = np.clip(xx, 0, src.width, out=xx)
     yy = np.clip(yy, 0, src.height, out=yy)
 
-    return (slice(yy[0], yy[1]), slice(xx[0], xx[1]))
+    center_pt = xx.mean(), yy.mean()
+    scale = min(1/s for s in get_scale_at_point(center_pt, tr))
+
+    return (slice(yy[0], yy[1]), slice(xx[0], xx[1])), scale
