@@ -218,6 +218,40 @@ def align_up(x, align):
     return align_down(x+(align-1), align)
 
 
+def scaled_down_roi(roi, scale: int):
+    return tuple(slice(s.start//scale,
+                       align_up(s.stop, scale)//scale) for s in roi)
+
+
+def scaled_up_roi(roi, scale: int, shape=None):
+    roi = tuple(slice(s.start*scale,
+                      s.stop*scale) for s in roi)
+    if shape is not None:
+        roi = tuple(slice(min(dim, s.start),
+                          min(dim, s.stop))
+                    for s, dim in zip(roi, shape))
+    return roi
+
+
+def scaled_down_shape(shape, scale: int):
+    return tuple(align_up(s, scale)//scale for s in shape)
+
+
+def roi_shape(roi):
+    def slice_dim(s):
+        return s.stop if s.start is None else s.stop - s.start
+    return tuple(slice_dim(s) for s in roi)
+
+
+def pick_overview(scale, overviews):
+    prev = 1
+    for v in sorted(overviews):
+        if v > scale:
+            return prev
+        prev = v
+    return prev
+
+
 def compute_reproject_roi(src, dst, padding=1, align=None):
     """ Compute ROI of src to read and read scale.
     """
@@ -244,3 +278,21 @@ def compute_reproject_roi(src, dst, padding=1, align=None):
     scale = min(1/s for s in get_scale_at_point(center_pt, tr))
 
     return (slice(yy[0], yy[1]), slice(xx[0], xx[1])), scale
+
+
+def rio_default_transform(src, dst_crs):
+    """ Wrapper for rasterio.warp.calculate_default_transform
+        that accepts GeoBox objects
+    """
+    from rasterio.warp import calculate_default_transform
+
+    bb = src.extent.boundingbox
+
+    return calculate_default_transform(str(src.crs),
+                                       str(dst_crs),
+                                       src.width,
+                                       src.height,
+                                       left=bb.left,
+                                       right=bb.right,
+                                       top=bb.top,
+                                       bottom=bb.bottom)
