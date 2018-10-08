@@ -147,7 +147,7 @@ def affine_from_pts(X, Y):
     for i, x in enumerate(X):
         XX[i, :2] = x
 
-    mm, *_ = lstsq(XX, YY, rcond=None)
+    mm, *_ = lstsq(XX, YY, rcond=-1)
     a, d, b, e, c, f = mm.ravel()
 
     return Affine(a, b, c,
