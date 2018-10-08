@@ -16,6 +16,31 @@ class WindowFromSlice(object):
 w_ = WindowFromSlice()
 
 
+def web_geobox(zoom, tx, ty, tile_size=256):
+    """Construct geobox for a given web-tile.
+
+    Tile indexes should be the same as google maps.
+
+    http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/
+    """
+    from datacube.utils.geometry import CRS, GeoBox
+    from math import pi
+
+    R = 6378137
+
+    origin = pi * R
+    res0 = 2 * pi * R / tile_size
+    res = res0*(2**(-zoom))
+    tsz = 2 * pi * R * (2**(-zoom))  # res*tile_size
+
+    # maps pixel coord to meters in EPSG:3857
+    #
+    transform = Affine(res, 0, tx*tsz - origin,
+                       0, -res, origin - ty*tsz)
+
+    return GeoBox(tile_size, tile_size, transform, CRS('epsg:3857'))
+
+
 def polygon_path(x, y=None):
     """A little bit like numpy.meshgrid, except returns only boundary values and
     limited to 2d case only.
@@ -296,3 +321,68 @@ def rio_default_transform(src, dst_crs):
                                        right=bb.right,
                                        top=bb.top,
                                        bottom=bb.bottom)
+
+
+def rio_crs_to_odc(crs):
+    from datacube.utils.geometry import CRS
+
+    if crs.is_epsg_code:
+        return CRS('epsg:{}'.format(crs.to_epsg()))
+
+    return CRS(crs.wkt)
+
+
+def rio_geobox(src):
+    from datacube.utils.geometry import GeoBox
+    return GeoBox(src.width,
+                  src.height,
+                  src.transform,
+                  rio_crs_to_odc(src.crs))
+
+
+def read_with_reproject(src,
+                        dst_geobox,
+                        band=1,
+                        resampling=None):
+    """ Two stage reproject: scaling read then re-project.
+
+    src - opened rasterio file handle
+
+    dst_geobox - GeoBox (from datacube) of the resulting image
+                 crs, transform, shape
+
+    band       - Which band to read (rasterio, 1-based index)
+
+    resampling - rasterio resampling enumeation or None for default NN
+
+    returns:
+       numpy array of the same shape as dst_geobox and the same dtype as src image
+    """
+    from rasterio.warp import reproject
+    import numpy as np
+
+    src_geobox = rio_geobox(src)
+    roi, scale = compute_reproject_roi(src_geobox,
+                                       dst_geobox,
+                                       padding=2,
+                                       align=64)
+
+    ovr_scale = pick_overview(scale, src.overviews(band))
+    ovr_geobox = scaled_down_geobox(src_geobox, ovr_scale)[scaled_down_roi(roi, ovr_scale)]
+
+    ovr_im = src.read(band,
+                      window=w_[roi],
+                      out_shape=ovr_geobox.shape)
+
+    dst = np.empty(dst_geobox.shape, dtype=ovr_im.dtype)
+
+    reproject(ovr_im, dst,
+              src_transform=ovr_geobox.transform,
+              src_crs=src.crs,
+              src_nodata=src.nodata,
+              dst_crs=str(dst_geobox.crs),
+              dst_transform=dst_geobox.transform,
+              dst_nodata=src.nodata,
+              resampling=resampling)
+
+    return dst
