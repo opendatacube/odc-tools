@@ -177,7 +177,7 @@ def get_scale_at_point(pt, tr, r=None):
     YY = tr(XX)
     A = affine_from_pts(XX, YY)
     _, _, S = decompose_rws(A)
-    return (S.a, S.e)
+    return (abs(S.a), abs(S.e))
 
 
 def native_pix_transform(src, dst):
@@ -368,7 +368,10 @@ def read_with_reproject(src,
                                        align=64)
 
     ovr_scale = pick_overview(scale, src.overviews(band))
-    ovr_geobox = scaled_down_geobox(src_geobox, ovr_scale)[scaled_down_roi(roi, ovr_scale)]
+    if ovr_scale > 1:
+        ovr_geobox = scaled_down_geobox(src_geobox, ovr_scale)[scaled_down_roi(roi, ovr_scale)]
+    else:
+        ovr_geobox = src_geobox[roi]
 
     ovr_im = src.read(band,
                       window=w_[roi],
