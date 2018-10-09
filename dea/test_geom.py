@@ -78,3 +78,15 @@ def test_geobox():
         assert gbox_.shape == (1, 1)
         assert gbox_.crs is crs
         assert gbox_.extent.contains(gbox.extent)
+
+
+def test_roi():
+    from .geom import roi_is_empty, roi_shape
+    from numpy import s_
+
+    assert roi_shape(s_[2:4, 3:4]) == (2, 1)
+    assert roi_shape(s_[:4, :7]) == (4, 7)
+
+    assert roi_is_empty(s_[:4, :5]) is False
+    assert roi_is_empty(s_[1:1, :10]) is True
+    assert roi_is_empty(s_[7:3, :10]) is True

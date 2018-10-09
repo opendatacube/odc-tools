@@ -41,6 +41,25 @@ def web_geobox(zoom, tx, ty, tile_size=256):
     return GeoBox(tile_size, tile_size, transform, CRS('epsg:3857'))
 
 
+def web_tile_zoom_out(zxy):
+    """ Compute tile at lower zoom level that contains this tile.
+    """
+    z, x, y = zxy
+    return (z-1, x//2, y//2)
+
+
+def web_tile_zoom_in(zxy, quadrant=None):
+    """ Compute tile at higher zoom level that is contained by this tile.
+
+    zxy       - zoom, x, y
+    quadrant  - one of tl, tr, bl, br
+    """
+    z, x, y = zxy
+    off_x, off_y = dict(tl=(0, 0), tr=(1, 0),
+                        bl=(0, 1), br=(1, 1)).get(quadrant, (0, 0))
+    return (z+1, x*2 + off_x, y*2 + off_y)
+
+
 def polygon_path(x, y=None):
     """A little bit like numpy.meshgrid, except returns only boundary values and
     limited to 2d case only.
@@ -266,6 +285,10 @@ def roi_shape(roi):
     def slice_dim(s):
         return s.stop if s.start is None else s.stop - s.start
     return tuple(slice_dim(s) for s in roi)
+
+
+def roi_is_empty(roi):
+    return any(d <= 0 for d in roi_shape(roi))
 
 
 def pick_overview(scale, overviews):
