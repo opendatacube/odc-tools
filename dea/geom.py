@@ -363,6 +363,29 @@ def rio_geobox(src):
                   rio_crs_to_odc(src.crs))
 
 
+def _empty_image(shape, src, band):
+    import numpy as np
+
+    if isinstance(band, int):
+        b0 = band - 1
+    else:
+        b0 = band[0] - 1
+        shape = (len(band), *shape)
+
+    dtype = np.dtype(src.dtypes[b0])
+    nodata = src.nodatavals[b0]
+
+    if nodata is None:
+        nodata = np.nan if dtype.char == 'f' else 0
+
+    if nodata == 0:
+        return np.zeros(shape, dtype=dtype)
+
+    out = np.empty(shape, dtype=dtype)
+    out[:] = nodata
+    return out
+
+
 def read_with_reproject(src,
                         dst_geobox,
                         band=1,
@@ -392,7 +415,12 @@ def read_with_reproject(src,
                                        padding=2,
                                        align=64)
 
-    overviews = src.overviews(band if isinstance(band, int) else band[0])
+    band0 = band if isinstance(band, int) else band[0]
+
+    if roi_is_empty(roi):
+        return _empty_image(dst_geobox.shape, src, band)
+
+    overviews = src.overviews(band0)
     ovr_scale = pick_overview(scale, overviews)
     if ovr_scale > 1:
         ovr_geobox = scaled_down_geobox(src_geobox, ovr_scale)[scaled_down_roi(roi, ovr_scale)]
