@@ -73,6 +73,12 @@ class AWSRioEnv(object):
         pass
 
 
+def has_local_env():
+    """ Check if environment was already configured in this thread
+    """
+    return getattr(_thread_lcl, 'main_env', None) is not None
+
+
 def setup_local_env(**kwargs):
     """ Has to be called in each worker thread.
     """
