@@ -10,7 +10,7 @@ _thread_lcl = threading.local()
 log = logging.getLogger(__name__)
 
 
-def aws_session_env(frozen_credentials, region_name):
+def aws_session_env(frozen_credentials, region_name=None):
     c = frozen_credentials
     ee = dict(AWS_ACCESS_KEY_ID=c.access_key,
               AWS_SECRET_ACCESS_KEY=c.secret_key)
@@ -24,6 +24,9 @@ def aws_session_env(frozen_credentials, region_name):
 class SimpleSession(rasterio.session.Session):
     def __init__(self, creds):
         self._creds = creds
+
+    def update(self, **creds):
+        self._creds.update(**creds)
 
     def get_credential_options(self):
         return self._creds
@@ -45,23 +48,24 @@ class AWSRioEnv(object):
        future.
 
     """
+
+    @staticmethod
+    def _mk_env(*args, **kw):
+        env = rasterio.env.Env(*args, **kw)
+        env.__enter__()
+        return env
+
     def __init__(self, credentials, region_name=None, **gdal_opts):
         self._region_name = region_name
         self._creds = credentials
         self._frozen_creds = self._creds.get_frozen_credentials()
 
+        self._creds_session = SimpleSession(aws_session_env(self._frozen_creds, region_name))
+
         # We activate main environment for the duration of the thread
-        self._env_main = rasterio.env.Env(**gdal_opts)
-        self._env_main.__enter__()
-
+        self._env_main = AWSRioEnv._mk_env(**gdal_opts)
         # This environment will be redone every time credentials need changing
-        self._env_creds = self._mk_env_creds()
-
-    def _mk_env_creds(self):
-        env = rasterio.env.Env(session=SimpleSession(aws_session_env(self._frozen_creds,
-                                                                     self._region_name)))
-        env.__enter__()
-        return env
+        self._env_creds = AWSRioEnv._mk_env(session=self._creds_session)
 
     def _needs_refresh(self):
         frozen_creds = self._creds.get_frozen_credentials()
@@ -80,11 +84,9 @@ class AWSRioEnv(object):
         """
         if self._needs_refresh():
             log.info('Refreshing credentials')
-
-            # Currently this is the only way to force new credentials to be
-            # injected int gdal environment
+            self._creds_session.update(**aws_session_env(self._frozen_creds))
             self._env_creds.__exit__(None, None, None)
-            self._env_creds = self._mk_env_creds()
+            self._env_creds.__enter__()
 
         return self
 
