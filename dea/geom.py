@@ -363,7 +363,7 @@ def rio_geobox(src):
                   rio_crs_to_odc(src.crs))
 
 
-def _empty_image(shape, src, band):
+def _empty_image(shape, src, band, nodata=None):
     import numpy as np
 
     if isinstance(band, int):
@@ -373,7 +373,9 @@ def _empty_image(shape, src, band):
         shape = (len(band), *shape)
 
     dtype = np.dtype(src.dtypes[b0])
-    nodata = src.nodatavals[b0]
+
+    if nodata is None:
+        nodata = src.nodatavals[b0]
 
     if nodata is None:
         nodata = np.nan if dtype.char == 'f' else 0
@@ -389,7 +391,9 @@ def _empty_image(shape, src, band):
 def read_with_reproject(src,
                         dst_geobox,
                         band=1,
-                        resampling=None):
+                        resampling=None,
+                        dst_nodata=None,
+                        src_nodata_override=None):
     """Two stage reproject: scaling read then re-project.
 
     src - opened rasterio file handle
@@ -401,6 +405,12 @@ def read_with_reproject(src,
            list/tuple if multiple bands are to be read
 
     resampling - rasterio resampling enumeation or None for default NN
+
+    dst_nodata - when set use that instead of defaulting to src nodata value
+
+    src_nodata_override - when set use that instead of what's in the file,
+                          useful when nodata metadata is missing in the file
+                          but available out of band.
 
     returns:
        numpy array of the same shape as dst_geobox and the same dtype as src image
@@ -417,8 +427,15 @@ def read_with_reproject(src,
 
     band0 = band if isinstance(band, int) else band[0]
 
+    src_nodata = src.nodatavals[band0-1]
+    if src_nodata_override is not None:
+        src_nodata = src_nodata_override
+
+    if dst_nodata is None:
+        dst_nodata = src_nodata
+
     if roi_is_empty(roi):
-        return _empty_image(dst_geobox.shape, src, band)
+        return _empty_image(dst_geobox.shape, src, band, nodata=dst_nodata)
 
     overviews = src.overviews(band0)
     ovr_scale = pick_overview(scale, overviews)
@@ -436,10 +453,10 @@ def read_with_reproject(src,
     reproject(ovr_im, dst,
               src_transform=ovr_geobox.transform,
               src_crs=src.crs,
-              src_nodata=src.nodata,
+              src_nodata=src_nodata,
               dst_crs=str(dst_geobox.crs),
               dst_transform=dst_geobox.transform,
-              dst_nodata=src.nodata,
+              dst_nodata=dst_nodata,
               resampling=resampling)
 
     return dst
