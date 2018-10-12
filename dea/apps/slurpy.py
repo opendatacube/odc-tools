@@ -6,7 +6,7 @@ from dscache.tools import dictionary_from_product_list
 from threading import Thread
 import queue
 
-from .ppr import qmap
+from dea.ppr import qmap
 
 EOS = object()
 
