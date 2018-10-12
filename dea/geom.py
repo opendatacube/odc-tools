@@ -388,11 +388,28 @@ def _empty_image(shape, src, band, nodata=None):
     return out
 
 
+def resolve_nodata(src, band, fallback=None, override=None):
+    """Figure out what value to use for nodata given a band and fallback/override
+    settings
+    """
+    if override is not None:
+        return override
+
+    band0 = band if isinstance(band, int) else band[0]
+    nodata = src.nodatavals[band0 - 1]
+
+    if nodata is None:
+        return fallback
+
+    return nodata
+
+
 def read_with_reproject(src,
                         dst_geobox,
                         band=1,
                         resampling=None,
                         dst_nodata=None,
+                        src_nodata_fallback=None,
                         src_nodata_override=None):
     """Two stage reproject: scaling read then re-project.
 
@@ -408,9 +425,11 @@ def read_with_reproject(src,
 
     dst_nodata - when set use that instead of defaulting to src nodata value
 
+    src_nodata_fallback - nodata value to use if src file is missing nodata value
+
     src_nodata_override - when set use that instead of what's in the file,
-                          useful when nodata metadata is missing in the file
-                          but available out of band.
+                          useful when nodata metadata is incorrect in the file
+                          but correct value is available out of band.
 
     returns:
        numpy array of the same shape as dst_geobox and the same dtype as src image
@@ -427,9 +446,9 @@ def read_with_reproject(src,
 
     band0 = band if isinstance(band, int) else band[0]
 
-    src_nodata = src.nodatavals[band0-1]
-    if src_nodata_override is not None:
-        src_nodata = src_nodata_override
+    src_nodata = resolve_nodata(src, band,
+                                fallback=src_nodata_fallback,
+                                override=src_nodata_override)
 
     if dst_nodata is None:
         dst_nodata = src_nodata
