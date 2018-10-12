@@ -1,4 +1,5 @@
 import click
+import sys
 import toolz
 import json
 import datacube
@@ -8,11 +9,19 @@ from datacube.index.hl import Doc2Dataset
 def from_json_lines(lines, index, **kwargs):
     doc2ds = Doc2Dataset(index, **kwargs)
 
-    for lineno, l in enumerate(lines):
+    def clean_stream(lines):
+        for lineno, l in enumerate(lines):
+            l = l.strip()
+
+            if len(l) > 0:
+                yield lineno, l
+
+    for lineno, l in clean_stream(lines):
         try:
             doc = json.loads(l)
         except json.JSONDecodeError as e:
             print('Error[%d]: %s' % (lineno, str(e)))
+            continue
 
         uri = toolz.get_in(['uris', 0], doc)
         if uri is None:
@@ -33,18 +42,17 @@ def from_json_lines(lines, index, **kwargs):
 
 @click.command('index_from_json')
 @click.option('--env', type=str, help='Datacube environment name')
-@click.argument('input_fname', type=str, nargs=1)
+@click.argument('input_fname', type=str, nargs=-1)
 def cli(input_fname, env=None):
-    dc = datacube.Datacube(env=env)
 
-    n_total = 0
-    n_failed = 0
+    def process_file(f, index):
+        n_total = 0
+        n_failed = 0
 
-    with open(input_fname, 'rt') as f:
-        for ds in from_json_lines(f, dc.index, verify_lineage=False):
+        for ds in from_json_lines(f, index, verify_lineage=False):
             n_total += 1
             try:
-                dc.index.datasets.add(ds, with_lineage=True)
+                index.datasets.add(ds, with_lineage=True)
             except Exception as e:
                 n_failed += 1
                 print(str(e))
@@ -54,6 +62,18 @@ def cli(input_fname, env=None):
 
             if (n_total % 100) == 0:
                 print(' T:{:d} F:{:d}'.format(n_total, n_failed))
+
+    dc = datacube.Datacube(env=env)
+
+    if len(input_fname) == 0:
+        input_fname = ('-',)
+
+    for filename in input_fname:
+        if filename == '-':
+            process_file(sys.stdin, dc.index)
+        else:
+            with open(filename, 'rt') as f:
+                process_file(f, dc.index)
 
 
 if __name__ == '__main__':
