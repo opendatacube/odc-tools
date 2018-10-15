@@ -55,11 +55,13 @@ def cli(n, verbose, gzip, xz, outfile):
         fetch_bunch(urls, on_data, nconnections=nconnections)
         q_raw.put(EOS)
 
-    def tar_mode(gzip=None, xz=None):
+    def tar_mode(gzip=None, xz=None, is_pipe=None):
         if gzip:
             return ':gz'
         if xz:
             return ':xz'
+        if is_pipe:
+            return '|'
         return ''
 
     def dump_to_tar(data_stream, tar):
@@ -78,8 +80,9 @@ def cli(n, verbose, gzip, xz, outfile):
         thread.start()
         threads.append(thread)
 
-    tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz))
-    if outfile == '-':
+    is_pipe = outfile == '-'
+    tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe))
+    if is_pipe:
         if stdout.isatty():
             click.echo("Will not write to a terminal", err=True)
             sys.exit(1)
