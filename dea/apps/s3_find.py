@@ -11,10 +11,11 @@ def cli(uri, match):
     Example:
        s3-find s3://mybucket/some/path/ '*yaml'
     """
+    flush_freq = 100
 
     s3 = make_s3_client()
-    for url in s3_find(uri, match, s3=s3):
-        print(url, flush=True)
+    for i, url in enumerate(s3_find(uri, match, s3=s3)):
+        print(url, flush=(i % flush_freq == 0))
 
 
 if __name__ == '__main__':

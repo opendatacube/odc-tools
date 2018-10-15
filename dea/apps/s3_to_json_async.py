@@ -80,7 +80,7 @@ def cli(n, threads):
 
     def dump_to_stdout(lines):
         for i, l in enumerate(lines):
-            print(l, flush=((i % 10) == 0))
+            print(l, flush=((i % 100) == 0))
             if (i % 100) == 0:
                 print('{:9,d}'.format(i), file=stderr, end='\r', flush=True)
 
