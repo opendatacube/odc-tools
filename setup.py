@@ -25,6 +25,7 @@ setup(
         'console_scripts': [
             's3-find = dea.apps.s3_find:cli',
             's3-yaml-to-json = dea.apps.s3_to_json_async:cli',
+            's3-to-tar = dea.apps.s3_to_tar:cli',
             'dc-index-from-json = dea.apps.index_from_json:cli',
         ]
     }
