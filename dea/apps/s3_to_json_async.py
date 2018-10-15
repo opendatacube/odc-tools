@@ -1,4 +1,3 @@
-import yaml
 import json
 import click
 from collections import namedtuple
@@ -7,21 +6,21 @@ from threading import Thread
 
 from dea.aws.s3async import fetch_bunch
 from dea.ppr import q2q_map, qmap
-from dea.io import read_stdin_lines
+from dea.io import read_stdin_lines, parse_yaml
 
 
 Data = namedtuple('Data', 'url data idx time'.split(' '))
 
 
-def parse_yaml(data):
+def parse_yaml_safe(data):
     try:
-        return yaml.load(data, Loader=yaml.CSafeLoader), None
+        return parse_yaml(data), None
     except Exception as e:
         return None, str(e)
 
 
 def process_doc(url, data):
-    metadata, error = parse_yaml(data)
+    metadata, error = parse_yaml_safe(data)
     if metadata is None:
         return None, error
 
