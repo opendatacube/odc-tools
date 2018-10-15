@@ -1,10 +1,20 @@
-from ruamel.yaml import YAML
+try:
+    from ruamel.yaml import YAML
+    _YAML_C = YAML(typ='safe', pure=False)
+except ImportError:
+    _YAML_C = None
 
-yaml_c = YAML(typ='safe', pure=False)
+
+def _parse_yaml_yaml(s):
+    import yaml
+    return yaml.load(s, Loader=yaml.CSafeLoader)
 
 
-def parse_yaml(s):
-    return yaml_c.load(s)
+def _parse_yaml_ruamel(s):
+    return _YAML_C.load(s)
+
+
+parse_yaml = _parse_yaml_yaml if _YAML_C is None else _parse_yaml_ruamel
 
 
 def read_stdin_lines(skip_empty=False):

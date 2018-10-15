@@ -15,7 +15,6 @@ setup(
                       'affine',
                       'numpy',
                       'rasterio',
-                      'ruamel.yaml',
                       'toolz',
                       ],
     tests_require=['pytest'],
