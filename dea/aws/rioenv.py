@@ -108,6 +108,13 @@ def setup_local_env(credentials=None, region_name=None, **kwargs):
         log.info('About to replace thread-local GDAL environment')
         current_env.destroy()
 
+    if credentials is None:
+        from dea.aws import get_boto3_session
+
+        session = get_boto3_session(region_name=region_name)
+        credentials = session.get_credentials()
+        region_name = session.region_name
+
     _thread_lcl.main_env = AWSRioEnv(credentials, region_name=region_name, **kwargs)
 
 
