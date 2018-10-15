@@ -27,8 +27,11 @@ def add_txt_file(tar, fname, content, mode=0o644):
 @click.command('s3-to-tar')
 @click.option('-n', type=int,
               help='Number of concurrent async connections to S3')
-@click.argument("outfile", type=str, nargs=1)
-def cli(n, outfile):
+@click.option('--verbose', '-v', is_flag=True, help='Be verbose')
+@click.option('--gzip', is_flag=True, help='Compress with gzip')
+@click.option('--xz', is_flag=True, help='Compress with xz')
+@click.argument("outfile", type=str, nargs=1, default='-')
+def cli(n, verbose, gzip, xz, outfile):
     """ Fetch a bunch of s3 files into a tar archive.
 
     \b
@@ -36,7 +39,8 @@ def cli(n, outfile):
        - Treat line as a URI and fetch document from it
        - Write content of the file to a tar archive using `bucket-name/path/to/file` as file name
     """
-    from sys import stderr
+    import sys
+    from sys import stderr, stdout
 
     nconnections = 64 if n is None else n
 
@@ -51,13 +55,21 @@ def cli(n, outfile):
         fetch_bunch(urls, on_data, nconnections=nconnections)
         q_raw.put(EOS)
 
-    def dump_to_tar(data_stream):
-        with tarfile.open(outfile, 'w') as tar:
-            for d in data_stream:
-                fname = d.url[4:]
+    def tar_mode(gzip=None, xz=None):
+        if gzip:
+            return ':gz'
+        if xz:
+            return ':xz'
+        return ''
 
+    def dump_to_tar(data_stream, tar):
+        for d in data_stream:
+            fname = d.url[5:]
+
+            if verbose:
                 print(fname, len(d.data), file=stderr)
-                add_txt_file(tar, fname, d.data)
+
+            add_txt_file(tar, fname, d.data)
 
     threads = []
 
@@ -66,10 +78,21 @@ def cli(n, outfile):
         thread.start()
         threads.append(thread)
 
+    tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz))
+    if outfile == '-':
+        if stdout.isatty():
+            click.echo("Will not write to a terminal", err=True)
+            sys.exit(1)
+        # TODO: on windows switch stdout to binary mode
+        tar_opts['fileobj'] = stdout.buffer
+    else:
+        tar_opts['name'] = outfile
+
     urls = read_stdin_lines(skip_empty=True)
     launch(read_stage, urls)
 
-    dump_to_tar(qmap(lambda x: x, q_raw, eos_marker=EOS))
+    with tarfile.open(**tar_opts) as tar:
+        dump_to_tar(qmap(lambda x: x, q_raw, eos_marker=EOS), tar)
 
     for th in threads:
         th.join()
