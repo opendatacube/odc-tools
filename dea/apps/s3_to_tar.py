@@ -42,7 +42,7 @@ def cli(n, verbose, gzip, xz, outfile):
     import sys
     from sys import stderr, stdout
 
-    nconnections = 64 if n is None else n
+    nconnections = 24 if n is None else n
 
     q_raw = queue.Queue(maxsize=10_000)
 
