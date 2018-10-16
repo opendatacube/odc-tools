@@ -3,6 +3,9 @@
 """
 
 from . import resolve_nodata
+import rasterio
+import rasterio.warp
+import rasterio.crs
 
 NOTSET = object()
 
@@ -69,13 +72,20 @@ def make_pixel_extractor(mode='pixel',
             return dst_nodata
 
     def extract_native(src, xy, band=default_band):
-        return extract_pixel(src, src.index(*xy))
+        return extract_pixel(src, src.index(*xy), band=band)
+
+    def extract_lonlat(src, lonlat, band=default_band):
+        lon, lat = lonlat
+        x, y = rasterio.warp.transform(rasterio.crs.CRS.from_epsg(4326), src.crs, [lon], [lat])
+        xy = (x[0], y[0])
+        return extract_native(src, xy, band=band)
 
     extractors = dict(pixel=extract_pixel,
-                      native=extract_native)
+                      native=extract_native,
+                      lonlat=extract_lonlat)
 
     extractor = extractors.get(mode)
     if extractor is None:
-        raise ValueError('Only support mode=<pixel|native>')
+        raise ValueError('Only support mode=<pixel|nativie|lonlat>')
 
     return extractor
