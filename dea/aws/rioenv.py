@@ -68,6 +68,9 @@ class AWSRioEnv(object):
         # This environment will be redone every time credentials need changing
         self._env_creds = AWSRioEnv._mk_env(session=self._creds_session)
 
+    def clone(self):
+        return AWSRioEnv(self._creds, region_name=self._region_name, **self._env_main.options)
+
     def _needs_refresh(self):
         if isinstance(self._frozen_creds, ReadOnlyCredentials):
             return False
@@ -132,8 +135,14 @@ def has_local_env():
     return getattr(_thread_lcl, 'main_env', None) is not None
 
 
-def setup_local_env(credentials=None, region_name=None, **kwargs):
-    """ Has to be called in each worker thread.
+def setup_local_env(credentials=None, region_name=None, src_env=None, **kwargs):
+    """Has to be called in each worker thread.
+
+       credentials -- botocore credentials to re-use, if None will create new ones
+       region_name -- AWS region name
+
+       src_env -- Source environment to clone in the new thread, all other
+       arguments are then ignored.
 
 
        **kwargs -- are passed to s3_gdal_opts
@@ -145,6 +154,10 @@ def setup_local_env(credentials=None, region_name=None, **kwargs):
         log.info('About to replace thread-local GDAL environment')
         current_env.destroy()
 
+    if src_env is not None:
+        _thread_lcl.main_env = src_env.clone()
+        return _thread_lcl.main_env
+
     if credentials is None:
         from dea.aws import get_boto3_session
 
@@ -154,6 +167,8 @@ def setup_local_env(credentials=None, region_name=None, **kwargs):
 
     gdal_opts = s3_gdal_opts(**kwargs)
     _thread_lcl.main_env = AWSRioEnv(credentials, region_name=region_name, **gdal_opts)
+
+    return _thread_lcl.main_env
 
 
 def local_env():
