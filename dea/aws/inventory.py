@@ -24,6 +24,9 @@ def list_inventory(manifest, s3=None):
     """
     s3 = s3 or make_s3_client()
 
+    if manifest.endswith('/'):
+        manifest = find_latest_manifest(manifest, s3)
+
     info = s3_fetch(manifest, s3=s3)
     info = json.loads(info)
 
