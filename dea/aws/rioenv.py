@@ -4,6 +4,7 @@
 import logging
 import threading
 import rasterio
+from botocore.credentials import ReadOnlyCredentials
 
 _thread_lcl = threading.local()
 
@@ -68,6 +69,9 @@ class AWSRioEnv(object):
         self._env_creds = AWSRioEnv._mk_env(session=self._creds_session)
 
     def _needs_refresh(self):
+        if isinstance(self._frozen_creds, ReadOnlyCredentials):
+            return False
+
         frozen_creds = self._creds.get_frozen_credentials()
         if frozen_creds is self._frozen_creds:
             return False
