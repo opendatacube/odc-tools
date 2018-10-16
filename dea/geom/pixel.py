@@ -26,6 +26,7 @@ def make_pixel_extractor(mode='pixel',
     mode       - How to interpret coordinate:
                   - pixel: (row, col)
                   - native: (x, y) in file native coordinate space
+                  - lonlat: (lon, lat)  (specifically EPSG:4326)
 
     band       - Default band to read, can be over-written on read
 
