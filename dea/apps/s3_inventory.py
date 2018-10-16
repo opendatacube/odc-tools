@@ -63,6 +63,9 @@ def cli(inventory, prefix, regex, glob):
     flush_freq = 100
     s3 = make_s3_client()
 
+    if glob == '':
+        glob = None
+
     if glob is not None and regex is not None:
         click.echo("Can not mix regex and shell patterns")
         sys.exit(1)
