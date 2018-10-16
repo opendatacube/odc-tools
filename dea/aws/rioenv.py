@@ -94,6 +94,34 @@ class AWSRioEnv(object):
         pass
 
 
+def s3_gdal_opts(max_header_sz_kb=None, verbose_curl=None, **extra):
+    """Construct dictionary of GDAL parameters needed for efficient reading of
+       COGs from S3.
+
+    max_header_sz_kb -- Hint GDAL how many bytes to fetch on open before
+                        parsing header, needed if your files header doesn't fit
+                        into 16K chunk GDAL fetches by default.
+
+    verbose_curl -- log a lot of info to stderr from curl (useful when
+                    debugging performance issues)
+
+    **extra -- Any other GDAL options or overrides
+    """
+    opts = dict(VSI_CACHE=True,
+                CPL_VSIL_CURL_ALLOWED_EXTENSIONS='tif',
+                GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR')
+
+    if max_header_sz_kb is not None:
+        opts.update(GDAL_INGESTED_BYTES_AT_OPEN=max_header_sz_kb*1024)
+
+    if verbose_curl is not None:
+        opts.update(CPL_CURL_VERBOSE=verbose_curl)
+
+    opts.update(**extra)
+
+    return opts
+
+
 def has_local_env():
     """ Check if environment was already configured in this thread
     """
@@ -102,6 +130,11 @@ def has_local_env():
 
 def setup_local_env(credentials=None, region_name=None, **kwargs):
     """ Has to be called in each worker thread.
+
+
+       **kwargs -- are passed to s3_gdal_opts
+
+        See s3_gdal_opts
     """
     current_env = getattr(_thread_lcl, 'main_env', None)
     if current_env is not None:
@@ -115,7 +148,8 @@ def setup_local_env(credentials=None, region_name=None, **kwargs):
         credentials = session.get_credentials()
         region_name = session.region_name
 
-    _thread_lcl.main_env = AWSRioEnv(credentials, region_name=region_name, **kwargs)
+    gdal_opts = s3_gdal_opts(**kwargs)
+    _thread_lcl.main_env = AWSRioEnv(credentials, region_name=region_name, **gdal_opts)
 
 
 def local_env():
