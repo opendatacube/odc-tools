@@ -1,5 +1,6 @@
 """ Helper tools for using rasterio in AWS environment.
 """
+from typing import Optional, Iterable, Callable, Any
 from concurrent.futures import ThreadPoolExecutor
 import rasterio
 
@@ -18,10 +19,10 @@ class RioWorkerPool(object):
 
     """
 
-    def __init__(self, nthreads,
-                 credentials=None,
-                 region_name=None,
-                 max_header_sz_kb=None,
+    def __init__(self, nthreads: int,
+                 credentials: Optional[Any]=None,
+                 region_name: Optional[str]=None,
+                 max_header_sz_kb: Optional[int]=None,
                  **gdal_opts):
         """Construct worker pool.
 
@@ -48,7 +49,8 @@ class RioWorkerPool(object):
 
         self._envs = self._run_per_thread_setup()
 
-    def broadcast(self, action, *args, **kwargs):
+    def broadcast(self, action: Callable[..., Any],
+                  *args, **kwargs):
         """Broadcast action across all worker threads.
 
         Will run action in every thread exactly once. This method is useful for
@@ -70,7 +72,7 @@ class RioWorkerPool(object):
         return self.broadcast(setup_local_env, src_env=self._main_env)
 
     @staticmethod
-    def _wrap_fn(fn, **kwargs):
+    def _wrap_fn(fn: Callable[..., Any], **kwargs) -> Callable[..., Any]:
         def action(url, *args):
             with local_env():
                 with rasterio.open(url, 'r') as src:
@@ -78,7 +80,7 @@ class RioWorkerPool(object):
 
         return action
 
-    def submit(self, fn, url, *args, **kwargs):
+    def submit(self, fn: Callable[..., Any], url: str, *args, **kwargs) -> Any:
         """Will try to open url with rasterio then call:
 
               fn(src, *args, **kwargs)
@@ -89,7 +91,9 @@ class RioWorkerPool(object):
         worker = RioWorkerPool._wrap_fn(fn, **kwargs)
         return self._pool.submit(worker, url, *args)
 
-    def map(self, fn, urls, *args, **kwargs):
+    def map(self, fn: Callable[..., Any],
+            urls: Iterable[str],
+            *args, **kwargs) -> Iterable[Any]:
         """ Like map but
 
             1. Concurrently
@@ -102,7 +106,7 @@ class RioWorkerPool(object):
         return self._pool.map(worker, urls, *args)
 
     @property
-    def raw(self):
+    def raw(self) -> ThreadPoolExecutor:
         """ Access underlying worker pool directly.
         """
         return self._pool
