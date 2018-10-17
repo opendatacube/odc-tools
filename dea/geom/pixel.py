@@ -53,8 +53,8 @@ def make_pixel_extractor(mode='pixel',
         # TODO: special case src_nodata is nan case
         return dst_nodata if pix == src_nodata else pix
 
-    def extract_pixel(src, pixel_coordinate, band=default_band):
-        ri, ci = pixel_coordinate
+    def extract_pixel(src, coord, band=default_band):
+        ri, ci = coord
 
         src_nodata = resolve_nodata(src, band,
                                     fallback=src_nodata_fallback,
@@ -72,11 +72,11 @@ def make_pixel_extractor(mode='pixel',
         else:
             return dst_nodata
 
-    def extract_native(src, xy, band=default_band):
-        return extract_pixel(src, src.index(*xy), band=band)
+    def extract_native(src, coord, band=default_band):
+        return extract_pixel(src, src.index(*coord), band=band)
 
-    def extract_lonlat(src, lonlat, band=default_band):
-        lon, lat = lonlat
+    def extract_lonlat(src, coord, band=default_band):
+        lon, lat = coord
         x, y = rasterio.warp.transform(rasterio.crs.CRS.from_epsg(4326), src.crs, [lon], [lat])
         xy = (x[0], y[0])
         return extract_native(src, xy, band=band)
