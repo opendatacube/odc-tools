@@ -105,6 +105,22 @@ class RioWorkerPool(object):
         worker = RioWorkerPool._wrap_fn(fn, **kwargs)
         return self._pool.map(worker, urls, *args)
 
+    def lazy_map(self, fn: Callable[..., Any],
+                 urls: Iterable[str],
+                 *args, **kwargs) -> Iterable[Any]:
+        """ Like map but
+
+            1. Concurrently
+            2. Each url is replaced with opened rasterio.DatasetReader
+            3. Returns iterator over futures not values
+
+            *args -- iterator for extra per url parameters (like normal map)
+            **kwargs -- extra named arguments to fn
+        """
+        worker = RioWorkerPool._wrap_fn(fn, **kwargs)
+        for url, *aa in zip(urls, *args):
+            yield self._pool.submit(worker, url, *aa)
+
     @property
     def raw(self) -> ThreadPoolExecutor:
         """ Access underlying worker pool directly.
