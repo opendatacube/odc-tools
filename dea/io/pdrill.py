@@ -75,4 +75,4 @@ class PixelDrill(object):
             except ...:
                 return None
 
-        return self._pool.map(safe_extract, urls)
+        return list(self._pool.map(safe_extract, urls))

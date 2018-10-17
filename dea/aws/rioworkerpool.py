@@ -75,7 +75,7 @@ class RioWorkerPool(object):
     def _wrap_fn(fn: Callable[..., Any], **kwargs) -> Callable[..., Any]:
         def action(url, *args):
             with local_env():
-                with rasterio.open(url, 'r') as src:
+                with rasterio.open(url, 'r', sharing=False) as src:
                     return fn(src, *args, **kwargs)
 
         return action
