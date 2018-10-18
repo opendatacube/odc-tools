@@ -14,7 +14,7 @@ setup(
                       'boto3',
                       'affine',
                       'numpy',
-                      'rasterio',
+                      'rasterio>=1.0.4',
                       'toolz',
                       ],
     tests_require=['pytest'],
