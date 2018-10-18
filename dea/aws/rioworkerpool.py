@@ -74,8 +74,9 @@ class RioWorkerPool(object):
     @staticmethod
     def _wrap_fn(fn: Callable[..., Any], **kwargs) -> Callable[..., Any]:
         def action(url, *args):
+            url = rasterio.parse_path(url)
             with local_env():
-                with rasterio.open(url, 'r', sharing=False) as src:
+                with rasterio.DatasetReader(url, sharing=False) as src:
                     return fn(src, *args, **kwargs)
 
         return action
