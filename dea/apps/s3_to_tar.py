@@ -5,6 +5,7 @@ from threading import Thread
 import io
 import tarfile
 import time
+import logging
 
 from dea.aws.s3async import fetch_bunch
 from dea.ppr import qmap
@@ -41,6 +42,7 @@ def cli(n, verbose, gzip, xz, outfile):
     """
     import sys
     from sys import stderr, stdout
+    logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s', level=logging.ERROR)
 
     nconnections = 24 if n is None else n
 

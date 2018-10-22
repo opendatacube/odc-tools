@@ -1,7 +1,9 @@
 import asyncio
 import itertools
+import logging
 
 EOS_MARKER = object()
+log = logging.getLogger(__name__)
 
 
 async def process_stream(stream, nworkers, async_proc, loop=None):
@@ -19,7 +21,12 @@ async def process_stream(stream, nworkers, async_proc, loop=None):
             if x is EOS_MARKER:
                 q.task_done()
                 return
-            await async_proc(x)
+
+            try:
+                await async_proc(x)
+            except Exception as e:
+                log.error("Uncaught exception: %s", str(e))
+
             q.task_done()
 
     async def feed_q(stream, q, n_consumers):
@@ -53,7 +60,8 @@ def p_fetch(stream, on_data, nconnections=64, loop=None):
 
    ```
       for udata, req in stream:
-          on_data(bytes_from_request(req), userdata, time=(t0,t1,t2))
+          status, headers, data = do_http_get(req)
+          on_data(data, userdata, status=status, headers=headers, time=(t0,t1,t2))
     ```
 
     t0 - request is made
@@ -65,11 +73,22 @@ def p_fetch(stream, on_data, nconnections=64, loop=None):
 
     async def fetch_one(req, session, userdata):
         t0 = t_now()
-        async with session.get(req.full_url, headers=req.headers) as response:
-            t1 = t_now()
-            data = await response.read()
-            t2 = t_now()
-            on_data(data, userdata, time=(t0, t1, t2))
+        try:
+            async with session.get(req.full_url, headers=req.headers) as response:
+                t1 = t_now()
+                try:
+                    data = await response.read()
+                    t2 = t_now()
+
+                    on_data(data, userdata,
+                            status=response.status,
+                            headers=response.headers,
+                            time=(t0, t1, t2))
+
+                except Exception as e:
+                    log.error("Failed response.read: %s", str(e))
+        except Exception as e:
+            log.error("Failed to make request: %s", str(e))
 
     async def fetch_all(reqs, on_data, nconnections, loop=loop):
         tcp_connector = aiohttp.TCPConnector(limit=nconnections,
