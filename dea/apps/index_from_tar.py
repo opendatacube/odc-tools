@@ -15,6 +15,10 @@ def from_tar_file(tarfname, index, mk_uri, **kwargs):
             print('Error: %s, %s' % (doc_name, str(e)))
             continue
 
+        if metadata is None:
+            print('Error: failed to parse: %s, "%s"' % (doc_name, doc))
+            continue
+
         uri = mk_uri(doc_name)
 
         ds, err = doc2ds(metadata, uri)
