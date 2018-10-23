@@ -29,10 +29,10 @@ def read_stdin_lines(skip_empty=False):
     pred = {True: lambda s: len(s) > 0,
             False: lambda s: True}[skip_empty]
 
-    for l in stdin:
-        l = l.strip()
-        if pred(l):
-            yield l
+    for line in stdin:
+        line = line.strip()
+        if pred(line):
+            yield line
 
 
 def slurp_lines(fname, *args, **kwargs):
