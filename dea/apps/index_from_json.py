@@ -10,11 +10,11 @@ def from_json_lines(lines, index, **kwargs):
     doc2ds = Doc2Dataset(index, **kwargs)
 
     def clean_stream(lines):
-        for lineno, l in enumerate(lines):
-            l = l.strip()
+        for lineno, line in enumerate(lines):
+            line = line.strip()
 
-            if len(l) > 0:
-                yield lineno, l
+            if len(line) > 0:
+                yield lineno, line
 
     for lineno, l in clean_stream(lines):
         try:
