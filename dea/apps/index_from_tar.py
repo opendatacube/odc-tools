@@ -1,10 +1,9 @@
 import click
 import sys
 import datacube
-from datacube.index.hl import Doc2Dataset
 from dea.io import tar_doc_stream
-from dea.io.text import parse_yaml
 from dea.bench import RateEstimator
+from dea.index import from_yaml_doc_stream
 
 
 def from_tar_file(tarfname, index, mk_uri, **kwargs):
@@ -12,26 +11,11 @@ def from_tar_file(tarfname, index, mk_uri, **kwargs):
 
         (ds, None) or (None, error_message)
     """
-    doc2ds = Doc2Dataset(index, **kwargs)
+    def untar(tarfname, mk_uri):
+        for doc_name, doc in tar_doc_stream(tarfname):
+            yield mk_uri(doc_name), doc
 
-    for doc_name, doc in tar_doc_stream(tarfname):
-        try:
-            metadata = parse_yaml(doc)
-        except Exception as e:
-            yield (None, 'Error: %s, %s' % (doc_name, str(e)))
-            continue
-
-        if metadata is None:
-            yield (None, 'Error: failed to parse: %s, "%s"' % (doc_name, doc))
-            continue
-
-        uri = mk_uri(doc_name)
-
-        ds, err = doc2ds(metadata, uri)
-        if ds is not None:
-            yield (ds, None)
-        else:
-            yield (None, 'Error: %s, %s' % (doc_name, err))
+    return from_yaml_doc_stream(untar(tarfname, mk_uri), index, **kwargs)
 
 
 @click.command('index_from_tar')
