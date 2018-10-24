@@ -4,6 +4,7 @@ import datacube
 from datacube.index.hl import Doc2Dataset
 from dea.io import tar_doc_stream
 from dea.io.text import parse_yaml
+from dea.bench import RateEstimator
 
 
 def from_tar_file(tarfname, index, mk_uri, **kwargs):
@@ -44,13 +45,8 @@ def cli(input_fname, env=None):
     def report_error(msg):
         print(msg, file=sys.stderr)
 
-    def process_file(filename, index):
-        n_total = 0
-        n_failed = 0
-
+    def process_file(filename, index, fps, n_failed=0):
         for ds, err in from_tar_file(filename, index, mk_s3_uri, verify_lineage=False):
-            n_total += 1
-
             if ds is not None:
                 try:
                     index.datasets.add(ds, with_lineage=True)
@@ -61,19 +57,28 @@ def cli(input_fname, env=None):
                 n_failed += 1
                 report_error(err)
 
-            if (n_total % 10) == 0:
+            fps()
+
+            if fps.every(10):
                 print('.', end='', flush=True)
 
-            if (n_total % 100) == 0:
-                print(' T:{:d} F:{:d}'.format(n_total, n_failed))
+            if fps.every(100):
+                print(' {} F:{:d}'.format(str(fps), n_failed))
+
+        return n_failed
 
     dc = datacube.Datacube(env=env)
 
     if len(input_fname) == 0:
         input_fname = ('-',)
 
+    n_failed = 0
+    fps = RateEstimator()
     for filename in input_fname:
-        process_file(filename, dc.index)
+        n_failed = process_file(filename, dc.index, fps, n_failed)
+
+    if n_failed > 0:
+        report_error("**WARNING** there were failures: {}".format(n_failed))
 
 
 if __name__ == '__main__':
