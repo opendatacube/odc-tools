@@ -35,9 +35,19 @@ def from_tar_file(tarfname, index, mk_uri, **kwargs):
 
 
 @click.command('index_from_tar')
-@click.option('--env', type=str, help='Datacube environment name')
+@click.option('--env', '-E', type=str, help='Datacube environment name')
+@click.option('--verify-lineage/--no-verify-lineage', is_flag=True, default=True,
+              help=('Lineage referenced in the metadata document should be the same as in DB, '
+                    'default behaviour is to skip those top-level datasets that have lineage data '
+                    'different from the version in the DB. This option allows omitting verification step.'))
+@click.option('--ignore-lineage',
+              help="Pretend that there is no lineage data in the datasets being indexed",
+              is_flag=True, default=False)
 @click.argument('input_fname', type=str, nargs=-1)
-def cli(input_fname, env=None):
+def cli(input_fname, env=None, verify_lineage=True, ignore_lineage=False):
+
+    ds_resolve_args = dict(verify_lineage=verify_lineage,
+                           skip_lineage=ignore_lineage)
 
     def mk_s3_uri(name):
         return 's3://' + name
@@ -46,7 +56,7 @@ def cli(input_fname, env=None):
         print(msg, file=sys.stderr)
 
     def process_file(filename, index, fps, n_failed=0):
-        for ds, err in from_tar_file(filename, index, mk_s3_uri, verify_lineage=False):
+        for ds, err in from_tar_file(filename, index, mk_s3_uri, **ds_resolve_args):
             if ds is not None:
                 try:
                     index.datasets.add(ds, with_lineage=True)
