@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 import botocore
 import botocore.session
 import logging
+import time
 
 log = logging.getLogger(__name__)
 
@@ -134,6 +135,16 @@ def get_boto3_session(region_name=None, cache=None):
         sessions[region_name] = session
 
     return session
+
+
+def get_creds_with_retry(session, max_tries=10, sleep=0.1):
+    for _ in range(max_tries):
+        creds = session.get_credentials()
+        if creds is not None:
+            return creds
+        time.sleep(sleep)
+
+    return None
 
 
 def s3_fetch(url, s3=None, **kwargs):

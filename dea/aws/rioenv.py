@@ -6,7 +6,7 @@ import threading
 import rasterio
 from botocore.credentials import ReadOnlyCredentials
 
-from . import auto_find_region, get_boto3_session
+from . import auto_find_region, get_boto3_session, get_creds_with_retry
 
 
 _thread_lcl = threading.local()
@@ -60,6 +60,8 @@ class AWSRioEnv(object):
         return env
 
     def __init__(self, credentials, region_name=None, **gdal_opts):
+        assert credentials is not None
+
         self._region_name = region_name
         self._creds = credentials
         self._frozen_creds = self._creds.get_frozen_credentials()
@@ -163,8 +165,12 @@ def setup_local_env(credentials=None, region_name=None, src_env=None, **kwargs):
 
     if credentials is None:
         session = get_boto3_session(region_name=region_name)
-        credentials = session.get_credentials()
         region_name = session.region_name
+
+        credentials = get_creds_with_retry(session, max_tries=10, sleep=0.1)
+        if credentials is None:
+            raise IOError("Failed to obtain AWS credentials after 10 attempts")
+
     elif region_name is None:
         region_name = auto_find_region()
 
