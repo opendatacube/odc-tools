@@ -16,6 +16,8 @@ setup(
                       'numpy',
                       'rasterio>=1.0.4',
                       'toolz',
+                      'zstandard',
+                      'lmdb',
                       ],
     tests_require=['pytest'],
     extras_require=dict(async=[
@@ -29,6 +31,8 @@ setup(
             's3-to-tar = dea.apps.s3_to_tar:cli',
             'dc-index-from-json = dea.apps.index_from_json:cli',
             'dc-index-from-tar = dea.apps.index_from_tar:cli',
+            'slurpy = dea.apps.slurpy:cli',
+            'dstiler = dea.apps.dstiler:cli',
         ]
     }
 )
