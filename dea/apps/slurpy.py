@@ -12,7 +12,7 @@ EOS = object()
 
 
 @click.command('slurpy')
-@click.option('--env', type=str, help='Datacube environment name')
+@click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.argument('output', type=str, nargs=1)
 @click.argument('products', type=str, nargs=-1)
 def cli(env, output, products):

@@ -41,7 +41,7 @@ def from_json_lines(lines, index, **kwargs):
 
 
 @click.command('index_from_json')
-@click.option('--env', type=str, help='Datacube environment name')
+@click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.argument('input_fname', type=str, nargs=-1)
 def cli(input_fname, env=None):
 
