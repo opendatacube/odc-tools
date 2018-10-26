@@ -20,6 +20,19 @@ def from_tar_file(tarfname, index, mk_uri, **kwargs):
 
 @click.command('index_from_tar')
 @click.option('--env', '-E', type=str, help='Datacube environment name')
+@click.option('--product', '-p', 'product_names',
+              help=('Only match against products specified with this option, '
+                    'you can supply several by repeating this option with a new product name'),
+              multiple=True)
+@click.option('--exclude-product', '-x', 'exclude_product_names',
+              help=('Attempt to match to all products in the DB except for products '
+                    'specified with this option, '
+                    'you can supply several by repeating this option with a new product name'),
+              multiple=True)
+@click.option('--auto-add-lineage/--no-auto-add-lineage', is_flag=True, default=True,
+              help=('Default behaviour is to automatically add lineage datasets if they are missing from the database, '
+                    'but this can be disabled if lineage is expected to be present in the DB, '
+                    'in this case add will abort when encountering missing lineage dataset'))
 @click.option('--verify-lineage/--no-verify-lineage', is_flag=True, default=True,
               help=('Lineage referenced in the metadata document should be the same as in DB, '
                     'default behaviour is to skip those top-level datasets that have lineage data '
@@ -28,9 +41,18 @@ def from_tar_file(tarfname, index, mk_uri, **kwargs):
               help="Pretend that there is no lineage data in the datasets being indexed",
               is_flag=True, default=False)
 @click.argument('input_fname', type=str, nargs=-1)
-def cli(input_fname, env=None, verify_lineage=True, ignore_lineage=False):
+def cli(input_fname,
+        env,
+        product_names,
+        exclude_product_names,
+        auto_add_lineage,
+        verify_lineage,
+        ignore_lineage):
 
-    ds_resolve_args = dict(verify_lineage=verify_lineage,
+    ds_resolve_args = dict(products=product_names,
+                           exclude_products=exclude_product_names,
+                           fail_on_missing_lineage=not auto_add_lineage,
+                           verify_lineage=verify_lineage,
                            skip_lineage=ignore_lineage)
 
     def mk_s3_uri(name):
