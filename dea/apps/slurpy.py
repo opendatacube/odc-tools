@@ -30,23 +30,27 @@ def cli(env, output, products):
             click.echo('No such product found: %s' % p)
             raise click.Abort()
 
-    raw2ds = mk_raw2ds(all_prods)
-    click.echo('Training compression dictionary')
-    zdict = dictionary_from_product_list(dc, products, samples_per_product=50)
-    click.echo('..done')
-
     click.echo('Getting dataset counts')
     counts = {p.name: count
               for p, count in dc.index.datasets.count_by_product(product=[p for p in products])}
 
     n_total = 0
-
     for p, c in counts.items():
         click.echo('..{}: {:8,d}'.format(p, c))
         n_total += c
 
+    if n_total == 0:
+        click.echo("No datasets found")
+        raise click.Abort()
+
+    click.echo('Training compression dictionary')
+    zdict = dictionary_from_product_list(dc, products, samples_per_product=50)
+    click.echo('..done')
+
     # TODO: check for overwrite
     cache = dscache.create_cache(output, zdict=zdict, truncate=True)
+
+    raw2ds = mk_raw2ds(all_prods)
 
     def db_task(products, conn, q):
         for p in products:

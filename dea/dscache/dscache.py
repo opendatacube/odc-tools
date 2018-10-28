@@ -149,6 +149,13 @@ def build_dc_product_map(metadata_json, products_json):
 
 
 def train_dictionary(dss, dict_sz=8*1024):
+    """ Given a finite sequence of Datasets train zstandard compression dictionary of a given size.
+
+        Accepts both `Dataset` as well as "raw" datasets.
+
+        Will return None if input sequence is empty.
+    """
+
     def to_bytes(o):
         if isinstance(o, dict):
             _, d = doc2bytes(o)
@@ -157,6 +164,10 @@ def train_dictionary(dss, dict_sz=8*1024):
         return d
 
     sample = list(map(to_bytes, dss))
+
+    if len(sample) == 0:
+        return None
+
     return zstandard.train_dictionary(dict_sz, sample).as_bytes()
 
 
@@ -168,6 +179,9 @@ class DatasetCache(object):
        product/{name}: json
        metadata/{name}: json
 
+    groups:
+       Each group is named list of uuids
+
     udata:
        arbitrary user data (TODO)
 
@@ -177,7 +191,7 @@ class DatasetCache(object):
                               metadata: object}))
     """
     def __init__(self, state):
-        """ Don't use this directly, use create_cache or open_cache.
+        """ Don't use this directly, use create_cache or open_(rw|ro).
         """
 
         self._dbs = state.dbs
@@ -342,6 +356,15 @@ class DatasetCache(object):
 
 
 def maybe_delete_db(path):
+    """ Delete existing database if it exists.
+
+        LMDB database consists of two files, data + lock, they can be arranged in two possible layouts:
+
+        - `db-dir-name/{data.mdb, lock.mdb}`
+        - `db-file-name` and `db-file-name-lock`
+
+       You supply path which is either `db-dir-name` or `db-file-name`.
+    """
     path = Path(path)
     if not path.exists():
         return False
@@ -508,7 +531,17 @@ def create_cache(path,
                  zdict=None,
                  max_db_sz=None,
                  truncate=False):
-    """
+    """Create new file database or open existing one.
+
+    :path str: Path where to create new database (this will be a directory with 2 files in it)
+
+    :complevel int: Level of compressions to apply per dataset, bigger is slower but better compression.
+
+    :zdict: Optional pre-trained compression dictionary
+
+    :max_db_sz int: Maximum size in bytes (defaults to 10GiB)
+
+    :truncate bool: If True wipe out any existing database and create new empty one.
     """
 
     if truncate:

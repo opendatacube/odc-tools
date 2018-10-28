@@ -8,6 +8,14 @@ def dictionary_from_product_list(dc,
                                  products,
                                  samples_per_product=10,
                                  dict_sz=8 * 1024):
+    """Get a sample of datasets from a bunch of products and train compression
+    dictionary.
+
+    dc -- Datcube object
+    products -- list of product names
+    samples_per_product -- number of datasets per product to use for training
+    dict_sz -- size of dictionary in bytes
+    """
 
     if isinstance(products, str):
         products = [products]
@@ -20,10 +28,21 @@ def dictionary_from_product_list(dc,
         random.shuffle(dss)
         samples.extend(dss[:samples_per_product])
 
+    if len(samples) == 0:
+        return None
+
     return train_dictionary(samples, dict_sz)
 
 
 def db_connect(cfg=None):
+    """ Create database connection from datacube config.
+
+        cfg:
+          None -- use default datacube config
+          str  -- use config with a given name
+
+          LocalConfig -- use loaded config object
+    """
     from datacube.config import LocalConfig
     import psycopg2
 
@@ -43,6 +62,25 @@ def db_connect(cfg=None):
 
 
 def mk_raw2ds(products):
+    """Convert "raw" dataset to `datacube.model.Dataset`.
+
+    products -- dictionary from product name to `Product` object (`DatasetType`)
+
+    returns: function that maps: `dict` -> `datacube.model.Dataset`
+
+    This function can raise `ValueError` if dataset product is not found in the
+    supplied products dictionary.
+
+
+    Here "raw dataset" is just a python dictionary with fields:
+
+    - product: str -- product name
+    - uris: [str] -- list of dataset uris
+    - metadata: dict -- dataset metadata document
+
+    see `raw_dataset_stream`
+
+    """
     from datacube.model import Dataset
 
     def raw2ds(ds):
@@ -54,6 +92,15 @@ def mk_raw2ds(products):
 
 
 def raw_dataset_stream(product, db, read_chunk=100, limit=None):
+    """ Given a product name stream all "active" datasets from db that belong to that product.
+
+    Datasets are returned in "raw form", basically just a python dictionary with fields:
+
+    - product: str -- product name
+    - uris: [str] -- list of dataset uris
+    - metadata: dict -- dataset metadata document
+    """
+
     assert isinstance(limit, (int, type(None)))
 
     if isinstance(db, str) or db is None:
