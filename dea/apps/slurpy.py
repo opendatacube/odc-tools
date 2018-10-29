@@ -13,9 +13,10 @@ EOS = object()
 
 @click.command('slurpy')
 @click.option('--env', '-E', type=str, help='Datacube environment name')
+@click.option('-z', 'complevel', type=int, default=6, help='Compression setting for zstandard 0-fast, 9+ good but slow')
 @click.argument('output', type=str, nargs=1)
 @click.argument('products', type=str, nargs=-1)
-def cli(env, output, products):
+def cli(env, output, products, complevel):
 
     if len(products) == 0:
         click.echo('Have to supply at least one product')
@@ -48,7 +49,7 @@ def cli(env, output, products):
     click.echo('..done')
 
     # TODO: check for overwrite
-    cache = dscache.create_cache(output, zdict=zdict, truncate=True)
+    cache = dscache.create_cache(output, zdict=zdict, complevel=complevel, truncate=True)
 
     raw2ds = mk_raw2ds(all_prods)
 
