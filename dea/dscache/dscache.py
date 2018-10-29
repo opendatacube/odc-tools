@@ -111,24 +111,6 @@ def doc2ds(doc, products):
     return Dataset(p, doc['metadata'], uris=doc['uris'])
 
 
-def save_products(products, transaction, compressor, overwrite=False):
-    def get_metadata_definitions(products):
-        mm = {}
-        for p in products:
-            m = p.metadata_type
-            if m.name not in mm:
-                mm[m.name] = m.definition
-
-        return mm
-
-    mm = get_metadata_definitions(products.values())
-    products = toolz.valmap(lambda p: p.definition, products)
-
-    for k, d in itertools.chain(dict2jsonKV(mm, 'metadata/', compressor),
-                                dict2jsonKV(products, 'product/', compressor)):
-        transaction.put(k, d, overwrite=overwrite, dupdata=False)
-
-
 def build_dc_product_map(metadata_json, products_json):
     from datacube.model import metadata_from_doc, DatasetType
 
@@ -145,7 +127,17 @@ def build_dc_product_map(metadata_json, products_json):
 
         return DatasetType(metadata, doc)
 
-    return {k: mk_product(doc, k) for k, doc in products_json.items()}
+    return mm, {k: mk_product(doc, k) for k, doc in products_json.items()}
+
+
+def _metadata_from_products(products):
+    mm = {}
+    for p in products:
+        m = p.metadata_type
+        if m.name not in mm:
+            mm[m.name] = m
+
+    return mm
 
 
 def train_dictionary(dss, dict_sz=8*1024):
@@ -198,17 +190,22 @@ class DatasetCache(object):
         self._comp = state.comp
         self._decomp = state.decomp
         self._products = state.products
+        self._metadata = state.metadata
+        self._closed = False
 
-    def _store_products(self):
-        with self._dbs.main.begin(self._dbs.info, write=True) as tr:
-            save_products(self._products, tr, self._comp)
+    def close(self):
+        """Write any outstanding product/metadata definitions (if in write mode) and
+        close database file.
 
-    def sync(self):
-        if not self.readonly:
-            self._store_products()
+        """
+        if not self._closed:
+            try:
+                self._dbs.main.close()
+            finally:
+                self._closed = True
 
     def __del__(self):
-        self.sync()
+        self.close()
 
     @property
     def readonly(self):
@@ -217,6 +214,10 @@ class DatasetCache(object):
     @property
     def products(self):
         return self._products
+
+    @property
+    def metadata(self):
+        return self._metadata
 
     def _ds2kv(self, ds):
         k, d = ds2bytes(ds)
@@ -228,9 +229,24 @@ class DatasetCache(object):
         d = self._comp.compress(d)
         return (k, d)
 
+    def _add_metadata(self, metadata, transaction, overwrite=False):
+        self._metadata[metadata.name] = metadata
+
+        for k, d in dict2jsonKV({metadata.name: metadata.definition}, 'metadata/', self._comp):
+            transaction.put(k, d, overwrite=overwrite, dupdata=False, db=self._dbs.info)
+
+    def _add_product(self, product, transaction, overwrite=False):
+        if product.metadata_type.name not in self._metadata:
+            self._add_metadata(product.metadata_type, transaction, overwrite=overwrite)
+
+        self._products[product.name] = product
+
+        for k, d in dict2jsonKV({product.name: product.definition}, 'product/', self._comp):
+            transaction.put(k, d, overwrite=overwrite, dupdata=False, db=self._dbs.info)
+
     def _ds_save(self, ds, transaction):
         if ds.type.name not in self._products:
-            self._products[ds.type.name] = ds.type
+            self._add_product(ds.type, transaction)
 
         k, v = self._ds2kv(ds)
         transaction.put(k, v)
@@ -255,8 +271,6 @@ class DatasetCache(object):
                     have_some = True
                     self._ds_save(ds, tr)
                     yield ds
-
-        self.sync()
 
     def bulk_save_raw(self, raw_dss):
         with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
@@ -418,11 +432,15 @@ def _from_existing_db(db, products=None, complevel=6):
             metadata = jsonKV2dict(prefix_visit(tr, 'metadata/'), decomp)
             products = jsonKV2dict(prefix_visit(tr, 'product/'), decomp)
 
-        products = build_dc_product_map(metadata, products)
+        metadata, products = build_dc_product_map(metadata, products)
+    else:
+        # TODO: maybe check that products are compatible with what's in the db?
+        metadata = _metadata_from_products(products)
 
     state = SimpleNamespace(dbs=dbs,
                             comp=comp,
                             decomp=decomp,
+                            metadata=metadata,
                             products=products)
 
     return DatasetCache(state)
@@ -455,6 +473,7 @@ def _from_empty_db(db,
     state = SimpleNamespace(dbs=dbs,
                             comp=comp,
                             decomp=decomp,
+                            metadata={},
                             products={})
 
     return DatasetCache(state)
