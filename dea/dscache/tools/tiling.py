@@ -118,3 +118,24 @@ def bin_by_native_tile(dss, persist=None, native_tile_id=None):
             register(tile, ds_val)
 
     return cells
+
+
+def parse_group_name(group_name):
+    """ Return an ((int, int), prefix) tuple from group name.
+
+        Expects group to be in the form {prefix}/{x}_{y}
+
+        raises ValueError if group_name is not in the expected format.
+    """
+
+    idx = group_name.rfind('/')
+    if idx < 0:
+        raise ValueError('Bad group name: ' + group_name)
+
+    prefix = group_name[:idx]
+    vv = group_name[idx+1:].split('_')
+
+    if len(vv) != 2:
+        raise ValueError('Bad group name: ' + group_name)
+
+    return tuple([int(v) for v in vv]), prefix

@@ -27,17 +27,17 @@ def cli(native, native_albers, web, dbfile):
     label = 'Processing {} ({:,d} datasets)'.format(dbfile, cache.count)
 
     if native:
-        group_key_fmt = 'native/{:03d}{:03d}'
+        group_key_fmt = 'native/{:03d}_{:03d}'
         binner = bin_by_native_tile
     elif native_albers:
-        group_key_fmt = 'albers/{:+03d}{:+03d}'
+        group_key_fmt = 'albers/{:03d}_{:03d}'
         binner = lambda dss: bin_by_native_tile(dss, native_tile_id=extract_native_albers_tile)
     elif web is not None:
         gs = web_gs(web)
-        group_key_fmt = 'web_' + str(web) + '/{:d}_{:d}'
+        group_key_fmt = 'web_' + str(web) + '/{:03d}_{:03d}'
         binner = lambda dss: bin_dataset_stream(gs, dss)
     else:
-        group_key_fmt = 'albers/{:+03d}{:+03d}'
+        group_key_fmt = 'albers/{:03d}_{:03d}'
         binner = lambda dss: bin_dataset_stream(GS_ALBERS, dss)
 
     with click.progressbar(cache.get_all(), length=cache.count, label=label) as dss:
