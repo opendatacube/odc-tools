@@ -13,7 +13,7 @@ EOS = object()
 
 @click.command('slurpy')
 @click.option('--env', '-E', type=str, help='Datacube environment name')
-@click.option('-z', 'complevel', type=int, default=6, help='Compression setting for zstandard 0-fast, 9+ good but slow')
+@click.option('-z', 'complevel', type=int, default=6, help='Compression setting for zstandard 1-fast, 9+ good but slow')
 @click.argument('output', type=str, nargs=1)
 @click.argument('products', type=str, nargs=-1)
 def cli(env, output, products, complevel):
@@ -25,6 +25,10 @@ def cli(env, output, products, complevel):
     dc = datacube.Datacube(env=env)
     all_prods = {p.name: p
                  for p in dc.index.products.get_all()}
+
+    if len(products) == 1 and products[0].lower() in (':all:', '*'):
+        click.echo('Will read all products')
+        products = list(all_prods)
 
     for p in products:
         if p not in all_prods:
@@ -72,8 +76,8 @@ def cli(env, output, products, complevel):
         for ds in dss:
             pass
 
-    cache.sync()
     db_thread.join()
+    cache.close()
 
 
 if __name__ == '__main__':

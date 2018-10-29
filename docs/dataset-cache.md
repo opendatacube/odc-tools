@@ -6,7 +6,7 @@ Random access cache of `Dataset` objects backed by disk storage.
   - UUID is the key
   - Compressed json blob is value
 - Uses `zstandard` compression (with pre-trained dictionaries)
-  - Achieves pretty good compression (db size is roughly 2 times larger than `.tar.gz` of dataset yaml files), but, unlike tar archive, allows random access.
+  - Achieves pretty good compression (db size is roughly 3 times larger than `.tar.gz` of dataset yaml files), but, unlike tar archive, allows random access.
 - Keeps track of `Product` and `Metadata` objects
 - Has concept of "groups" (used for `GridWorkFlow`)
 
