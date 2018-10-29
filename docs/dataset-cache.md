@@ -77,3 +77,23 @@ Group is a collection of datasets that are somehow related. It is essentially a 
 - Get list of group names and their population counts: `.groups() -> List((name, count))`
 - Get datasets for a given group: `.stream_group(group_name) -> lazy sequence of Dataset objects`
 - To get just uuids: `.get_group(group_name) -> List[UUID]`
+
+There is a cli tool `dstiler` that can group datasets based on `GridSpec`
+
+```
+Usage: dstiler [OPTIONS] DBFILE
+
+  Add spatial grouping to file db.
+
+  Default grid is Australian Albers (EPSG:3577) with 100k by 100k tiles. But
+  you can also group by Landsat path/row (--native), or Google's map tiling
+  regime (--web zoom_level)
+
+Options:
+  --native         Use Landsat Path/Row as grouping
+  --native-albers  When datasets are in Albers grid already
+  --web INTEGER    Use web map tiling regime at supplied zoom level
+  --help           Show this message and exit.
+```
+
+Note that unlike tools like `datacube-stats --save-tasks` that rely on `GridWorkflow.group_into_cells`, `dstiler` is capable of processing large datasets since it does not keep the entire `Dataset` object in memory for every dataset observed, instead only UUID is kept in RAM until completion, drastically reducing RAM usage. There is also an optimization for ingested products, these are already tiled into Albers tiles so rather than doing relatively expensive geometry overlap checks we can simply extract Albers tile index directly from `Dataset`'s  `.metadata.grid_spatial` property. To use this option supply `--native-albers` to `dtsiler` app.
