@@ -42,12 +42,11 @@ def tar_doc_stream(fname, mode=None, predicate=None):
             return not entry.isfile()
 
     def tar_open(fname, mode):
-        open_args = [mode] if mode is not None else []
-
         if isinstance(fname, (str, Path)):
+            open_args = [mode] if mode is not None else []
             return tarfile.open(fname, *open_args)
 
-        return tarfile.open(*open_args, fileobj=fname)
+        return tarfile.open(mode=mode, fileobj=fname)
 
     with tar_open(fname, mode) as tar:
         ee_stream = itertools.filterfalse(should_skip, tar)

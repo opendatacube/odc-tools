@@ -1,18 +1,18 @@
 import click
 import sys
 import datacube
-from dea.io import tar_doc_stream
+from dea.io.tar import tar_doc_stream, tar_mode
 from dea.bench import RateEstimator
 from dea.index import from_yaml_doc_stream
 
 
-def from_tar_file(tarfname, index, mk_uri, **kwargs):
+def from_tar_file(tarfname, index, mk_uri, mode, **kwargs):
     """ returns a sequence of tuples where each tuple is either
 
         (ds, None) or (None, error_message)
     """
     def untar(tarfname, mk_uri):
-        for doc_name, doc in tar_doc_stream(tarfname):
+        for doc_name, doc in tar_doc_stream(tarfname, mode=mode):
             yield mk_uri(doc_name), doc
 
     return from_yaml_doc_stream(untar(tarfname, mk_uri), index, **kwargs)
@@ -40,6 +40,8 @@ def from_tar_file(tarfname, index, mk_uri, **kwargs):
 @click.option('--ignore-lineage',
               help="Pretend that there is no lineage data in the datasets being indexed",
               is_flag=True, default=False)
+@click.option('--gzip', is_flag=True, help='Input is compressed with gzip (needed when reading from stdin)')
+@click.option('--xz', is_flag=True, help='Input is compressed with xz (needed when reading from stdin)')
 @click.argument('input_fname', type=str, nargs=-1)
 def cli(input_fname,
         env,
@@ -47,7 +49,9 @@ def cli(input_fname,
         exclude_product_names,
         auto_add_lineage,
         verify_lineage,
-        ignore_lineage):
+        ignore_lineage,
+        gzip,
+        xz):
 
     ds_resolve_args = dict(products=product_names,
                            exclude_products=exclude_product_names,
@@ -61,8 +65,8 @@ def cli(input_fname,
     def report_error(msg):
         print(msg, file=sys.stderr)
 
-    def process_file(filename, index, fps, n_failed=0):
-        for ds, err in from_tar_file(filename, index, mk_s3_uri, **ds_resolve_args):
+    def process_file(filename, index, fps, mode=None, n_failed=0):
+        for ds, err in from_tar_file(filename, index, mk_s3_uri, mode=mode, **ds_resolve_args):
             if ds is not None:
                 try:
                     index.datasets.add(ds, with_lineage=True)
@@ -90,14 +94,17 @@ def cli(input_fname,
 
     n_failed = 0
     fps = RateEstimator()
+    mode = None
+
     for filename in input_fname:
         if filename == '-':
             if sys.stdin.isatty():
                 report_error("Requesting to read from stdin but not redirecting input?")
                 sys.exit(1)
             filename = sys.stdin.buffer
+            mode = tar_mode(is_pipe=True, gzip=gzip, xz=xz)
 
-        n_failed = process_file(filename, dc.index, fps, n_failed)
+        n_failed = process_file(filename, dc.index, fps, mode=mode, n_failed=n_failed)
 
     if n_failed > 0:
         report_error("**WARNING** there were failures: {}".format(n_failed))
