@@ -135,6 +135,15 @@ and dataset_type_ref = (select id from agdc.dataset_type where name = %(product)
     cur.close()
 
 
+def gs_albers():
+    from datacube.model import GridSpec
+    import datacube.utils.geometry as geom
+
+    return GridSpec(crs=geom.CRS('EPSG:3577'),
+                    tile_size=(100000.0, 100000.0),
+                    resolution=(-25, 25))
+
+
 class DcTileExtract(object):
     """ Construct ``datacube.api.grid_workflow.Tile`` object from dataset cache.
     """
@@ -144,12 +153,11 @@ class DcTileExtract(object):
                  key_fmt=None,
                  grid_spec=None):
         from datacube.api.query import query_group_by
-        from .dstiler import GS_ALBERS
 
         self._cache = cache
         self._grouper = query_group_by(group_by=group_by)
-        self._grid_spec = GS_ALBERS if grid_spec is None else grid_spec
-        self._key_fmt = 'albers/{:+03d}{:+03d}' if key_fmt is None else key_fmt
+        self._grid_spec = gs_albers() if grid_spec is None else grid_spec
+        self._key_fmt = 'albers/{:03d}_{:03d}' if key_fmt is None else key_fmt
 
     def __call__(self, tile_idx, _y=None):
         from datacube import Datacube

@@ -71,6 +71,8 @@ for ds in cache.get_all():
    do_stuff_with(ds)
 ```
 
+For more details see [notebook](../notebooks/dscache-example.ipynb).
+
 ## Groups
 
 Group is a collection of datasets that are somehow related. It is essentially a simple index: a list of uuids stored under some name. For example we might want to group all datasets that overlap a certain Albers tile into a group with a name `albers/{x}_{y}`. One can query a list of all group names with `.groups()` method. One can add new group using `.put_group(name, list_of_uuids)`. To read all datasets that belong to a given group `.stream_group(group_name)` can be used.
