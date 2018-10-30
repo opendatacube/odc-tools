@@ -1,5 +1,19 @@
 import tarfile
+from pathlib import Path
 import itertools
+
+
+def tar_mode(gzip=None, xz=None, is_pipe=None):
+    """ Return tarfile.open compatible mode from boolean flags
+
+    """
+    if gzip:
+        return ':gz'
+    if xz:
+        return ':xz'
+    if is_pipe:
+        return '|'
+    return ''
 
 
 def tar_doc_stream(fname, mode=None, predicate=None):
@@ -27,9 +41,15 @@ def tar_doc_stream(fname, mode=None, predicate=None):
         def should_skip(entry):
             return not entry.isfile()
 
-    open_args = [mode] if mode is not None else []
+    def tar_open(fname, mode):
+        open_args = [mode] if mode is not None else []
 
-    with tarfile.open(fname, *open_args) as tar:
+        if isinstance(fname, (str, Path)):
+            return tarfile.open(fname, *open_args)
+
+        return tarfile.open(*open_args, fileobj=fname)
+
+    with tar_open(fname, mode) as tar:
         ee_stream = itertools.filterfalse(should_skip, tar)
 
         for entry in ee_stream:

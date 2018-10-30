@@ -10,6 +10,7 @@ import logging
 from dea.aws.s3async import fetch_bunch
 from dea.ppr import qmap
 from dea.io import read_stdin_lines
+from dea.io.tar import tar_mode
 
 
 Data = namedtuple('Data', 'url data idx time'.split(' '))
@@ -56,15 +57,6 @@ def cli(n, verbose, gzip, xz, outfile):
     def read_stage(urls):
         fetch_bunch(urls, on_data, nconnections=nconnections)
         q_raw.put(EOS)
-
-    def tar_mode(gzip=None, xz=None, is_pipe=None):
-        if gzip:
-            return ':gz'
-        if xz:
-            return ':xz'
-        if is_pipe:
-            return '|'
-        return ''
 
     def dump_to_tar(data_stream, tar):
         for d in data_stream:

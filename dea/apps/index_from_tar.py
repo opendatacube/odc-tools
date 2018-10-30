@@ -91,6 +91,12 @@ def cli(input_fname,
     n_failed = 0
     fps = RateEstimator()
     for filename in input_fname:
+        if filename == '-':
+            if sys.stdin.isatty():
+                report_error("Requesting to read from stdin but not redirecting input?")
+                sys.exit(1)
+            filename = sys.stdin.buffer
+
         n_failed = process_file(filename, dc.index, fps, n_failed)
 
     if n_failed > 0:
