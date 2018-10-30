@@ -24,8 +24,8 @@ CLI Tools
 ---------
 
 1. `s3-find` list S3 bucket with wildcard
-2. `s3-yaml-to-json` fetch yaml documents from S3 and print each one as single json line
-3. `dc-index-from-json` read one json document per line and add to datacube
+2. `s3-to-tar` fetch documents from S3 and dump them to tar archive 
+3. `dc-index-from-tar` read yaml documents from tar archive and add them to datacube
 
 
 Example:
@@ -36,6 +36,6 @@ Example:
 s3_src='s3://dea-public-data/L2/sentinel-2-nrt/'
 
 s3-find "${s3_src}" '*yaml' | \
-  s3-yaml-to-json --threads 2 | \
-    dc-index-from-json --env s2
+  s3-to-tar | \
+    dc-index-from-tar --env s2 --ignore-lineage
 ```

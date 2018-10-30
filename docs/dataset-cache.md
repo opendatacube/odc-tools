@@ -23,6 +23,7 @@ Usage: slurpy [OPTIONS] OUTPUT [PRODUCTS]...
 
 Options:
   -E, --env TEXT  Datacube environment name
+  -z INTEGER      Compression setting for zstandard 1-fast, 9+ good but slow
   --help          Show this message and exit.
 ```
 
@@ -96,4 +97,47 @@ Options:
   --help           Show this message and exit.
 ```
 
-Note that unlike tools like `datacube-stats --save-tasks` that rely on `GridWorkflow.group_into_cells`, `dstiler` is capable of processing large datasets since it does not keep the entire `Dataset` object in memory for every dataset observed, instead only UUID is kept in RAM until completion, drastically reducing RAM usage. There is also an optimization for ingested products, these are already tiled into Albers tiles so rather than doing relatively expensive geometry overlap checks we can simply extract Albers tile index directly from `Dataset`'s  `.metadata.grid_spatial` property. To use this option supply `--native-albers` to `dtsiler` app.
+Note that unlike tools like `datacube-stats --save-tasks` that rely on `GridWorkflow.group_into_cells`, `dstiler` is capable of processing large datasets since it does not keep the entire `Dataset` object in memory for every dataset observed, instead only UUID is kept in RAM until completion, drastically reducing RAM usage. There is also an optimization for ingested products, these are already tiled into Albers tiles so rather than doing relatively expensive geometry overlap checks we can simply extract Albers tile index directly from `Dataset`'s  `.metadata.grid_spatial` property. To use this option supply `--native-albers` to `dstiler` app.
+
+
+## Notes on performance
+
+It took 26 minutes to slurp 2,627,779 wofs datasets from a local postgres server on AWS(`r4.xlarge`), this generated 1.4G database file.
+
+```
+Command being timed: "slurpy -E wofs wofs.db :all:"
+User time (seconds): 1037.93
+System time (seconds): 48.77
+Percent of CPU this job got: 69%
+Elapsed (wall clock) time (h:mm:ss or m:ss): 26:04.79
+```
+
+Adding Albers tile grouping to this took just over 4 minutes, that's a processing rate of ~10.6K datasets per second.
+
+```
+Command being timed: "dstiler --native-albers wofs.db"
+User time (seconds): 234.57
+System time (seconds): 2.65
+Percent of CPU this job got: 95%
+Elapsed (wall clock) time (h:mm:ss or m:ss): 4:08.70
+```
+
+Similar work load but on VDI node (2,747,870 wofs dataset from main db) took 23 minutes to dump all datasets from DB and 7 minutes to tile into Albers grid using "native grid" optimization. Read throughput from file db on VDI node is slower than on AWS, but is still a respectable 6.5K datasets per second. Database file was somewhat bigger too, 2G vs 1.4G on AWS, maybe there is a significant difference in `zstandard` library between two systems. 
+
+```
+Command being timed: "slurpy wofs.db wofs_albers"
+User time (seconds): 1077.74
+System time (seconds): 49.75
+Percent of CPU this job got: 81%
+Elapsed (wall clock) time (h:mm:ss or m:ss): 23:01.20
+```
+
+```
+Command being timed: "dstiler --native-albers wofs.db"
+User time (seconds): 408.65
+System time (seconds): 6.28
+Percent of CPU this job got: 98%
+Elapsed (wall clock) time (h:mm:ss or m:ss): 7:03.22
+```
+
+I'd like to point out that grouping datasets into Grids can very well happen during `slurpy` process without adding much overhead, so two step processing is not strictly necessary.
