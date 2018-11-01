@@ -401,10 +401,17 @@ def test_async_work_pool():
         await asyncio.sleep(delay)
         return (x, x)
 
+    proc2 = lambda x: proc(x, delay=0.01)
+
+    expect = set((x, x) for x in range(100))
+
     pool = AsyncWorkerPool(2, 10, max_buffer=30)
 
     xx = list(pool.map(proc, range(100), delay=0.1))
 
-    expect = set((x, x) for x in range(100))
+    assert len(xx) == 100
+    assert expect == set(xx)
+
+    xx = list(pool.map(proc2, range(100)))
     assert len(xx) == 100
     assert expect == set(xx)
