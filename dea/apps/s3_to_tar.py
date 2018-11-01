@@ -1,27 +1,27 @@
 import click
-from collections import namedtuple
-import queue
-from threading import Thread
+import datetime
 import io
 import tarfile
 import time
 import logging
 
-from dea.aws.s3async import fetch_bunch
-from dea.ppr import qmap
+from dea.aws.aio import S3Fetcher
 from dea.io import read_stdin_lines
 from dea.io.tar import tar_mode
 
 
-Data = namedtuple('Data', 'url data idx time'.split(' '))
+def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
+    if last_modified is None:
+        last_modified = time.time()
 
+    if isinstance(last_modified, datetime.datetime):
+        last_modified = last_modified.timestamp()
 
-def add_txt_file(tar, fname, content, mode=0o644):
     info = tarfile.TarInfo(name=fname)
     if isinstance(content, str):
         content = content.encode('utf-8')
     info.size = len(content)
-    info.mtime = time.time()  # TODO: get time from S3 object
+    info.mtime = last_modified
     info.mode = mode
     tar.addfile(tarinfo=info, fileobj=io.BytesIO(content))
 
@@ -47,33 +47,20 @@ def cli(n, verbose, gzip, xz, outfile):
 
     nconnections = 24 if n is None else n
 
-    q_raw = queue.Queue(maxsize=10_000)
-
-    EOS = object()
-
-    def on_data(data, url, idx=None, time=None):
-        q_raw.put(Data(url, data, idx, time))
-
-    def read_stage(urls):
-        fetch_bunch(urls, on_data, nconnections=nconnections)
-        q_raw.put(EOS)
-
     def dump_to_tar(data_stream, tar):
         for d in data_stream:
             fname = d.url[5:]
 
-            if verbose:
-                print(fname, len(d.data), file=stderr)
+            if d.data is not None:
+                if verbose:
+                    print(fname, len(d.data), file=stderr)
+                add_txt_file(tar, fname, d.data, last_modified=d.last_modified)
+            else:
+                print("Failed %s (%s)" % (d.url, str(d.error)),
+                      file=stderr)
 
-            add_txt_file(tar, fname, d.data)
-
-    threads = []
-
-    def launch(proc, *args, **kwargs):
-        thread = Thread(target=proc, args=args, kwargs=kwargs)
-        thread.start()
-        threads.append(thread)
-
+    fetcher = S3Fetcher(nconcurrent=nconnections,
+                        max_buffer=10_000)
     is_pipe = outfile == '-'
     tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe))
     if is_pipe:
@@ -86,13 +73,9 @@ def cli(n, verbose, gzip, xz, outfile):
         tar_opts['name'] = outfile
 
     urls = read_stdin_lines(skip_empty=True)
-    launch(read_stage, urls)
 
     with tarfile.open(**tar_opts) as tar:
-        dump_to_tar(qmap(lambda x: x, q_raw, eos_marker=EOS), tar)
-
-    for th in threads:
-        th.join()
+        dump_to_tar(fetcher(urls), tar)
 
 
 if __name__ == '__main__':

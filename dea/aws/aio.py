@@ -65,6 +65,7 @@ def mk_s3_fetcher(region_name=None,
     if session is None:
         session = aiobotocore.get_session()
 
+    # TODO: await s3.close()
     s3 = session.create_client('s3', region_name=region_name, config=s3_cfg)
 
     def fetcher(url, range=None):
@@ -78,6 +79,7 @@ class S3Fetcher(object):
                  nconcurrent=24,
                  nthreads=1,
                  region_name=None,
+                 max_buffer=1000,
                  addressing_style='path'):
         from ..io.async import AsyncWorkerPool
 
@@ -88,7 +90,9 @@ class S3Fetcher(object):
                                   max_pool_connections=nconcurrent,
                                   addressing_style=addressing_style)
 
-        self._pool = AsyncWorkerPool(nthreads=nthreads, tasks_per_thread=nconcurrent)
+        self._pool = AsyncWorkerPool(nthreads=nthreads,
+                                     tasks_per_thread=nconcurrent,
+                                     max_buffer=max_buffer)
         self._tls = threading.local()
 
     def _fetcher(self):
