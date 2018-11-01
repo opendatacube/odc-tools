@@ -2,6 +2,7 @@
 """
 import asyncio
 import queue
+import itertools
 import logging
 
 EOS_MARKER = object()
@@ -164,6 +165,108 @@ async def q2q_nmap(func,
         await push_to_dst(eos_marker, q_out, dt)
 
 
+class AsyncWorkerPool(object):
+    """NxM worker pool, maintains N threads running M concurrent async tasks
+    each. Provides synchronous access via iterators.
+    """
+
+    def __init__(self,
+                 nthreads=1,
+                 tasks_per_thread=1,
+                 max_buffer=None):
+        from concurrent.futures import ThreadPoolExecutor
+
+        if max_buffer is None:
+            max_buffer = min(100, nthreads*tasks_per_thread*2)
+
+        self._pool = ThreadPoolExecutor(nthreads)
+        self._loops = [asyncio.new_event_loop() for _ in range(nthreads)]
+        self._nthreads = nthreads
+        self._default_tasks_per_thread = tasks_per_thread
+        self._q1 = queue.Queue(max_buffer)
+        self._q2 = queue.Queue(max_buffer)
+
+    def _run_worker_thread(self, func, loop, nconcurrent):
+        q2q_task = q2q_nmap(func, self._q1, self._q2,
+                            nconcurrent,
+                            eos_passthrough=False,
+                            loop=loop)
+
+        loop.run_until_complete(q2q_task)
+
+    def map(self, func, its, nconcurrent=None, **kwargs):
+        from time import sleep
+        dt = 0.01
+
+        proc = func if len(kwargs) == 0 else (lambda x: func(x, **kwargs))
+
+        if nconcurrent is None:
+            nconcurrent = self._default_tasks_per_thread
+
+        workers = [self._pool.submit(self._run_worker_thread, proc, loop, nconcurrent)
+                   for loop in self._loops]
+
+        feedq = self._q1
+        outq = self._q2
+
+        # max_tasks_at_once = len(workers)*nconcurrent
+
+        # append EOS_MARKER for every worker thread
+        its = itertools.chain(its, [EOS_MARKER]*len(workers))
+        nin = 0
+        nout = 0
+
+        for x in its:
+            while feedq.full():
+                n = 0
+                while feedq.full() and not outq.empty():
+                    n += 1
+                    nout += 1
+                    yield outq.get_nowait()
+
+                if feedq.full() and n == 0:
+                    sleep(dt)  # Avoid busy loop, feedq is full, but outq was empty
+
+            feedq.put_nowait(x)
+            nin += 1
+
+            # flush upto 10 results for every input, so that we can catch up,
+            # but at the same time don't neglect input side either. We can
+            # probably be smarter and monitor tasks in flight using nin/nout
+            # and decide based on that.
+            for _ in range(10):
+                if outq.empty():
+                    break
+                nout += 1
+                yield outq.get_nowait()
+
+        # We are done with input, need to flush output queue now. We can't just
+        # wait for workers to finish as they might be blocked by output queue
+        # being full, we are "done" when both conditions hold:
+        #  1. worker threads have finished
+        #  2. outq is empty and will stay empty because of (1.)
+
+        def prune_workers(ww):
+            return [w for w in ww if not w.done()]
+
+        while not (len(workers) == 0 and outq.empty()):
+            n = 0
+            while not outq.empty():
+                nout += 1
+                n += 1
+                yield outq.get_nowait()
+
+            workers = prune_workers(workers)
+
+            if len(workers) and n == 0:
+                sleep(dt)  # Avoid busy looping, outq was empty but workers are still running
+
+
+################################################################################
+# tests below
+################################################################################
+
+
 def test_q2q_map():
     async def proc(x):
         await asyncio.sleep(0.01)
@@ -246,11 +349,15 @@ def test_q2qnmap():
 
     loop = asyncio.new_event_loop()
 
-    def run(N, nconcurrent, delay):
+    def run(N, nconcurrent, delay, eos_passthrough=True):
         async def run_test(func, N, nconcurrent):
             wk_pool.submit(run_producer, N, src, EOS_MARKER)
             xx = wk_pool.submit(run_consumer, dst, EOS_MARKER)
-            await q2q_nmap(func, src, dst, nconcurrent)
+            await q2q_nmap(func, src, dst, nconcurrent, eos_passthrough=eos_passthrough)
+
+            if eos_passthrough is False:
+                dst.put(EOS_MARKER)
+
             return xx.result()
 
         state = SimpleNamespace(active=0, max_active=0)
@@ -268,3 +375,22 @@ def test_q2qnmap():
     assert len(xx) == N + 1
     assert 1 < st.max_active <= 4
     assert set(xx) == expect
+
+    st, xx = run(N, 4, 0.01, eos_passthrough=False)
+    assert len(xx) == N + 1
+    assert 1 < st.max_active <= 4
+    assert set(xx) == expect
+
+
+def test_async_work_pool():
+    async def proc(x, delay):
+        await asyncio.sleep(delay)
+        return (x, x)
+
+    pool = AsyncWorkerPool(2, 10, max_buffer=30)
+
+    xx = list(pool.map(proc, range(100), delay=0.1))
+
+    expect = set((x, x) for x in range(100))
+    assert len(xx) == 100
+    assert expect == set(xx)
