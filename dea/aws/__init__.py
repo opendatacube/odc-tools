@@ -66,6 +66,17 @@ def s3_url_parse(url):
     return uu.netloc, uu.path.lstrip('/')
 
 
+def s3_fmt_range(range):
+    """ None -> None
+        (in, out) -> "bytes={in}-{out-1}"
+    """
+    if range is None:
+        return None
+
+    _in, _out = range
+    return 'bytes={:d}-{:d}'.format(_in, _out-1)
+
+
 def s3_ls(url, s3=None):
     bucket, prefix = s3_url_parse(url)
 
