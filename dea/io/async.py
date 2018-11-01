@@ -4,6 +4,8 @@ import asyncio
 import queue
 import itertools
 import logging
+from types import SimpleNamespace
+
 
 EOS_MARKER = object()
 log = logging.getLogger(__name__)
@@ -186,16 +188,26 @@ class AsyncWorkerPool(object):
         self._q1 = queue.Queue(max_buffer)
         self._q2 = queue.Queue(max_buffer)
 
-    def _run_worker_thread(self, func, loop, nconcurrent):
-        q2q_task = q2q_nmap(func, self._q1, self._q2,
+    @staticmethod
+    def _run_worker_thread(func, src, dst, loop, nconcurrent, state):
+        q2q_task = q2q_nmap(func, src, dst,
                             nconcurrent,
                             eos_passthrough=False,
                             loop=loop)
 
         loop.run_until_complete(q2q_task)
 
+        with state.lock:
+            assert state.count > 0
+            state.count -= 1
+
+            if state.count == 0:
+                dst.put(EOS_MARKER)
+
     def map(self, func, its, nconcurrent=None, **kwargs):
         from time import sleep
+        from threading import Lock
+
         dt = 0.01
 
         proc = func if len(kwargs) == 0 else (lambda x: func(x, **kwargs))
@@ -203,11 +215,18 @@ class AsyncWorkerPool(object):
         if nconcurrent is None:
             nconcurrent = self._default_tasks_per_thread
 
-        workers = [self._pool.submit(self._run_worker_thread, proc, loop, nconcurrent)
-                   for loop in self._loops]
-
+        shared_state = SimpleNamespace(lock=Lock(),
+                                       count=len(self._loops))
         feedq = self._q1
         outq = self._q2
+
+        workers = [self._pool.submit(self._run_worker_thread,
+                                     proc,
+                                     feedq, outq,
+                                     loop=loop,
+                                     nconcurrent=nconcurrent,
+                                     state=shared_state)
+                   for loop in self._loops]
 
         # max_tasks_at_once = len(workers)*nconcurrent
 
@@ -216,13 +235,26 @@ class AsyncWorkerPool(object):
         nin = 0
         nout = 0
 
+        out_flushed = False
+
+        def _out(x):
+            nonlocal out_flushed
+            nonlocal nout
+
+            if x is EOS_MARKER:
+                out_flushed = True
+            else:
+                nout += 1
+                yield x
+
         for x in its:
+            assert out_flushed is False
+
             while feedq.full():
                 n = 0
-                while feedq.full() and not outq.empty():
+                while feedq.full() and not out_flushed and not outq.empty():
                     n += 1
-                    nout += 1
-                    yield outq.get_nowait()
+                    yield from _out(outq.get_nowait())
 
                 if feedq.full() and n == 0:
                     sleep(dt)  # Avoid busy loop, feedq is full, but outq was empty
@@ -237,30 +269,12 @@ class AsyncWorkerPool(object):
             for _ in range(10):
                 if outq.empty():
                     break
-                nout += 1
-                yield outq.get_nowait()
 
-        # We are done with input, need to flush output queue now. We can't just
-        # wait for workers to finish as they might be blocked by output queue
-        # being full, we are "done" when both conditions hold:
-        #  1. worker threads have finished
-        #  2. outq is empty and will stay empty because of (1.)
+                yield from _out(outq.get_nowait())
 
-        def prune_workers(ww):
-            return [w for w in ww if not w.done()]
-
-        while not (len(workers) == 0 and outq.empty()):
-            n = 0
-            while not outq.empty():
-                nout += 1
-                n += 1
-                yield outq.get_nowait()
-
-            workers = prune_workers(workers)
-
-            if len(workers) and n == 0:
-                sleep(dt)  # Avoid busy looping, outq was empty but workers are still running
-
+        # We are done with input, need to flush output queue now.
+        while not out_flushed:
+            yield from _out(outq.get())
 
 ################################################################################
 # tests below
