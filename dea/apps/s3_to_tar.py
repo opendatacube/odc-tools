@@ -4,6 +4,7 @@ import io
 import tarfile
 import time
 import logging
+import signal
 
 from dea.aws.aio import S3Fetcher
 from dea.io import read_stdin_lines
@@ -49,8 +50,10 @@ def cli(n, io_threads, verbose, gzip, xz, outfile):
     logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s', level=logging.ERROR)
 
     nconnections = 24 if n is None else n
+    exit_early = False
 
     def dump_to_tar(data_stream, tar):
+        nonlocal exit_early
         fps = RateEstimator()
 
         for d in data_stream:
@@ -69,6 +72,9 @@ def cli(n, io_threads, verbose, gzip, xz, outfile):
             else:
                 print("Failed %s (%s)" % (d.url, str(d.error)),
                       file=stderr)
+
+            if exit_early:
+                break
 
         if verbose:
             print(' {}'.format(str(fps)), file=stderr)
@@ -89,8 +95,17 @@ def cli(n, io_threads, verbose, gzip, xz, outfile):
 
     urls = read_stdin_lines(skip_empty=True)
 
+    def on_ctrlc(sig, frame):
+        nonlocal exit_early
+        print('Shuttting down', file=sys.stderr)
+        exit_early = True
+
+    signal.signal(signal.SIGINT, on_ctrlc)
+
     with tarfile.open(**tar_opts) as tar:
         dump_to_tar(fetcher(urls), tar)
+
+    fetcher.close()
 
 
 if __name__ == '__main__':
