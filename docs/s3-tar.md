@@ -43,18 +43,13 @@ find . -name 'wofs-??' | sort | xargs -n 1 -P 2 ./process-chunk.sh
 ```
 
 Downloading all 2.6 million WOfS meatadata documents from S3 took less than
-hour, this is higher throughput than yaml parser can parse, but see limitations
-below.
-
+hour, this is higher throughput than yaml parser can parse.
 
 Limitations and TODO
 --------------------
 
-1. No error handling of any kind yet
-   - bad urls will halt the whole thing in a bad way
-   - server disconnects are not handled (and are a problem for long running tasks)
-   - sts credential renewing exists, but not tested
-   - workaround is to read about 10-50K documents at a time
-2. Assumes small documents (large internal queues)
-3. No smart request issue throttling
-4. No signal handling
+1. Assumes small documents
+   - reads whole object into RAM
+   - large internal queues
+
+2. No signal handling (TODO: clean shutdown on Ctr-C)
