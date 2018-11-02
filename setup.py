@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='dea-proto',
-    version='0.1',
+    version='0.2',
     license='Apache License 2.0',
     packages=find_packages(),
     author='Kirill Kouzoubov',
