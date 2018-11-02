@@ -50,30 +50,6 @@ async def s3_fetch_object(url, s3, range=None):
     return result(data=data, last_modified=last_modified)
 
 
-def mk_s3_fetcher(region_name=None,
-                  max_pool_connections=24,
-                  addressing_style='path',
-                  session=None):
-    from aiobotocore.config import AioConfig
-
-    s3_cfg = AioConfig(max_pool_connections=max_pool_connections,
-                       s3=dict(addressing_style=addressing_style))
-
-    if region_name is None:
-        region_name = auto_find_region()
-
-    if session is None:
-        session = aiobotocore.get_session()
-
-    # TODO: await s3.close()
-    s3 = session.create_client('s3', region_name=region_name, config=s3_cfg)
-
-    def fetcher(url, range=None):
-        return s3_fetch_object(url, s3=s3, range=range)
-
-    return fetcher
-
-
 class S3Fetcher(object):
     def __init__(self,
                  nconcurrent=24,
@@ -82,28 +58,39 @@ class S3Fetcher(object):
                  max_buffer=1000,
                  addressing_style='path'):
         from ..io.async import AsyncWorkerPool
+        from aiobotocore.config import AioConfig
 
         if region_name is None:
             region_name = auto_find_region()
 
-        self._fetcher_opts = dict(region_name=region_name,
-                                  max_pool_connections=nconcurrent,
-                                  addressing_style=addressing_style)
+        s3_cfg = AioConfig(max_pool_connections=nconcurrent,
+                           s3=dict(addressing_style=addressing_style))
 
         self._pool = AsyncWorkerPool(nthreads=nthreads,
                                      tasks_per_thread=nconcurrent,
                                      max_buffer=max_buffer)
         self._tls = threading.local()
+        self._closed = False
 
-    def _fetcher(self):
-        """ there is one fetcher for each thread with separate connection pool.
-        """
-        fetcher = getattr(self._tls, 'fetcher', None)
-        if fetcher is None:
-            fetcher = mk_s3_fetcher(**self._fetcher_opts)
-            self._tls.fetcher = fetcher
+        async def setup(tls):
+            tls.session = aiobotocore.get_session()
+            tls.s3 = tls.session.create_client('s3',
+                                               region_name=region_name,
+                                               config=s3_cfg)
+            return (tls.session, tls.s3)
 
-        return fetcher
+        self._threads_state = self._pool.broadcast(setup, self._tls)
+
+    def close(self):
+        async def _close(tls):
+            await tls.s3.close()
+
+        if not self._closed:
+            self._pool.broadcast(_close, self._tls)
+            self._closed = True
+
+    def __del__(self):
+        self.close()
 
     def _worker(self, url):
         if isinstance(url, tuple):
@@ -111,7 +98,7 @@ class S3Fetcher(object):
         else:
             range = None
 
-        return self._fetcher()(url, range=range)
+        return s3_fetch_object(url, s3=self._tls.s3, range=range)
 
     def __call__(self, urls):
         """Fetch a bunch of s3 urls concurrently.

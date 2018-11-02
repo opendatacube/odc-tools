@@ -4,7 +4,10 @@ import asyncio
 import queue
 import itertools
 import logging
+import threading
 from types import SimpleNamespace
+from concurrent.futures import ThreadPoolExecutor
+from ..ppr import pool_broadcast
 
 
 EOS_MARKER = object()
@@ -176,20 +179,25 @@ class AsyncWorkerPool(object):
                  nthreads=1,
                  tasks_per_thread=1,
                  max_buffer=None):
-        from concurrent.futures import ThreadPoolExecutor
-
         if max_buffer is None:
             max_buffer = min(100, nthreads*tasks_per_thread*2)
 
         self._pool = ThreadPoolExecutor(nthreads)
-        self._loops = [asyncio.new_event_loop() for _ in range(nthreads)]
         self._nthreads = nthreads
         self._default_tasks_per_thread = tasks_per_thread
         self._q1 = queue.Queue(max_buffer)
         self._q2 = queue.Queue(max_buffer)
+        self._tls = threading.local()
+
+        def bootstrap(tls):
+            tls.loop = asyncio.new_event_loop()
+
+        pool_broadcast(self._pool, bootstrap, self._tls)
 
     @staticmethod
-    def _run_worker_thread(func, src, dst, loop, nconcurrent, state):
+    def _run_worker_thread(func, src, dst, tls, nconcurrent, state):
+        loop = tls.loop
+
         q2q_task = q2q_nmap(func, src, dst,
                             nconcurrent,
                             eos_passthrough=False,
@@ -204,6 +212,14 @@ class AsyncWorkerPool(object):
             if state.count == 0:
                 dst.put(EOS_MARKER)
 
+    def broadcast(self, func, *args, **kwargs):
+        def action():
+            loop = self._tls.loop
+            xx = loop.run_until_complete(func(*args, **kwargs))
+            return xx
+
+        return pool_broadcast(self._pool, action)
+
     def map(self, func, its, nconcurrent=None, **kwargs):
         from time import sleep
         from threading import Lock
@@ -216,17 +232,17 @@ class AsyncWorkerPool(object):
             nconcurrent = self._default_tasks_per_thread
 
         shared_state = SimpleNamespace(lock=Lock(),
-                                       count=len(self._loops))
+                                       count=self._nthreads)
         feedq = self._q1
         outq = self._q2
 
         workers = [self._pool.submit(self._run_worker_thread,
                                      proc,
                                      feedq, outq,
-                                     loop=loop,
+                                     tls=self._tls,
                                      nconcurrent=nconcurrent,
                                      state=shared_state)
-                   for loop in self._loops]
+                   for _ in range(self._nthreads)]
 
         # max_tasks_at_once = len(workers)*nconcurrent
 
@@ -315,9 +331,7 @@ def test_q2q_map():
 
 
 def test_q2qnmap():
-    from concurrent.futures import ThreadPoolExecutor
     import random
-    from types import SimpleNamespace
 
     async def proc(x, state, delay=0.1):
         state.active += 1
