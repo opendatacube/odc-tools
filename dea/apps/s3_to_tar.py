@@ -29,11 +29,13 @@ def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
 @click.command('s3-to-tar')
 @click.option('-n', type=int,
               help='Number of concurrent async connections to S3')
+@click.option('--io-threads', type=int, default=1,
+              help='Number of IO threads (experimental)')
 @click.option('--verbose', '-v', is_flag=True, help='Be verbose')
 @click.option('--gzip', is_flag=True, help='Compress with gzip')
 @click.option('--xz', is_flag=True, help='Compress with xz')
 @click.argument("outfile", type=str, nargs=1, default='-')
-def cli(n, verbose, gzip, xz, outfile):
+def cli(n, io_threads, verbose, gzip, xz, outfile):
     """ Fetch a bunch of s3 files into a tar archive.
 
     \b
@@ -59,7 +61,8 @@ def cli(n, verbose, gzip, xz, outfile):
                 print("Failed %s (%s)" % (d.url, str(d.error)),
                       file=stderr)
 
-    fetcher = S3Fetcher(nconcurrent=nconnections,
+    fetcher = S3Fetcher(nthreads=io_threads,
+                        nconcurrent=nconnections,
                         max_buffer=10_000)
     is_pipe = outfile == '-'
     tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe))
