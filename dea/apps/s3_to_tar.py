@@ -8,6 +8,7 @@ import logging
 from dea.aws.aio import S3Fetcher
 from dea.io import read_stdin_lines
 from dea.io.tar import tar_mode
+from dea.bench import RateEstimator
 
 
 def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
@@ -50,16 +51,27 @@ def cli(n, io_threads, verbose, gzip, xz, outfile):
     nconnections = 24 if n is None else n
 
     def dump_to_tar(data_stream, tar):
+        fps = RateEstimator()
+
         for d in data_stream:
+            fps()
             fname = d.url[5:]
 
             if d.data is not None:
                 if verbose:
-                    print(fname, len(d.data), file=stderr)
+                    if fps.every(10):
+                        print('.', file=stderr, end='', flush=True)
+
+                    if fps.every(100):
+                        print(' {}'.format(str(fps)), file=stderr)
+
                 add_txt_file(tar, fname, d.data, last_modified=d.last_modified)
             else:
                 print("Failed %s (%s)" % (d.url, str(d.error)),
                       file=stderr)
+
+        if verbose:
+            print(' {}'.format(str(fps)), file=stderr)
 
     fetcher = S3Fetcher(nthreads=io_threads,
                         nconcurrent=nconnections,
