@@ -86,6 +86,9 @@ class S3Fetcher(object):
             await tls.s3.close()
 
         if not self._closed:
+            if self._pool.running():
+                self._pool.unravel()
+
             self._pool.broadcast(_close, self._tls)
             self._closed = True
 

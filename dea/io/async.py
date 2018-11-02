@@ -188,6 +188,7 @@ class AsyncWorkerPool(object):
         self._q1 = queue.Queue(max_buffer)
         self._q2 = queue.Queue(max_buffer)
         self._tls = threading.local()
+        self._map_state = None
 
         def bootstrap(tls):
             tls.loop = asyncio.new_event_loop()
@@ -220,9 +221,20 @@ class AsyncWorkerPool(object):
 
         return pool_broadcast(self._pool, action)
 
+    def running(self):
+        return self._map_state is not None
+
+    def unravel(self):
+        _state = self._map_state
+        if _state:
+            _state.unravel()
+
     def map(self, func, its, nconcurrent=None, **kwargs):
         from time import sleep
         from threading import Lock
+
+        if self._map_state is not None:
+            raise RuntimeError("map is not re-entrant")
 
         dt = 0.01
 
@@ -244,6 +256,27 @@ class AsyncWorkerPool(object):
                                      state=shared_state)
                    for _ in range(self._nthreads)]
 
+        def unravel():
+            # flush input queue
+            while True:
+                try:
+                    feedq.get_nowait()
+                except queue.Empty:
+                    break
+
+            # send EOS
+            for _ in range(self._nthreads):
+                feedq.put(EOS_MARKER)
+
+            # flush output queue
+            while True:
+                x = outq.get()
+                if x is EOS_MARKER:
+                    break
+
+            self._map_state = None
+
+        self._map_state = SimpleNamespace(unravel=unravel)
         # max_tasks_at_once = len(workers)*nconcurrent
 
         # append EOS_MARKER for every worker thread
@@ -291,6 +324,8 @@ class AsyncWorkerPool(object):
         # We are done with input, need to flush output queue now.
         while not out_flushed:
             yield from _out(outq.get())
+
+        self._map_state = None
 
 ################################################################################
 # tests below
