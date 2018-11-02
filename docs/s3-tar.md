@@ -7,9 +7,9 @@ Collate Objects from S3
 Using WOfS yamls as a sample data set I get following performance:
 
 - Instance type `r4.xlarge`, 4 cores, 32Gb of memory
-- Reading 100K documents completes in under 3:30 when running 2 concurrent tasks
-  - That's 210s, ~480 datasets per second per worker
-  - 960 datasets per second per instance
+- Reading 100K documents completes in about 4 minutes when running 2 concurrent tasks
+  - That's 240s, ~420 datasets per second per worker
+  - 840 datasets per second per instance
   - Output is pumped into `gzip -3` then dumped to file
 
 In comparison a simple fetch one object at a time using `boto3` is about 30
