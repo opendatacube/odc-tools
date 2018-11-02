@@ -22,6 +22,7 @@ setup(
     tests_require=['pytest'],
     extras_require=dict(async=[
         'aiohttp',
+        'aiobotocore',
     ]),
     entry_points={
         'console_scripts': [
