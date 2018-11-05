@@ -50,6 +50,81 @@ async def s3_fetch_object(url, s3, range=None):
     return result(data=data, last_modified=last_modified)
 
 
+def _s3_file_info(f, bucket):
+    url = 's3://{}/{}'.format(bucket, f.get('Key'))
+    return SimpleNamespace(url=url,
+                           size=f.get('Size'),
+                           last_modified=f.get('LastModified'),
+                           etag=f.get('ETag'))
+
+
+async def s3_find(url, s3, pred=None, glob=None):
+    """ List all objects under certain path
+
+        each s3 object is represented by a SimpleNamespace with attributes:
+        - url
+        - size
+        - last_modified
+        - etag
+    """
+    from fnmatch import fnmatch
+
+    def glob_predicate(glob, pred):
+        if pred is None:
+            return lambda f: fnmatch(f.url, glob)
+        else:
+            return lambda f: fnmatch(f.url, glob) and pred(f)
+
+    if glob is not None:
+        pred = glob_predicate(glob, pred)
+
+    bucket, prefix = s3_url_parse(url)
+
+    if not prefix.endswith('/'):
+        prefix = prefix + '/'
+
+    pp = s3.get_paginator('list_objects_v2')
+    _files = []
+
+    async for o in pp.paginate(Bucket=bucket, Prefix=prefix):
+        for f in o.get('Contents', []):
+            f = _s3_file_info(f, bucket)
+            if pred is None or pred(f):
+                _files.append(f)
+
+    return _files
+
+
+async def s3_dir(url, s3):
+    """ List s3 "directory" without descending into sub directories.
+
+        Returns: (dirs, files)
+
+        where
+          dirs -- list of subdirectories in `s3://bucket/path/` format
+
+          files -- list of objects with attributes: url, size, last_modified, etag
+    """
+    bucket, prefix = s3_url_parse(url)
+
+    if not prefix.endswith('/'):
+        prefix = prefix + '/'
+
+    pp = s3.get_paginator('list_objects_v2')
+
+    _dirs = []
+    _files = []
+
+    async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter='/'):
+        for d in o.get('CommonPrefixes', []):
+            d = d.get('Prefix')
+            _dirs.append('s3://{}/{}'.format(bucket, d))
+        for f in o.get('Contents', []):
+            _files.append(_s3_file_info(f, bucket))
+
+    return _dirs, _files
+
+
 class S3Fetcher(object):
     def __init__(self,
                  nconcurrent=24,
@@ -102,6 +177,20 @@ class S3Fetcher(object):
             range = None
 
         return s3_fetch_object(url, s3=self._tls.s3, range=range)
+
+    def list_dir(self, url):
+        async def action(url):
+            return await s3_dir(url, s3=self._tls.s3)
+        return self._pool.run_one(action, url)
+
+    def find(self, url, pred=None, glob=None):
+        if glob is None and isinstance(pred, str):
+            pred, glob = None, pred
+
+        async def action(url):
+            return await s3_find(url, s3=self._tls.s3, pred=pred, glob=glob)
+
+        return self._pool.run_one(action, url)
 
     def __call__(self, urls):
         """Fetch a bunch of s3 urls concurrently.

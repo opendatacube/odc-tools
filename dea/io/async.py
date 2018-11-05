@@ -221,6 +221,13 @@ class AsyncWorkerPool(object):
 
         return pool_broadcast(self._pool, action)
 
+    def run_one(self, func, *args, **kwargs):
+        def action():
+            loop = self._tls.loop
+            return loop.run_until_complete(func(*args, **kwargs))
+
+        return self._pool.submit(action).result()
+
     def running(self):
         return self._map_state is not None
 
