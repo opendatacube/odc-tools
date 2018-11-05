@@ -128,36 +128,62 @@ async def s3_dir(url, s3):
     return _dirs, _files
 
 
-async def s3_walker(url, nconcurrent, s3):
+async def s3_walker(url, nconcurrent, s3, guide=None):
+    """
+
+    guide(url, depth, base) -> 'dir'|'skip'|'deep'
+    """
+    def default_guide(url, depth, base):
+        return 'dir'
+
+    if guide is None:
+        guide = default_guide
+
     work_q = asyncio.Queue()
     n_active = 0
 
     async def step(idx):
         nonlocal n_active
 
-        url = await work_q.get()
-        if url is EOS_MARKER:
+        x = await work_q.get()
+        if x is EOS_MARKER:
             return EOS_MARKER
 
-        n_active += 1
-        _dirs, _files = await s3_dir(url, s3=s3)
+        url, depth, action = x
+        depth = depth + 1
 
-        for d in _dirs:
-            work_q.put_nowait(d)
+        n_active += 1
+
+        _files = []
+        if action == 'dir':
+            _dirs, _files = await s3_dir(url, s3=s3)
+
+            for d in _dirs:
+                action = guide(d, depth=depth, base=url)
+
+                if action != 'skip':
+                    if action not in ('dir', 'deep'):
+                        raise ValueError('Expect skip|dir|deep got: %s' % action)
+
+                    work_q.put_nowait((d, depth, action))
+
+        elif action == 'deep':
+            _files = await s3_find(url, s3=s3)
+        else:
+            raise RuntimeError('Expected action to be one of deep|dir but found %s' % action)
 
         n_active -= 1
 
-        # If we found no more directories to descend into
-        # and work queue was already empty
+        # Work queue was already empty and we didn't add any more to traverse
         # and no out-standing work is running
-        if len(_dirs) == 0 and work_q.empty() and n_active == 0:
+        if work_q.empty() and n_active == 0:
             # Tell all workers in the swarm to stop
             for _ in range(nconcurrent):
                 work_q.put_nowait(EOS_MARKER)
 
         return _files
 
-    work_q.put_nowait(url)
+    work_q.put_nowait((url, 0, 'dir'))
 
     return step
 
@@ -230,12 +256,12 @@ class S3Fetcher(object):
 
         return self._pool.run_one(action, url)
 
-    def walk(self, url, nconcurrent=None, q_size=1000):
+    def walk(self, url, nconcurrent=None, guide=None, q_size=1000):
         from ..io.async import gen2q_async, aq2sq_pump
 
         async def action(url, nconcurrent, outq):
             q_async = asyncio.Queue(q_size)
-            step = await s3_walker(url, nconcurrent, s3=self._tls.s3)
+            step = await s3_walker(url, nconcurrent, guide=guide, s3=self._tls.s3)
             swarm = asyncio.ensure_future(gen2q_async(step, q_async, nconcurrent))
             pump = asyncio.ensure_future(aq2sq_pump(q_async, outq))
             await asyncio.gather(swarm, pump)
