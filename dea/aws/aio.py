@@ -1,8 +1,11 @@
 import aiobotocore
 import threading
+import asyncio
+import queue
 from types import SimpleNamespace
 
 from . import auto_find_region, s3_url_parse, s3_fmt_range
+from ..io.async import EOS_MARKER
 
 
 async def s3_fetch_object(url, s3, range=None):
@@ -125,6 +128,40 @@ async def s3_dir(url, s3):
     return _dirs, _files
 
 
+async def s3_walker(url, nconcurrent, s3):
+    work_q = asyncio.Queue()
+    n_active = 0
+
+    async def step(idx):
+        nonlocal n_active
+
+        url = await work_q.get()
+        if url is EOS_MARKER:
+            return EOS_MARKER
+
+        n_active += 1
+        _dirs, _files = await s3_dir(url, s3=s3)
+
+        for d in _dirs:
+            work_q.put_nowait(d)
+
+        n_active -= 1
+
+        # If we found no more directories to descend into
+        # and work queue was already empty
+        # and no out-standing work is running
+        if len(_dirs) == 0 and work_q.empty() and n_active == 0:
+            # Tell all workers in the swarm to stop
+            for _ in range(nconcurrent):
+                work_q.put_nowait(EOS_MARKER)
+
+        return _files
+
+    work_q.put_nowait(url)
+
+    return step
+
+
 class S3Fetcher(object):
     def __init__(self,
                  nconcurrent=24,
@@ -141,6 +178,7 @@ class S3Fetcher(object):
         s3_cfg = AioConfig(max_pool_connections=nconcurrent,
                            s3=dict(addressing_style=addressing_style))
 
+        self._nconcurrent = nconcurrent
         self._pool = AsyncWorkerPool(nthreads=nthreads,
                                      tasks_per_thread=nconcurrent,
                                      max_buffer=max_buffer)
@@ -191,6 +229,31 @@ class S3Fetcher(object):
             return await s3_find(url, s3=self._tls.s3, pred=pred, glob=glob)
 
         return self._pool.run_one(action, url)
+
+    def walk(self, url, nconcurrent=None, q_size=1000):
+        from ..io.async import gen2q_async, aq2sq_pump
+
+        async def action(url, nconcurrent, outq):
+            q_async = asyncio.Queue(q_size)
+            step = await s3_walker(url, nconcurrent, s3=self._tls.s3)
+            swarm = asyncio.ensure_future(gen2q_async(step, q_async, nconcurrent))
+            pump = asyncio.ensure_future(aq2sq_pump(q_async, outq))
+            await asyncio.gather(swarm, pump)
+
+        if nconcurrent is None:
+            nconcurrent = self._nconcurrent
+
+        results = queue.Queue(q_size)
+        fut = self._pool.submit(action, url, nconcurrent, results)
+
+        while True:
+            bunch = results.get()
+            if bunch is EOS_MARKER:
+                break
+            for f in bunch:
+                yield f
+
+        fut.result()
 
     def __call__(self, urls):
         """Fetch a bunch of s3 urls concurrently.
