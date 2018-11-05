@@ -61,15 +61,7 @@ def _s3_file_info(f, bucket):
                            etag=f.get('ETag'))
 
 
-async def s3_find(url, s3, pred=None, glob=None):
-    """ List all objects under certain path
-
-        each s3 object is represented by a SimpleNamespace with attributes:
-        - url
-        - size
-        - last_modified
-        - etag
-    """
+def _norm_predicate(pred=None, glob=None):
     from fnmatch import fnmatch
 
     def glob_predicate(glob, pred):
@@ -79,7 +71,21 @@ async def s3_find(url, s3, pred=None, glob=None):
             return lambda f: fnmatch(f.url, glob) and pred(f)
 
     if glob is not None:
-        pred = glob_predicate(glob, pred)
+        return glob_predicate(glob, pred)
+
+    return pred
+
+
+async def s3_find(url, s3, pred=None, glob=None):
+    """ List all objects under certain path
+
+        each s3 object is represented by a SimpleNamespace with attributes:
+        - url
+        - size
+        - last_modified
+        - etag
+    """
+    pred = _norm_predicate(pred=pred, glob=glob)
 
     bucket, prefix = s3_url_parse(url)
 
@@ -98,8 +104,11 @@ async def s3_find(url, s3, pred=None, glob=None):
     return _files
 
 
-async def s3_dir(url, s3):
+async def s3_dir(url, s3, pred=None, glob=None):
     """ List s3 "directory" without descending into sub directories.
+
+        pred: predicate for file objects file_info -> True|False
+        glob: glob pattern for files only
 
         Returns: (dirs, files)
 
@@ -109,6 +118,7 @@ async def s3_dir(url, s3):
           files -- list of objects with attributes: url, size, last_modified, etag
     """
     bucket, prefix = s3_url_parse(url)
+    pred = _norm_predicate(pred=pred, glob=glob)
 
     if not prefix.endswith('/'):
         prefix = prefix + '/'
@@ -123,12 +133,17 @@ async def s3_dir(url, s3):
             d = d.get('Prefix')
             _dirs.append('s3://{}/{}'.format(bucket, d))
         for f in o.get('Contents', []):
-            _files.append(_s3_file_info(f, bucket))
+            f = _s3_file_info(f, bucket)
+            if pred is None or pred(f):
+                _files.append(f)
 
     return _dirs, _files
 
 
-async def s3_walker(url, nconcurrent, s3, guide=None):
+async def s3_walker(url, nconcurrent, s3,
+                    guide=None,
+                    pred=None,
+                    glob=None):
     """
 
     guide(url, depth, base) -> 'dir'|'skip'|'deep'
@@ -156,7 +171,7 @@ async def s3_walker(url, nconcurrent, s3, guide=None):
 
         _files = []
         if action == 'dir':
-            _dirs, _files = await s3_dir(url, s3=s3)
+            _dirs, _files = await s3_dir(url, s3=s3, pred=pred, glob=glob)
 
             for d in _dirs:
                 action = guide(d, depth=depth, base=url)
@@ -168,7 +183,7 @@ async def s3_walker(url, nconcurrent, s3, guide=None):
                     work_q.put_nowait((d, depth, action))
 
         elif action == 'deep':
-            _files = await s3_find(url, s3=s3)
+            _files = await s3_find(url, s3=s3, pred=pred, glob=glob)
         else:
             raise RuntimeError('Expected action to be one of deep|dir but found %s' % action)
 
@@ -256,12 +271,20 @@ class S3Fetcher(object):
 
         return self._pool.run_one(action, url)
 
-    def walk(self, url, nconcurrent=None, guide=None, q_size=1000):
+    def walk(self, url, nconcurrent=None,
+             guide=None,
+             pred=None,
+             glob=None,
+             q_size=1000):
         from ..io.async import gen2q_async, aq2sq_pump
 
         async def action(url, nconcurrent, outq):
             q_async = asyncio.Queue(q_size)
-            step = await s3_walker(url, nconcurrent, guide=guide, s3=self._tls.s3)
+            step = await s3_walker(url, nconcurrent,
+                                   guide=guide,
+                                   pred=pred,
+                                   glob=glob,
+                                   s3=self._tls.s3)
             swarm = asyncio.ensure_future(gen2q_async(step, q_async, nconcurrent))
             pump = asyncio.ensure_future(aq2sq_pump(q_async, outq))
             await asyncio.gather(swarm, pump)
