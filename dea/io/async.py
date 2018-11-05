@@ -72,6 +72,85 @@ async def async_q2q_map(func, q_in, q_out,
         q_in.task_done()
 
 
+async def gen2q_async(func,
+                      q_out,
+                      nconcurrent,
+                      eos_marker=EOS_MARKER,
+                      eos_passthrough=True,
+                      loop=None):
+    """ Run upto `nconcurrent` generator functions, pump values from generator function into `q_out`
+        To indicate that no more data is available func should return special value `eos_marker`
+
+          [func(0)] \
+          [func(1)]  >--> q_out
+          [func(2)] /
+
+        - func is expected not to raise exceptions
+    """
+
+    async def worker(idx):
+        n = 0
+        while True:
+            try:
+                x = await func(idx)
+            except Exception as e:
+                log.error("Uncaught exception: %s", str(e))
+                return n
+
+            if x is eos_marker:
+                return n
+            n += 1
+            await q_out.put(x)
+        return n
+
+    ff = [asyncio.ensure_future(worker(i), loop=loop)
+          for i in range(nconcurrent)]
+
+    n_total = 0
+    for f in ff:
+        n_total += (await f)
+
+    if eos_passthrough:
+        await q_out.put(eos_marker)
+
+    return n_total
+
+
+async def aq2sq_pump(src, dst,
+                     eos_marker=EOS_MARKER,
+                     eos_passthrough=True,
+                     dt=0.01):
+    """ Pump from async Queue to synchronous queue.
+
+        dt -- how much to sleep when dst is full
+    """
+
+    def safe_put(x, dst):
+        try:
+            dst.put_nowait(x)
+        except queue.Full:
+            return False
+
+        return True
+
+    async def push_to_dst(x, dst, dt):
+        while not safe_put(x, dst):
+            await asyncio.sleep(dt)
+
+    while True:
+        x = await src.get()
+
+        if x is eos_marker:
+            if eos_passthrough:
+                await push_to_dst(x, dst, dt)
+
+            src.task_done()
+            break
+
+        await push_to_dst(x, dst, dt)
+        src.task_done()
+
+
 async def q2q_nmap(func,
                    q_in,
                    q_out,
@@ -221,12 +300,15 @@ class AsyncWorkerPool(object):
 
         return pool_broadcast(self._pool, action)
 
-    def run_one(self, func, *args, **kwargs):
+    def submit(self, func, *args, **kwargs):
         def action():
             loop = self._tls.loop
             return loop.run_until_complete(func(*args, **kwargs))
 
-        return self._pool.submit(action).result()
+        return self._pool.submit(action)
+
+    def run_one(self, func, *args, **kwargs):
+        return self.submit(func, *args, **kwargs).result()
 
     def running(self):
         return self._map_state is not None
@@ -471,3 +553,46 @@ def test_async_work_pool():
     xx = list(pool.map(proc2, range(100)))
     assert len(xx) == 100
     assert expect == set(xx)
+
+
+def test_gen2q():
+
+    async def gen_func(idx, state):
+        if state.count >= state.max_count:
+            return EOS_MARKER
+
+        cc = state.count
+        state.count += 1
+
+        await asyncio.sleep(state.dt)
+        return cc
+
+    async def sink(q):
+        xx = []
+        while True:
+            x = await q.get()
+            if x is EOS_MARKER:
+                return xx
+            xx.append(x)
+        return xx
+
+    async def run_async(nconcurrent, max_count=100, dt=0.1):
+        state = SimpleNamespace(count=0,
+                                max_count=max_count,
+                                dt=dt)
+        gen = lambda idx: gen_func(idx, state)
+
+        q = asyncio.Queue(maxsize=10)
+        g2q = asyncio.ensure_future(gen2q_async(gen, q, nconcurrent))
+        xx = await sink(q)
+        return g2q.result(), xx
+
+    loop = asyncio.new_event_loop()
+
+    def run(*args, **kwargs):
+        return loop.run_until_complete(run_async(*args, **kwargs))
+
+    n, xx = run(10, max_count=100, dt=0.1)
+    assert len(xx) == n
+    assert len(xx) == 100
+    assert set(xx) == set(range(100))
