@@ -76,7 +76,7 @@ def _norm_predicate(pred=None, glob=None):
     return pred
 
 
-async def s3_find(url, s3, pred=None, glob=None):
+async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None):
     """ List all objects under certain path
 
         each s3 object is represented by a SimpleNamespace with attributes:
@@ -93,13 +93,35 @@ async def s3_find(url, s3, pred=None, glob=None):
         prefix = prefix + '/'
 
     pp = s3.get_paginator('list_objects_v2')
-    _files = []
+
+    n_total, n = 0, 0
 
     async for o in pp.paginate(Bucket=bucket, Prefix=prefix):
         for f in o.get('Contents', []):
+            n_total += 1
             f = _s3_file_info(f, bucket)
             if pred is None or pred(f):
-                _files.append(f)
+                n += 1
+                cbk(f)
+
+    return n_total, n
+
+
+async def s3_find(url, s3, pred=None, glob=None):
+    """ List all objects under certain path
+
+        each s3 object is represented by a SimpleNamespace with attributes:
+        - url
+        - size
+        - last_modified
+        - etag
+    """
+    _files = []
+
+    def on_file(f):
+        _files.append(f)
+
+    await _s3_find_via_cbk(url, on_file, s3=s3, pred=pred, glob=glob)
 
     return _files
 
@@ -270,6 +292,17 @@ class S3Fetcher(object):
             return await s3_find(url, s3=self._tls.s3, pred=pred, glob=glob)
 
         return self._pool.run_one(action, url)
+
+    def find2(self, urls, pred=None, glob=None):
+        if glob is None and isinstance(pred, str):
+            pred, glob = None, pred
+
+        async def action(url):
+            return await s3_find(url, s3=self._tls.s3, pred=pred, glob=glob)
+
+        for ff in self._pool.map(action, urls):
+            for f in ff:
+                yield f
 
     def walk(self, url, nconcurrent=None,
              guide=None,
