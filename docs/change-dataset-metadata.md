@@ -108,6 +108,46 @@ paths to image files, nothing else). Same with valid data region, if it is
 supplied by prepare script copy it out, if not supplied, having it stored
 separately will allow us to compute it if requested.
 
+## Metadata format
+
+Basic idea is to supply CRS, shape and transform fields per band, to avoid
+duplication allow a default set with per band overrides as necessary. Below is
+an example for Lansat 8 scene. The "default set" should always be present, so
+following keys are compulsory: `extent.crs`, `extent.shape` and
+`extent.transform`.
+
+```yaml
+extent:
+  # time could be a single timestamp or a range: [t_start, t_end]
+  time: "2018-09-23T00:40:47.7523390Z"
+
+  # Defines default Pixel Grid for most bands
+  #  crs: prefer EPSG when possible, but can be WKT
+  #  shape: Height, Width  (same as rasterio/ndarray)
+  #  transform: same as transform in `rio info`,
+  #             9 values: row major representation of an Affine matrix (3x3)
+  #             mapping from pixel plane to a plane defined by CRS
+  #             last three values 0,0,1
+  crs: "EPSG:32654"
+  shape: [7731, 7621]
+  transform: [30.0, 0.0, 306285.0, 0.0, -30.0, -1802085.0, 0, 0, 1]
+
+  # Optional GeoJSON object defining valid region of the dataset in the plane
+  # defined by CRS.
+  # 
+  # Valid region partitions space into two:
+  #   Outside -- has no valid data at all
+  #   Inside  -- has all the valid data, but can have some invalid data
+  valid_region: {..GeoJSON..}
+
+  # Here you can overwrite bands that are special, for those datasets that have
+  # multiple resolutions, or pixel grids that don't align across bands.
+  bands:
+    panchromatic:
+      shape: [15461, 15241]
+      transform: [15, 0, 306292.5, 0, -15, -1802092.5, 0, 0, 1]
+```
+
 
 # Links
 
