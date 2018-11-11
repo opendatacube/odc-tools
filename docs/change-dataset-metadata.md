@@ -134,7 +134,7 @@ extent:
 
   # Optional GeoJSON object defining valid region of the dataset in the plane
   # defined by CRS.
-  # 
+  #
   # Valid region partitions space into two:
   #   Outside -- has no valid data at all
   #   Inside  -- has all the valid data, but can have some invalid data
@@ -146,7 +146,25 @@ extent:
     panchromatic:
       shape: [15461, 15241]
       transform: [15, 0, 306292.5, 0, -15, -1802092.5, 0, 0, 1]
+
+  # :ALTERNATIVE:
+  # Rather than overriding per band, group bands into compatible grids any band
+  # that does not appear in "alternative" grids will be part of default grid
+  # defined up top
+  grids:
+    pan: # name is for humans
+      shape: [15461, 15241]
+      transform: [15, 0, 306292.5, 0, -15, -1802092.5, 0, 0, 1]
+      bands: ["panchromatic"]
+    ir:
+      shape: [3865, 3810]
+      transform: [60.0, 0.0, 306285.0, 0.0, -60.0, -1802085.0, 0, 0, 1]
+      bands: ["nir1", "nir2"]
 ```
+
+Personally I lean towards using second syntax, i.e. grouping datasets into
+common grids, as this reduces duplication and communicates relations between
+different bands better, while still allowing grid per band.
 
 
 # Links
