@@ -166,6 +166,69 @@ Personally I lean towards using second syntax, i.e. grouping datasets into
 common grids, as this reduces duplication and communicates relations between
 different bands better, while still allowing grid per band.
 
+## DB Changes
+
+I propose we add a new table that will contain derived GIS data and a subset of
+metadata information necessary for data loading (i.e. `image.bands` subtree)
+
+|uuid  |archived|product|time             |lat           |lon           |payload|
+|------|--------|-------|-----------------|--------------|--------------|-------|
+|`uuid`|`bool`  |`int2` |`range<datetime>`|`range<float>`|`range<float>`|`jsonb`|
+
+Here `payload` column will contain:
+
+- normalised version of `.extent.*` sub-tree of the original metadata (this might be computed from files directly) 
+   - information about pixel grids
+   - valid data region if defined
+
+- `.image.bands.*` sub-tree (possibly normalised/pruned)
+   - All data we need to load pixels
+
+The advantage of adding new table instead of new columns is that original table
+has costly rows, since it contains json blob, which is user supplied and can be
+arbitrary large. Moving all the information we need to load pixels into a
+separate table should reduce cost of queries, fewer bytes to read while scanning
+DB, and fewer bytes to transmit to client.
+
+### Implementation Concerns
+
+We need to support old-style db with new code and possibly new style db with old
+code. Going to completely new table, rather than new column, should make "old
+code"+"new db" use case easier.
+
+On the code side I'm leaning towards implementing a new DB driver, even if this
+means basically duplicating the majority of the current Postgres driver code.
+Advantage of this approach is that supporting "old db"+"new code" is simplified.
+The risk is that our db driver abstraction isn't verified, i.e. we might find
+assumptions in the abstraction that prevent implementations of the new drivers,
+resulting in large amount of refactoring work.
+
+# Migration Concerns
+
+## Prepare Scripts
+
+Various prepare scripts will need to be updated to generate new style metadata.
+Major risk here is that obtaining pixel grid information might require going to
+individual files, making prepare step much costlier. I have looked at the
+Landsat 8 data on AWS, and I'm pretty sure that there is enough data in the MTL
+document to re-compute `transform` without fetching data from tiff images. This
+should also be possible for Sentinel imagery, although I didn't look too closely.
+
+## DB upgrade utils
+
+Need to develop tools that can take existing installation and migrate to the new
+setup, either in place or by creating new database. Generating new metadata from
+existing data is relatively straightforward, however there is an issue of
+updating metadata outside of database, i.e. yamls and netcdf. Metadata embedded
+in netcdfs is particularly challenging.
+
+## Transition on NCI
+
+Main concern is how to support 4 permutations of old/new db/code. Compounding
+this challenge is the collection upgrade, which adds another axis to the mix.
+Limiting new collection to be new db/code should help with that, but might not
+be possible due to scheduling/resourcing.
+
 
 # Links
 
