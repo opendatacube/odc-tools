@@ -2,16 +2,119 @@
 """
 import asyncio
 import queue
-import itertools
 import logging
 import threading
 from types import SimpleNamespace
 from concurrent.futures import ThreadPoolExecutor
-from ..ppr import pool_broadcast
 
 
 EOS_MARKER = object()
 log = logging.getLogger(__name__)
+
+
+class AsyncThread(object):
+    @staticmethod
+    def _worker(loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+        loop.close()
+
+    def __init__(self):
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=AsyncThread._worker, args=(self._loop,))
+        self._thread.start()
+
+    def terminate(self):
+        def _stop(loop):
+            loop.stop()
+
+        if self._loop is None:
+            return
+
+        self.call_soon(_stop, self._loop)
+        self._thread.join()
+        self._loop, self._thread = None, None
+
+    def __del__(self):
+        self.terminate()
+
+    def submit(self, func, *args, **kwargs):
+        """ Run async func with args/kwargs in separate thread, returns Future object.
+        """
+        return asyncio.run_coroutine_threadsafe(func(*args, **kwargs), self._loop)
+
+    def call_soon(self, func, *args):
+        """ Call normal (non-async) function with arguments in the processing thread
+            it's just a wrapper over `loop.call_soon_threadsafe()`
+
+            Returns a handle with `.cancel`, not a full on Future
+        """
+        return self._loop.call_soon_threadsafe(func, *args)
+
+    @property
+    def loop(self):
+        return self._loop
+
+
+def future_results(it, max_active):
+    """Given a generator of future objects return a generator of result tuples.
+
+        Result Tuple contains:
+         (fut.result(), None) -- if future succeeded
+         (None, fut.exception()) -- if future failed
+
+
+        This is roughly equivalent to:
+
+            ((f.result(), f.exception()) for f in it)
+
+        except that there are upto max_active futures that are active at any given
+        time, and also order of result is "as completed". So it's like
+        concurrent.futures.as_completed, but with upper bound on the number of
+        active futures rather than a timeout.
+    """
+    import concurrent.futures as fut
+
+    def result(f):
+        err = f.exception()
+        if err is not None:
+            return (None, err)
+        else:
+            return (f.result(), None)
+
+    def fill(src, n, dst):
+        while n > 0:
+            try:
+                x = next(src)
+            except StopIteration:
+                return False
+
+            dst.add(x)
+            n -= 1
+        return True
+
+    max_fill = 10
+    active = set()
+    have_more = True
+
+    while have_more:
+        need_n = min(max_fill, max_active - len(active))
+        have_more = fill(it, need_n, active)
+
+        # blocking wait if active count is reached
+        timeout = None if len(active) >= max_active else 0.01
+
+        xx = fut.wait(active, timeout=timeout, return_when='FIRST_COMPLETED')
+        active = xx.not_done
+
+        for f in xx.done:
+            yield result(f)
+            if have_more:
+                have_more = fill(it, 1, active)
+
+    # all futures were issued: do the flush now
+    for f in fut.as_completed(active):
+        yield result(f)
 
 
 async def async_q2q_map(func, q_in, q_out,
@@ -249,173 +352,6 @@ async def q2q_nmap(func,
         await push_to_dst(eos_marker, q_out, dt)
 
 
-class AsyncWorkerPool(object):
-    """NxM worker pool, maintains N threads running M concurrent async tasks
-    each. Provides synchronous access via iterators.
-    """
-
-    def __init__(self,
-                 nthreads=1,
-                 tasks_per_thread=1,
-                 max_buffer=None):
-        if max_buffer is None:
-            max_buffer = min(100, nthreads*tasks_per_thread*2)
-
-        self._pool = ThreadPoolExecutor(nthreads)
-        self._nthreads = nthreads
-        self._default_tasks_per_thread = tasks_per_thread
-        self._q1 = queue.Queue(max_buffer)
-        self._q2 = queue.Queue(max_buffer)
-        self._tls = threading.local()
-        self._map_state = None
-
-        def bootstrap(tls):
-            tls.loop = asyncio.new_event_loop()
-
-        pool_broadcast(self._pool, bootstrap, self._tls)
-
-    @staticmethod
-    def _run_worker_thread(func, src, dst, tls, nconcurrent, state):
-        loop = tls.loop
-
-        q2q_task = q2q_nmap(func, src, dst,
-                            nconcurrent,
-                            eos_passthrough=False,
-                            loop=loop)
-
-        loop.run_until_complete(q2q_task)
-
-        with state.lock:
-            assert state.count > 0
-            state.count -= 1
-
-            if state.count == 0:
-                dst.put(EOS_MARKER)
-
-    def broadcast(self, func, *args, **kwargs):
-        def action():
-            loop = self._tls.loop
-            xx = loop.run_until_complete(func(*args, **kwargs))
-            return xx
-
-        return pool_broadcast(self._pool, action)
-
-    def submit(self, func, *args, **kwargs):
-        def action():
-            loop = self._tls.loop
-            return loop.run_until_complete(func(*args, **kwargs))
-
-        return self._pool.submit(action)
-
-    def run_one(self, func, *args, **kwargs):
-        return self.submit(func, *args, **kwargs).result()
-
-    def running(self):
-        return self._map_state is not None
-
-    def unravel(self):
-        _state = self._map_state
-        if _state:
-            _state.unravel()
-
-    def map(self, func, its, nconcurrent=None, **kwargs):
-        from time import sleep
-        from threading import Lock
-
-        if self._map_state is not None:
-            raise RuntimeError("map is not re-entrant")
-
-        dt = 0.01
-
-        proc = func if len(kwargs) == 0 else (lambda x: func(x, **kwargs))
-
-        if nconcurrent is None:
-            nconcurrent = self._default_tasks_per_thread
-
-        shared_state = SimpleNamespace(lock=Lock(),
-                                       count=self._nthreads)
-        feedq = self._q1
-        outq = self._q2
-
-        workers = [self._pool.submit(self._run_worker_thread,
-                                     proc,
-                                     feedq, outq,
-                                     tls=self._tls,
-                                     nconcurrent=nconcurrent,
-                                     state=shared_state)
-                   for _ in range(self._nthreads)]
-
-        def unravel():
-            # flush input queue
-            while True:
-                try:
-                    feedq.get_nowait()
-                except queue.Empty:
-                    break
-
-            # send EOS
-            for _ in range(self._nthreads):
-                feedq.put(EOS_MARKER)
-
-            # flush output queue
-            while True:
-                x = outq.get()
-                if x is EOS_MARKER:
-                    break
-
-            self._map_state = None
-
-        self._map_state = SimpleNamespace(unravel=unravel)
-        # max_tasks_at_once = len(workers)*nconcurrent
-
-        # append EOS_MARKER for every worker thread
-        its = itertools.chain(its, [EOS_MARKER]*len(workers))
-        nin = 0
-        nout = 0
-
-        out_flushed = False
-
-        def _out(x):
-            nonlocal out_flushed
-            nonlocal nout
-
-            if x is EOS_MARKER:
-                out_flushed = True
-            else:
-                nout += 1
-                yield x
-
-        for x in its:
-            assert out_flushed is False
-
-            while feedq.full():
-                n = 0
-                while feedq.full() and not out_flushed and not outq.empty():
-                    n += 1
-                    yield from _out(outq.get_nowait())
-
-                if feedq.full() and n == 0:
-                    sleep(dt)  # Avoid busy loop, feedq is full, but outq was empty
-
-            feedq.put_nowait(x)
-            nin += 1
-
-            # flush upto 10 results for every input, so that we can catch up,
-            # but at the same time don't neglect input side either. We can
-            # probably be smarter and monitor tasks in flight using nin/nout
-            # and decide based on that.
-            for _ in range(10):
-                if outq.empty():
-                    break
-
-                yield from _out(outq.get_nowait())
-
-        # We are done with input, need to flush output queue now.
-        while not out_flushed:
-            yield from _out(outq.get())
-
-        self._map_state = None
-
 ################################################################################
 # tests below
 ################################################################################
@@ -532,27 +468,6 @@ def test_q2qnmap():
     assert len(xx) == N + 1
     assert 1 < st.max_active <= 4
     assert set(xx) == expect
-
-
-def test_async_work_pool():
-    async def proc(x, delay):
-        await asyncio.sleep(delay)
-        return (x, x)
-
-    proc2 = lambda x: proc(x, delay=0.01)
-
-    expect = set((x, x) for x in range(100))
-
-    pool = AsyncWorkerPool(2, 10, max_buffer=30)
-
-    xx = list(pool.map(proc, range(100), delay=0.1))
-
-    assert len(xx) == 100
-    assert expect == set(xx)
-
-    xx = list(pool.map(proc2, range(100)))
-    assert len(xx) == 100
-    assert expect == set(xx)
 
 
 def test_gen2q():

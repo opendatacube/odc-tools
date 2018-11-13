@@ -1,7 +1,5 @@
 import aiobotocore
-import threading
 import asyncio
-import queue
 from types import SimpleNamespace
 
 from . import auto_find_region, s3_url_parse, s3_fmt_range
@@ -228,11 +226,10 @@ async def s3_walker(url, nconcurrent, s3,
 class S3Fetcher(object):
     def __init__(self,
                  nconcurrent=24,
-                 nthreads=1,
                  region_name=None,
                  max_buffer=1000,
                  addressing_style='path'):
-        from ..io.async import AsyncWorkerPool
+        from ..io.async import AsyncThread
         from aiobotocore.config import AioConfig
 
         if region_name is None:
@@ -242,100 +239,64 @@ class S3Fetcher(object):
                            s3=dict(addressing_style=addressing_style))
 
         self._nconcurrent = nconcurrent
-        self._pool = AsyncWorkerPool(nthreads=nthreads,
-                                     tasks_per_thread=nconcurrent,
-                                     max_buffer=max_buffer)
-        self._tls = threading.local()
+        self._async = AsyncThread()
+        self._s3 = None
+        self._session = None
         self._closed = False
 
-        async def setup(tls):
-            tls.session = aiobotocore.get_session()
-            tls.s3 = tls.session.create_client('s3',
-                                               region_name=region_name,
-                                               config=s3_cfg)
-            return (tls.session, tls.s3)
+        async def setup():
+            session = aiobotocore.get_session()
+            s3 = session.create_client('s3',
+                                       region_name=region_name,
+                                       config=s3_cfg)
+            return (session, s3)
 
-        self._threads_state = self._pool.broadcast(setup, self._tls)
+        session, s3 = self._async.submit(setup).result()
+        self._session = session
+        self._s3 = s3
 
     def close(self):
-        async def _close(tls):
-            await tls.s3.close()
+        async def _close():
+            await self._s3.close()
 
         if not self._closed:
-            if self._pool.running():
-                self._pool.unravel()
-
-            self._pool.broadcast(_close, self._tls)
+            self._async.submit(_close).result()
+            self._async.terminate()
             self._closed = True
 
     def __del__(self):
         self.close()
 
-    def _worker(self, url):
-        if isinstance(url, tuple):
-            url, range = url
-        else:
-            range = None
-
-        return s3_fetch_object(url, s3=self._tls.s3, range=range)
-
     def list_dir(self, url):
+        """ Returns a future object
+        """
         async def action(url):
-            return await s3_dir(url, s3=self._tls.s3)
-        return self._pool.run_one(action, url)
+            return await s3_dir(url, s3=self._s3)
+        return self._async.submit(action, url)
 
     def find(self, url, pred=None, glob=None):
+        """ List all objects under certain path
+
+        Returns a future object that resolves to a list of s3 object metadata
+
+        each s3 object is represented by a SimpleNamespace with attributes:
+        - url
+        - size
+        - last_modified
+        - etag
+        """
         if glob is None and isinstance(pred, str):
             pred, glob = None, pred
 
         async def action(url):
-            return await s3_find(url, s3=self._tls.s3, pred=pred, glob=glob)
+            return await s3_find(url, s3=self._s3, pred=pred, glob=glob)
 
-        return self._pool.run_one(action, url)
+        return self._async.submit(action, url)
 
-    def find2(self, urls, pred=None, glob=None):
-        if glob is None and isinstance(pred, str):
-            pred, glob = None, pred
-
-        async def action(url):
-            return await s3_find(url, s3=self._tls.s3, pred=pred, glob=glob)
-
-        for ff in self._pool.map(action, urls):
-            for f in ff:
-                yield f
-
-    def walk(self, url, nconcurrent=None,
-             guide=None,
-             pred=None,
-             glob=None,
-             q_size=1000):
-        from ..io.async import gen2q_async, aq2sq_pump
-
-        async def action(url, nconcurrent, outq):
-            q_async = asyncio.Queue(q_size)
-            step = await s3_walker(url, nconcurrent,
-                                   guide=guide,
-                                   pred=pred,
-                                   glob=glob,
-                                   s3=self._tls.s3)
-            swarm = asyncio.ensure_future(gen2q_async(step, q_async, nconcurrent))
-            pump = asyncio.ensure_future(aq2sq_pump(q_async, outq))
-            await asyncio.gather(swarm, pump)
-
-        if nconcurrent is None:
-            nconcurrent = self._nconcurrent
-
-        results = queue.Queue(q_size)
-        fut = self._pool.submit(action, url, nconcurrent, results)
-
-        while True:
-            bunch = results.get()
-            if bunch is EOS_MARKER:
-                break
-            for f in bunch:
-                yield f
-
-        fut.result()
+    def fetch(self, url, range=None):
+        """ Returns a future object
+        """
+        return self._async.submit(s3_fetch_object, url, s3=self._s3, range=range)
 
     def __call__(self, urls):
         """Fetch a bunch of s3 urls concurrently.
@@ -360,4 +321,19 @@ class S3Fetcher(object):
           .error = str| botocore.Exception class
 
         """
-        return self._pool.map(self._worker, urls)
+        from ..io.async import future_results
+
+        def generate_requests(urls):
+            for url in urls:
+                if isinstance(url, tuple):
+                    url, range = url
+                else:
+                    range = None
+
+                yield self._async.submit(s3_fetch_object, url, s3=self._s3, range=range)
+
+        for rr, ee in future_results(generate_requests(urls), self._nconcurrent):
+            if ee is not None:
+                assert(not "s3_fetch_object should not raise exceptions, but did")
+            else:
+                yield rr
