@@ -77,8 +77,7 @@ def cli(n, verbose, gzip, xz, outfile):
         if verbose:
             print(' {}'.format(str(fps)), file=stderr)
 
-    fetcher = S3Fetcher(nconcurrent=nconnections,
-                        max_buffer=10_000)
+    fetcher = S3Fetcher(nconcurrent=nconnections)
     is_pipe = outfile == '-'
     tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe))
     if is_pipe:

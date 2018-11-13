@@ -227,7 +227,6 @@ class S3Fetcher(object):
     def __init__(self,
                  nconcurrent=24,
                  region_name=None,
-                 max_buffer=1000,
                  addressing_style='path'):
         from ..io.async import AsyncThread
         from aiobotocore.config import AioConfig
@@ -244,23 +243,23 @@ class S3Fetcher(object):
         self._session = None
         self._closed = False
 
-        async def setup():
+        async def setup(s3_cfg):
             session = aiobotocore.get_session()
             s3 = session.create_client('s3',
                                        region_name=region_name,
                                        config=s3_cfg)
             return (session, s3)
 
-        session, s3 = self._async.submit(setup).result()
+        session, s3 = self._async.submit(setup, s3_cfg).result()
         self._session = session
         self._s3 = s3
 
     def close(self):
-        async def _close():
-            await self._s3.close()
+        async def _close(s3):
+            await s3.close()
 
         if not self._closed:
-            self._async.submit(_close).result()
+            self._async.submit(_close, self._s3).result()
             self._async.terminate()
             self._closed = True
 
@@ -270,9 +269,9 @@ class S3Fetcher(object):
     def list_dir(self, url):
         """ Returns a future object
         """
-        async def action(url):
-            return await s3_dir(url, s3=self._s3)
-        return self._async.submit(action, url)
+        async def action(url, s3):
+            return await s3_dir(url, s3=s3)
+        return self._async.submit(action, url, self._s3)
 
     def find(self, url, pred=None, glob=None):
         """ List all objects under certain path
@@ -288,10 +287,10 @@ class S3Fetcher(object):
         if glob is None and isinstance(pred, str):
             pred, glob = None, pred
 
-        async def action(url):
-            return await s3_find(url, s3=self._s3, pred=pred, glob=glob)
+        async def action(url, s3):
+            return await s3_find(url, s3=s3, pred=pred, glob=glob)
 
-        return self._async.submit(action, url)
+        return self._async.submit(action, url, self._s3)
 
     def fetch(self, url, range=None):
         """ Returns a future object
@@ -323,16 +322,16 @@ class S3Fetcher(object):
         """
         from ..io.async import future_results
 
-        def generate_requests(urls):
+        def generate_requests(urls, s3):
             for url in urls:
                 if isinstance(url, tuple):
                     url, range = url
                 else:
                     range = None
 
-                yield self._async.submit(s3_fetch_object, url, s3=self._s3, range=range)
+                yield self._async.submit(s3_fetch_object, url, s3=s3, range=range)
 
-        for rr, ee in future_results(generate_requests(urls), self._nconcurrent):
+        for rr, ee in future_results(generate_requests(urls, self._s3), self._nconcurrent*2):
             if ee is not None:
                 assert(not "s3_fetch_object should not raise exceptions, but did")
             else:
