@@ -97,24 +97,28 @@ def future_results(it, max_active):
     active = set()
     have_more = True
 
-    while have_more:
-        need_n = min(max_fill, max_active - len(active))
-        have_more = fill(it, need_n, active)
+    try:
+        while have_more:
+            need_n = min(max_fill, max_active - len(active))
+            have_more = fill(it, need_n, active)
 
-        # blocking wait if active count is reached
-        timeout = None if len(active) >= max_active else 0.01
+            # blocking wait if active count is reached
+            timeout = None if len(active) >= max_active else 0.01
 
-        xx = fut.wait(active, timeout=timeout, return_when='FIRST_COMPLETED')
-        active = xx.not_done
+            xx = fut.wait(active, timeout=timeout, return_when='FIRST_COMPLETED')
+            active = xx.not_done
 
-        for f in xx.done:
+            for f in xx.done:
+                yield result(f)
+                if have_more:
+                    have_more = fill(it, 1, active)
+
+        # all futures were issued: do the flush now
+        for f in fut.as_completed(active):
             yield result(f)
-            if have_more:
-                have_more = fill(it, 1, active)
-
-    # all futures were issued: do the flush now
-    for f in fut.as_completed(active):
-        yield result(f)
+    finally:
+        for f in active:
+            f.cancel()
 
 
 async def async_q2q_map(func, q_in, q_out,
