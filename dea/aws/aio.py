@@ -320,7 +320,7 @@ class S3Fetcher(object):
           .error = str| botocore.Exception class
 
         """
-        from ..io.async import future_results
+        from ..ppr import future_results
 
         def generate_requests(urls, s3):
             for url in urls:
