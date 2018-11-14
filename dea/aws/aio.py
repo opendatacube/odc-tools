@@ -138,6 +138,58 @@ async def s3_dir(url, s3, pred=None, glob=None):
     return _dirs, _files
 
 
+async def s3_dir_dir(url, depth, dst_q, s3):
+    """
+    Find directories certain depth from the base, push them to the `dst_q`
+
+    ```
+    s3://bucket/a
+                 |- b1
+                      |- c1/...
+                      |- c2/...
+                      |- some_file.txt
+                 |- b2
+                      |- c3/...
+    ```
+
+    Given a bucket structure above, calling this function with
+
+    - url s3://bucket/a/
+    - depth=1 will produce
+         - s3://bucket/a/b1/
+         - s3://bucket/a/b2/
+    - depth=2 will produce
+         - s3://bucket/a/b1/c1/
+         - s3://bucket/a/b1/c2/
+         - s3://bucket/a/b2/c3/
+
+    Any files are ignored.
+    """
+    if not url.endswith('/'):
+        url = url + '/'
+
+    pp = s3.get_paginator('list_objects_v2')
+
+    async def step(bucket, prefix, depth, work_q, dst_q):
+
+        async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter='/'):
+            for d in o.get('CommonPrefixes', []):
+                d = d.get('Prefix')
+                if depth > 1:
+                    await work_q.put((d, depth-1))
+                else:
+                    d = 's3://{}/{}'.format(bucket, d)
+                    await dst_q.put(d)
+
+    bucket, prefix = s3_url_parse(url)
+    work_q = asyncio.LifoQueue()
+    work_q.put_nowait((prefix, depth))
+
+    while work_q.qsize() > 0:
+        _dir, depth = work_q.get_nowait()
+        await step(bucket, _dir, depth, work_q, dst_q)
+
+
 async def s3_walker(url, nconcurrent, s3,
                     guide=None,
                     pred=None,
@@ -293,6 +345,23 @@ class S3Fetcher(object):
 
         q = asyncio.Queue(1000, loop=self._async.loop)
         ff = self._async.submit(find_to_queue, url, self._s3, q)
+        clean_exit = False
+
+        try:
+            yield from self._async.from_queue(q)
+            ff.result()
+            clean_exit = True
+        finally:
+            if not clean_exit:
+                ff.cancel()
+
+    def dir_dir(self, url, depth):
+        async def action(q, s3):
+            await s3_dir_dir(url, depth, q, s3)
+            await q.put(EOS_MARKER)
+
+        q = asyncio.Queue(1000, loop=self._async.loop)
+        ff = self._async.submit(action, q, self._s3)
         clean_exit = False
 
         try:
