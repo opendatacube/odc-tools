@@ -100,7 +100,7 @@ async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None):
             f = _s3_file_info(f, bucket)
             if pred is None or pred(f):
                 n += 1
-                cbk(f)
+                await cbk(f)
 
     return n_total, n
 
@@ -116,7 +116,7 @@ async def s3_find(url, s3, pred=None, glob=None):
     """
     _files = []
 
-    def on_file(f):
+    async def on_file(f):
         _files.append(f)
 
     await _s3_find_via_cbk(url, on_file, s3=s3, pred=pred, glob=glob)
@@ -273,7 +273,7 @@ class S3Fetcher(object):
             return await s3_dir(url, s3=s3)
         return self._async.submit(action, url, self._s3)
 
-    def find(self, url, pred=None, glob=None):
+    def find_all(self, url, pred=None, glob=None):
         """ List all objects under certain path
 
         Returns a future object that resolves to a list of s3 object metadata
@@ -291,6 +291,39 @@ class S3Fetcher(object):
             return await s3_find(url, s3=s3, pred=pred, glob=glob)
 
         return self._async.submit(action, url, self._s3)
+
+    def find(self, url, pred=None, glob=None):
+        """ List all objects under certain path
+
+        Returns an iterator of s3 object metadata
+
+        each s3 object is represented by a SimpleNamespace with attributes:
+        - url
+        - size
+        - last_modified
+        - etag
+        """
+        if glob is None and isinstance(pred, str):
+            pred, glob = None, pred
+
+        async def find_to_queue(url, s3, q):
+            async def on_file(x):
+                await q.put(x)
+
+            await _s3_find_via_cbk(url, on_file, s3=s3, pred=pred, glob=glob)
+            await q.put(EOS_MARKER)
+
+        q = asyncio.Queue(1000, loop=self._async.loop)
+        ff = self._async.submit(find_to_queue, url, self._s3, q)
+        clean_exit = False
+
+        try:
+            yield from self._async.from_queue(q)
+            ff.result()
+            clean_exit = True
+        finally:
+            if not clean_exit:
+                ff.cancel()
 
     def fetch(self, url, range=None):
         """ Returns a future object

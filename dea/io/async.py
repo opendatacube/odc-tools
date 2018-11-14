@@ -55,6 +55,28 @@ class AsyncThread(object):
     def loop(self):
         return self._loop
 
+    def from_queue(self, q, eos_marker=EOS_MARKER):
+        """ Convert qsyn queue to a sync iterator,
+
+            yield items from async queue until eos_marker is observed
+
+            Queue's loop have to be the same as self.loop
+        """
+        async def drain_q(q):
+            def get(q):
+                x = q.get_nowait()
+                q.task_done()
+                return x
+            return [get(q)
+                    for _ in range(q.qsize())]
+
+        while True:
+            xx = self.submit(drain_q, q).result()
+            for x in xx:
+                if x is eos_marker:
+                    return
+                yield x
+
 
 async def async_q2q_map(func, q_in, q_out,
                         eos_marker=EOS_MARKER,
