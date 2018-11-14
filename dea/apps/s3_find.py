@@ -14,8 +14,8 @@ def cli(uri, match):
     flush_freq = 100
 
     s3 = make_s3_client()
-    for i, url in enumerate(s3_find(uri, match, s3=s3)):
-        print(url, flush=(i % flush_freq == 0))
+    for i, o in enumerate(s3_find(uri, match, s3=s3)):
+        print(o.url, flush=(i % flush_freq == 0))
 
 
 if __name__ == '__main__':

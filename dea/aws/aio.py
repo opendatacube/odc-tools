@@ -3,6 +3,7 @@ import asyncio
 from types import SimpleNamespace
 
 from . import auto_find_region, s3_url_parse, s3_fmt_range
+from ._find import norm_predicate, s3_file_info
 from ..io.async import EOS_MARKER
 
 
@@ -51,29 +52,6 @@ async def s3_fetch_object(url, s3, range=None):
     return result(data=data, last_modified=last_modified)
 
 
-def _s3_file_info(f, bucket):
-    url = 's3://{}/{}'.format(bucket, f.get('Key'))
-    return SimpleNamespace(url=url,
-                           size=f.get('Size'),
-                           last_modified=f.get('LastModified'),
-                           etag=f.get('ETag'))
-
-
-def _norm_predicate(pred=None, glob=None):
-    from fnmatch import fnmatch
-
-    def glob_predicate(glob, pred):
-        if pred is None:
-            return lambda f: fnmatch(f.url, glob)
-        else:
-            return lambda f: fnmatch(f.url, glob) and pred(f)
-
-    if glob is not None:
-        return glob_predicate(glob, pred)
-
-    return pred
-
-
 async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None):
     """ List all objects under certain path
 
@@ -83,7 +61,7 @@ async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None):
         - last_modified
         - etag
     """
-    pred = _norm_predicate(pred=pred, glob=glob)
+    pred = norm_predicate(pred=pred, glob=glob)
 
     bucket, prefix = s3_url_parse(url)
 
@@ -97,7 +75,7 @@ async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None):
     async for o in pp.paginate(Bucket=bucket, Prefix=prefix):
         for f in o.get('Contents', []):
             n_total += 1
-            f = _s3_file_info(f, bucket)
+            f = s3_file_info(f, bucket)
             if pred is None or pred(f):
                 n += 1
                 await cbk(f)
@@ -138,7 +116,7 @@ async def s3_dir(url, s3, pred=None, glob=None):
           files -- list of objects with attributes: url, size, last_modified, etag
     """
     bucket, prefix = s3_url_parse(url)
-    pred = _norm_predicate(pred=pred, glob=glob)
+    pred = norm_predicate(pred=pred, glob=glob)
 
     if not prefix.endswith('/'):
         prefix = prefix + '/'
@@ -153,7 +131,7 @@ async def s3_dir(url, s3, pred=None, glob=None):
             d = d.get('Prefix')
             _dirs.append('s3://{}/{}'.format(bucket, d))
         for f in o.get('Contents', []):
-            f = _s3_file_info(f, bucket)
+            f = s3_file_info(f, bucket)
             if pred is None or pred(f):
                 _files.append(f)
 

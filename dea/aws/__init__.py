@@ -109,20 +109,35 @@ def s3_ls_dir(uri, s3=None):
             yield 's3://{bucket}/{path}'.format(bucket=bucket, path=o['Key'])
 
 
-def s3_find(url, glob, s3=None):
-    """ Return iterator of fully qualified s3 uris.
-    """
-    from fnmatch import fnmatch
+def s3_find(url, pred=None, glob=None, s3=None):
+    """ List all objects under certain path
 
-    def glob_predicate(path):
-        return fnmatch(path, glob)
+        each s3 object is represented by a SimpleNamespace with attributes:
+        - url
+        - size
+        - last_modified
+        - etag
+    """
+    from ._find import norm_predicate, s3_file_info
+
+    if glob is None and isinstance(pred, str):
+        pred, glob = None, pred
+
+    pred = norm_predicate(pred, glob)
 
     if url[-1] != '/':
         url += '/'
 
-    for n in s3_ls(url, s3=s3):
-        if glob_predicate(n):
-            yield url + n
+    bucket, prefix = s3_url_parse(url)
+
+    s3 = s3 or make_s3_client()
+    paginator = s3.get_paginator('list_objects_v2')
+
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for o in page.get('Contents', []):
+            o = s3_file_info(o, bucket)
+            if pred is not None and pred(o):
+                yield o
 
 
 def get_boto3_session(region_name=None, cache=None):
