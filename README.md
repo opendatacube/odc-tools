@@ -33,9 +33,22 @@ Example:
 ```bash
 #!/bin/bash
 
-s3_src='s3://dea-public-data/L2/sentinel-2-nrt/'
+s3_src='s3://dea-public-data/L2/sentinel-2-nrt/**/*.yaml'
 
-s3-find "${s3_src}" '*yaml' | \
+s3-find "${s3_src}" | \
+  s3-to-tar | \
+    dc-index-from-tar --env s2 --ignore-lineage
+```
+
+Fastest way to list regularly placed files is to use fixed depth listing:
+
+```bash
+#!/bin/bash
+
+# only works when your metadata is same depth and has fixed file name
+s3_src='s3://dea-public-data/L2/sentinel-2-nrt/S2MSIARD/*/*/ARD-METADATA.yaml'
+
+s3-find --skip-check "${s3_src}" | \
   s3-to-tar | \
     dc-index-from-tar --env s2 --ignore-lineage
 ```
