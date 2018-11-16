@@ -1,4 +1,3 @@
-import requests
 from urllib.parse import urlparse
 import botocore
 import botocore.session
@@ -9,6 +8,7 @@ log = logging.getLogger(__name__)
 
 
 def ec2_metadata(timeout=0.1):
+    import requests
     try:
         with requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=timeout) as resp:
             if resp.ok:
