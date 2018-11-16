@@ -102,6 +102,31 @@ async def s3_find(url, s3, pred=None, glob=None):
     return _files
 
 
+async def s3_head_object(url, s3):
+    """ Run head_object return Result or Error
+
+        (Result, None) -- on success
+        (None, error) -- on failure
+
+    """
+    from botocore.exceptions import ClientError, BotoCoreError
+
+    def unpack(url, rr):
+        return SimpleNamespace(url=url,
+                               size=rr.get('ContentLength', 0),
+                               etag=rr.get('ETag', ''),
+                               last_modified=rr.get('LastModified'),
+                               expiration=rr.get('Expiration'))
+
+    bucket, key = s3_url_parse(url)
+    try:
+        rr = await s3.head_object(Bucket=bucket, Key=key)
+    except (ClientError, BotoCoreError) as e:
+        return (None, e)
+
+    return (unpack(url, rr), None)
+
+
 async def s3_dir(url, s3, pred=None, glob=None):
     """ List s3 "directory" without descending into sub directories.
 
@@ -371,6 +396,9 @@ class S3Fetcher(object):
         finally:
             if not clean_exit:
                 ff.cancel()
+
+    def head_object(self, url):
+        return self._async.submit(s3_head_object, url, s3=self._s3)
 
     def fetch(self, url, range=None):
         """ Returns a future object
