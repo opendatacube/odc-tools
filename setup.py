@@ -18,12 +18,11 @@ setup(
                       'toolz',
                       'zstandard',
                       'lmdb',
+                      'aiohttp',
+                      'aiobotocore',
+                      'requests',
                       ],
     tests_require=['pytest'],
-    extras_require=dict(async=[
-        'aiohttp',
-        'aiobotocore',
-    ]),
     entry_points={
         'console_scripts': [
             's3-find = dea.apps.s3_find:cli',

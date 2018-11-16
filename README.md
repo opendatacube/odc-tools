@@ -7,16 +7,16 @@ DEA Prototype Code
 Installation
 ------------
 
-To have fast fetching from S3 need to install with `[async]` option.
+Using `pip`:
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=dea-proto[async]'
+pip install 'git+https://github.com/opendatacube/dea-proto.git'
 ```
 
 On Ubuntu to install globally
 
 ```
-sudo -H pip3 install 'git+https://github.com/opendatacube/dea-proto.git#egg=dea-proto[async]'
+sudo -H pip3 install 'git+https://github.com/opendatacube/dea-proto.git'
 ```
 
 
