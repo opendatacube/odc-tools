@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from . import auto_find_region, s3_url_parse, s3_fmt_range
 from ._find import norm_predicate, s3_file_info
-from ..io.async import EOS_MARKER
+from ..io.async_tools import EOS_MARKER, AsyncThread
 
 
 async def s3_fetch_object(url, s3, range=None):
@@ -283,7 +283,6 @@ class S3Fetcher(object):
                  nconcurrent=24,
                  region_name=None,
                  addressing_style='path'):
-        from ..io.async import AsyncThread
         from aiobotocore.config import AioConfig
 
         if region_name is None:
