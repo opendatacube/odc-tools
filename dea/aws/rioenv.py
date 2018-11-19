@@ -5,11 +5,16 @@ import logging
 import threading
 import rasterio
 from botocore.credentials import ReadOnlyCredentials
+import botocore.session
+from types import SimpleNamespace
 
-from . import auto_find_region, get_boto_session, get_creds_with_retry
+from . import auto_find_region, get_creds_with_retry
 
 
 _thread_lcl = threading.local()
+
+_default_env = SimpleNamespace(creds=None,
+                               lock=threading.Lock())
 
 log = logging.getLogger(__name__)
 
@@ -45,11 +50,6 @@ class AWSRioEnv(object):
        (several ms even when boto3 sessions is maintained externally), so
        doing that on every read is not ideal, especially since we need extreme
        levels of concurrency (40+ threads).
-
-       It's not super clear from boto3 documentation whether same session can
-       be shared across threads, so to be safe we create a new boto3 session
-       instance for every thread, we might want to re-assess this choice in the
-       future.
 
     """
 
@@ -140,10 +140,26 @@ def has_local_env():
     return getattr(_thread_lcl, 'main_env', None) is not None
 
 
+def get_credentials():
+    """ Thread-safe singleton for botocore.credentials
+
+        Might still return None
+    """
+    creds = _default_env.creds
+    if creds is not None:
+        return creds
+
+    with _default_env.lock:
+        if _default_env.creds is None:
+            _default_env.creds = get_creds_with_retry(botocore.session.get_session())
+
+        return _default_env.creds
+
+
 def setup_local_env(credentials=None, region_name=None, src_env=None, **kwargs):
     """Has to be called in each worker thread.
 
-       credentials -- botocore credentials to re-use, if None will create new ones
+       credentials -- botocore credentials to use, if None will use get_credentials
        region_name -- AWS region name
 
        src_env -- Source environment to clone in the new thread, all other
@@ -167,11 +183,9 @@ def setup_local_env(credentials=None, region_name=None, src_env=None, **kwargs):
         region_name = auto_find_region()
 
     if credentials is None:
-        session = get_boto_session(region_name=region_name)
-
-        credentials = get_creds_with_retry(session, max_tries=10, sleep=0.1)
+        credentials = get_credentials()
         if credentials is None:
-            raise IOError("Failed to obtain AWS credentials after 10 attempts")
+            raise IOError("Failed to obtain AWS credentials after multiple attempts")
 
     gdal_opts = s3_gdal_opts(**kwargs)
     _thread_lcl.main_env = AWSRioEnv(credentials, region_name=region_name, **gdal_opts)
