@@ -59,6 +59,9 @@ def cli(input_fname,
                            verify_lineage=verify_lineage,
                            skip_lineage=ignore_lineage)
 
+    if ignore_lineage:
+        auto_add_lineage = False
+
     def mk_s3_uri(name):
         return 's3://' + name
 
@@ -69,7 +72,7 @@ def cli(input_fname,
         for ds, err in from_tar_file(filename, index, mk_s3_uri, mode=mode, **ds_resolve_args):
             if ds is not None:
                 try:
-                    index.datasets.add(ds, with_lineage=True)
+                    index.datasets.add(ds, with_lineage=auto_add_lineage)
                 except Exception as e:
                     n_failed += 1
                     report_error(str(e))
