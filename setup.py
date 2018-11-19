@@ -11,19 +11,17 @@ setup(
     python_requires='>=3.5',
     install_requires=['datacube',
                       'click',
-                      'boto3',
                       'affine',
                       'numpy',
                       'rasterio>=1.0.4',
                       'toolz',
                       'zstandard',
                       'lmdb',
+                      'aiohttp',
+                      'aiobotocore',
+                      'botocore',
                       ],
     tests_require=['pytest'],
-    extras_require=dict(async=[
-        'aiohttp',
-        'aiobotocore',
-    ]),
     entry_points={
         'console_scripts': [
             's3-find = dea.apps.s3_find:cli',

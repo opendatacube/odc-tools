@@ -1,4 +1,3 @@
-import requests
 from urllib.parse import urlparse
 import botocore
 import botocore.session
@@ -9,12 +8,16 @@ log = logging.getLogger(__name__)
 
 
 def ec2_metadata(timeout=0.1):
+    from urllib.request import urlopen
+    import json
+
     try:
-        with requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=timeout) as resp:
-            if resp.ok:
-                return resp.json()
-            return None
-    except IOError:
+        with urlopen('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=timeout) as resp:
+            if resp.getcode() == 200:
+                return json.loads(resp.read().decode('utf8'))
+            else:
+                return None
+    except (IOError, json.JSONDecodeError):
         return None
 
 
@@ -25,16 +28,17 @@ def ec2_current_region():
     return cfg.get('region', None)
 
 
-def botocore_default_region():
-    import botocore.session
-    return botocore.session.get_session().get_config_variable('region')
+def botocore_default_region(session=None):
+    if session is None:
+        session = botocore.session.get_session()
+    return session.get_config_variable('region')
 
 
-def auto_find_region():
-    region_name = ec2_current_region()
+def auto_find_region(session=None):
+    region_name = botocore_default_region(session)
 
     if region_name is None:
-        region_name = botocore_default_region()
+        region_name = ec2_current_region()
 
     if region_name is None:
         raise ValueError('Region name is not supplied and default can not be found')
@@ -46,13 +50,13 @@ def make_s3_client(region_name=None,
                    max_pool_connections=32,
                    session=None,
                    use_ssl=True):
-    if region_name is None:
-        region_name = auto_find_region()
-
-    protocol = 'https' if use_ssl else 'http'
-
     if session is None:
         session = botocore.session.get_session()
+
+    if region_name is None:
+        region_name = auto_find_region(session)
+
+    protocol = 'https' if use_ssl else 'http'
 
     s3 = session.create_client('s3',
                                region_name=region_name,
@@ -91,7 +95,9 @@ def s3_ls(url, s3=None):
 
 def s3_ls_dir(uri, s3=None):
     bucket, prefix = s3_url_parse(uri)
-    prefix = prefix.rstrip('/') + '/'
+
+    if len(prefix) > 0 and not prefix.endswith('/'):
+        prefix = prefix + '/'
 
     s3 = s3 or make_s3_client()
     paginator = s3.get_paginator('list_objects_v2')
@@ -140,9 +146,7 @@ def s3_find(url, pred=None, glob=None, s3=None):
                 yield o
 
 
-def get_boto3_session(region_name=None, cache=None):
-    import boto3
-
+def get_boto_session(region_name=None, cache=None):
     if region_name is None:
         region_name = auto_find_region()
 
@@ -157,18 +161,22 @@ def get_boto3_session(region_name=None, cache=None):
         sessions, session = {}, None
 
     if session is None:
-        session = boto3.Session(region_name=region_name)
+        session = botocore.session.Session(session_vars=dict(
+            region=('region', 'AWS_DEFAULT_REGION', region_name, None)))
         sessions[region_name] = session
 
     return session
 
 
 def get_creds_with_retry(session, max_tries=10, sleep=0.1):
-    for _ in range(max_tries):
+    for i in range(max_tries):
+        if i > 0:
+            time.sleep(sleep)
+            sleep = min(sleep*2, 10)
+
         creds = session.get_credentials()
         if creds is not None:
             return creds
-        time.sleep(sleep)
 
     return None
 
@@ -189,7 +197,7 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
     session = get_session()
 
     if region_name is None:
-        region_name = auto_find_region()
+        region_name = auto_find_region(session)
 
     if credentials is None:
         managed_credentials = session.get_credentials()

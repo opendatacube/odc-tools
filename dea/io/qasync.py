@@ -9,7 +9,7 @@ import queue
 import logging
 from types import SimpleNamespace
 from concurrent.futures import ThreadPoolExecutor
-from .async import EOS_MARKER
+from .async_tools import EOS_MARKER
 
 
 log = logging.getLogger(__name__)

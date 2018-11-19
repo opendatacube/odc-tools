@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from . import auto_find_region, s3_url_parse, s3_fmt_range
 from ._find import norm_predicate, s3_file_info
-from ..io.async import EOS_MARKER
+from ..io.async_tools import EOS_MARKER, AsyncThread
 
 
 async def s3_fetch_object(url, s3, range=None):
@@ -65,7 +65,7 @@ async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None):
 
     bucket, prefix = s3_url_parse(url)
 
-    if not prefix.endswith('/'):
+    if len(prefix) > 0 and not prefix.endswith('/'):
         prefix = prefix + '/'
 
     pp = s3.get_paginator('list_objects_v2')
@@ -102,6 +102,31 @@ async def s3_find(url, s3, pred=None, glob=None):
     return _files
 
 
+async def s3_head_object(url, s3):
+    """ Run head_object return Result or Error
+
+        (Result, None) -- on success
+        (None, error) -- on failure
+
+    """
+    from botocore.exceptions import ClientError, BotoCoreError
+
+    def unpack(url, rr):
+        return SimpleNamespace(url=url,
+                               size=rr.get('ContentLength', 0),
+                               etag=rr.get('ETag', ''),
+                               last_modified=rr.get('LastModified'),
+                               expiration=rr.get('Expiration'))
+
+    bucket, key = s3_url_parse(url)
+    try:
+        rr = await s3.head_object(Bucket=bucket, Key=key)
+    except (ClientError, BotoCoreError) as e:
+        return (None, e)
+
+    return (unpack(url, rr), None)
+
+
 async def s3_dir(url, s3, pred=None, glob=None):
     """ List s3 "directory" without descending into sub directories.
 
@@ -118,7 +143,7 @@ async def s3_dir(url, s3, pred=None, glob=None):
     bucket, prefix = s3_url_parse(url)
     pred = norm_predicate(pred=pred, glob=glob)
 
-    if not prefix.endswith('/'):
+    if len(prefix) > 0 and not prefix.endswith('/'):
         prefix = prefix + '/'
 
     pp = s3.get_paginator('list_objects_v2')
@@ -258,7 +283,6 @@ class S3Fetcher(object):
                  nconcurrent=24,
                  region_name=None,
                  addressing_style='path'):
-        from ..io.async import AsyncThread
         from aiobotocore.config import AioConfig
 
         if region_name is None:
@@ -371,6 +395,9 @@ class S3Fetcher(object):
         finally:
             if not clean_exit:
                 ff.cancel()
+
+    def head_object(self, url):
+        return self._async.submit(s3_head_object, url, s3=self._s3)
 
     def fetch(self, url, range=None):
         """ Returns a future object
