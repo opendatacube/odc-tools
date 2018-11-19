@@ -73,8 +73,14 @@ def cli(uri, skip_check):
 
     glob_or_file = qq.glob or qq.file
 
-    if (qq.depth is None and glob_or_file is None) or qq.depth < 0:
-        stream = s3.find(qq.base, glob=glob_or_file)
+    if qq.depth is None and glob_or_file is None:
+        stream = s3.find(qq.base)
+    elif qq.depth is None or qq.depth < 0:
+        if qq.glob:
+            stream = s3.find(qq.base, glob=qq.glob)
+        elif qq.file:
+            postfix = '/'+qq.file
+            stream = s3.find(qq.base, pred=lambda o: o.url.endswith(postfix))
     else:
         # fixed depth query
         if qq.glob is not None:

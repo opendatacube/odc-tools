@@ -65,7 +65,7 @@ async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None):
 
     bucket, prefix = s3_url_parse(url)
 
-    if not prefix.endswith('/'):
+    if len(prefix) > 0 and not prefix.endswith('/'):
         prefix = prefix + '/'
 
     pp = s3.get_paginator('list_objects_v2')
@@ -143,7 +143,7 @@ async def s3_dir(url, s3, pred=None, glob=None):
     bucket, prefix = s3_url_parse(url)
     pred = norm_predicate(pred=pred, glob=glob)
 
-    if not prefix.endswith('/'):
+    if len(prefix) > 0 and not prefix.endswith('/'):
         prefix = prefix + '/'
 
     pp = s3.get_paginator('list_objects_v2')

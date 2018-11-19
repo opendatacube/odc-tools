@@ -95,7 +95,9 @@ def s3_ls(url, s3=None):
 
 def s3_ls_dir(uri, s3=None):
     bucket, prefix = s3_url_parse(uri)
-    prefix = prefix.rstrip('/') + '/'
+
+    if len(prefix) > 0 and not prefix.endswith('/'):
+        prefix = prefix + '/'
 
     s3 = s3 or make_s3_client()
     paginator = s3.get_paginator('list_objects_v2')
