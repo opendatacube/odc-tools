@@ -8,13 +8,16 @@ log = logging.getLogger(__name__)
 
 
 def ec2_metadata(timeout=0.1):
-    import requests
+    from urllib.request import urlopen
+    import json
+
     try:
-        with requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=timeout) as resp:
-            if resp.ok:
-                return resp.json()
-            return None
-    except IOError:
+        with urlopen('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=timeout) as resp:
+            if resp.getcode() == 200:
+                return json.loads(resp.read().decode('utf8'))
+            else:
+                return None
+    except (IOError, json.JSONDecodeError):
         return None
 
 
@@ -31,10 +34,10 @@ def botocore_default_region():
 
 
 def auto_find_region():
-    region_name = ec2_current_region()
+    region_name = botocore_default_region()
 
     if region_name is None:
-        region_name = botocore_default_region()
+        region_name = ec2_current_region()
 
     if region_name is None:
         raise ValueError('Region name is not supplied and default can not be found')

@@ -20,7 +20,6 @@ setup(
                       'lmdb',
                       'aiohttp',
                       'aiobotocore',
-                      'requests',
                       ],
     tests_require=['pytest'],
     entry_points={
