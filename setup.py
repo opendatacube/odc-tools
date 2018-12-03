@@ -17,7 +17,6 @@ setup(
                       'toolz',
                       'zstandard',
                       'lmdb',
-                      'aiohttp',
                       'aiobotocore',
                       'botocore',
                       ],
