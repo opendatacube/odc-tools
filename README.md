@@ -19,6 +19,13 @@ On Ubuntu to install globally
 sudo -H pip3 install 'git+https://github.com/opendatacube/dea-proto.git'
 ```
 
+NOTE: this lib depends on `aiobotocore` which has a dependency on a specific
+version of `botocore`, `boto3` also depends on a specific version of `botocore`
+as a result having both `aiobotocore` and `boto3` in one environment can be a bit
+tricky. The easiest way to solve this is to install `aiobotocore[awscli]` before
+anything else, which will pull in a compatible version of `boto3` into the
+environment.
+
 
 CLI Tools
 ---------
