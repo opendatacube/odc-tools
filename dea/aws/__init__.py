@@ -49,9 +49,13 @@ def auto_find_region(session=None):
 def make_s3_client(region_name=None,
                    max_pool_connections=32,
                    session=None,
+                   profile=None,
                    use_ssl=True):
     if session is None:
-        session = botocore.session.get_session()
+        if profile is None:
+            session = botocore.session.get_session()
+        else:
+            session = botocore.session.Session(profile=profile)
 
     if region_name is None:
         region_name = auto_find_region(session)

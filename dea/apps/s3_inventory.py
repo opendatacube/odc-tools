@@ -44,8 +44,9 @@ def build_predicate(glob=None, regex=None, prefix=None):
 @click.option('--inventory', '-i', type=str, help='URL pointing to manifest.json or one level up')
 @click.option('--prefix', type=str, help='Only print entries with Key starting with `prefix`')
 @click.option('--regex', type=str, help='Only print entries matching regex')
+@click.option('--aws-profile', type=str, help='Use non-default aws profile')
 @click.argument('glob', type=str, default='', nargs=1)
-def cli(inventory, prefix, regex, glob):
+def cli(inventory, prefix, regex, glob, aws_profile):
     """List S3 inventory entries.
 
         prefix can be combined with regex or glob pattern, but supplying both
@@ -61,7 +62,7 @@ def cli(inventory, prefix, regex, glob):
         return 's3://{e.Bucket}/{e.Key}'.format(e=entry)
 
     flush_freq = 100
-    s3 = make_s3_client()
+    s3 = make_s3_client(profile=aws_profile)
 
     if glob == '':
         glob = None

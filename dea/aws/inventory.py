@@ -17,12 +17,12 @@ def find_latest_manifest(prefix, s3):
                 return d + 'manifest.json'
 
 
-def list_inventory(manifest, s3=None):
+def list_inventory(manifest, s3=None, **kw):
     """ Returns a generator of inventory records
 
     manifest -- s3:// url to manifest.json or a folder in which case latest one is chosen.
     """
-    s3 = s3 or make_s3_client()
+    s3 = s3 or make_s3_client(**kw)
 
     if manifest.endswith('/'):
         manifest = find_latest_manifest(manifest, s3)
