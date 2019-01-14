@@ -22,9 +22,13 @@ sudo -H pip3 install 'git+https://github.com/opendatacube/dea-proto.git'
 NOTE: this lib depends on `aiobotocore` which has a dependency on a specific
 version of `botocore`, `boto3` also depends on a specific version of `botocore`
 as a result having both `aiobotocore` and `boto3` in one environment can be a bit
-tricky. The easiest way to solve this is to install `aiobotocore[awscli]` before
-anything else, which will pull in a compatible version of `boto3` into the
+tricky. The easiest way to solve this is to install `aiobotocore[awscli,boto3]` before
+anything else, which will pull in a compatible version of `boto3` and `awscli` into the
 environment.
+
+```
+sudo pip3 install -U 'aiobotocore[awscli,boto3]'
+```
 
 
 CLI Tools
