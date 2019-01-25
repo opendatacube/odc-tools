@@ -19,10 +19,12 @@ setup(
                       'lmdb',
                       'aiobotocore',
                       'botocore',
+                      'google-cloud-storage'
                       ],
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'gs-to-tar = dea.apps.gs_to_tar:cli',
             's3-find = dea.apps.s3_find:cli',
             's3-inventory-dump = dea.apps.s3_inventory:cli',
             's3-to-tar = dea.apps.s3_to_tar:cli',
