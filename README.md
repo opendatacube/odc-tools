@@ -36,7 +36,8 @@ CLI Tools
 
 1. `s3-find` list S3 bucket with wildcard
 2. `s3-to-tar` fetch documents from S3 and dump them to tar archive 
-3. `dc-index-from-tar` read yaml documents from tar archive and add them to datacube
+3. `gs-to-tar` search GS for documents and dump them to tar archive
+4. `dc-index-from-tar` read yaml documents from tar archive and add them to datacube
 
 
 Example:
@@ -62,4 +63,12 @@ s3_src='s3://dea-public-data/L2/sentinel-2-nrt/S2MSIARD/*/*/ARD-METADATA.yaml'
 s3-find --skip-check "${s3_src}" | \
   s3-to-tar | \
     dc-index-from-tar --env s2 --ignore-lineage
+```
+
+```bash
+#!/bin/bash
+
+# Google Storage support
+gs-to-tar --bucket data.deadev.com --prefix mangrove_cover
+dc-index-from-tar --env mangroves --ignore-lineage metadata.tar.gz
 ```
