@@ -42,7 +42,7 @@ def from_tar_file(tarfname, index, mk_uri, mode, **kwargs):
               is_flag=True, default=False)
 @click.option('--gzip', is_flag=True, help='Input is compressed with gzip (needed when reading from stdin)')
 @click.option('--xz', is_flag=True, help='Input is compressed with xz (needed when reading from stdin)')
-@click.option('--protocol', type=str, default='s3://', help='Override the protocol for working with data in other environments, i.e gs://')
+@click.option('--protocol', type=str, default='s3', help='Override the protocol for working with data in other environments, i.e gs')
 @click.argument('input_fname', type=str, nargs=-1)
 def cli(input_fname,
         env,
@@ -65,6 +65,8 @@ def cli(input_fname,
         auto_add_lineage = False
 
     def mk_s3_uri(name):
+        if not protocol.endswith('://'):
+            protocol = protocol + '://'
         return protocol + name
 
     def report_error(msg):
