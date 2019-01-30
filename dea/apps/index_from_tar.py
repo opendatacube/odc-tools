@@ -42,7 +42,7 @@ def from_tar_file(tarfname, index, mk_uri, mode, **kwargs):
               is_flag=True, default=False)
 @click.option('--gzip', is_flag=True, help='Input is compressed with gzip (needed when reading from stdin)')
 @click.option('--xz', is_flag=True, help='Input is compressed with xz (needed when reading from stdin)')
-@click.option('--protocol', type=str, default='s3', help='Override the protocol for working with data in other environments, i.e gs')
+@click.option('--protocol', type=str, default='s3', show_default=True, help='Override the protocol for working with data in other environments, i.e gs')
 @click.argument('input_fname', type=str, nargs=-1)
 def cli(input_fname,
         env,
@@ -55,6 +55,9 @@ def cli(input_fname,
         xz,
         protocol):
 
+    # Ensure :// is present in prefix
+    prefix = protocol.rstrip('://') + '://'
+
     ds_resolve_args = dict(products=product_names,
                            exclude_products=exclude_product_names,
                            fail_on_missing_lineage=not auto_add_lineage,
@@ -64,16 +67,14 @@ def cli(input_fname,
     if ignore_lineage:
         auto_add_lineage = False
 
-    def mk_s3_uri(name):
-        if not protocol.endswith('://'):
-            protocol = protocol + '://'
-        return protocol + name
+    def mk_uri(name):
+        return prefix + name
 
     def report_error(msg):
         print(msg, file=sys.stderr)
 
     def process_file(filename, index, fps, mode=None, n_failed=0):
-        for ds, err in from_tar_file(filename, index, mk_s3_uri, mode=mode, **ds_resolve_args):
+        for ds, err in from_tar_file(filename, index, mk_uri, mode=mode, **ds_resolve_args):
             if ds is not None:
                 try:
                     index.datasets.add(ds, with_lineage=auto_add_lineage)
