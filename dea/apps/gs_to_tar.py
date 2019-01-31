@@ -1,6 +1,7 @@
 import os
 import tarfile
 import click
+import shutil
 from google.cloud import storage
 
 @click.command('gs-to-tar')
@@ -42,19 +43,24 @@ def cli(bucket,
     for yaml in files:
 
         count = str(file_num)
-        filename = "{0}.yaml".format(count)
+        filename = "{bucket}/{filepath}.yaml".format(bucket=bucket, filepath=yaml.name)
 
+        #ensure dir exists
+        if not os.path.exists(os.path.dirname('./' + filename)):
+            os.makedirs(os.path.dirname('./' + filename))
         #download to tar
         yaml.download_to_filename(filename=filename, client=client)
         tar.add(filename)
-        os.remove(filename)
+        os.remove('./' + filename)
 
         #counter
-        print("{count}/{file_count} Downloaded".format(count=count, file_count=file_count),
-              end="\r", flush=True)
+        print("{count}/{file_count} Downloaded".format(count=count, file_count=file_count))
         file_num += 1
 
     tar.close()
+    # Deletes the directory recursively
+    shutil.rmtree("./" + bucket)
+
     print("Done!")
 
 if __name__ == '__main__':
