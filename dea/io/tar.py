@@ -1,4 +1,7 @@
 import tarfile
+import datetime
+import io
+import time
 from pathlib import Path
 import itertools
 
@@ -55,3 +58,27 @@ def tar_doc_stream(fname, mode=None, predicate=None):
             with tar.extractfile(entry) as f:
                 buf = f.read()
                 yield entry.name, buf
+
+
+def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
+    """ Add file to tar from RAM (string or bytes) + name
+
+    :param tar: tar file object opened for writing
+    :param fname: path within tar file
+    :param content: string or bytes, content or the file to write
+    :param mode: file permissions octet
+    :param last_modified: file modification timestamp
+    """
+    if last_modified is None:
+        last_modified = time.time()
+
+    if isinstance(last_modified, datetime.datetime):
+        last_modified = last_modified.timestamp()
+
+    info = tarfile.TarInfo(name=fname)
+    if isinstance(content, str):
+        content = content.encode('utf-8')
+    info.size = len(content)
+    info.mtime = last_modified
+    info.mode = mode
+    tar.addfile(tarinfo=info, fileobj=io.BytesIO(content))

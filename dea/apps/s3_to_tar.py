@@ -1,31 +1,14 @@
 import click
-import datetime
-import io
 import tarfile
-import time
 import logging
 import signal
+import sys
+from sys import stderr, stdout
 
 from dea.aws.aio import S3Fetcher
 from dea.io import read_stdin_lines
-from dea.io.tar import tar_mode
+from dea.io.tar import tar_mode, add_txt_file
 from dea.bench import RateEstimator
-
-
-def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
-    if last_modified is None:
-        last_modified = time.time()
-
-    if isinstance(last_modified, datetime.datetime):
-        last_modified = last_modified.timestamp()
-
-    info = tarfile.TarInfo(name=fname)
-    if isinstance(content, str):
-        content = content.encode('utf-8')
-    info.size = len(content)
-    info.mtime = last_modified
-    info.mode = mode
-    tar.addfile(tarinfo=info, fileobj=io.BytesIO(content))
 
 
 @click.command('s3-to-tar')
@@ -43,8 +26,6 @@ def cli(n, verbose, gzip, xz, outfile):
        - Treat line as a URI and fetch document from it
        - Write content of the file to a tar archive using `bucket-name/path/to/file` as file name
     """
-    import sys
-    from sys import stderr, stdout
     logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s', level=logging.ERROR)
 
     nconnections = 24 if n is None else n
