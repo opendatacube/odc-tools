@@ -43,7 +43,7 @@ def cli(bucket,
     for yaml in files:
 
         count = str(file_num)
-        filename = "{bucket}/{filepath}.yaml".format(bucket=bucket, filepath=yaml.name)
+        filename = "{bucket}/{filepath}".format(bucket=bucket, filepath=yaml.name)
 
         #ensure dir exists
         if not os.path.exists(os.path.dirname('./' + filename)):
