@@ -3,9 +3,26 @@ import tarfile
 import click
 import shutil
 import urllib.request
+from multiprocessing.dummy import Pool as ThreadPool
+from functools import partial
 
 from urllib.parse import urlparse
 from thredds_crawler.crawl import Crawl
+
+
+def download(result, parsed_uri, file_retriever):
+    thredds_id = result.id
+
+    source_filename = parsed_uri.geturl() + thredds_id
+    target_filename = source_filename[len(parsed_uri.scheme + '://'):]
+    # ensure dir exists
+    if not os.path.exists(os.path.dirname('./' + target_filename)):
+        os.makedirs(os.path.dirname('./' + target_filename))
+
+    # download to tar
+    file_retriever.retrieve(source_filename, target_filename)
+
+    return target_filename
 
 
 @click.command('thredds-to-tar')
@@ -46,31 +63,20 @@ def cli(thredds_catalogue,
     file_count = str(len(results))
     print("Found {0} metadata files".format(file_count))
 
-    # parse fileserver url for protocol and domain to delte later
+    # parse fileserver url for protocol and domain to delete later
     parsed_uri = urlparse(thredds_fileserver)
 
-    # Download Files to tar with an updating counter
-    count = 0
+    pool = ThreadPool(workers)
+    downloaded_files = pool.map(partial(download, parsed_uri=parsed_uri, file_retriever=file_retriever), results)
+    pool.close()
+    pool.join()
+
     tar = tarfile.open(outfile, "w:gz")
-    for result in results:
-        thredds_id = result.id
-
-        source_filename = thredds_fileserver + thredds_id
-        target_filename = source_filename[len(parsed_uri.scheme+'://'):]
-        # ensure dir exists
-        if not os.path.exists(os.path.dirname('./' + target_filename)):
-            os.makedirs(os.path.dirname('./' + target_filename))
-
-        # download to tar
-        file_retriever.retrieve(source_filename, target_filename)
-        tar.add(target_filename)
+    for downloaded_file in downloaded_files:
+        tar.add(downloaded_file)
 
         # remove
-        os.remove('./' + target_filename)
-
-        count += 1
-        # counter
-        print("{count}/{file_count} Downloaded".format(count=count, file_count=file_count))
+        os.remove('./' + downloaded_file)
 
     tar.close()
 
