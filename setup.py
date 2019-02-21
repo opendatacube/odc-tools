@@ -18,14 +18,16 @@ setup(
                       'zstandard',
                       'lmdb',
                       'aiobotocore',
-                      'botocore',
+                      'botocore'
                       ],
     extras_require={
         'GCP': ['google-cloud-storage'],
+        'THREDDS': ['thredds_crawler', 'requests']
     },
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'thredds-to-tar = dea.apps.thredds_to_tar:cli [THREDDS]',
             'gs-to-tar = dea.apps.gs_to_tar:cli [GCP]',
             's3-find = dea.apps.s3_find:cli',
             's3-inventory-dump = dea.apps.s3_inventory:cli',
