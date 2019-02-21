@@ -22,7 +22,7 @@ setup(
                       ],
     extras_require={
         'GCP': ['google-cloud-storage'],
-        'THREDDS': ['thredds_crawler']
+        'THREDDS': ['thredds_crawler', 'requests']
     },
     tests_require=['pytest'],
     entry_points={
