@@ -11,6 +11,12 @@ Random access cache of `Dataset` objects backed by disk storage.
 - Has concept of "groups" (used for `GridWorkFlow`)
 
 
+## Installation
+
+```
+pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dscache&subdirectory=libs/dscache
+```
+
 ## Exporting from Datacube
 
 ### Using command line app
@@ -33,7 +39,7 @@ Note that this app is not affected by [issue#542](https://github.com/opendatacub
 ### From python code
 
 ```python
-from dea import dscache
+from odc import dscache
 
 # create new file db, deleting old one if exists
 cache = dscache.create_cache('sample.db', truncate=True)
@@ -57,7 +63,7 @@ cache.close()
 By default we assume that database file is read-only. If however some other process is writing to the db while this process is reading, you have to supply extra argument to `open_ro(.., lock=True)`. You better not do that over network file system.
 
 ```python
-from dea import dscache
+from odc import dscache
 
 cache = dscache.open_ro('sample.db')
 

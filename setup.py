@@ -5,8 +5,12 @@ setup(
     version='0.2',
     license='Apache License 2.0',
     packages=find_packages(),
-    author='Kirill Kouzoubov',
-    author_email='kirill.kouzoubov@ga.gov.au',
+
+    author='Open Data Cube',
+    author_email='',
+    maintainer='Open Data Cube',
+    maintainer_email='',
+
     description='TODO',
     python_requires='>=3.5',
     install_requires=['datacube',
@@ -14,9 +18,6 @@ setup(
                       'affine',
                       'numpy',
                       'rasterio>=1.0.4',
-                      'toolz',
-                      'zstandard',
-                      'lmdb',
                       'aiobotocore',
                       'botocore',
                       'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
@@ -35,8 +36,6 @@ setup(
             's3-inventory-dump = dea.apps.s3_inventory:cli',
             's3-to-tar = dea.apps.s3_to_tar:cli',
             'dc-index-from-tar = dea.apps.index_from_tar:cli',
-            'slurpy = dea.apps.slurpy:cli',
-            'dstiler = dea.apps.dstiler:cli',
         ]
     }
 )
