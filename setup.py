@@ -39,6 +39,6 @@ setup(
         ]
     },
     dependency_links=[
-        'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
+        'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws-0.1&subdirectory=libs/aws',
     ]
 )
