@@ -2,13 +2,27 @@ import click
 from threading import Thread
 import queue
 import datacube
-from .. import dscache
-from ..dscache.tools import db_connect, raw_dataset_stream, mk_raw2ds
-from ..dscache.tools import dictionary_from_product_list
-from ..ppr import qmap
+from odc import dscache
+from odc.dscache.tools import db_connect, raw_dataset_stream, mk_raw2ds
+from odc.dscache.tools import dictionary_from_product_list
 
 
 EOS = object()
+
+
+def qmap(proc, q, eos_marker=None):
+    """ Converts queue to an iterator.
+
+    For every `item` in the `q` that is not `eos_marker`, `yield proc(item)`
+    """
+    while True:
+        item = q.get(block=True)
+        if item is eos_marker:
+            q.task_done()
+            break
+        else:
+            yield proc(item)
+            q.task_done()
 
 
 @click.command('slurpy')
