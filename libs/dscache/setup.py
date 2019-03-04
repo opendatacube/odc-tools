@@ -23,7 +23,11 @@ setup(
         'toolz',
     ],
 
-    packages=['odc.dscache'],
+    packages=[
+        'odc.dscache',
+        'odc.dscache.tools',
+        'odc.dscache.apps',
+    ],
     zip_safe=False,
     entry_points={
         'console_scripts': [
