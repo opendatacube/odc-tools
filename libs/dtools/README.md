@@ -14,13 +14,12 @@ Usage
 -----
 
 Given a connected `client = dask.distributed.Client(..)`, you can setup GDAL env
-tuned to reading COGs from S3 like so (make sure to adjust `region_name` for
-your setup):
+tuned to reading COGs from S3 like so:
 
 ```python
 from odc.dtools import rio_activate
 
-rio_activate(client, aws=dict(region_name='ap-southeast-2'))
+rio_activate(client, aws=dict(region_name='auto'))
 ```
 
 To check current GDAL settings across all worker threads of a dask cluster do:

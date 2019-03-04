@@ -52,11 +52,21 @@ def activate_rio_env(aws=None, defaults=True, **kwargs):
         env_old.__exit__(None, None, None)
         _local.env = None
 
-    if aws is None:
-        session = AWSSession()
-    elif aws is False:
+    if aws is False:
         session = None
     else:
+        aws = {} if aws is None else dict(**aws)
+        region_name = aws.get('region_name', 'auto')
+
+        if region_name == 'auto':
+            from odc.aws import auto_find_region
+            try:
+                aws['region_name'] = auto_find_region()
+            except Exception as e:
+                # only treat it as error if it was requested by user
+                if 'region_name' in aws:
+                    raise e
+
         session = AWSSession(**aws)
 
     opts = dict(
