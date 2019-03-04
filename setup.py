@@ -19,7 +19,7 @@ setup(
                       'lmdb',
                       'aiobotocore',
                       'botocore',
-                      'odc_aws',
+                      'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
                       ],
     extras_require={
         'GCP': ['google-cloud-storage'],
@@ -37,8 +37,5 @@ setup(
             'slurpy = dea.apps.slurpy:cli',
             'dstiler = dea.apps.dstiler:cli',
         ]
-    },
-    dependency_links=[
-        'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws-0.1&subdirectory=libs/aws',
-    ]
+    }
 )
