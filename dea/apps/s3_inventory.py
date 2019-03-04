@@ -2,8 +2,8 @@ import re
 from fnmatch import fnmatch
 import sys
 import click
-from dea.aws import make_s3_client
-from dea.aws.inventory import list_inventory
+from odc.aws import make_s3_client
+from odc.aws.inventory import list_inventory
 
 
 def build_predicate(glob=None, regex=None, prefix=None):

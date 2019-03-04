@@ -3,7 +3,7 @@ import asyncio
 from types import SimpleNamespace
 
 from . import auto_find_region, s3_url_parse, s3_fmt_range
-from ._find import norm_predicate, s3_file_info
+from . import norm_predicate, s3_file_info
 from ..io.async_tools import EOS_MARKER, AsyncThread
 
 
