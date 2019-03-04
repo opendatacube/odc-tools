@@ -1,7 +1,7 @@
 import click
 import sys
 import datacube
-from dea.io.tar import tar_doc_stream, tar_mode
+from odc.io.tar import tar_doc_stream, tar_mode
 from dea.bench import RateEstimator
 from dea.index import from_yaml_doc_stream
 

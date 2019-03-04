@@ -1,7 +1,7 @@
 import tarfile
 import click
 import requests
-from dea.io.tar import tar_mode, add_txt_file
+from odc.io.tar import tar_mode, add_txt_file
 from multiprocessing.dummy import Pool as ThreadPool
 from functools import partial
 

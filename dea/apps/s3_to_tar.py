@@ -6,8 +6,8 @@ import sys
 from sys import stderr, stdout
 
 from dea.aws.aio import S3Fetcher
-from dea.io import read_stdin_lines
-from dea.io.tar import tar_mode, add_txt_file
+from odc.io import read_stdin_lines
+from odc.io.tar import tar_mode, add_txt_file
 from dea.bench import RateEstimator
 
 
