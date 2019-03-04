@@ -7,7 +7,7 @@ Installation
 ------------
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dtools&subdirectory=dtools'
+pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dtools&subdirectory=libs/dtools'
 ```
 
 Usage
