@@ -427,7 +427,7 @@ class S3Fetcher(object):
           .error = str| botocore.Exception class
 
         """
-        from ..ppr import future_results
+        from odc.ppt import future_results
 
         def generate_requests(urls, s3):
             for url in urls:

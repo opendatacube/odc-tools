@@ -1,4 +1,4 @@
-""" Parallel Processing tools
+""" Parallel Processing Tools
 """
 from threading import BoundedSemaphore
 
@@ -14,8 +14,10 @@ def qmap(proc, q, eos_marker=None):
             q.task_done()
             break
         else:
-            yield proc(item)
-            q.task_done()
+            try:
+                yield proc(item)
+            finally:
+                q.task_done()
 
 
 def q2q_map(proc, q_in, q_out, eos_marker=None):

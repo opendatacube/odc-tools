@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import rasterio
 
 from .rioenv import setup_local_env, local_env
-from ..ppr import pool_broadcast
+from odc.ppt import pool_broadcast
 
 
 class RioWorkerPool(object):

@@ -3,7 +3,7 @@ import sys
 from types import SimpleNamespace
 from dea.aws.aio import S3Fetcher
 from dea.aws import parse_query, norm_predicate
-from dea.ppr import future_results
+from odc.ppt import future_results
 
 
 @click.command('s3-find')
