@@ -7,17 +7,28 @@ import time
 log = logging.getLogger(__name__)
 
 
-def ec2_metadata(timeout=0.1):
+def _fetch_text(url, timeout=0.1):
     from urllib.request import urlopen
-    import json
-
     try:
-        with urlopen('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=timeout) as resp:
-            if resp.getcode() == 200:
-                return json.loads(resp.read().decode('utf8'))
+        with urlopen(url, timeout=timeout) as resp:
+            if 200 <= resp.getcode() < 300:
+                return resp.read().decode('utf8')
             else:
                 return None
-    except (IOError, json.JSONDecodeError):
+    except IOError:
+        return None
+
+
+def ec2_metadata(timeout=0.1):
+    import json
+    txt = _fetch_text('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout)
+
+    if txt is None:
+        return None
+
+    try:
+        return json.loads(txt)
+    except json.JSONDecodeError:
         return None
 
 
@@ -190,3 +201,40 @@ def s3_fetch(url, s3=None, **kwargs):
     bucket, key = s3_url_parse(url)
     oo = s3.get_object(Bucket=bucket, Key=key, **kwargs)
     return oo['Body'].read()
+
+
+def this_instance(ec2=None):
+    """ Get dictionary of parameters describing current instance
+    """
+    info = ec2_metadata()
+    if info is None:
+        return None
+
+    iid = info.get('instanceId')
+
+    if iid is None:
+        return None
+
+    if ec2 is None:
+        session = get_boto_session()
+        if session is None:
+            return None
+        ec2 = session.create_client('ec2')
+
+    rr = ec2.describe_instances(InstanceIds=[iid])
+    return rr['Reservations'][0]['Instances'][0]
+
+
+def read_ssm_params(params, ssm=None):
+    """Build dictionary from SSM keys to values in the paramater store.
+    """
+    if ssm is None:
+        ssm = get_boto_session().create_client('ssm')
+
+    result = ssm.get_parameters(Names=[s for s in params],
+                                WithDecryption=True)
+    failed = result.get('InvalidParameters')
+    if failed:
+        raise ValueError('Failed to lookup some keys: ' + ','.join(failed))
+    return {['Name']: x['Value']
+            for x in result['Parameters']}
