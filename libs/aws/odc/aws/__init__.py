@@ -236,5 +236,5 @@ def read_ssm_params(params, ssm=None):
     failed = result.get('InvalidParameters')
     if failed:
         raise ValueError('Failed to lookup some keys: ' + ','.join(failed))
-    return {['Name']: x['Value']
+    return {x['Name']: x['Value']
             for x in result['Parameters']}
