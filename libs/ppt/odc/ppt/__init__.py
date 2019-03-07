@@ -2,6 +2,8 @@
 """
 from threading import BoundedSemaphore
 
+EOS_MARKER = object()
+
 
 def qmap(proc, q, eos_marker=None):
     """ Converts queue to an iterator.

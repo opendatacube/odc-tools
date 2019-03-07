@@ -4,8 +4,9 @@ import asyncio
 import logging
 import threading
 
+from . import EOS_MARKER
 
-EOS_MARKER = object()
+
 log = logging.getLogger(__name__)
 
 
