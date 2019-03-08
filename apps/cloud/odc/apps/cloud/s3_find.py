@@ -2,7 +2,7 @@ import click
 import sys
 from types import SimpleNamespace
 from odc.aio import S3Fetcher
-from dea.aws import parse_query, norm_predicate
+from odc.aws._find import parse_query, norm_predicate
 from odc.ppt import future_results
 
 
