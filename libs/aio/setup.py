@@ -15,7 +15,12 @@ setup(
     license='Apache License 2.0',
 
     tests_require=['pytest'],
-    install_requires=[],
+    install_requires=[
+        'odc_ppt @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt',
+        'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
+        'aiobotocore',
+        'botocore',
+    ],
 
     packages=['odc.aio'],
     zip_safe=False,
