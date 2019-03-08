@@ -2,8 +2,8 @@ import aiobotocore
 import asyncio
 from types import SimpleNamespace
 
-from . import auto_find_region, s3_url_parse, s3_fmt_range
-from . import norm_predicate, s3_file_info
+from odc.aws import auto_find_region, s3_url_parse, s3_fmt_range
+from odc.aws._find import norm_predicate, s3_file_info
 from odc.ppt import EOS_MARKER
 from odc.ppt.async_thread import AsyncThread
 

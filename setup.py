@@ -22,6 +22,7 @@ setup(
                       'botocore',
                       'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
                       'odc_io @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io',
+                      'odc_aio @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aio&subdirectory=libs/aio',
                       'odc_ppt @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt',
                       ],
     extras_require={

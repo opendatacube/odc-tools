@@ -1,7 +1,7 @@
 import click
 import sys
 from types import SimpleNamespace
-from dea.aws.aio import S3Fetcher
+from odc.aio import S3Fetcher
 from dea.aws import parse_query, norm_predicate
 from odc.ppt import future_results
 
