@@ -24,11 +24,7 @@ setup(
         'odc_ppt @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt',
         'odc_index @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index',
         'odc_apps_cloud @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_cloud&subdirectory=apps/cloud',
+        'odc_apps_dc_tools @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_dc_tools&subdirectory=apps/dc_tools',
     ],
     tests_require=['pytest'],
-    entry_points={
-        'console_scripts': [
-            'dc-index-from-tar = dea.apps.index_from_tar:cli',
-        ]
-    }
 )
