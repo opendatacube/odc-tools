@@ -8,7 +8,7 @@ from sys import stderr, stdout
 from odc.aio import S3Fetcher
 from odc.io import read_stdin_lines
 from odc.io.tar import tar_mode, add_txt_file
-from dea.bench import RateEstimator
+from odc.io.timer import RateEstimator
 
 
 @click.command('s3-to-tar')

@@ -2,7 +2,7 @@ import click
 import sys
 import datacube
 from odc.io.tar import tar_doc_stream, tar_mode
-from dea.bench import RateEstimator
+from odc.io.timer import RateEstimator
 from dea.index import from_yaml_doc_stream
 
 
