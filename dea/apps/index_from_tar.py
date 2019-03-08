@@ -3,7 +3,7 @@ import sys
 import datacube
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
-from dea.index import from_yaml_doc_stream
+from odc.index import from_yaml_doc_stream
 
 
 def from_tar_file(tarfname, index, mk_uri, mode, **kwargs):
