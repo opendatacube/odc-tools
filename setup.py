@@ -15,16 +15,12 @@ setup(
     python_requires='>=3.5',
     install_requires=[
         'datacube',
-        'click',
         'affine',
         'numpy',
         'rasterio>=1.0.4',
         'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
         'odc_io @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io',
         'odc_ppt @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt',
-        'odc_index @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index',
-        'odc_apps_cloud @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_cloud&subdirectory=apps/cloud',
-        'odc_apps_dc_tools @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_dc_tools&subdirectory=apps/dc_tools',
     ],
     tests_require=['pytest'],
 )
