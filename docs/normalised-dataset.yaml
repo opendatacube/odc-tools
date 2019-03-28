@@ -1,0 +1,124 @@
+# UUID of the dataset
+id: "37a8acf2-a7e9-4ba4-8412-aac6db8ae1ef"
+
+
+# Product name (what about auto-matching?)
+#  Allow: "**auto**" ??
+#  Allow: "uuid:0410ac08-14f9-499c-b59d-c42631cf6a03" for cross-db compat ??
+product: "ls5_nbar_albers"
+
+
+# Location is a List[URI]|URI, can be pointing to a file or a directory
+#  - can be [] (archived datasets)
+location:
+  - "file:///g/data/product/path/deep/metadata.yml"
+  - "s3://bucket/data/path/"
+
+
+# DateTimeStr|Tuple[DateTimeStr,DateTimeStr]
+# Single timestamp or 2 element list for a range
+# datetime: ["2000-02-11T17:43:00", "2000-02-11T17:44:22"]
+datetime: "2000-02-11T17:43:00"
+
+
+# Projection used by all bands within this dataset
+#  - Prefer EPSG: syntax
+#  - Use WKT otherwise
+crs: "EPSG:32654"
+
+
+# *optional*
+#  Polygon in native CRS: no valid pixels outside of this
+#  polygon can be found for any band. GeoJSON polygon.
+#  (what currently is called `valid_data`)
+geometry: {} #..GeoJSON.. polygon
+
+
+# Grids
+#  - Must include 'default'
+#  - All grids are expected to be defined in one projection
+#  - If only footprint data is available use shape: [1,1] and
+#    compute corresponding transform from the footrprint.
+grids:
+  default:
+      shape: [7731, 7621]
+      transform: [30.0, 0.0, 306285.0, 0.0, -30.0, -1802085.0, 0, 0, 1]
+  ir:
+      shape: [3865, 3810]
+      transform: [60.0, 0.0, 306285.0, 0.0, -60.0, -1802085.0, 0, 0, 1]
+
+
+# Information about measurements
+#  - path: str
+#      - Path relative to .location
+#      - Or fully qualified URI (for absolute file paths use file:///)
+#  - band: int (1 based index into a file)
+#  - layer: str|None
+#      - variable name for netcdf/hdf4 variables
+#  - grid: str
+#      - Key into `grids` defined above
+#      - Allow "unknown" if no location available?
+measurements:
+  a:
+      path: "a.tiff"
+      band: 1
+      layer: null
+      grid: "default"
+  a2:
+      path: "a.tiff"
+      band: 2
+      layer: null
+      grid: "default"
+  b:
+      path: "b.nc"
+      band: 1
+      layer: "var_b"
+      grid: "ir"
+
+
+# File format for all bands?
+file_format: "GeoTIFF"
+
+
+# Lineage: Dict[str, List[UUID]]
+#  - Lineage is for immediate parents only
+#  - Order of UUIDs within a list is not significant
+#  - Allows multiple parents to have same label unlike current format
+#     This requires changing constraint on dataset_source:classifier
+#  - Constraints interop for OLD code + new DB
+#  - Possibly change to just str:UUID mapping for backwards compatibility if too hard
+lineage:
+  nbar: [8f7ff9c7-1f8c-4c67-823b-f9f4d7d751b1]
+  pq: [11cc9455-7ee2-47ca-9de5-e3ccc663a1ca]
+
+
+# *optional*, future enhancement
+# UUID of a previous dataset this one replaces
+replaces: 6f7d925e-3c93-4eaa-bf25-6bf0374fd1db
+
+
+# STAC compatible names for Platform/Sensor/provider/etc
+#  Datacube aware set of properties, expected to add more in the future,
+#  so code should skip over unknown ones without error
+#   - All should be optional
+#   - Prefer STAC names when available
+#   - Prefix with `odc` otherwise, i.e. `odc:gqa`
+properties:
+    eo:platform: landsat-8
+    odc:gqa: 0.8
+    odc:region_code: "albers:-10+20"
+
+
+# *optional*
+# Information to store in the DB on behalf of IO driver and to pass
+# it on to IO driver when loading data.
+# Example: CRS+transform Override per band
+io_driver_data: {}
+
+
+# everything else:
+#  - user supplied, user interpreted
+#  - can be queried via usual metadata indirection mechanism
+user_data:
+  algorithm: "jumpy2"
+  opts: [3,2,3,4]
