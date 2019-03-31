@@ -39,6 +39,9 @@ geometry: {} #..GeoJSON.. polygon
 #  - All grids are expected to be defined in one projection
 #  - If only footprint data is available use shape: [1,1] and
 #    compute corresponding transform from the footrprint.
+#  - shape: [Height, Width] of image plane
+#  - transform: Affine matrix in row-major order, mapping from
+#    pixel plane coordinates to world
 grids:
   default:
       shape: [7731, 7621]
