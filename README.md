@@ -7,7 +7,9 @@ DEA Prototype Code
 Installation
 ============
 
-Using `pip`:
+First make sure your `pip` version is up to date: `pip install -U pip`. This
+project is using features of `pip` that are relatively recent.
+
 
 ```
 pip install 'git+https://github.com/opendatacube/dea-proto.git'
