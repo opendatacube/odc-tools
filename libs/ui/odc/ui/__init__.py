@@ -55,3 +55,39 @@ def show_datasets(dss):
     from IPython.display import GeoJSON
     from datacube.testutils.geom import epsg4326
     return GeoJSON([ds.extent.to_crs(epsg4326).__geo_interface__ for ds in dss])
+
+
+def to_rgba(ds,
+            clamp=None,
+            bands=('red', 'green', 'blue')):
+    """ Given `xr.Dataset` with bands `red,green,blue` construct `xr.Datarray`
+        containing uint8 rgba image.
+
+    :param ds: xarray Dataset
+    :param clamp: Value of the highest intensity value to use, if None, largest internsity value across all 3 channel is used.
+    :param bands: Which bands to use, order should red,green,blue
+    """
+    import numpy as np
+    import xarray as xr
+
+    r, g, b = (ds[name] for name in bands)
+    nodata = r.nodata
+    dims = r.dims + ('band',)
+
+    r, g, b = (x.values for x in (r, g, b))
+    a = (r != nodata).astype('uint8')*(0xFF)
+
+    if clamp is None:
+        clamp = max(x.max() for x in (r, g, b))
+
+    r, g, b = ((np.clip(x, 0, clamp).astype('uint32')*255//clamp).astype('uint8')
+               for x in (r, g, b))
+
+    coords = dict(**{x.name: x.values
+                     for x in ds.coords.values()},
+                  band=['r', 'g', 'b', 'a'])
+    rgba = xr.DataArray(np.stack([r, g, b, a], axis=r.ndim),
+                        coords=coords,
+                        dims=dims)
+
+    return rgba
