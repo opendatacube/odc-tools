@@ -91,3 +91,30 @@ def to_rgba(ds,
                         dims=dims)
 
     return rgba
+
+
+def image_shape(d):
+    """ Returns (Height, Width) of a given dataset/datarray
+    """
+    dim_names = (('y', 'x'),
+                 ('latitude', 'longitude'))
+
+    dims = set(d.dims)
+    h, w = None, None
+    for n1, n2 in dim_names:
+        if n1 in dims and n2 in dims:
+            h, w = (d.coords[n].shape[0]
+                    for n in (n1, n2))
+            break
+
+    if h is None:
+        raise ValueError("Can't determine shape from dimension names: {}".format(' '.join(dims)))
+
+    return (h, w)
+
+
+def image_aspect(d):
+    """ Given xarray Dataset|DataArray compute image aspect ratio
+    """
+    h, w = image_shape(d)
+    return w/h
