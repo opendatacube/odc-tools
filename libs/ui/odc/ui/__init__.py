@@ -1,5 +1,6 @@
 """ Notebook display helper methods.
 """
+import numpy as np
 
 
 def mk_cbk_ui(width='100%'):
@@ -118,3 +119,61 @@ def image_aspect(d):
     """
     h, w = image_shape(d)
     return w/h
+
+
+def mk_data_uri(data: bytes, mimetype: str = "image/png") -> str:
+    from base64 import encodebytes
+    return "data:{};base64,{}".format(mimetype, encodebytes(data).decode('ascii'))
+
+
+def _to_png_data2(xx: np.ndarray, mode: str = 'auto') -> bytes:
+    from io import BytesIO
+    import png
+
+    if mode in ('auto', None):
+        k = (2, 0) if xx.ndim == 2 else (xx.ndim, xx.shape[2])
+        mode = {
+            (2, 0): 'L',
+            (2, 1): 'L',
+            (3, 1): 'L',
+            (3, 2): 'LA',
+            (3, 3): 'RGB',
+            (3, 4): 'RGBA'}.get(k, None)
+
+        if mode is None:
+            raise ValueError("Can't figure out mode automatically")
+
+    bb = BytesIO()
+    png.from_array(xx, mode).save(bb)
+    return bb.getbuffer()
+
+
+def to_png_data(im: np.ndarray) -> bytes:
+    import rasterio
+    import warnings
+
+    if im.dtype != np.uint8:
+        raise ValueError("Only support uint8 images on input")
+
+    if im.ndim == 3:
+        h, w, nc = im.shape
+        bands = np.transpose(im, axes=(2, 0, 1))
+    elif im.ndim == 2:
+        h, w, nc = (*im.shape, 1)
+        bands = im.reshape(nc, h, w)
+    else:
+        raise ValueError('Expect 2 or 3 dimensional array got: {}'.format(im.ndim))
+
+    rio_opts = dict(width=w,
+                    height=h,
+                    count=nc,
+                    driver='PNG',
+                    dtype='uint8')
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', rasterio.errors.NotGeoreferencedWarning)
+
+        with rasterio.MemoryFile() as mem:
+            with mem.open(**rio_opts) as dst:
+                dst.write(bands)
+            return mem.read()
