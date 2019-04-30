@@ -232,3 +232,83 @@ def to_png_data(im: np.ndarray) -> bytes:
             with mem.open(**rio_opts) as dst:
                 dst.write(bands)
             return mem.read()
+
+
+def mk_map_region_selector(height='600px', **kwargs):
+    from ipyleaflet import Map, WidgetControl, FullScreenControl, DrawControl
+    from ipywidgets.widgets import Layout, Button, HTML
+    from types import SimpleNamespace
+
+    state = SimpleNamespace(selection=None,
+                            bounds=None,
+                            done=False)
+
+    btn_done = Button(description='done',
+                      layout=Layout(width='5em'))
+    btn_done.style.button_color = 'green'
+    btn_done.disabled = True
+
+    html_info = HTML(layout=Layout(flex='1 0 20em',
+                                   width='20em',
+                                   height='3em'))
+
+    def update_info(txt):
+        html_info.value = '<pre style="color:grey">' + txt + '</pre>'
+
+    m = Map(**kwargs) if len(kwargs) else Map(zoom=2)
+    m.scroll_wheel_zoom = True
+    m.layout.height = height
+
+    draw = DrawControl()
+    m.add_control(WidgetControl(widget=html_info, position='bottomleft'))
+    m.add_control(WidgetControl(widget=btn_done, position='topright'))
+
+    draw.circle = {}
+    draw.polyline = {}
+    draw.circlemarker = {}
+
+    draw.rectangle = {"shapeOptions": {
+        "fillColor": "#fca45d",
+        "color": "#000000",
+        "fillOpacity": 0.1
+    }}
+    draw.polygon = dict(**draw.rectangle)
+    draw.edit = True
+    draw.remove = True
+    m.add_control(draw)
+    m.add_control(FullScreenControl())
+
+    def on_done(btn):
+        state.done = True
+        btn_done.disabled = True
+        m.remove_control(draw)
+
+    def bounds_handler(event):
+        (lat1, lon1), (lat2, lon2) = event['new']
+        txt = 'lat: [{:.2f}, {:.2f}]\nlon: [{:.2f}, {:.2f}]'.format(lat1, lat2, lon1, lon2)
+        update_info(txt)
+        state.bounds = dict(lat=(lat1, lat2),
+                            lon=(lon1, lon2))
+
+    def on_draw(event):
+        v = event['new']
+        action = event['name']
+        if action == 'last_draw':
+            state.selection = v['geometry']
+        elif action == 'last_action' and v == 'deleted':
+            state.selection = None
+
+        btn_done.disabled = state.selection is None
+
+    draw.observe(on_draw)
+    m.observe(bounds_handler, ('bounds',))
+    btn_done.on_click(on_done)
+
+    return m, state
+
+
+def select_on_a_map(**kwargs):
+    from IPython.display import display
+    m, state = mk_map_region_selector(**kwargs)
+    display(m)
+    return ui_poll(lambda: state.selection if state.done else None)
