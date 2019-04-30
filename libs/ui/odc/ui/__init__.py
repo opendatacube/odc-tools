@@ -285,7 +285,8 @@ def mk_map_region_selector(height='600px', **kwargs):
 
     def bounds_handler(event):
         (lat1, lon1), (lat2, lon2) = event['new']
-        txt = 'lat: [{:.2f}, {:.2f}]\nlon: [{:.2f}, {:.2f}]'.format(lat1, lat2, lon1, lon2)
+        txt = 'lat: [{:.{n}f}, {:.{n}f}]\nlon: [{:.{n}f}, {:.{n}f}]'.format(
+            lat1, lat2, lon1, lon2, n=4)
         update_info(txt)
         state.bounds = dict(lat=(lat1, lat2),
                             lon=(lon1, lon2))
