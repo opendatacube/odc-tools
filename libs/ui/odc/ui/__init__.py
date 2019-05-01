@@ -107,10 +107,50 @@ def ui_poll(f, sleep=0.02):
     return x
 
 
-def show_datasets(dss):
-    from IPython.display import GeoJSON
+def dss_to_geojson(dss, bbox=False):
     from datacube.testutils.geom import epsg4326
-    return GeoJSON([ds.extent.to_crs(epsg4326).__geo_interface__ for ds in dss])
+    from datacube.utils.geometry import bbox_union
+
+    geoms = [ds.extent.to_crs(epsg4326) for ds in dss]
+    polygons = [g.__geo_interface__ for g in geoms]
+
+    if bbox:
+        return polygons, bbox_union(g.boundingbox for g in geoms)
+
+    return polygons
+
+
+def show_datasets(dss, mode='leaflet', **kw):
+    if mode not in ('leaflet', 'geojson'):
+        raise ValueError('Invalid value for mode, expected: leaflet|geojson')
+
+    polygons, bbox = dss_to_geojson(dss, bbox=True)
+
+    if mode == 'geojson':
+        from IPython.display import GeoJSON
+        return GeoJSON(polygons)
+    if mode == 'leaflet':
+        from ipyleaflet import Map, GeoJSON
+
+        center = kw.pop('center', None)
+        zoom = kw.pop('zoom', None)
+
+        if center is None:
+            center = (bbox.bottom + bbox.top)*0.5, (bbox.right + bbox.left)*0.5
+        if zoom is None:
+            zoom = 9  # TODO: auto compute zoom
+
+        height = kw.pop('height', '600px')
+        width = kw.pop('width', None)
+
+        m = Map(center=center, zoom=zoom, **kw)
+        m.layout.height = height
+        m.layout.width = width
+
+        gg = GeoJSON(data={'type': 'FeatureCollection',
+                           'features': polygons})
+        m.add_layer(gg)
+        return m
 
 
 def to_rgba(ds,
