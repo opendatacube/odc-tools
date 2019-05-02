@@ -311,9 +311,14 @@ def mk_map_region_selector(height='600px', **kwargs):
     m.scroll_wheel_zoom = True
     m.layout.height = height
 
+    widgets = [
+        WidgetControl(widget=btn_done, position='topright'),
+        WidgetControl(widget=html_info, position='bottomleft'),
+    ]
+    for w in widgets:
+        m.add_control(w)
+
     draw = DrawControl()
-    m.add_control(WidgetControl(widget=html_info, position='bottomleft'))
-    m.add_control(WidgetControl(widget=btn_done, position='topright'))
 
     draw.circle = {}
     draw.polyline = {}
@@ -334,6 +339,8 @@ def mk_map_region_selector(height='600px', **kwargs):
         state.done = True
         btn_done.disabled = True
         m.remove_control(draw)
+        for w in widgets:
+            m.remove_control(w)
 
     def bounds_handler(event):
         (lat1, lon1), (lat2, lon2) = event['new']
@@ -362,6 +369,14 @@ def mk_map_region_selector(height='600px', **kwargs):
 
 def select_on_a_map(**kwargs):
     from IPython.display import display
+
     m, state = mk_map_region_selector(**kwargs)
     display(m)
-    return ui_poll(lambda: state.selection if state.done else None)
+
+    def extract_geometry(state):
+        from datacube.utils.geometry import Geometry
+        from datacube.testutils.geom import epsg4326
+
+        return Geometry(state.selection, epsg4326)
+
+    return ui_poll(lambda: extract_geometry(state) if state.done else None)
