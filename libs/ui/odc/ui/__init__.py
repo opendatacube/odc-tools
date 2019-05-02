@@ -148,7 +148,8 @@ def show_datasets(dss, mode='leaflet', **kw):
         m.layout.width = width
 
         gg = GeoJSON(data={'type': 'FeatureCollection',
-                           'features': polygons})
+                           'features': polygons},
+                     hover_style={'color': 'tomato'})
         m.add_layer(gg)
         return m
 
