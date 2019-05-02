@@ -120,6 +120,17 @@ def dss_to_geojson(dss, bbox=False):
     return polygons
 
 
+def zoom_from_bbox(bbox):
+    """ Estimate zoom level for a given bounding box region
+
+        Bounding box is assumed to be in lat/lon.
+    """
+    import math
+    x = max(360/(bbox.right - bbox.left),
+            180/(bbox.top - bbox.bottom))
+    return math.floor(math.log2(x))
+
+
 def show_datasets(dss, mode='leaflet', **kw):
     if mode not in ('leaflet', 'geojson'):
         raise ValueError('Invalid value for mode, expected: leaflet|geojson')
@@ -138,7 +149,7 @@ def show_datasets(dss, mode='leaflet', **kw):
         if center is None:
             center = (bbox.bottom + bbox.top)*0.5, (bbox.right + bbox.left)*0.5
         if zoom is None:
-            zoom = 9  # TODO: auto compute zoom
+            zoom = zoom_from_bbox(bbox)
 
         height = kw.pop('height', '600px')
         width = kw.pop('width', None)
