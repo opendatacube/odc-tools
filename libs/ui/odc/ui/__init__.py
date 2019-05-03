@@ -131,7 +131,7 @@ def zoom_from_bbox(bbox):
     return math.floor(math.log2(x))
 
 
-def show_datasets(dss, mode='leaflet', **kw):
+def show_datasets(dss, mode='leaflet', dst=None, **kw):
     if mode not in ('leaflet', 'geojson'):
         raise ValueError('Invalid value for mode, expected: leaflet|geojson')
 
@@ -143,26 +143,32 @@ def show_datasets(dss, mode='leaflet', **kw):
     if mode == 'leaflet':
         from ipyleaflet import Map, GeoJSON
 
-        center = kw.pop('center', None)
-        zoom = kw.pop('zoom', None)
+        if dst is None:
+            center = kw.pop('center', None)
+            zoom = kw.pop('zoom', None)
 
-        if center is None:
-            center = (bbox.bottom + bbox.top)*0.5, (bbox.right + bbox.left)*0.5
-        if zoom is None:
-            zoom = zoom_from_bbox(bbox)
+            if center is None:
+                center = (bbox.bottom + bbox.top)*0.5, (bbox.right + bbox.left)*0.5
+            if zoom is None:
+                zoom = zoom_from_bbox(bbox)
 
-        height = kw.pop('height', '600px')
-        width = kw.pop('width', None)
+            height = kw.pop('height', '600px')
+            width = kw.pop('width', None)
 
-        m = Map(center=center, zoom=zoom, **kw)
-        m.layout.height = height
-        m.layout.width = width
+            m = Map(center=center, zoom=zoom, **kw)
+            m.layout.height = height
+            m.layout.width = width
+        else:
+            m = dst
 
         gg = GeoJSON(data={'type': 'FeatureCollection',
                            'features': polygons},
                      hover_style={'color': 'tomato'})
         m.add_layer(gg)
-        return m
+        if dst is None:
+            return m
+        else:
+            return gg
 
 
 def to_rgba(ds,
