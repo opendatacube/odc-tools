@@ -3,11 +3,16 @@
 from types import SimpleNamespace
 
 
+def query_polygon(**kw):
+    from datacube.api.query import Query
+    return Query(**kw).geopolygon
+
+
 class DcViewer():
 
     def __init__(self, dc,
                  time='2019-04',
-                 height='400px',
+                 height='600px',
                  out=None):
         self._dc = dc
         self._out = out
@@ -16,6 +21,9 @@ class DcViewer():
         self._state = state
         self._gui = gui
         self._dss_layer = None
+        self._dss = None
+        self._last_query_bounds = None
+        self._last_query_polygon = None
 
     def _build_ui(self,
                   product_names,
@@ -63,6 +71,7 @@ class DcViewer():
 
         state = SimpleNamespace(time=time,
                                 product=product_names[0],
+                                count=0,
                                 bounds=None)
         ui_state = SimpleNamespace(ui=ui,
                                    info=info_lbl,
@@ -125,24 +134,43 @@ class DcViewer():
         dss = dc.find_datasets(product=s.product,
                                time=s.time,
                                **s.bounds)
-
-        self._clear_footprints()
         self._dss = dss
+        self._last_query_bounds = dict(**s.bounds)
+        self._last_query_polygon = query_polygon(**s.bounds)
+
         if len(dss) > 0:
-            self._dss_layer = show_datasets(dss, dst=self._gui.map)
+            new_layer = show_datasets(dss, dst=self._gui.map)
+            self._clear_footprints()
+            self._dss_layer = new_layer
+        else:
+            self._clear_footprints()
+
+    def _maybe_show(self, max_dss, clear=False):
+        if self._state.count < max_dss:
+            self._update_footprints()
+        elif clear:
+            self._clear_footprints()
 
     def on_bounds(self, bounds):
         self._update_info_count()
+        skip_refresh = False
+        if self._last_query_polygon is not None:
+            if self._last_query_polygon.contains(query_polygon(**bounds)):
+                skip_refresh = True
+
+        if not skip_refresh:
+            self._maybe_show(500, clear=True)
 
     def on_date(self, time):
         self._update_info_count()
+        self._maybe_show(500, clear=True)
 
     def on_show(self):
         self._update_footprints()
 
     def on_product(self, prod):
         self._update_info_count()
-        self._clear_footprints()
+        self._maybe_show(500, clear=True)
 
     def _ipython_display_(self):
         return self._gui.ui._ipython_display_()
