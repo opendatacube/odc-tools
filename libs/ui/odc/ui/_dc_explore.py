@@ -12,10 +12,8 @@ class DcViewer():
 
     def __init__(self, dc,
                  time='2019-04',
-                 height='600px',
-                 out=None):
+                 height='600px'):
         self._dc = dc
-        self._out = out
         products = list(p.name for p, c in dc.index.datasets.count_by_product())
         state, gui = self._build_ui(products, time, height=height)
         self._state = state
@@ -60,13 +58,12 @@ class DcViewer():
 
         ctrls = w.HBox([prod_select, w.Label('Time Period'), date_txt, info_lbl, btn_show],
                        layout=w.Layout(
-                           border='1px solid tomato',
+                           # border='1px solid tomato',
                        ))
-
         # m.add_control(L.WidgetControl(widget=ctrls, position='topright'))
 
         ui = w.VBox([ctrls, m], layout=w.Layout(
-            border='2px solid plum',
+            # border='2px solid plum',
         ))
 
         state = SimpleNamespace(time=time,
