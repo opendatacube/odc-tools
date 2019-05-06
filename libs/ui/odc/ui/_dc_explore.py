@@ -8,6 +8,11 @@ def query_polygon(**kw):
     return Query(**kw).geopolygon
 
 
+def dt_step(d: str, step: int = 1) -> str:
+    from pandas import Period
+    return str(Period(d) + step)
+
+
 class DcViewer():
 
     def __init__(self, dc,
@@ -49,6 +54,14 @@ class DcViewer():
             flex='1 0 auto',
             # border='1px solid white',
         ))
+        btn_bwd = w.Button(icon='step-backward', layout=w.Layout(
+            flex='0 1 auto',
+            width='3em',
+        ))
+        btn_fwd = w.Button(icon='step-forward', layout=w.Layout(
+            flex='0 1 auto',
+            width='3em',
+        ))
         btn_show = w.Button(description='show', layout=w.Layout(
             flex='0 1 auto',
             width='4em',
@@ -56,8 +69,9 @@ class DcViewer():
             button_color='green'
         ))
 
-        ctrls = w.HBox([prod_select, w.Label('Time Period'), date_txt, info_lbl, btn_show],
-                       layout=w.Layout(
+        ctrls = w.HBox([prod_select, w.Label('Time Period'),
+                        date_txt, btn_bwd, btn_fwd,
+                        info_lbl, btn_show], layout=w.Layout(
                            # border='1px solid tomato',
                        ))
         # m.add_control(L.WidgetControl(widget=ctrls, position='topright'))
@@ -98,10 +112,16 @@ class DcViewer():
             state.time = date_txt.value
             self.on_show()
 
+        def time_advance(step):
+            date_txt.value = dt_step(date_txt.value, step)
+            on_date_change(date_txt)
+
         date_txt.on_submit(on_date_change)
         prod_select.observe(on_product_change, ['value'])
         m.observe(bounds_handler, ('bounds',))
         btn_show.on_click(on_show)
+        btn_fwd.on_click(lambda b: time_advance(1))
+        btn_bwd.on_click(lambda b: time_advance(-1))
 
         return state, ui_state
 
