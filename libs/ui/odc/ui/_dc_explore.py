@@ -1,15 +1,17 @@
 """ Interactive dc viewer
 """
 from types import SimpleNamespace
+from pandas import Period
+from datacube.api.query import Query
+from odc.index import dataset_count
+from ._map import show_datasets
 
 
 def query_polygon(**kw):
-    from datacube.api.query import Query
     return Query(**kw).geopolygon
 
 
 def dt_step(d: str, step: int = 1) -> str:
-    from pandas import Period
     return str(Period(d) + step)
 
 
@@ -126,7 +128,6 @@ class DcViewer():
         return state, ui_state
 
     def _update_info_count(self):
-        from odc.index import dataset_count
         s = self._state
         spatial_query = s.bounds
 
@@ -144,7 +145,6 @@ class DcViewer():
             self._gui.map.remove_layer(layer)
 
     def _update_footprints(self):
-        from . import show_datasets
         s = self._state
         dc = self._dc
 
