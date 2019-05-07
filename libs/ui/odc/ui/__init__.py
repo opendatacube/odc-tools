@@ -21,6 +21,7 @@ from ._images import (
     image_aspect,
     mk_data_uri,
     to_png_data,
+    mk_image_overlay,
 )
 
 from ._dc_explore import (
@@ -42,4 +43,6 @@ __all__ = (
     "image_aspect",
     "mk_data_uri",
     "to_png_data",
+    "mk_image_overlay",
+    "DcViewer",
 )

@@ -122,3 +122,22 @@ def to_png_data(im: np.ndarray) -> bytes:
             with mem.open(**rio_opts) as dst:
                 dst.write(bands)
             return mem.read()
+
+
+def xr_bounds(x):
+    def get_range(a):
+        b = (a[1] - a[0])*0.5
+        return a[0]-b, a[-1]+b
+    if 'latitude' in x.coords:
+        r1, r2 = (get_range(a.values) for a in (x.latitude, x.longitude))
+        return tuple((r1[i], r2[i]) for i in (0, 1))
+    else:
+        raise ValueError('Needs to have latitude/longitude coordinates')
+
+
+def mk_image_overlay(xx, clamp=3000, bands=('red', 'green', 'blue')):
+    from ipyleaflet import ImageOverlay
+    cc = to_rgba(xx, clamp, bands)
+    im_url = mk_data_uri(to_png_data(cc.values))
+    return ImageOverlay(url=im_url,
+                        bounds=xr_bounds(cc))
