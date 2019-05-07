@@ -15,7 +15,7 @@ setup(
     license='Apache License 2.0',
 
     tests_require=['pytest'],
-    install_requires=['ipywidgets'],
+    install_requires=['ipywidgets', 'ipyleaflet'],
 
     packages=['odc.ui'],
     zip_safe=False,

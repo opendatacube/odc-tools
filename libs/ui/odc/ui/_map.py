@@ -26,7 +26,11 @@ def zoom_from_bbox(bbox):
     return math.floor(math.log2(x))
 
 
-def show_datasets(dss, mode='leaflet', dst=None, **kw):
+def show_datasets(dss, mode='leaflet',
+                  dst=None,
+                  layer_name='Datasets',
+                  style={},
+                  **kw):
     if mode not in ('leaflet', 'geojson'):
         raise ValueError('Invalid value for mode, expected: leaflet|geojson')
 
@@ -36,7 +40,7 @@ def show_datasets(dss, mode='leaflet', dst=None, **kw):
         from IPython.display import GeoJSON
         return GeoJSON(polygons)
     if mode == 'leaflet':
-        from ipyleaflet import Map, GeoJSON
+        from ipyleaflet import Map, GeoJSON, FullScreenControl, LayersControl
 
         if dst is None:
             center = kw.pop('center', None)
@@ -53,12 +57,16 @@ def show_datasets(dss, mode='leaflet', dst=None, **kw):
             m = Map(center=center, zoom=zoom, **kw)
             m.layout.height = height
             m.layout.width = width
+            m.add_control(FullScreenControl())
+            m.add_control(LayersControl())
         else:
             m = dst
 
         gg = GeoJSON(data={'type': 'FeatureCollection',
                            'features': polygons},
-                     hover_style={'color': 'tomato'})
+                     style=style,
+                     hover_style={'color': 'tomato'},
+                     name=layer_name)
         m.add_layer(gg)
         if dst is None:
             return m

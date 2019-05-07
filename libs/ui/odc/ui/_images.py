@@ -135,9 +135,13 @@ def xr_bounds(x):
         raise ValueError('Needs to have latitude/longitude coordinates')
 
 
-def mk_image_overlay(xx, clamp=3000, bands=('red', 'green', 'blue')):
+def mk_image_overlay(xx,
+                     clamp=3000,
+                     bands=('red', 'green', 'blue'),
+                     layer_name='Image'):
     from ipyleaflet import ImageOverlay
     cc = to_rgba(xx, clamp, bands)
     im_url = mk_data_uri(to_png_data(cc.values))
     return ImageOverlay(url=im_url,
-                        bounds=xr_bounds(cc))
+                        bounds=xr_bounds(cc),
+                        name=layer_name)
