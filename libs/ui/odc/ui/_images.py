@@ -93,7 +93,9 @@ def _to_png_data2(xx: np.ndarray, mode: str = 'auto') -> bytes:
     return bb.getbuffer()
 
 
-def to_png_data(im: np.ndarray) -> bytes:
+def _compress_image(im: np.ndarray,
+                    driver='PNG',
+                    **opts) -> bytes:
     import rasterio
     import warnings
 
@@ -112,8 +114,9 @@ def to_png_data(im: np.ndarray) -> bytes:
     rio_opts = dict(width=w,
                     height=h,
                     count=nc,
-                    driver='PNG',
-                    dtype='uint8')
+                    driver=driver,
+                    dtype='uint8',
+                    **opts)
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', rasterio.errors.NotGeoreferencedWarning)
@@ -122,6 +125,14 @@ def to_png_data(im: np.ndarray) -> bytes:
             with mem.open(**rio_opts) as dst:
                 dst.write(bands)
             return mem.read()
+
+
+def to_png_data(im: np.ndarray, zlevel=6) -> bytes:
+    return _compress_image(im, 'PNG', zlevel=zlevel)
+
+
+def to_jpeg_data(im: np.ndarray, quality=95) -> bytes:
+    return _compress_image(im, 'JPEG', quality=quality)
 
 
 def xr_bounds(x):
@@ -138,10 +149,22 @@ def xr_bounds(x):
 def mk_image_overlay(xx,
                      clamp=3000,
                      bands=('red', 'green', 'blue'),
-                     layer_name='Image'):
+                     layer_name='Image',
+                     fmt='png',
+                     **opts):
     from ipyleaflet import ImageOverlay
+    comp, mime = dict(
+        png=(to_png_data, 'image/png'),
+        jpg=(to_jpeg_data, 'image/jpeg'),
+        jpeg=(to_jpeg_data, 'image/jpeg'),
+    ).get(fmt.lower(), (None, None))
+
+    if comp is None:
+        raise ValueError('Only support png an jpeg formats')
+
     cc = to_rgba(xx, clamp, bands)
-    im_url = mk_data_uri(to_png_data(cc.values))
+
+    im_url = mk_data_uri(comp(cc.values, **opts), mime)
     return ImageOverlay(url=im_url,
                         bounds=xr_bounds(cc),
                         name=layer_name)
