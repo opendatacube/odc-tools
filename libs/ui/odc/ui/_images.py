@@ -32,9 +32,16 @@ def to_rgba(ds,
     coords = dict(**{x.name: x.values
                      for x in ds.coords.values()},
                   band=['r', 'g', 'b', 'a'])
+
+    attrs = {}
+    crs = ds.attrs.get('crs')
+    if crs is not None:
+        attrs['crs'] = crs
+
     rgba = xr.DataArray(np.stack([r, g, b, a], axis=r.ndim),
                         coords=coords,
-                        dims=dims)
+                        dims=dims,
+                        attrs=attrs)
 
     return rgba
 
