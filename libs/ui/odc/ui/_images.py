@@ -184,6 +184,17 @@ def mk_image_overlay(xx,
     if comp is None:
         raise ValueError('Only support png an jpeg formats')
 
+    if 'time' in xx.coords:
+        nt = xx.time.shape[0]
+        if nt == 1:
+            xx = xx.isel(time=0)
+        else:
+            return [mk_image_overlay(xx.isel(time=t),
+                                     clamp=clamp,
+                                     bands=bands,
+                                     layer_name="{}-{}".format(layer_name, t),
+                                     fmt=fmt, **opts) for t in range(nt)]
+
     cc = to_rgba(xx, clamp, bands)
 
     im_url = mk_data_uri(comp(cc.values, **opts), mime)
