@@ -142,15 +142,30 @@ def to_jpeg_data(im: np.ndarray, quality=95) -> bytes:
     return _compress_image(im, 'JPEG', quality=quality)
 
 
-def xr_bounds(x):
+def xr_bounds(x, crs=None):
+    from datacube.utils.geometry import box
+    from datacube.testutils.geom import epsg4326
+
     def get_range(a):
         b = (a[1] - a[0])*0.5
         return a[0]-b, a[-1]+b
     if 'latitude' in x.coords:
         r1, r2 = (get_range(a.values) for a in (x.latitude, x.longitude))
         return tuple((r1[i], r2[i]) for i in (0, 1))
-    else:
-        raise ValueError('Needs to have latitude/longitude coordinates')
+
+    if crs is None:
+        crs = getattr(x, 'crs')
+    if crs is None:
+        raise ValueError('Need to supply CRS or use latitude/longitude coords')
+
+    if not all(d in x.coords for d in crs.dimensions):
+        raise ValueError('Incompatible CRS supplied')
+
+    (t, b), (l, r) = (get_range(x.coords[dim].values)
+                      for dim in crs.dimensions)
+
+    l, b, r, t = box(l, b, r, t, crs).to_crs(epsg4326).boundingbox
+    return ((t, r), (b, l))
 
 
 def mk_image_overlay(xx,
