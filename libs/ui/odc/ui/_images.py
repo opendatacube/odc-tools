@@ -1,11 +1,29 @@
 """ Notebook display helper methods.
 """
 import numpy as np
+import xarray as xr
+from typing import Tuple, Optional, List
 
 
-def to_rgba(ds,
-            clamp=None,
-            bands=('red', 'green', 'blue')):
+def guess_rgb_names(bands: List[str]) -> Tuple[str, str, str]:
+    out = []
+    for c in ('red', 'green', 'blue'):
+        candidates = [name for name in bands if c in name]
+        n = len(candidates)
+        if n == 0:
+            raise ValueError('Found no candidate for color "{}"'.format(c))
+        elif n > 1:
+            raise ValueError('Found too many candidates for color "{}"'.format(c))
+
+        out.append(candidates[0])
+    r, g, b = out
+    return (r, g, b)
+
+
+def to_rgba(ds: xr.Dataset,
+            clamp: Optional[float] = None,
+            bands: Optional[Tuple[str, str, str]] = None
+            ) -> xr.DataArray:
     """ Given `xr.Dataset` with bands `red,green,blue` construct `xr.Datarray`
         containing uint8 rgba image.
 
@@ -13,8 +31,9 @@ def to_rgba(ds,
     :param clamp: Value of the highest intensity value to use, if None, largest internsity value across all 3 channel is used.
     :param bands: Which bands to use, order should red,green,blue
     """
-    import numpy as np
-    import xarray as xr
+
+    if bands is None:
+        bands = guess_rgb_names(list(ds.data_vars))
 
     r, g, b = (ds[name] for name in bands)
     nodata = r.nodata
@@ -78,7 +97,7 @@ def mk_data_uri(data: bytes, mimetype: str = "image/png") -> str:
     return "data:{};base64,{}".format(mimetype, encodebytes(data).decode('ascii'))
 
 
-def _to_png_data2(xx: np.ndarray, mode: str = 'auto') -> bytes:
+def _to_png_data2(xx: np.ndarray, mode: str = 'auto') -> memoryview:
     from io import BytesIO
     import png
 
@@ -90,9 +109,9 @@ def _to_png_data2(xx: np.ndarray, mode: str = 'auto') -> bytes:
             (3, 1): 'L',
             (3, 2): 'LA',
             (3, 3): 'RGB',
-            (3, 4): 'RGBA'}.get(k, None)
+            (3, 4): 'RGBA'}.get(k, '')
 
-        if mode is None:
+        if mode == '':
             raise ValueError("Can't figure out mode automatically")
 
     bb = BytesIO()
@@ -113,7 +132,7 @@ def _compress_image(im: np.ndarray,
         h, w, nc = im.shape
         bands = np.transpose(im, axes=(2, 0, 1))
     elif im.ndim == 2:
-        h, w, nc = (*im.shape, 1)
+        (h, w), nc = im.shape, 1
         bands = im.reshape(nc, h, w)
     else:
         raise ValueError('Expect 2 or 3 dimensional array got: {}'.format(im.ndim))
@@ -142,16 +161,19 @@ def to_jpeg_data(im: np.ndarray, quality=95) -> bytes:
     return _compress_image(im, 'JPEG', quality=quality)
 
 
-def xr_bounds(x, crs=None):
+def xr_bounds(x, crs=None) -> Tuple[Tuple[float, float],
+                                    Tuple[float, float]]:
     from datacube.utils.geometry import box
     from datacube.testutils.geom import epsg4326
 
-    def get_range(a):
+    def get_range(a: np.ndarray) -> Tuple[float, float]:
         b = (a[1] - a[0])*0.5
         return a[0]-b, a[-1]+b
+
     if 'latitude' in x.coords:
         r1, r2 = (get_range(a.values) for a in (x.latitude, x.longitude))
-        return tuple((r1[i], r2[i]) for i in (0, 1))
+        p1, p2 = ((r1[i], r2[i]) for i in (0, 1))
+        return p1, p2
 
     if crs is None:
         crs = getattr(x, 'crs')
@@ -168,9 +190,9 @@ def xr_bounds(x, crs=None):
     return ((t, r), (b, l))
 
 
-def mk_image_overlay(xx,
-                     clamp=3000,
-                     bands=('red', 'green', 'blue'),
+def mk_image_overlay(xx: xr.Dataset,
+                     clamp: Optional[float] = None,
+                     bands: Optional[Tuple[str, str, str]] = None,
                      layer_name='Image',
                      fmt='png',
                      **opts):
@@ -181,7 +203,7 @@ def mk_image_overlay(xx,
         jpeg=(to_jpeg_data, 'image/jpeg'),
     ).get(fmt.lower(), (None, None))
 
-    if comp is None:
+    if comp is None or mime is None:
         raise ValueError('Only support png an jpeg formats')
 
     if 'time' in xx.coords:
@@ -195,7 +217,7 @@ def mk_image_overlay(xx,
                                      layer_name="{}-{}".format(layer_name, t),
                                      fmt=fmt, **opts) for t in range(nt)]
 
-    cc = to_rgba(xx, clamp, bands)
+    cc = to_rgba(xx, clamp=clamp, bands=bands)
 
     im_url = mk_data_uri(comp(cc.values, **opts), mime)
     return ImageOverlay(url=im_url,
