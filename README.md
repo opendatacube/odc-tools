@@ -3,6 +3,7 @@ DEA Prototype Code
 
 - AWS s3 tools
 - Rasterio from S3 investigations
+- Utilities for data visualizations in notebooks
 
 Installation
 ============
@@ -10,16 +11,34 @@ Installation
 First make sure your `pip` version is up to date: `pip install -U pip`. This
 project is using features of `pip` that are relatively recent.
 
+This repository provides a number of small [libraries](https://github.com/opendatacube/dea-proto/tree/master/libs)
+and [CLI tools](https://github.com/opendatacube/dea-proto/tree/master/apps).
 
-```
-pip install 'git+https://github.com/opendatacube/dea-proto.git'
-```
+Full list of libraries, and install instructions:
 
-On Ubuntu to install globally
+- `odc.ui` tools for data visualization in notebook/lab
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_ui&subdirectory=libs/ui'`
 
-```
-sudo -H pip3 install 'git+https://github.com/opendatacube/dea-proto.git'
-```
+- `odc.index` extra utils for working with datacube database
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index`
+
+- `odc.aws` AWS/S3 utilities, used by apps mainly
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws'`
+
+- `odc.io` common IO utilities, used by apps mainly
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io'`
+
+- `odc.aio` faster concurrent fetching from S3 with async, used by apps
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aio&subdirectory=libs/aio'`
+
+- `odc.ppt` parallel processing helper methods, internal lib
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt'`
+
+- `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dscache&subdirectory=libs/dscache'`
+
+- `odc.dtools` no longer relevant (dask + rio experiments)
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dtools&subdirectory=libs/dtools'`
 
 
 CLI Tools
@@ -57,7 +76,7 @@ Apps
 ----
 
 1. `s3-find` list S3 bucket with wildcard
-2. `s3-to-tar` fetch documents from S3 and dump them to tar archive 
+2. `s3-to-tar` fetch documents from S3 and dump them to tar archive
 3. `gs-to-tar` search GS for documents and dump them to tar archive
 4. `dc-index-from-tar` read yaml documents from tar archive and add them to datacube
 
