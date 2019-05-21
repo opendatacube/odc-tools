@@ -156,6 +156,20 @@ def mk_map_region_selector(height='600px', **kwargs):
 
 
 def select_on_a_map(**kwargs):
+    """ Display a map and block execution until user selects a region of interest.
+
+    Returns selected region as datacube Geometry class.
+
+        polygon = select_on_map()
+
+    **kwargs**
+      height -- height of the map, for example "500px", "10el"
+
+    Any parameter ipyleaflet.Map(..) accepts:
+      zoom   Int
+      center (lat: Float, lon: Float)
+      ...
+    """
     from IPython.display import display
     from ._ui import ui_poll
 
