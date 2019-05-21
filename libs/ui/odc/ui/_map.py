@@ -112,12 +112,15 @@ def mk_map_region_selector(height='600px', **kwargs):
     draw.polyline = {}
     draw.circlemarker = {}
 
-    draw.rectangle = {"shapeOptions": {
-        "fillColor": "#fca45d",
-        "color": "#000000",
-        "fillOpacity": 0.1
-    }}
-    draw.polygon = dict(**draw.rectangle)
+    shape_opts = {"fillColor": "#fca45d",
+                  "color": "#000000",
+                  "fillOpacity": 0.1}
+    draw.rectangle = {"shapeOptions": shape_opts}
+    poly_opts = {"shapeOptions": dict(**shape_opts)}
+    poly_opts["shapeOptions"]["original"] = dict(**shape_opts)
+    poly_opts["shapeOptions"]["editing"] = dict(**shape_opts)
+
+    draw.polygon = poly_opts
     draw.edit = True
     draw.remove = True
     m.add_control(draw)
