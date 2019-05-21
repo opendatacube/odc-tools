@@ -2,11 +2,17 @@
 """
 
 
-def dss_to_geojson(dss, bbox=False):
+def dss_to_geojson(dss, bbox=False,
+                   simplify=True,
+                   tolerance=0.001):
     from datacube.testutils.geom import epsg4326
     from datacube.utils.geometry import bbox_union
 
     geoms = [ds.extent.to_crs(epsg4326) for ds in dss]
+
+    if simplify:
+        geoms = [g.simplify(tolerance) for g in geoms]
+
     polygons = [g.__geo_interface__ for g in geoms]
 
     if bbox:
@@ -30,11 +36,26 @@ def show_datasets(dss, mode='leaflet',
                   dst=None,
                   layer_name='Datasets',
                   style={},
+                  simplify=True,
+                  tolerance=0.001,  # ~100m at equator
                   **kw):
+    """ Display dataset footprints on a Leaflet map.
+
+    :param mode:       leaflet|geojson, geojson only works in JupyterLab, leave it as default
+    :param dst:        leaflet map to "show" datasets on, default -- create new one
+    :param layer_name: name to give to the layer
+    :param style:      GeoJSON style dictionary
+    :param simplify:   simplify geometries before adding them to map
+    :param tolerance:  tolerance in degrees for geometry simplification, default 0.001 ~ 111 meters at equator
+
+    **kw: Arguments to pass to leaflet.Map(..) constructor
+    """
     if mode not in ('leaflet', 'geojson'):
         raise ValueError('Invalid value for mode, expected: leaflet|geojson')
 
-    polygons, bbox = dss_to_geojson(dss, bbox=True)
+    polygons, bbox = dss_to_geojson(dss, bbox=True,
+                                    simplify=simplify,
+                                    tolerance=tolerance)
 
     if mode == 'geojson':
         from IPython.display import GeoJSON
