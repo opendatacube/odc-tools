@@ -17,29 +17,69 @@ def dt_step(d: str, step: int = 1) -> str:
 
 class DcViewer():
 
-    def __init__(self, dc,
-                 time='2019-04',
-                 height='600px'):
+    def __init__(self, dc, time,
+                 products=None,
+                 zoom=None,
+                 center=None,
+                 height=None,
+                 width=None,
+                 style=None):
+        """
+        :param dc:        Datacube object
+        :param time:      Initial time as a string
+        :param products:  None -- all products, 'non-empty' all non empty products, or a list or product names
+        :param zoom:      Initial zoom factor for a map
+        :param center:    Initial center for a map in Lat,Lon
+        :param height:    Example: '600px', '10em'
+        :param width:     Example: '100%', '600px'
+        :param style:     Dictionary for styling for dataset footprint
+            - weight
+            - color/fillColor
+            - opacity/fillOpacity
+            - full list of options here: https://leafletjs.com/reference-1.5.0.html#path-option
+        """
         self._dc = dc
-        products = list(p.name for p, c in dc.index.datasets.count_by_product())
-        state, gui = self._build_ui(products, time, height=height)
+
+        if products is None:
+            products = [p.name for p in dc.index.products.get_all()]
+        elif products == 'non-empty':
+            products = list(p.name for p, c in dc.index.datasets.count_by_product())
+
+        if style is None:
+            style = dict(fillOpacity=0.1,
+                         weight=1)
+
+        state, gui = self._build_ui(products,
+                                    time,
+                                    zoom=zoom,
+                                    center=center,
+                                    height=height,
+                                    width=width)
         self._state = state
         self._gui = gui
         self._dss_layer = None
         self._dss = None
         self._last_query_bounds = None
         self._last_query_polygon = None
+        self._style = style
 
     def _build_ui(self,
                   product_names,
                   time,
-                  height=None):
+                  zoom=None,
+                  center=None,
+                  height=None,
+                  width=None):
         from ipywidgets import widgets as w
         import ipyleaflet as L
 
-        m = L.Map(zoom=2, scroll_wheel_zoom=True, layout=w.Layout(
-            height=height
-        ))
+        pp = {'zoom': zoom or 1}
+
+        if center is not None:
+            pp['center'] = center
+
+        m = L.Map(**pp,
+                  scroll_wheel_zoom=True)
         m.add_control(L.FullScreenControl())
 
         prod_select = w.Dropdown(options=product_names, layout=w.Layout(
@@ -66,9 +106,9 @@ class DcViewer():
         ))
         btn_show = w.Button(description='show', layout=w.Layout(
             flex='0 1 auto',
-            width='4em',
+            width='6em',
         ), style=dict(
-            button_color='green'
+            # button_color='green'
         ))
 
         ctrls = w.HBox([prod_select, w.Label('Time Period'),
@@ -79,6 +119,8 @@ class DcViewer():
         # m.add_control(L.WidgetControl(widget=ctrls, position='topright'))
 
         ui = w.VBox([ctrls, m], layout=w.Layout(
+            width=width,
+            height=height,
             # border='2px solid plum',
         ))
 
@@ -156,7 +198,7 @@ class DcViewer():
         self._last_query_polygon = query_polygon(**s.bounds)
 
         if len(dss) > 0:
-            new_layer = show_datasets(dss, dst=self._gui.map)
+            new_layer = show_datasets(dss, dst=self._gui.map, style=self._style)
             self._clear_footprints()
             self._dss_layer = new_layer
         else:

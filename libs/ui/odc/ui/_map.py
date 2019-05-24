@@ -45,6 +45,10 @@ def show_datasets(dss, mode='leaflet',
     :param dst:        leaflet map to "show" datasets on, default -- create new one
     :param layer_name: name to give to the layer
     :param style:      GeoJSON style dictionary
+        - weight
+        - color/fillColor
+        - opacity/fillOpacity
+        - full list of options here: https://leafletjs.com/reference-1.5.0.html#path-option
     :param simplify:   simplify geometries before adding them to map
     :param tolerance:  tolerance in degrees for geometry simplification, default 0.001 ~ 111 meters at equator
 
