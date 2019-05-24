@@ -182,6 +182,8 @@ class DcViewer():
     def _clear_footprints(self):
         layer = self._dss_layer
         self._dss_layer = None
+        self._last_query_bounds = None
+        self._last_query_polygon = None
 
         if layer is not None:
             self._gui.map.remove_layer(layer)
@@ -194,13 +196,14 @@ class DcViewer():
                                time=s.time,
                                **s.bounds)
         self._dss = dss
-        self._last_query_bounds = dict(**s.bounds)
-        self._last_query_polygon = query_polygon(**s.bounds)
 
         if len(dss) > 0:
             new_layer = show_datasets(dss, dst=self._gui.map, style=self._style)
             self._clear_footprints()
+
             self._dss_layer = new_layer
+            self._last_query_bounds = dict(**s.bounds)
+            self._last_query_polygon = query_polygon(**s.bounds)
         else:
             self._clear_footprints()
 
