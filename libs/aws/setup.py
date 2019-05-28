@@ -4,9 +4,9 @@ setup(
     name='odc_aws',
 
     version='0.1',
-
-    author='Kirill Kouzoubov',
-    author_email='kirill.kouzoubov@ga.gov.au',
+    author='Open Data Cube',
+    author_email='',
+    maintainer='Open Data Cube',
 
     description='Various AWS helper methods',
     long_description='',
