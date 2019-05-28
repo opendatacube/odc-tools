@@ -14,6 +14,7 @@ import yaml
 import click
 
 from datacube.testutils.io import native_geobox
+from datacube.storage import BandInfo
 from datacube import Datacube
 
 
@@ -210,12 +211,17 @@ def get_measurements(dataset, band_grids=None):
     }
     """
     grids_map = {m: grid for grid in band_grids for m in band_grids[grid] if grid != 'default'}
-    measurements = dataset.measurements
+    measurements = dict()
 
-    for m in measurements:
-        # Remove 'band': 1 if present
-        if measurements[m].get('band') == 1:
-            measurements[m].pop('band', None)
+    for m in dataset.measurements:
+        band_info = BandInfo(dataset, m)
+        measurements[m] = {'path': band_info.uri}
+
+        if band_info.band and band_info.band != 1:
+            measurements[m]['band'] = band_info.band
+
+        if band_info.layer is not None:
+            measurements[m]['layer'] = band_info.layer
 
         if grids_map.get(m):
             measurements[m]['grid'] = grids_map[m]
