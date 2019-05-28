@@ -1,7 +1,7 @@
 """
 Metadata Transformation from old format to new format:
 Example usage:
- python metadata_transformer.py --datacube-config $HOME/.datacube.conf transform --product aster_l1t_swir
+ python export_md.py --datacube-config $HOME/.datacube.conf transform --product aster_l1t_swir
     --config metadata_transform_config.yaml --output-dir /g/data/u46/users/aj9439/metadata
     --limit 10
 The config file contains the grid mappings to band names:
@@ -22,7 +22,7 @@ from datacube import Datacube
               type=click.Path(exists=True))
 @click.pass_context
 def cli(ctx, datacube_config):
-    """ Used to pass the datacube index to functions via click."""
+    """ Specify datacube index to be used for the given datacube config"""
     ctx.obj = Datacube(config=datacube_config).index
 
 
@@ -55,19 +55,13 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
 
     dataset_ids = index.datasets.search_returning(limit=limit, field_names=('id',), product=product)
 
-    # Compute 'grids' section
-    dataset_id = next(dataset_ids)
-    dataset = index.datasets.get(dataset_id.id, include_sources=True)
-    grids = get_grids(dataset, config.get('grids'))
-
-    # and process first dataset
-    dataset_sections = (grids,) + _variable_sections_of_metadata(dataset, config)
-    _make_and_write_dataset(get_output_file(dataset, output_dir), *dataset_sections)
-
-    # process rest of datasets
-    for dataset_id in dataset_ids:
+    for cc, dataset_id in enumerate(dataset_ids):
 
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
+
+        if cc == 0:
+            # setup grids
+            grids = get_grids(dataset, config.get('grids'))
 
         dataset_sections = (grids,) + _variable_sections_of_metadata(dataset, config)
         _make_and_write_dataset(get_output_file(dataset, output_dir), *dataset_sections)
@@ -82,7 +76,9 @@ def transform_indexed_datasets(index, product, config, output_dir, limit):
     for dataset_id in index.datasets.search_returning(limit=limit, field_names=('id',), product=product):
 
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
+
         grids = get_grids(dataset, config.get('grids'))
+
         dataset_sections = (grids,) + _variable_sections_of_metadata(dataset, config)
         _make_and_write_dataset(get_output_file(dataset, output_dir), *dataset_sections)
 
@@ -186,7 +182,7 @@ def get_grids(dataset, band_grids=None):
             all_bands = set(list(dataset.measurements))
 
             default_bands = all_bands - specified_bands
-            
+
             if bool(default_bands):
                 geo = native_geobox(dataset, [list(default_bands)[0]])
                 grids['default'] = {
@@ -213,13 +209,16 @@ def get_measurements(dataset, band_grids=None):
       }
     }
     """
-    grids_map = {m: grid for grid in band_grids for m in band_grids[grid]}
+    grids_map = {m: grid for grid in band_grids for m in band_grids[grid] if grid != 'default'}
     measurements = dataset.measurements
+
     for m in measurements:
+        # Remove 'band': 1 if present
+        if measurements[m].get('band') == 1:
+            measurements[m].pop('band', None)
+
         if grids_map.get(m):
             measurements[m]['grid'] = grids_map[m]
-        else:
-            measurements[m]['grid'] = 'default'
 
     return {'measurements': measurements}
 
@@ -238,7 +237,7 @@ def get_properties(dataset, property_offsets=None):
     """
     props = dict()
     props['datetime'] = [dataset.time.begin, dataset.time.end]
-    props['odc:creation_datetime'] = dataset.indexed_time
+    props['odc:processing_datetime'] = dataset.indexed_time
 
     return {'properties': props}
 
