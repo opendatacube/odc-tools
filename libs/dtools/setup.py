@@ -4,9 +4,9 @@ setup(
     name='odc_dtools',
 
     version='1',
-
-    author='Kirill Kouzoubov',
-    author_email='kirill.kouzoubov@ga.gov.au',
+    author='Open Data Cube',
+    author_email='',
+    maintainer='Open Data Cube',
 
     description='Miscellaneous dask.distributed helper methods',
     long_description='',
