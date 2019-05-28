@@ -184,7 +184,9 @@ def get_grids(dataset, band_grids=None):
             for grid in band_grids:
                 specified_bands.update(band_grids[grid])
             all_bands = set(list(dataset.measurements))
+
             default_bands = all_bands - specified_bands
+            
             if bool(default_bands):
                 geo = native_geobox(dataset, [list(default_bands)[0]])
                 grids['default'] = {
@@ -255,7 +257,7 @@ def get_lineage(dataset):
     """
     lineage = dict()
     for classifier in dataset.sources:
-        lineage[classifier] = dataset.sources[classifier].id
+        lineage[classifier] = str(dataset.sources[classifier].id)
     return {'lineage': lineage}
 
 
