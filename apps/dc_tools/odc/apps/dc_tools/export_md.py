@@ -280,7 +280,7 @@ def get_properties(dataset, property_offsets=None):
     }
     """
     props = dict()
-    props['datetime'] = [dataset.time.begin, dataset.time.end]
+    props['datetime'] = dataset.center_time
     props['odc:processing_datetime'] = dataset.indexed_time
 
     return {'properties': props}
