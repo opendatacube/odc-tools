@@ -12,10 +12,13 @@ The config file contains the grid mappings to band names:
 from pathlib import Path
 import yaml
 import click
+import logging
 
 from datacube.testutils.io import native_geobox
 from datacube.storage import BandInfo
 from datacube import Datacube
+
+_LOG = logging.getLogger(__name__)
 
 
 @click.group(help=__doc__)
@@ -39,7 +42,7 @@ def transform(index, product, config, output_dir, limit):
     dataset_type = index.products.get_by_name(product)
 
     with open(config, 'r') as config_file:
-        cfg = yaml.load(config_file)
+        cfg = yaml.load(config_file) or dict()
 
     # Is this a ingested product?
     if dataset_type.grid_spec is not None:
@@ -56,13 +59,17 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
 
     dataset_ids = index.datasets.search_returning(limit=limit, field_names=('id',), product=product)
 
-    for cc, dataset_id in enumerate(dataset_ids):
+    grids_done = False
+    for dataset_id in dataset_ids:
 
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
-        if cc == 0:
+        if not grids_done:
             # setup grids
             grids = get_grids(dataset, config.get('grids'))
+
+            # got to try to compute grids until shape is not default [1, 1]
+            grids_done = all([[1, 1] != grid['shape'] for _, grid in grids['grids'].items()])
 
         dataset_sections = (grids,) + _variable_sections_of_metadata(dataset, config)
         _make_and_write_dataset(get_output_file(dataset, output_dir), *dataset_sections)
@@ -161,22 +168,27 @@ def get_grids(dataset, band_grids=None):
 
     if not band_grids:
         # Assume all measurements belong to default grid
-        geo = native_geobox(dataset, [list(dataset.measurements)[0]])
+        shape, trans = get_shape_and_transform(dataset, dataset.measurements)
+
         return {'grids': {
             'default': {
-                'shape': list(geo.shape),
-                'transform': list(geo.transform)
+                'shape': list(shape),
+                'transform': list(trans)
             }
         }}
     else:
         grids = dict()
         for grid_name in band_grids:
-            geo = native_geobox(dataset, [band_grids[grid_name][0]])
+
+            shape, trans = get_shape_and_transform(dataset, band_grids[grid_name])
+
             grids[grid_name] = {
-                'shape': list(geo.shape),
-                'transform': list(geo.transform)
+                'shape': list(shape),
+                'transform': list(trans)
             }
+
         if not band_grids.get('default'):
+
             specified_bands = set()
             for grid in band_grids:
                 specified_bands.update(band_grids[grid])
@@ -185,12 +197,32 @@ def get_grids(dataset, band_grids=None):
             default_bands = all_bands - specified_bands
 
             if bool(default_bands):
-                geo = native_geobox(dataset, [list(default_bands)[0]])
+                shape, trans = get_shape_and_transform(dataset, default_bands)
+
                 grids['default'] = {
-                    'shape': list(geo.shape),
-                    'transform': list(geo.transform)
+                    'shape': list(shape),
+                    'transform': list(trans)
                 }
         return {'grids': grids}
+
+
+def get_shape_and_transform(dataset, measurements):
+    """
+    Get shape and transform for the given set of measurements. It try
+    each measurement until it succeeds.
+    """
+
+    for m in measurements:
+        try:
+            geo = native_geobox(dataset, [m])
+        except Exception:
+            _LOG.warn('Failed to compute shape and transform %s', m)
+            continue
+        return geo.shape, geo.transform
+
+    # All the bands failed use default shape [1,1]
+    _LOG.warn('All measurements failed to compute shape and transform %s', measurements)
+    return [1, 1], dataset.transform
 
 
 def get_measurements(dataset, band_grids=None):
@@ -210,12 +242,18 @@ def get_measurements(dataset, band_grids=None):
       }
     }
     """
-    grids_map = {m: grid for grid in band_grids for m in band_grids[grid] if grid != 'default'}
-    measurements = dict()
+    grids_map = {m: grid for grid in band_grids
+                 for m in band_grids[grid] if grid != 'default'} if band_grids else dict()
 
+    measurements = dict()
     for m in dataset.measurements:
+
+        if m not in dataset.type.measurements:
+            _LOG.warn('Measurement not in product definition (skipping): %s', m)
+            continue
+
         band_info = BandInfo(dataset, m)
-        measurements[m] = {'path': band_info.uri}
+        measurements[m] = {'path': dataset.measurements[m]['path']}
 
         if band_info.band and band_info.band != 1:
             measurements[m]['band'] = band_info.band
