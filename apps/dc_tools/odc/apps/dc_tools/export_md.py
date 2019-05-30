@@ -64,6 +64,10 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
 
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
+        if not dataset.uris:
+            _LOG.warn('Empty uris or No uris (skippins): %s', dataset_id)
+            continue
+
         if not grids_done:
             # setup grids
             grids = get_grids(dataset, config.get('grids'))
@@ -84,6 +88,10 @@ def transform_indexed_datasets(index, product, config, output_dir, limit):
     for dataset_id in index.datasets.search_returning(limit=limit, field_names=('id',), product=product):
 
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
+
+        if not dataset.uris:
+            _LOG.warn('Empty or No uris (skipping): %s', dataset_id)
+            continue
 
         grids = get_grids(dataset, config.get('grids'))
 
