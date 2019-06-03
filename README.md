@@ -25,6 +25,9 @@ Full list of libraries, and install instructions:
 - `odc.aws` AWS/S3 utilities, used by apps mainly
    - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws'`
 
+- `odc.geom` geometry utils and prototypes
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_geom&subdirectory=libs/geom`
+
 - `odc.io` common IO utilities, used by apps mainly
    - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io'`
 
@@ -37,7 +40,7 @@ Full list of libraries, and install instructions:
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
    - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dscache&subdirectory=libs/dscache'`
 
-- `odc.dtools` no longer relevant (dask + rio experiments)
+- `odc.dtools` tools/experiments in the area of dask.distributed/dask<>datacube integration
    - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dtools&subdirectory=libs/dtools'`
 
 
