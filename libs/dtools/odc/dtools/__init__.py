@@ -9,8 +9,13 @@ from ._broadcast import (
     rio_getenv,
 )
 
+from ._dask_stream import (
+    dask_compute_stream,
+)
+
 __all__ = (
     "pool_broadcast",
     "rio_activate",
     "rio_getenv",
+    "dask_compute_stream",
 )
