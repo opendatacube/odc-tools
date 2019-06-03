@@ -5,10 +5,55 @@
 from typing import Union, Tuple
 from affine import Affine
 import math
-from datacube.utils.geometry import decompose_rws, split_translation
+from datacube.utils.geometry import (
+    decompose_rws,
+    split_translation,
+    GeoBox,
+    CRS)
 
 F4 = Tuple[float, float, float, float]
 F6 = Tuple[float, float, float, float, float, float]
+
+
+class BoundlessPixelPlane:
+    def __init__(self, crs: CRS, params: Union[F4, F6]):
+        """
+        :param crs: CRS
+        :param params: Normalized grid coefficients:
+                       sx, sy, tx, ty[, ca, w]
+        """
+
+        self._crs = crs
+        self._params = params
+        self._epsg = None if crs is None else crs.epsg
+
+    def same(self, other, tol=1e-6):
+        if len(self._params) != len(other._params):
+            return False
+
+        if self._epsg is not None:
+            if self._epsg != other._epsg:
+                return False
+        elif self._crs != other._crs:
+            return False
+
+        return all(abs(a-b) < tol for (a, b) in zip(self._params, other._params))
+
+    def __eq__(self, other):
+        return self.same(other)
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        if self._epsg:
+            crs_str = 'EPSG:{}'.format(self._epsg)
+        else:
+            crs_str = str(self._crs)
+
+        p_str = ','.join([str(p) for p in self._params])
+
+        return 'BoundlessPixelPlane<{}, {}>'.format(crs_str, p_str)
 
 
 def maybe_zero(x: float, tol: float) -> float:
@@ -102,3 +147,13 @@ def _norm_grid(A: Affine, tol=1e-8) -> Union[F4, F6]:
                 maybe_zero(tx_p, tol), maybe_zero(ty_p, tol))
     else:
         raise NotImplementedError('TODO: rotated grids')
+
+
+def normalised_grid(geobox: GeoBox) -> BoundlessPixelPlane:
+    """Compute normalised grid from a given GeoBox.
+
+       Two different GridBoxes that are related through pixel aligned
+       translation will produce the same normalised grid.
+    """
+    return BoundlessPixelPlane(geobox.crs,
+                               _norm_grid(geobox.affine))
