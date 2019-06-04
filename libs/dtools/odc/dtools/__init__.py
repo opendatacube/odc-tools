@@ -11,6 +11,7 @@ from ._broadcast import (
 
 from ._dask_stream import (
     dask_compute_stream,
+    seq_to_bags,
 )
 
 __all__ = (
@@ -18,4 +19,5 @@ __all__ = (
     "rio_activate",
     "rio_getenv",
     "dask_compute_stream",
+    "seq_to_bags",
 )
