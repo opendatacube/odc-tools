@@ -20,13 +20,13 @@ Full list of libraries, and install instructions:
    - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_ui&subdirectory=libs/ui'`
 
 - `odc.index` extra utils for working with datacube database
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index`
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index'`
 
 - `odc.aws` AWS/S3 utilities, used by apps mainly
    - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws'`
 
 - `odc.geom` geometry utils and prototypes
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_geom&subdirectory=libs/geom`
+   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_geom&subdirectory=libs/geom'`
 
 - `odc.io` common IO utilities, used by apps mainly
    - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io'`
