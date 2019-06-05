@@ -15,7 +15,11 @@ setup(
     license='Apache License 2.0',
 
     tests_require=['pytest'],
-    install_requires=['ipywidgets', 'ipyleaflet'],
+    install_requires=[
+        'ipywidgets',
+        'ipyleaflet',
+        'odc_index @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index',
+    ],
 
     packages=['odc.ui'],
     zip_safe=False,
