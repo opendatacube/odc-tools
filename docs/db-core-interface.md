@@ -67,6 +67,27 @@ representation of datasets footprint as well as the native footprint. This
 highlights how this data duplication leads to incorrect spatial index
 implementation.
 
+## Confusing Auto Matching Behaviour due to Lineage Handling
+
+When adding datasets to the database there is no simple way to specify which
+product these datasets ought to belong to, instead datasets need to be
+"auto"-matched to products. Reason why auto-matching is necessary in the current
+implementation is due to handling of lineage. Single dataset document might
+include lineage datasets, so adding single dataset metadata file to the index
+might result in adding multiple datasets to multiple products.
+
+Users often assume that auto-matching is relying on band names, and are
+surprised when auto-matching fails despite product having the same band names as
+the dataset being indexed. Band names **are** used during the auto-matching process,
+but only to accept/reject product already matched through `product.metadata`
+property. When `product.metadata` is not sufficiently unique, auto matching
+breaks down even when band names would be sufficiently unique constraint to
+match with. It is a recurring pain point that everyone encounters.
+
+Auto-matching used to happen inside db driver, this has changed but it is still
+tightly coupled to db driver, same goes for lineage traversal.
+
+
 ## Other
 
 - Whole dataset or nothing interface
@@ -80,6 +101,9 @@ implementation.
     is not cool)
 - Incomplete lineage access API
   - Can get parents but not children
+  - Can not store lineage information for "external datasets"
+  - Can not just reference existing lineage dataset, have to include entire
+    metadata document of the lineage dataset
 - Way too immutable
   - Limited ability to change indexed data in place
   - No mechanisms to delete/rename products/metadata definitions
@@ -113,6 +137,10 @@ queries into same CRS as well.
 Database layer can now keep track of spatial/temporal extents, know that it is
 aware of them explicitly.
 
+We need better model for time querying, that takes into account time zone of the
+data. When user asks for everything on 1-May-2019 they don't mean UTC
+1-May-2019, they mean 1-May-2019 in the locality of the spatial query.
+
 ### Simplify/drop custom search fields
 
 Use STAC-like properties for custom querying. These are key value pairs, where
@@ -130,12 +158,15 @@ going to be supported. So you can dynamically create query equivalent to:
 
 ```
 Only return datasets that have a numeric field at
- `user_data.algorithm.parameters.blob_count`
+ `user_data.algorithm.runtime.blob_count`
 with value less than `10`
 ```
 
 but not query with aggregations like min/max/avg. Such ad-hoc querying will be
 optional, database backend implementations might choose to not to support it.
+
+This means we won't need what is currently called "MetadataType". Database layer
+will only be concerned with Products, Datasets and maybe Measurements.
 
 ### Drop "sources" query
 
@@ -146,10 +177,48 @@ also really high. What is worse this "sources query" does not generalize to
 datasets that have multiple identical parents, i.e. any stats datasets.
 
 It is more efficient to simply copy important properties (cloud cover, gqa,
-region code, etc.) from parent dataset to derived dataset, when it makes sense,
-than rely on lineage tree traversal as part of the query, that will always be a
-costly operation. There is no meaningful "gqa" for an annual geomedian dataset,
-but it makes perfect sense to copy "gqa" for FC or WoFS datasets.
+region code, etc.) from parent dataset to derived dataset, and only when it
+makes sense, than rely on lineage tree traversal as part of the query, that will
+always be a costly operation. There is no meaningful "gqa" for an annual
+geomedian dataset, but it makes perfect sense to copy "gqa" for FC or WoFS
+datasets.
+
+
+### Changes to Auto Matching and Lineage
+
+Change current rule:
+
+```
+Dataset can have more bands than product it matches to,
+so long as it has all the bands defined in the product.
+```
+
+to be simply:
+
+```
+Dataset should have exactly the same bands as product it is matching to.
+```
+
+Only when there are products with exactly the same set of band names extra
+differentiation mechanism will be necessary.
+
+
+### Performance Related API Changes
+
+- Bulk add of datasets, indexing is slow primarily because we add "one" dataset
+  at a time (really we add several at a time, because lineage, but we can't add
+  several top level datasets at once)
+- Proper streaming of datasets, fast to start with low memory overhead
+- Support efficient streaming of datasets ordered by time
+  - Arbitrary order of datasets within a stream means that one can not match up
+    datasets from two different products without reading all datasets into
+    memory first
+  - I would not try and make it generic "order by some property", just time.
+  - With time being an explicit and required dataset property, DB driver should
+    be able to arrange for storage that allows efficient ordered extraction of
+    datasets. It is difficult with the current system because (a) time is a
+    range not a timestamp (b) time is indirected via metadata_type mechanism, and is
+    not even guaranteed to be present.
 
 
 # Appendix
