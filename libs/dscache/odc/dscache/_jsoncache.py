@@ -8,7 +8,6 @@ import itertools
 import toolz
 from types import SimpleNamespace
 from pathlib import Path
-from datacube.model import Dataset
 
 FORMAT_VERSION = b'0001'
 
@@ -79,68 +78,28 @@ def jsonKV2dict(kv, decompressor=None):
     return {k: doc for k, doc in map(decode, kv)}
 
 
-def ds2bytes(ds):
-    k = key_to_bytes(ds.id)
+def doc2bytes(doc, purge_id=False):
+    ''' doc is
 
-    doc = dict(uris=ds.uris,
-               product=ds.type.name,
-               metadata=ds.metadata_doc)
+    Either:
 
-    d = json.dumps(doc, separators=(',', ':')).encode('utf8')
-    return (k, d)
+    1. (id, {..}) key-value tuple
+    2. {id: , ..}  dict with `id` field
 
-
-def doc2bytes(raw_ds):
-    ''' raw_ds is
-
-        metadata:
-          id: <uuid: string>
-          * other fields*
-        uris: [<uri:string>]
-        product: <string>
+    id has to be a UUID (typically string)
     '''
-    k = UUID(toolz.get_in(['metadata', 'id'], raw_ds)).bytes
-    d = json.dumps(raw_ds, separators=(',', ':')).encode('utf8')
+    if isinstance(tuple):
+        k, d = doc
+    else:
+        k = doc.get('id')
+        d = toolz.dissoc(doc, ['id']) if purge_id else doc
+
+    k = UUID(k).bytes
+    d = json.dumps(d, separators=(',', ':')).encode('utf8')
     return (k, d)
 
 
-def doc2ds(doc, products):
-    p = products.get(doc['product'], None)
-    if p is None:
-        raise ValueError('No product named: %s' % doc['product'])
-    return Dataset(p, doc['metadata'], uris=doc['uris'])
-
-
-def build_dc_product_map(metadata_json, products_json):
-    from datacube.model import metadata_from_doc, DatasetType
-
-    mm = toolz.valmap(metadata_from_doc, metadata_json)
-
-    def mk_product(doc, name):
-        mt = doc.get('metadata_type')
-        if mt is None:
-            raise ValueError('Missing metadata_type key in product definition')
-        metadata = mm.get(mt)
-
-        if metadata is None:
-            raise ValueError('No such metadata %s for product %s' % (mt, name))
-
-        return DatasetType(metadata, doc)
-
-    return mm, {k: mk_product(doc, k) for k, doc in products_json.items()}
-
-
-def _metadata_from_products(products):
-    mm = {}
-    for p in products:
-        m = p.metadata_type
-        if m.name not in mm:
-            mm[m.name] = m
-
-    return mm
-
-
-def train_dictionary(dss, dict_sz=8*1024):
+def train_dictionary(docs, dict_sz=8*1024):
     """ Given a finite sequence of Datasets train zstandard compression dictionary of a given size.
 
         Accepts both `Dataset` as well as "raw" datasets.
@@ -148,14 +107,7 @@ def train_dictionary(dss, dict_sz=8*1024):
         Will return None if input sequence is empty.
     """
 
-    def to_bytes(o):
-        if isinstance(o, dict):
-            _, d = doc2bytes(o)
-        else:
-            _, d = ds2bytes(o)
-        return d
-
-    sample = list(map(to_bytes, dss))
+    sample = list(map(doc2bytes, docs))
 
     if len(sample) == 0:
         return None
@@ -163,13 +115,11 @@ def train_dictionary(dss, dict_sz=8*1024):
     return zstandard.train_dictionary(dict_sz, sample).as_bytes()
 
 
-class DatasetCache(object):
+class JsonBlobCache(object):
     """
     info:
        version: 4-bytes
        zdict: pre-trained compression dictionary, optional
-       product/{name}: json
-       metadata/{name}: json
 
     groups:
        Each group is named list of uuids
@@ -178,9 +128,7 @@ class DatasetCache(object):
        arbitrary user data (TODO)
 
     ds:
-       uuid: compressed(json({product: str,
-                              uris: [str],
-                              metadata: object}))
+       uuid: compressed(json({..}))
     """
     def __init__(self, state):
         """ Don't use this directly, use create_cache or open_(rw|ro).
@@ -189,8 +137,6 @@ class DatasetCache(object):
         self._dbs = state.dbs
         self._comp = state.comp
         self._decomp = state.decomp
-        self._products = state.products
-        self._metadata = state.metadata
         self._closed = False
 
     def close(self):
@@ -211,55 +157,24 @@ class DatasetCache(object):
     def readonly(self):
         return self._comp is None
 
-    @property
-    def products(self):
-        return self._products
-
-    @property
-    def metadata(self):
-        return self._metadata
-
-    def _ds2kv(self, ds):
-        k, d = ds2bytes(ds)
+    def _doc2kv(self, doc):
+        k, d = doc2bytes(doc)
         d = self._comp.compress(d)
         return (k, d)
-
-    def _doc2kv(self, ds_raw):
-        k, d = doc2bytes(ds_raw)
-        d = self._comp.compress(d)
-        return (k, d)
-
-    def _add_metadata(self, metadata, transaction, overwrite=False):
-        self._metadata[metadata.name] = metadata
-
-        for k, d in dict2jsonKV({metadata.name: metadata.definition}, 'metadata/', self._comp):
-            transaction.put(k, d, overwrite=overwrite, dupdata=False, db=self._dbs.info)
-
-    def _add_product(self, product, transaction, overwrite=False):
-        if product.metadata_type.name not in self._metadata:
-            self._add_metadata(product.metadata_type, transaction, overwrite=overwrite)
-
-        self._products[product.name] = product
-
-        for k, d in dict2jsonKV({product.name: product.definition}, 'product/', self._comp):
-            transaction.put(k, d, overwrite=overwrite, dupdata=False, db=self._dbs.info)
 
     def _ds_save(self, ds, transaction):
-        if ds.type.name not in self._products:
-            self._add_product(ds.type, transaction)
-
         k, v = self._ds2kv(ds)
         transaction.put(k, v)
 
-    def bulk_save(self, dss):
+    def bulk_save(self, docs):
         with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-            for ds in dss:
+            for ds in docs:
                 self._ds_save(ds, tr)
 
-    def tee(self, dss, max_transaction_size=10000):
+    def tee(self, docs, max_transaction_size=10000):
         """Given a lazy stream of datasets persist them to disk and then pass through
         for further processing.
-        :dss: stream of datasets
+        :docs: stream of documents (uuid, {..}) pairs
         :max_transaction_size int: How often to commit results to disk
         """
         have_some = True
@@ -267,16 +182,10 @@ class DatasetCache(object):
         while have_some:
             with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
                 have_some = False
-                for ds in itertools.islice(dss, max_transaction_size):
+                for ds in itertools.islice(docs, max_transaction_size):
                     have_some = True
                     self._ds_save(ds, tr)
                     yield ds
-
-    def bulk_save_raw(self, raw_dss):
-        with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-            for raw_ds in raw_dss:
-                k, v = self._doc2kv(raw_ds)
-                tr.put(k, v)
 
     def put_group(self, name, uuids):
         """ Group is a named list of uuids
@@ -324,8 +233,7 @@ class DatasetCache(object):
 
     def _extract_ds(self, d):
         d = self._decomp.decompress(d)
-        doc = json.loads(d)
-        return doc2ds(doc, self._products)
+        return json.loads(d)
 
     def get(self, uuid):
         """Extract single dataset with a given uuid, or return None if not found"""
@@ -399,7 +307,7 @@ def maybe_delete_db(path):
     return True
 
 
-def _from_existing_db(db, products=None, complevel=6):
+def _from_existing_db(db, complevel=6):
     readonly = db.flags().get('readonly')
 
     try:
@@ -427,23 +335,11 @@ def _from_existing_db(db, products=None, complevel=6):
     comp = None if readonly else zstandard.ZstdCompressor(level=complevel, **comp_params)
     decomp = zstandard.ZstdDecompressor(**comp_params)
 
-    if products is None:
-        with db.begin(db_info, write=False) as tr:
-            metadata = jsonKV2dict(prefix_visit(tr, 'metadata/'), decomp)
-            products = jsonKV2dict(prefix_visit(tr, 'product/'), decomp)
-
-        metadata, products = build_dc_product_map(metadata, products)
-    else:
-        # TODO: maybe check that products are compatible with what's in the db?
-        metadata = _metadata_from_products(products)
-
     state = SimpleNamespace(dbs=dbs,
                             comp=comp,
-                            decomp=decomp,
-                            metadata=metadata,
-                            products=products)
+                            decomp=decomp)
 
-    return DatasetCache(state)
+    return JsonBlobCache(state)
 
 
 def _from_empty_db(db,
@@ -472,15 +368,12 @@ def _from_empty_db(db,
 
     state = SimpleNamespace(dbs=dbs,
                             comp=comp,
-                            decomp=decomp,
-                            metadata={},
-                            products={})
+                            decomp=decomp)
 
-    return DatasetCache(state)
+    return JsonBlobCache(state)
 
 
 def open_ro(path,
-            products=None,
             lock=False):
     """Open existing database in readonly mode.
 
@@ -507,11 +400,10 @@ def open_ro(path,
                    create=False,
                    readonly=True)
 
-    return _from_existing_db(db, products=products)
+    return _from_existing_db(db)
 
 
 def open_rw(path,
-            products=None,
             max_db_sz=None,
             complevel=6):
     """Open existing database in append mode.
@@ -542,7 +434,7 @@ def open_rw(path,
                    create=False,
                    readonly=False)
 
-    return _from_existing_db(db, products=products, complevel=complevel)
+    return _from_existing_db(db, complevel=complevel)
 
 
 def create_cache(path,
