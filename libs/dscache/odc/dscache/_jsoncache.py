@@ -44,12 +44,12 @@ def bytes2uuids(bb):
     return [UUID(bytes=bb[i*16:(i+1)*16]) for i in range(n)]
 
 
-def prefix_visit(tr, prefix, full_key=False):
+def prefix_visit(tr, prefix, full_key=False, db=None):
     if isinstance(prefix, str):
         prefix = prefix.encode('utf8')
 
     n = len(prefix)
-    cursor = tr.cursor()
+    cursor = tr.cursor(db)
     cursor.set_range(prefix)
     for k, v in cursor:
         if len(k) < n or k[:n] != prefix:
@@ -152,6 +152,42 @@ class JsonBlobCache(object):
 
     def __del__(self):
         self.close()
+
+    def _append_info_dict(self, prefix, oo, tr):
+        for k, v in dict2jsonKV(oo, prefix, self._comp):
+            tr.put(k, v,
+                   overwrite=True,
+                   dupdata=False,
+                   db=self._dbs.info)
+
+    def _clear_info_dict(self, prefix, tr):
+        db_info = self._dbs.info
+        for k, _ in prefix_visit(tr, prefix, full_key=True, db=db_info):
+            tr.delete(k, db=db_info)
+
+    def _get_info_dict(self, prefix, tr):
+        return jsonKV2dict(prefix_visit(tr, prefix, db=self._dbs.info), self._decomp)
+
+    def append_info_dict(self, prefix, oo, transaction=None):
+        if transaction is None:
+            with self._dbs.main.begin(write=True) as tr:
+                self._append_info_dict(prefix, oo, tr)
+        else:
+            self._append_info_dict(prefix, oo, transaction)
+
+    def get_info_dict(self, prefix, transaction=None):
+        if transaction is None:
+            with self._dbs.main.begin(write=False) as tr:
+                return self._get_info_dict(prefix, tr)
+        else:
+            return self._get_info_dict(prefix, transaction)
+
+    def clear_info_dict(self, prefix, transaction=None):
+        if transaction is None:
+            with self._dbs.main.begin(write=True) as tr:
+                return self._clear_info_dict(prefix, tr)
+        else:
+            return self._clear_info_dict(prefix, transaction)
 
     @property
     def readonly(self):
