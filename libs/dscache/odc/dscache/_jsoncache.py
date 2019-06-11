@@ -251,8 +251,8 @@ class JsonBlobCache(object):
 
     def get_all(self):
         with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
-            for _, d in tr.cursor():
-                yield self._extract_ds(d)
+            for k, d in tr.cursor():
+                yield UUID(bytes=bytes(k)), self._extract_ds(d)
 
     def stream_group(self, group_name):
         uu = self._get_group_raw(group_name)
@@ -269,7 +269,7 @@ class JsonBlobCache(object):
                 if d is None:
                     raise ValueError('Missing dataset for %s' % (str(UUID(bytes=key))))
 
-                yield self._extract_ds(d)
+                yield UUID(bytes=bytes(key)), self._extract_ds(d)
 
     @property
     def count(self):
