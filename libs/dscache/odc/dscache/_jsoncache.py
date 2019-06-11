@@ -109,8 +109,7 @@ def train_dictionary(docs, dict_sz=8*1024):
 
         Will return None if input sequence is empty.
     """
-
-    sample = list(map(doc2bytes, docs))
+    sample = list(v for _, v in map(doc2bytes, docs))
 
     if len(sample) == 0:
         return None
