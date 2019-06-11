@@ -88,13 +88,16 @@ def doc2bytes(doc, purge_id=False):
 
     id has to be a UUID (typically string)
     '''
-    if isinstance(tuple):
+    if isinstance(doc, tuple):
         k, d = doc
     else:
         k = doc.get('id')
         d = toolz.dissoc(doc, ['id']) if purge_id else doc
 
-    k = UUID(k).bytes
+    if not isinstance(k, UUID):
+        k = UUID(k)
+
+    k = k.bytes
     d = json.dumps(d, separators=(',', ':')).encode('utf8')
     return (k, d)
 
@@ -138,6 +141,7 @@ class JsonBlobCache(object):
         self._comp = state.comp
         self._decomp = state.decomp
         self._closed = False
+        self._current_transaction = None
 
     def close(self):
         """Write any outstanding product/metadata definitions (if in write mode) and
@@ -190,6 +194,10 @@ class JsonBlobCache(object):
             return self._clear_info_dict(prefix, transaction)
 
     @property
+    def current_transaction(self):
+        return self._current_transaction
+
+    @property
     def readonly(self):
         return self._comp is None
 
@@ -198,30 +206,38 @@ class JsonBlobCache(object):
         d = self._comp.compress(d)
         return (k, d)
 
-    def _ds_save(self, ds, transaction):
-        k, v = self._ds2kv(ds)
+    def _doc_save(self, doc, transaction):
+        k, v = self._doc2kv(doc)
         transaction.put(k, v)
 
     def bulk_save(self, docs):
-        with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-            for ds in docs:
-                self._ds_save(ds, tr)
+        try:
+            with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
+                self._current_transaction = tr
+                for doc in docs:
+                    self._doc_save(doc, tr)
+        finally:
+            self._current_transaction = None
 
     def tee(self, docs, max_transaction_size=10000):
-        """Given a lazy stream of datasets persist them to disk and then pass through
+        """Given a lazy stream of (k,v) pairs persist them to disk and then pass through
         for further processing.
         :docs: stream of documents (uuid, {..}) pairs
         :max_transaction_size int: How often to commit results to disk
         """
         have_some = True
 
-        while have_some:
-            with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-                have_some = False
-                for ds in itertools.islice(docs, max_transaction_size):
-                    have_some = True
-                    self._ds_save(ds, tr)
-                    yield ds
+        try:
+            while have_some:
+                with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
+                    self._current_transaction = tr
+                    have_some = False
+                    for ds in itertools.islice(docs, max_transaction_size):
+                        have_some = True
+                        self._doc_save(ds, tr)
+                        yield ds
+        finally:
+            self._current_transaction = None
 
     def put_group(self, name, uuids):
         """ Group is a named list of uuids
@@ -286,9 +302,13 @@ class JsonBlobCache(object):
             return self._extract_ds(d)
 
     def get_all(self):
-        with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
-            for k, d in tr.cursor():
-                yield UUID(bytes=bytes(k)), self._extract_ds(d)
+        try:
+            with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
+                self._current_transaction = tr
+                for k, d in tr.cursor():
+                    yield UUID(bytes=bytes(k)), self._extract_ds(d)
+        finally:
+            self._current_transaction = None
 
     def stream_group(self, group_name):
         uu = self._get_group_raw(group_name)

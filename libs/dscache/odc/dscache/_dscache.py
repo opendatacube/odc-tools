@@ -1,110 +1,18 @@
-from uuid import UUID
-import json
-import lmdb
-import zstandard
-import operator
-import functools
-import itertools
 import toolz
-from types import SimpleNamespace
-from pathlib import Path
 from datacube.model import Dataset
-
-FORMAT_VERSION = b'0001'
-
-
-def key_to_bytes(k):
-    if isinstance(k, str):
-        return k.encode('utf8')
-    if isinstance(k, UUID):
-        return k.bytes
-    if isinstance(k, bytes):
-        return k
-    if isinstance(k, int):
-        if k.bit_length() < 32:
-            return k.to_bytes(4, 'big')
-        elif k.bit_length() < 128:
-            return k.to_bytes(16, 'big')
-        else:
-            return str(k).decode('utf8')
-    if isinstance(k, tuple):
-        return functools.reduce(operator.add, map(key_to_bytes, k))
-
-    raise ValueError('Key must be one of str|bytes|int|UUID|tuple')
+from . import _jsoncache as base
 
 
-def uuids2bytes(uu):
-    bb = bytearray(len(uu)*16)
-    for i, u in enumerate(uu):
-        bb[i*16:(i+1)*16] = u.bytes
-    return bytes(bb)
-
-
-def bytes2uuids(bb):
-    n = len(bb)//16
-    return [UUID(bytes=bb[i*16:(i+1)*16]) for i in range(n)]
-
-
-def prefix_visit(tr, prefix, full_key=False):
-    if isinstance(prefix, str):
-        prefix = prefix.encode('utf8')
-
-    n = len(prefix)
-    cursor = tr.cursor()
-    cursor.set_range(prefix)
-    for k, v in cursor:
-        if len(k) < n or k[:n] != prefix:
-            break
-        yield (k if full_key else k[n:]), v
-
-
-def dict2jsonKV(oo, prefix=None, compressor=None):
-    for k, doc in oo.items():
-        data = json.dumps(doc, separators=(',', ':')).encode('utf8')
-        if compressor is not None:
-            data = compressor.compress(data)
-        if prefix is not None:
-            k = prefix + k
-
-        yield (key_to_bytes(k), data)
-
-
-def jsonKV2dict(kv, decompressor=None):
-    def decode(kv):
-        k, doc = kv
-        if decompressor is not None:
-            doc = decompressor.decompress(doc)
-        return k.decode('utf8'), json.loads(doc)
-
-    return {k: doc for k, doc in map(decode, kv)}
-
-
-def ds2bytes(ds):
-    k = key_to_bytes(ds.id)
-
-    doc = dict(uris=ds.uris,
-               product=ds.type.name,
-               metadata=ds.metadata_doc)
-
-    d = json.dumps(doc, separators=(',', ':')).encode('utf8')
-    return (k, d)
-
-
-def doc2bytes(raw_ds):
-    ''' raw_ds is
-
-        metadata:
-          id: <uuid: string>
-          * other fields*
-        uris: [<uri:string>]
-        product: <string>
-    '''
-    k = UUID(toolz.get_in(['metadata', 'id'], raw_ds)).bytes
-    d = json.dumps(raw_ds, separators=(',', ':')).encode('utf8')
-    return (k, d)
+def ds2doc(ds):
+    return (ds.id, dict(uris=ds.uris,
+                        product=ds.type.name,
+                        metadata=ds.metadata_doc))
 
 
 def doc2ds(doc, products):
+    if doc is None:
+        return None
+
     p = products.get(doc['product'], None)
     if p is None:
         raise ValueError('No product named: %s' % doc['product'])
@@ -147,20 +55,8 @@ def train_dictionary(dss, dict_sz=8*1024):
 
         Will return None if input sequence is empty.
     """
-
-    def to_bytes(o):
-        if isinstance(o, dict):
-            _, d = doc2bytes(o)
-        else:
-            _, d = ds2bytes(o)
-        return d
-
-    sample = list(map(to_bytes, dss))
-
-    if len(sample) == 0:
-        return None
-
-    return zstandard.train_dictionary(dict_sz, sample).as_bytes()
+    docs = map(ds2doc, dss)
+    return base.train_dictionary(docs, dict_sz=dict_sz)
 
 
 class DatasetCache(object):
@@ -182,122 +78,44 @@ class DatasetCache(object):
                               uris: [str],
                               metadata: object}))
     """
-    def __init__(self, state):
+    def __init__(self, db: base.JsonBlobCache, products=None):
         """ Don't use this directly, use create_cache or open_(rw|ro).
         """
 
-        self._dbs = state.dbs
-        self._comp = state.comp
-        self._decomp = state.decomp
-        self._products = state.products
-        self._metadata = state.metadata
-        self._closed = False
+        if products is None:
+            metadata, products = build_dc_product_map(db.get_info_dict('metadata/'),
+                                                      db.get_info_dict('product/'))
+        else:
+            metadata = _metadata_from_products(products)
+
+        self._db = db
+        self._products = products
+        self._metadata = metadata
 
     def close(self):
         """Write any outstanding product/metadata definitions (if in write mode) and
         close database file.
 
         """
-        if not self._closed:
-            try:
-                self._dbs.main.close()
-            finally:
-                self._closed = True
-
-    def __del__(self):
-        self.close()
+        self._db.close()
 
     @property
     def readonly(self):
-        return self._comp is None
+        return self._db.readonly
 
     @property
-    def products(self):
-        return self._products
-
-    @property
-    def metadata(self):
-        return self._metadata
-
-    def _ds2kv(self, ds):
-        k, d = ds2bytes(ds)
-        d = self._comp.compress(d)
-        return (k, d)
-
-    def _doc2kv(self, ds_raw):
-        k, d = doc2bytes(ds_raw)
-        d = self._comp.compress(d)
-        return (k, d)
-
-    def _add_metadata(self, metadata, transaction, overwrite=False):
-        self._metadata[metadata.name] = metadata
-
-        for k, d in dict2jsonKV({metadata.name: metadata.definition}, 'metadata/', self._comp):
-            transaction.put(k, d, overwrite=overwrite, dupdata=False, db=self._dbs.info)
-
-    def _add_product(self, product, transaction, overwrite=False):
-        if product.metadata_type.name not in self._metadata:
-            self._add_metadata(product.metadata_type, transaction, overwrite=overwrite)
-
-        self._products[product.name] = product
-
-        for k, d in dict2jsonKV({product.name: product.definition}, 'product/', self._comp):
-            transaction.put(k, d, overwrite=overwrite, dupdata=False, db=self._dbs.info)
-
-    def _ds_save(self, ds, transaction):
-        if ds.type.name not in self._products:
-            self._add_product(ds.type, transaction)
-
-        k, v = self._ds2kv(ds)
-        transaction.put(k, v)
-
-    def bulk_save(self, dss):
-        with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-            for ds in dss:
-                self._ds_save(ds, tr)
-
-    def tee(self, dss, max_transaction_size=10000):
-        """Given a lazy stream of datasets persist them to disk and then pass through
-        for further processing.
-        :dss: stream of datasets
-        :max_transaction_size int: How often to commit results to disk
-        """
-        have_some = True
-
-        while have_some:
-            with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-                have_some = False
-                for ds in itertools.islice(dss, max_transaction_size):
-                    have_some = True
-                    self._ds_save(ds, tr)
-                    yield ds
-
-    def bulk_save_raw(self, raw_dss):
-        with self._dbs.main.begin(self._dbs.ds, write=True) as tr:
-            for raw_ds in raw_dss:
-                k, v = self._doc2kv(raw_ds)
-                tr.put(k, v)
+    def count(self):
+        return self._db.count
 
     def put_group(self, name, uuids):
         """ Group is a named list of uuids
         """
-        data = uuids2bytes(uuids)
-        k = key_to_bytes(name)
-
-        with self._dbs.main.begin(self._dbs.groups, write=True) as tr:
-            tr.put(k, data)
-
-    def _get_group_raw(self, name):
-        k = key_to_bytes(name)
-
-        with self._dbs.main.begin(self._dbs.groups, write=False) as tr:
-            return tr.get(k)
+        self._db.put_group(name, uuids)
 
     def get_group(self, name):
         """ Group is a named list of uuids
         """
-        data = self._get_group_raw(key_to_bytes(name))
-        return bytes2uuids(data) if data is not None else None
+        return self._db.get_group(name)
 
     def groups(self, raw=False, prefix=None):
         """Get list of tuples (group_name, group_size).
@@ -308,175 +126,56 @@ class DatasetCache(object):
 
         :prefix str|bytes: Only report groups with name starting with prefix
         """
+        return self._db.groups(raw=raw, prefix=prefix)
 
-        assert isinstance(prefix, (str, bytes, type(None)))
+    @property
+    def products(self):
+        return self._products
 
-        def _raw(prefix):
-            with self._dbs.main.begin(self._dbs.groups, write=False, buffers=True) as tr:
-                cursor = tr.cursor() if prefix is None else prefix_visit(tr, prefix, full_key=True)
-                return [(bytes(k), len(d)//16) for k, d in cursor]
+    @property
+    def metadata(self):
+        return self._metadata
 
-        if prefix is not None:
-            prefix = key_to_bytes(prefix)
+    def _add_metadata(self, metadata, transaction):
+        self._metadata[metadata.name] = metadata
+        self._db.append_info_dict('metadata/', {metadata.name: metadata.definition}, transaction)
 
-        nn = _raw(prefix)
-        return nn if raw else [(n.decode('utf8'), c) for n, c in nn]
+    def _add_product(self, product, transaction):
+        if product.metadata_type.name not in self._metadata:
+            self._add_metadata(product.metadata_type, transaction)
 
-    def _extract_ds(self, d):
-        d = self._decomp.decompress(d)
-        doc = json.loads(d)
-        return doc2ds(doc, self._products)
+        self._products[product.name] = product
+        self._db.append_info_dict('product/', {product.name: product.definition}, transaction)
+
+    def _ds2doc(self, ds):
+        if ds.type.name not in self._products:
+            self._add_product(ds.type, self._db.current_transaction)
+        return ds2doc(ds)
+
+    def bulk_save(self, dss):
+        docs = (self._ds2doc(ds) for ds in dss)
+        return self._db.bulk_save(docs)
+
+    def tee(self, dss, max_transaction_size=10000):
+        """Given a lazy stream of datasets persist them to disk and then pass through
+        for further processing.
+        :dss: stream of datasets
+        :max_transaction_size int: How often to commit results to disk
+        """
+        docs = (self._ds2doc(ds) for ds in dss)
+        return self._db.tee(docs, max_transaction_size=max_transaction_size)
 
     def get(self, uuid):
         """Extract single dataset with a given uuid, or return None if not found"""
-        if isinstance(uuid, str):
-            uuid = UUID(uuid)
-
-        key = key_to_bytes(uuid)
-
-        with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
-            d = tr.get(key, None)
-            if d is None:
-                return None
-
-            return self._extract_ds(d)
+        return doc2ds(self._db.get(uuid), self._products)
 
     def get_all(self):
-        with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
-            for _, d in tr.cursor():
-                yield self._extract_ds(d)
+        for _, v in self._db.get_all():
+            yield doc2ds(v, self._products)
 
     def stream_group(self, group_name):
-        uu = self._get_group_raw(group_name)
-        if uu is None:
-            raise ValueError('No such group: %s' % group_name)
-
-        if len(uu) & 0xF:
-            raise ValueError('Wrong data size for group %s' % group_name)
-
-        with self._dbs.main.begin(self._dbs.ds, buffers=True) as tr:
-            for i in range(0, len(uu), 16):
-                key = uu[i:i+16]
-                d = tr.get(key, None)
-                if d is None:
-                    raise ValueError('Missing dataset for %s' % (str(UUID(bytes=key))))
-
-                yield self._extract_ds(d)
-
-    @property
-    def count(self):
-        with self._dbs.main.begin(self._dbs.ds) as tr:
-            return tr.stat()['entries']
-
-
-def maybe_delete_db(path):
-    """ Delete existing database if it exists.
-
-        LMDB database consists of two files, data + lock, they can be arranged in two possible layouts:
-
-        - `db-dir-name/{data.mdb, lock.mdb}`
-        - `db-file-name` and `db-file-name-lock`
-
-       You supply path which is either `db-dir-name` or `db-file-name`.
-    """
-    path = Path(path)
-    if not path.exists():
-        return False
-
-    if path.is_dir():
-        db, lock = [path/n for n in ["data.mdb", "lock.mdb"]]
-    else:
-        db = path
-        lock = Path(str(path)+'-lock')
-
-    if db.exists() and lock.exists():
-        db.unlink()
-        lock.unlink()
-
-        if path.is_dir():
-            path.rmdir()
-
-    return True
-
-
-def _from_existing_db(db, products=None, complevel=6):
-    readonly = db.flags().get('readonly')
-
-    try:
-        db_info = db.open_db(b'info', create=False)
-    except lmdb.NotFoundError:
-        raise ValueError('Existing database is not a ds cache')
-
-    with db.begin(db_info, write=False) as tr:
-        version = tr.get(b'version', None)
-        if version is None:
-            raise ValueError('Missing format version field')
-        if version != FORMAT_VERSION:
-            raise ValueError("Unsupported on disk version: " + version.decode('utf8'))
-
-        zdict = tr.get(b'zdict', None)
-
-    dbs = SimpleNamespace(main=db,
-                          info=db_info,
-                          groups=db.open_db(b'groups', create=False),
-                          ds=db.open_db(b'ds', create=False),
-                          udata=db.open_db(b'udata', create=False))
-
-    comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)} if zdict else {}
-
-    comp = None if readonly else zstandard.ZstdCompressor(level=complevel, **comp_params)
-    decomp = zstandard.ZstdDecompressor(**comp_params)
-
-    if products is None:
-        with db.begin(db_info, write=False) as tr:
-            metadata = jsonKV2dict(prefix_visit(tr, 'metadata/'), decomp)
-            products = jsonKV2dict(prefix_visit(tr, 'product/'), decomp)
-
-        metadata, products = build_dc_product_map(metadata, products)
-    else:
-        # TODO: maybe check that products are compatible with what's in the db?
-        metadata = _metadata_from_products(products)
-
-    state = SimpleNamespace(dbs=dbs,
-                            comp=comp,
-                            decomp=decomp,
-                            metadata=metadata,
-                            products=products)
-
-    return DatasetCache(state)
-
-
-def _from_empty_db(db,
-                   complevel=6,
-                   zdict=None):
-    assert isinstance(zdict, (bytes, type(None)))
-
-    db_info = db.open_db(b'info', create=True)
-
-    with db.begin(db_info, write=True) as tr:
-        tr.put(b'version', FORMAT_VERSION)
-
-        if zdict is not None:
-            tr.put(b'zdict', zdict)
-
-    dbs = SimpleNamespace(main=db,
-                          info=db_info,
-                          groups=db.open_db(b'groups', create=True),
-                          ds=db.open_db(b'ds', create=True),
-                          udata=db.open_db(b'udata', create=True))
-
-    comp_params = {'dict_data': zstandard.ZstdCompressionDict(zdict)} if zdict else {}
-
-    comp = zstandard.ZstdCompressor(level=complevel, **comp_params)
-    decomp = zstandard.ZstdDecompressor(**comp_params)
-
-    state = SimpleNamespace(dbs=dbs,
-                            comp=comp,
-                            decomp=decomp,
-                            metadata={},
-                            products={})
-
-    return DatasetCache(state)
+        for _, v in self._db.stream_group(group_name):
+            yield doc2ds(v, self._products)
 
 
 def open_ro(path,
@@ -498,16 +197,8 @@ def open_ro(path,
 
     """
 
-    subdir = Path(path).is_dir()
-
-    db = lmdb.open(path,
-                   subdir=subdir,
-                   max_dbs=8,
-                   lock=lock,
-                   create=False,
-                   readonly=True)
-
-    return _from_existing_db(db, products=products)
+    db = base.open_ro(path, lock=lock)
+    return DatasetCache(db)
 
 
 def open_rw(path,
@@ -528,21 +219,8 @@ def open_rw(path,
     :complevel: Compression level (Zstandard) to use when storing datasets, 1
     fastest, 6 good and still fast, 20+ best but slower.
     """
-
-    subdir = Path(path).is_dir()
-
-    if max_db_sz is None:
-        max_db_sz = 10*(1 << 30)
-
-    db = lmdb.open(path,
-                   subdir=subdir,
-                   max_dbs=8,
-                   map_size=max_db_sz,
-                   lock=True,
-                   create=False,
-                   readonly=False)
-
-    return _from_existing_db(db, products=products, complevel=complevel)
+    db = base.open_rw(path, max_db_sz=max_db_sz, complevel=complevel)
+    return DatasetCache(db, products)
 
 
 def create_cache(path,
@@ -562,39 +240,9 @@ def create_cache(path,
 
     :truncate bool: If True wipe out any existing database and create new empty one.
     """
-
-    if truncate:
-        maybe_delete_db(path)
-
-    if max_db_sz is None:
-        max_db_sz = 10*(1 << 30)
-
-    db = lmdb.open(path,
-                   max_dbs=8,
-                   map_size=max_db_sz,
-                   create=True,
-                   readonly=False)
-
-    # If db is not empty just call open on it
-    if db.stat()['entries'] > 0:
-        return _from_existing_db(db, complevel=complevel)
-    else:
-        return _from_empty_db(db, complevel=complevel, zdict=zdict)
-
-
-def test_key_to_value():
-
-    for k in ("string", 217987, 215781587158712587, ("AAA", 3)):
-        bb = key_to_bytes(k)
-        assert isinstance(bb, bytes)
-
-    assert key_to_bytes(UUID(bytes=b"0123456789ABCDEF")) == b"0123456789ABCDEF"
-    assert key_to_bytes(b"88") == b"88"
-
-
-def test_create_cache():
-    ss = create_cache('tmp.lmdb', truncate=True)
-    print(ss)
-    del ss
-    ss = open_ro('tmp.lmdb')
-    print(ss)
+    db = base.create_cache(path,
+                           complevel=complevel,
+                           zdict=zdict,
+                           max_db_sz=max_db_sz,
+                           truncate=truncate)
+    return DatasetCache(db)
