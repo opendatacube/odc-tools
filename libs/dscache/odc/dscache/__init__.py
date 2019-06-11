@@ -8,10 +8,17 @@ from ._dscache import (
     open_ro,
 )
 
-__all__ = ['ds2bytes',
-           'create_cache',
-           'open_ro',
-           'open_rw',
-           'DatasetCache',
-           'key_to_bytes',
-           'train_dictionary']
+from ._jsoncache import (
+    JsonBlobCache,
+)
+
+__all__ = (
+    'ds2bytes',
+    'create_cache',
+    'open_ro',
+    'open_rw',
+    'DatasetCache',
+    'key_to_bytes',
+    'train_dictionary',
+    'JsonBlobCache',
+)
