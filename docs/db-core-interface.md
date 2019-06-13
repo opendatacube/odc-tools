@@ -221,6 +221,84 @@ differentiation mechanism will be necessary.
     not even guaranteed to be present.
 
 
+# Preliminary API Notes
+
+## Persist/Retrieve/Modify
+
+### Products
+
+As far as database layer goes products are just named groupings of datasets.
+Product has a name and a definition document. Content of the product definition
+document is just an opaque json blob not interpreted by the database layer.
+
+Unlike current system there is no "metadata".
+
+TODO: maybe measurements should be understood by db layer, at least names of bands.
+
+### Datasets
+
+Non optional fields are:
+
+1. `id` UUID of the dataset
+2. `product` name of the product this dataset belongs to
+3. `time` UTC timestamp or a tuple of timestamps (start, end)
+   - Single timestamp means single instance in time
+   - Support open ranges like: `(None, t)`, `(t, None)` to be equivalent of
+     `(-Inf, t]` and `[t, +Inf)` respectively
+
+Optional explicit fields:
+
+1. Location: URI base relative to which band paths are resolved. For single file
+   datasets (netcdf/hdf5/sometimes tiff), location should point to the file
+   containing all the bands.
+
+2. Geospatial: CRS+Grids
+   - Assume common CRS across all bands
+   - Possibly different resolutions/pixel alignments per band
+   - Bands with common geometry are grouped together and this group is given a
+     name (e.g. `'default'`, `'20m'`)
+   - There must be a grid named `'default'`
+   - For each group `Pixel Grid` is recorded:
+     - `shape` -- `(ny, nx)` number of pixels along `y` and `x` directions
+     - `affine` -- Linear mapping (affine matrix) from "pixel space" to "world
+       space" as defined by CRS.
+   - While CRS+Affine is a common mechanism for geo-registration, it is not the
+     only one. Some collections use Ground Control Points for geo-registration.
+     This is not something we support currently, but probably worth thinking
+     about this use case. For now one can compute approximate Affine matrix from
+     all GCPs.
+   - CRS, Affine and shape fully define footprint of each band as well as
+     resolution. It is up to db layer to incorporate those footprints into
+     spatial index of sort.
+
+3. Bands, dictionary of per band information
+   - `path` - relative path of the file containing raster of this dataset (path
+     is allowed to be absolute, but prefer relative paths, can also be empty for
+     in which case location of the dataset is used).
+   - `band: int` 1-based band index inside the file `band=1` is assumed when missing
+   - `layer: str` name of the variable within the file (netcdf variable name, hdf5 path) (optional)
+   - `grid: str` name of the pixel grid (optional, defaults to `'default'`)
+   - `driver_data: dict` opaque json blob of arbitrary IO driver data, this data
+     is passed on without interpretation from db layer to IO layer (optional)
+
+4. Properties, STAC like key value store
+   - Keys are namespaced strings, prefer standard STAC names where possible
+   - Namespace separator is `:` (STAC convention)
+   - Values are simple types only: string, number, datetime, no arrays, no dictionaries
+   - Database layer should support querying these fields, essentially this is a
+     simplification of the current `metadata.search_fields` mechanism.
+
+5. IO Driver data
+   - Arbitrary json blob to be passed to IO driver, this is "per whole dataset"
+     data, per band data should go into individual band.
+
+6. User data
+   - Arbitrary json blob not interpreted by datacube-core in any form
+
+
+
+## Query
+
 # Appendix
 
 - https://github.com/opendatacube/dea-proto/blob/master/docs/change-dataset-metadata.md
