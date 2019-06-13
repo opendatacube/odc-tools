@@ -1,32 +1,52 @@
-# Introduction
+# ODC Enhancement: Replace the Database API
 
-**This is an evolving document**
+**Date** 2019/06/12
 
-- Why do we need to change DB layer
-- How we gonna change it
+**Author** Kirill Kouzoubov  (@Kirill888)
 
-# Problems with the Current State
+**Version** >= ODC 1.7
 
-## Interface is poorly defined
+# Summary
 
-Supposedly there is high-level|low-level split in the DB driver and it should be
-possible to define a new low-level driver that uses on non-pg backend, in
-practice the responsibility of hi|lo levels is not well understood/articulated,
-and with only one low-level backend we are not sure how leaky this boundary is.
+The current Database API, used throughout the ODC Core codebase, is
+responsible for all access to the ODC Index. It was designed to be highly
+flexible in terms of Metadata it can handle, while maintaining high
+performance access to search across multiple dimensions.
 
-## Too much complexity pushed into DB driver
+Unfortunately, it is showing it's age, and has several assumptions and design
+flaws which are limiting future ODC development.
 
-- Lineage traversal/verification
-- Dataset to product auto-matching
-- The whole metadata indirection mechanism
+This proposal is for a complete replacement of the Database API.
 
-"Metadata indirection" is of particular concern as far as alternative backend
-implementations go. User defined search fields with custom aggregate functions
-are way too complex. It is essentially a json DSL that gets compiled into
-SqlAlchemy expressions, too hard to re-implement, might not even be possible for
-simpler db backends like sqlite.
+# Background
 
-This is an example from current EO metadata spec:
+The current Data
+
+
+# Problems with the Current Database API
+
+## The current interface is poorly defined
+
+There is *high-level/low-level* split in the Database driver and it should be
+possible to define a new low-level driver that uses a non-PostgreSQL backend.
+However, in
+practice the responsibilities of each level is not clearly defined,
+and with only one low-level backend we are not sure how leaky this abstraction is.
+
+## Too much complexity is pushed into Database Driver
+
+- Lineage traversal and verification
+- *Dataset* to *Product* auto-matching
+
+### Metadata Indirection
+
+*Metadata indirection* is of particular concern as far as alternative backend
+implementations go. User defined search fields with custom aggregate
+functions are way too complex. It is essentially a JSON DSL that is compiled into
+*SQLAlchemy* expressions, too hard to re-implement, and might not even be feasible
+for
+simpler databases like SQLite. This is an example from current EO metadata
+spec:
 
 ```yaml
         lat:
@@ -71,24 +91,25 @@ implementation.
 
 When adding datasets to the database there is no simple way to specify which
 product these datasets ought to belong to, instead datasets need to be
-"auto"-matched to products. Reason why auto-matching is necessary in the current
-implementation is due to handling of lineage. Single dataset document might
-include lineage datasets, so adding single dataset metadata file to the index
-might result in adding multiple datasets to multiple products.
+*auto*-matched to products. The reason why auto-matching is necessary in the
+current implementation is due to the handling of lineage. A single dataset
+document might include lineage datasets, so any addition of a single dataset
+to the index could actually result in the addition of multiple datasets to
+multiple products.
 
-Users often assume that auto-matching is relying on band names, and are
-surprised when auto-matching fails despite product having the same band names as
-the dataset being indexed. Band names **are** used during the auto-matching process,
-but only to accept/reject product already matched through `product.metadata`
-property. When `product.metadata` is not sufficiently unique, auto matching
-breaks down even when band names would be sufficiently unique constraint to
-match with. It is a recurring pain point that everyone encounters.
+Users often assume that auto-matching relies on band names, and are surprised
+when auto-matching fails despite a product having the same band names as the
+dataset being indexed. Band names **are** used during the auto-matching
+process, but only to accept or reject an already matched *Product* (through
+the `product.metadata`). When `product.metadata` is not sufficiently
+unique, auto matching breaks down even when band names would be sufficiently
+unique constraint to match with. This is a recurring pain point encounted by many people.
 
-Auto-matching used to happen inside db driver, this has changed but it is still
-tightly coupled to db driver, same goes for lineage traversal.
+Auto-matching used to happen inside the database driver. This has been changed,
+but it is still tightly coupled to the driver. The same applies for lineage traversal.
 
 
-## Other
+## Other Database and Metadata Structure Issues
 
 - Whole dataset or nothing interface
   - no easy way to query just spatial data
@@ -100,26 +121,26 @@ tightly coupled to db driver, same goes for lineage traversal.
     Gigabytes of RAM used before first dataset pops out of `find_datasets_lazy`
     is not cool)
 - Incomplete lineage access API
-  - Can get parents but not children
-  - Can not store lineage information for "external datasets"
-  - Can not just reference existing lineage dataset, have to include entire
+  - ~~Can get parents but not children~~
+  - Can not store lineage information for *external datasets*
+  - Can not reference an existing lineage dataset, include entire
     metadata document of the lineage dataset
 - Way too immutable
   - Limited ability to change indexed data in place
-  - No mechanisms to delete/rename products/metadata definitions
+  - Not possible to delete or rename *Products* or *Metadata Types*
   - Inconsistent mutability: can change dataset location for the whole dataset,
     but can not change locations of individual bands
 - Lack of extent information querying
   - No way to ask for valid time range
   - No way to ask for valid spatial range
-- DB not tracking important per-band metadata
+- No tracking of important per-band metadata such as:
   - Image dimensions
   - Per band spatial information
   - This limits native load functionality that can be implemented efficiently
 
-# Proposed Interface
+# Proposed Solution
 
-## Main Principles
+## Principles
 
 ### Spatial Data is Special and so is Time
 
