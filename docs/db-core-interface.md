@@ -223,7 +223,7 @@ differentiation mechanism will be necessary.
 
 # Preliminary API Notes
 
-## Persist/Retrieve/Modify
+## Persist/Data Model
 
 ### Products
 
@@ -252,7 +252,7 @@ Optional explicit fields:
    datasets (netcdf/hdf5/sometimes tiff), location should point to the file
    containing all the bands.
 
-2. Geospatial: CRS+Grids
+2. Geospatial: CRS+Grids+(optional: Valid data polygon)
    - Assume common CRS across all bands
    - Possibly different resolutions/pixel alignments per band
    - Bands with common geometry are grouped together and this group is given a
@@ -262,14 +262,18 @@ Optional explicit fields:
      - `shape` -- `(ny, nx)` number of pixels along `y` and `x` directions
      - `affine` -- Linear mapping (affine matrix) from "pixel space" to "world
        space" as defined by CRS.
+   - Optionally one can supply a tighter bound based on valid pixel data when
+     available. Geometry is defined within the same CRS as pixel grids and
+     should contain no valid pixels of any band outside of the specified
+     polygon.
+   - CRS, Affine and shape fully define footprint of each band as well as
+     resolution. It is up to db layer to incorporate those footprints into
+     spatial index of sort.
    - While CRS+Affine is a common mechanism for geo-registration, it is not the
      only one. Some collections use Ground Control Points for geo-registration.
      This is not something we support currently, but probably worth thinking
      about this use case. For now one can compute approximate Affine matrix from
      all GCPs.
-   - CRS, Affine and shape fully define footprint of each band as well as
-     resolution. It is up to db layer to incorporate those footprints into
-     spatial index of sort.
 
 3. Bands, dictionary of per band information
    - `path` - relative path of the file containing raster of this dataset (path
@@ -288,16 +292,80 @@ Optional explicit fields:
    - Database layer should support querying these fields, essentially this is a
      simplification of the current `metadata.search_fields` mechanism.
 
-5. IO Driver data
-   - Arbitrary json blob to be passed to IO driver, this is "per whole dataset"
-     data, per band data should go into individual band.
+5. Lineage data
+   - List of `(uuid: UUID, label:str)` tuples defining direct predecessors of the dataset
+   - Unlike current system there is no uniqueness constraint on the label, no
+     need to use `nbar{0,1,..}`, just use `nbar` label on all nbar inputs.
+   - Lineage data is just a reference, no repetition of the lineage dataset
+     metadata, and hence no need to verify consistency at this level, can be
+     done by core for any db backend.
+   - Lineage datasets ought to be already present in the database or need to be
+     added together in the same bulk add.
 
-6. User data
+6. IO Driver data
+   - Arbitrary json blob to be passed to IO driver, this is "per whole dataset"
+     data, per band data should go into individual bands `driver_data` section.
+
+7. User data
    - Arbitrary json blob not interpreted by datacube-core in any form
 
+Persist API should support bulk addition of datasets, this is necessary to
+support efficient back-end implementations.
 
+
+## Retrieve
+
+### Product
+
+- Extract full list of product names
+- Extract product definition given product name
+
+### Dataset
+
+- Should be able to retrieve parts of the dataset without extracting all the
+  information
+  - For IO tasks: GeoSpatial data, subset of bands, io driver data
+  - For Data Extent Visualisation: GeoSpatial data
+  - For interactive inspection: all the data
+- Support bulk retrieve for efficient db comms
+- Should be able to stream dataset data for a given product with small startup
+  latency and low memory overhead
+- Streaming should support ordering by time. This is to support multi-product
+  processing without having to resort to loading all datasets into memory first.
+
+## Data Summaries
+
+DB layer is expected to provide summary data for a given product
+
+- Total count of datasets
+- Total count of "live" (not archived) datasets
+- Temporal extents
+- Spatial extents, this can be maintained in any CRS, not limited to EPSG:4326
 
 ## Query
+
+Query is only applied to datasets, no searching of products, this will be
+implemented in core code if needed. Assumption is that product list is small
+enough to fit into RAM without any problem and so any product filtering can be
+implemented in python code operating on product definition documents.
+
+Datasets are selected based on:
+
+- Product name
+- Time bounds of a query
+- Spatial extents of query
+  - Spatial query can be defined by an arbitrary polygon in any CRS, not limited
+    to lat/lon bounds.
+- Dataset properties
+
+API should support:
+
+- Streaming of query results
+- Streaming ordered by time
+- Streaming of parts of dataset metadata
+  - Least data: just UUIDs of datasets matching query
+  - Most data: All available information including lineage/offspring UUIDs
+- Should be consistent with retrieve API
 
 # Appendix
 
