@@ -15,5 +15,5 @@ LIBS+=" dtools index ui"
 
 for lib in $LIBS; do
     echo "Installing odc-${lib}"
-    pip install -e libs/${lib}
+    pip install -e libs/${lib} $@
 done
