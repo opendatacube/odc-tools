@@ -45,8 +45,16 @@ def to_rgba(ds: xr.Dataset,
     if clamp is None:
         clamp = max(x.max() for x in (r, g, b))
 
-    r, g, b = ((np.clip(x, 0, clamp).astype('uint32')*255//clamp).astype('uint8')
-               for x in (r, g, b))
+    def to_u8(x, x_min, x_max):
+        x = np.clip(x, x_min, x_max)
+
+        if x.dtype.kind == 'f':
+            x = (x - x_min)*(255.0/(x_max - x_min))
+        else:
+            x = (x - x_min).astype('uint32')*255//(x_max - x_min)
+        return x.astype('uint8')
+
+    r, g, b = (to_u8(x, 0, clamp) for x in (r, g, b))
 
     coords = dict(**{x.name: x.values
                      for x in ds.coords.values()},
