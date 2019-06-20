@@ -40,7 +40,13 @@ def to_rgba(ds: xr.Dataset,
     dims = r.dims + ('band',)
 
     r, g, b = (x.values for x in (r, g, b))
-    a = (r != nodata).astype('uint8')*(0xFF)
+
+    if r.dtype.kind == 'f':
+        a = (~np.isnan(r)) * (r != nodata)
+    else:
+        a = (r != nodata)
+
+    a = a.astype('uint8')*(0xFF)
 
     if clamp is None:
         clamp = max(x.max() for x in (r, g, b))
