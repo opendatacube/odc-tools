@@ -1,52 +1,63 @@
-# ODC Enhancement: Replace the Database API
+# ODC Enhancement: Replace the ODC Index and API
 
-**Date** 2019/06/12
+**Date:** 2019-06-12
 
-**Author** Kirill Kouzoubov  (@Kirill888)
+**Author:** Kirill Kouzoubov  (@Kirill888), Damien Ayers (@omad)
 
-**Version** >= ODC 1.7
+**Version:** datacube-core >=  1.7
 
 # Summary
 
-The current Database API, used throughout the ODC Core codebase, is
-responsible for all access to the ODC Index. It was designed to be highly
-flexible in terms of Metadata it can handle, while maintaining high
-performance access to search across multiple dimensions.
+The Database API is used in ODC Core for all access to the ODC Index. The Index
+is intended to be very flexible in the metadata formats it supports, while also
+maintaining high performance searching across multiple dimensions.
 
-Unfortunately, it is showing it's age, and has several assumptions and design
-flaws which are limiting future ODC development.
+Mostly, it has been successful in these goals.  Unfortunately, while trying to
+implement improvements like fast extents queries (link), native resolution data
+loading (insert link) and other smaller changes, we have run up against several
+assumptions and design flaws which are limiting future ODC development.
 
-This proposal is for a complete replacement of the Database API.
+This proposal is for a replacement of the ODC Index and Database API and
+a change in the internal model of *Datasets*.
 
 # Background
 
-The current Data
+**Damien to expand here**
 
 
-# Problems with the Current Database API
+> Instead of storing heterogeneous dataset structures in the database and in
+> code, with an unmaintainable mess of code to do dynamic searching and
+> lookups. Decide on a consistent Dataset model, and normalise datasets on
+> their way into the Index.
 
-## The current interface is poorly defined
+
+
+# Problems with the Database API
+
+## The interface is poorly defined
 
 There is *high-level/low-level* split in the Database driver and it should be
 possible to define a new low-level driver that uses a non-PostgreSQL backend.
-However, in
-practice the responsibilities of each level is not clearly defined,
-and with only one low-level backend we are not sure how leaky this abstraction is.
+However, the responsibily of each level is not clearly defined,
+and with only one low-level backend, we suspect that this is not a clear split.
 
-## Too much complexity is pushed into Database Driver
+## Too much complexity in the driver
 
+- *Dataset* to *Product* auto-matching (Metadata indirection)
 - Lineage traversal and verification
-- *Dataset* to *Product* auto-matching
 
-### Metadata Indirection
+### Metadata indirection (Metadata Types)
 
-*Metadata indirection* is of particular concern as far as alternative backend
-implementations go. User defined search fields with custom aggregate
-functions are way too complex. It is essentially a JSON DSL that is compiled into
-*SQLAlchemy* expressions, too hard to re-implement, and might not even be feasible
-for
-simpler databases like SQLite. This is an example from current EO metadata
-spec:
+*Metadata indirection* is a particularly difficult feature for any future
+database backends to implement. This feature allows users to define new search
+fields over *dataset documents*, potentially by aggregating multiple portions of a dataset together using custom aggregation functions.
+
+It is a JSON [DSL] that is compiled into *SQLAlchemy*
+expressions, and then run as PostgreSQL specific database queries. This would be very hard to re-implement in another database, and might not even be possible for
+simpler databases like SQLite.
+
+This is an example from the EO metadata spec:
+
 
 ```yaml
         lat:
@@ -64,33 +75,34 @@ spec:
             - [extent, coord, ll, lat]
 ```
 
-Which means something like this:
+Broken down, this means something like:
 
-- Define search field named `lat` which is of type `Range<float>`
+- Define a search field named `lat` which is of type `Range<float>`
   - where range starts at: `min(data.extent.coord.ur.lat as float, data.extent.coord.lr.lat as float, ...)`
   - and stops at:  `max(data.extent.coord.ur.lat as float, data.extent.coord.lr.lat as float, ...)`
 
-This then gets compiled into a sql expression when queries are made.
+This is then compiled into an SQL expression to generate table indexes per
+product, and and an identical expression when queries are made.
 
 ## Lack of Spatial Constructs in the Interface
 
-As far as database driver goes spatial information is no different than any
-other user defined metadata (sort of, lat|lot|time are treated specially as far
-as index creation goes). Core code understands spatial queries, but before db
-driver can see it, spatial query gets converted into lat/lon range query. This
-effectively means that datasets and queries can not cross problematic lines like
-antimeridian.
+In the current ODC, as far as the database driver is concerned, spatial
+information is no different than any other user defined metadata. (sort of,
+lat|lot|time are treated specially as far as index creation goes). Core code
+understands spatial queries, but before db driver can see it, spatial query
+gets converted into lat/lon range query. This effectively means that datasets
+and queries can not cross problematic lines like antimeridian.
 
-This also leads to data duplication, metadata document has to include lat/lon
-representation of datasets footprint as well as the native footprint. This
+This also leads to data duplication, a valid dataset document has to include lat/lon
+representation of a datasets' footprint as well as the native footprint. This
 [report](https://s3-ap-southeast-2.amazonaws.com/ga-aws-dea-dev-users/u60936/Datacube-Spatial-Query-Problem.html)
-highlights how this data duplication leads to incorrect spatial index
-implementation.
+highlights how this data duplication has led to incorrect spatial indexing of
+many datasets.
 
 ## Confusing Auto Matching Behaviour due to Lineage Handling
 
-When adding datasets to the database there is no simple way to specify which
-product these datasets ought to belong to, instead datasets need to be
+When adding *Datasets* to the database there is no simple way to specify which
+*Product* these datasets ought to belong to. Instead datasets need to be
 *auto*-matched to products. The reason why auto-matching is necessary in the
 current implementation is due to the handling of lineage. A single dataset
 document might include lineage datasets, so any addition of a single dataset
@@ -111,32 +123,34 @@ but it is still tightly coupled to the driver. The same applies for lineage trav
 
 ## Other Database and Metadata Structure Issues
 
-- Whole dataset or nothing interface
-  - no easy way to query just spatial data
-  - or just lineage data
-  - or just data needed for IO
-  - Large volume of data pushed between db and core
+- Poor support for partial dataset querying:
+    - no easy way to query just spatial data
+    - or just lineage data
+    - or just data needed for IO
+    - Which often leads to a large volume of data pushed between the Database and
+      core
 - Broken streaming [issue 542](https://github.com/opendatacube/datacube-core/issues/542)
-  - particularly painful for full-history queries (20+ minute wait and several
-    Gigabytes of RAM used before first dataset pops out of `find_datasets_lazy`
-    is not cool)
+    - particularly painful for full-history queries (20+ minute wait and several
+    Gigabytes of RAM used before first dataset pops out of `find_datasets_lazy`)
 - Incomplete lineage access API
-  - ~~Can get parents but not children~~
-  - Can not store lineage information for *external datasets*
-  - Can not reference an existing lineage dataset, include entire
-    metadata document of the lineage dataset
-- Way too immutable
-  - Limited ability to change indexed data in place
-  - Not possible to delete or rename *Products* or *Metadata Types*
-  - Inconsistent mutability: can change dataset location for the whole dataset,
-    but can not change locations of individual bands
+    - Can not store lineage information for *external datasets*
+    - No way to reference an existing lineage dataset. It's necessary to include
+      the entire metadata document of the parent datasets.
+- Too much immutability
+    - Limited ability to change indexed data in place
+    - Not possible to delete or rename *Products* or *Metadata Types*
+    - Inconsistent mutability: eg. it's possible to change the location for
+      a while dataset, but not change locations of individual bands
+    - This is really frustrating for anyway learning or experimenting with ODC.
+      If you index something with the wrong name, you can either drop the
+      database and start again, or resort to fragile hand written SQL.
 - Lack of extent information querying
-  - No way to ask for valid time range
-  - No way to ask for valid spatial range
+    - There is no way to ask for the full valid time range
+    - There is no way to ask for the full valid spatial range
 - No tracking of important per-band metadata such as:
-  - Image dimensions
-  - Per band spatial information
-  - This limits native load functionality that can be implemented efficiently
+    - Image dimensions
+    - Per band spatial information
+    - This limits native load functionality that can be implemented efficiently
 
 # Proposed Solution
 
@@ -146,20 +160,22 @@ but it is still tightly coupled to the driver. The same applies for lineage trav
 
 Model spatial and time extents explicitly.
 
-- When persisting dataset to database communicate per band footprints to db layer
-- When querying, pass CRS+Polygon of the query directly to db layer, rather than just lat/lon ranges
+- When persisting datasets to the database communicate per band footprints to
+  the Database layer
+- When querying, pass CRS+Polygon of the query directly to the Database layer,
+  rather than just lat/lon ranges
 
-This would allow implementations that have native CRS other than lat/lon. If one
-needs to maintain a catalog of datasets in "challenging" regions like
+This would allow implementations that have a native CRS other than lat/lon. If
+one needs to maintain a catalog of datasets in *challenging* regions like
 Antarctica, it would be possible: store dataset extents in EPSG:3031, which
-should not have discontinuities in the region of interest, and define/translate your
-queries into same CRS as well.
+should not have discontinuities in the region of interest, and define/translate
+your queries into the same CRS as well.
 
-Database layer can now keep track of spatial/temporal extents, know that it is
+The Database layer can now keep track of spatial/temporal extents, now that it is
 aware of them explicitly.
 
-We need better model for time querying, that takes into account time zone of the
-data. When user asks for everything on 1-May-2019 they don't mean UTC
+We need a better model for time querying, that takes into account the time zone
+of the data. When a user asks for everything on 1-May-2019 they don't mean UTC
 1-May-2019, they mean 1-May-2019 in the locality of the spatial query.
 
 ### Simplify/drop custom search fields
@@ -172,10 +188,11 @@ no aggregation.
 Properties intended for querying are defined and stored separately from the rest
 of the dataset document.
 
-Arbitrary nested user data can be stored and retrieved, but ability to query it
-is not guaranteed. DB back-end might provide querying of arbitrary sub-trees,
-similar to current search fields, with the exception that aggregation is not
-going to be supported. So you can dynamically create query equivalent to:
+Arbitrarily nested user data can be stored and retrieved, but the ability to
+query it is not guaranteed. A Database back-end might provide querying of
+arbitrary sub-trees, similar to the current search fields, with the exception that
+aggregation is not going to be supported. So you can dynamically create a query
+equivalent to:
 
 ```
 Only return datasets that have a numeric field at
@@ -183,63 +200,60 @@ Only return datasets that have a numeric field at
 with value less than `10`
 ```
 
-but not query with aggregations like min/max/avg. Such ad-hoc querying will be
-optional, database backend implementations might choose to not to support it.
+but not query with aggregations like `min`/`max`/`avg`. Such ad-hoc querying
+will be optional, database backend implementations could choose to not to
+support it.
 
-This means we won't need what is currently called "MetadataType". Database layer
-will only be concerned with Products, Datasets and maybe Measurements.
+This means we will no longer need *MetadataType*s. The Database
+layer will only contain Products, Datasets and maybe Measurements.
 
-### Drop "sources" query
+### Drop *sources*/*lineage* querying
 
-Currently it is possible to filter datasets based on properties of their
-parents. The complexity of generated query is really high, cost of running such
-query is very high. The complexity of the code that generates such query is
-also really high. What is worse this "sources query" does not generalize to
-datasets that have multiple identical parents, i.e. any stats datasets.
+It is possible to filter datasets based on properties of their
+parents. The complexity of these generated queries, the cost of running them, much less the complexity of the code generating them is all really high.
+What is worse, this *sources query* does not generalize to
+datasets that have multiple parents, ie. any stats datasets.
 
-It is more efficient to simply copy important properties (cloud cover, gqa,
-region code, etc.) from parent dataset to derived dataset, and only when it
-makes sense, than rely on lineage tree traversal as part of the query, that will
-always be a costly operation. There is no meaningful "gqa" for an annual
-geomedian dataset, but it makes perfect sense to copy "gqa" for FC or WoFS
-datasets.
+It is more efficient to simply copy important properties (eg. cloud cover,
+geometric quality, region code) from parent datasets to derived dataset, but to
+only do so when it makes sense. Many derived products combine input datasets in
+such a way as to make these sorts of queries meaningless.  There is no
+meaningful *geometric quality* for an annual geomedian dataset, but it does make
+sense to copy *geometric quality* for Fractional Cover or Water
+Observation datasets.
 
 
 ### Changes to Auto Matching and Lineage
 
-Change current rule:
+Change the rule (implemented currently):
 
-```
-Dataset can have more bands than product it matches to,
-so long as it has all the bands defined in the product.
-```
+> A Dataset must contain all the bands defined in the Product it matches to,
+  but can contain more bands.
 
 to be simply:
 
-```
-Dataset should have exactly the same bands as product it is matching to.
-```
+> A Dataset should have exactly the same bands as the Product it matches to.
 
-Only when there are products with exactly the same set of band names extra
-differentiation mechanism will be necessary.
+Only when there are Products with exactly the same set of band names will extra
+differentiation mechanisms be necessary.
 
 
 ### Performance Related API Changes
 
-- Bulk add of datasets, indexing is slow primarily because we add "one" dataset
+- Bulk add of datasets, indexing is slow primarily because we add *one* dataset
   at a time (really we add several at a time, because lineage, but we can't add
   several top level datasets at once)
 - Proper streaming of datasets, fast to start with low memory overhead
 - Support efficient streaming of datasets ordered by time
-  - Arbitrary order of datasets within a stream means that one can not match up
-    datasets from two different products without reading all datasets into
-    memory first
-  - I would not try and make it generic "order by some property", just time.
-  - With time being an explicit and required dataset property, DB driver should
-    be able to arrange for storage that allows efficient ordered extraction of
-    datasets. It is difficult with the current system because (a) time is a
-    range not a timestamp (b) time is indirected via metadata_type mechanism, and is
-    not even guaranteed to be present.
+    - Arbitrary order of datasets within a stream means that one can not match up
+      datasets from two different products without reading all datasets into
+      memory first
+    - I would not try and make it generic "order by some property", just time.
+    - With time being an explicit and required dataset property, DB driver should
+      be able to arrange for storage that allows efficient ordered extraction of
+      datasets. It is difficult with the current system because (a) time is a
+      range not a timestamp (b) time is indirected via metadata_type mechanism,
+      and is not even guaranteed to be present.
 
 
 # Preliminary API Notes
@@ -393,3 +407,6 @@ API should support:
 - https://github.com/opendatacube/dea-proto/blob/master/docs/change-dataset-metadata.md
 - https://github.com/orgs/opendatacube/teams/developers/discussions/5
 - https://github.com/opendatacube/dea-proto/blob/master/docs/normalised-dataset.yaml
+
+
+[DSL]: https://en.wikipedia.org/wiki/Domain-specific_language
