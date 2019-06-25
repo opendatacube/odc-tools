@@ -20,22 +20,21 @@ assumptions and design flaws which are limiting future ODC development.
 This proposal is for a replacement of the ODC Index and Database API and
 a change in the internal model of *Datasets*.
 
-## Summary
-
-Instead of storing heterogeneous dataset structures in the database with a lot of
-flexibility in what is indexed (in a database index sense), a new database
-structure with required fields stored as database columns, and only ancilliary
-data in the dynamic `json` metadata column will be implemented. This will result
-in simpler, more maintainable code in the ODC Core, much simpler indexes and easier and likely faster
-querying.
+## Summary of proposed changes
 
 Key changes suggested are documented in detail below, but include the following:
 
-- Add required *geometry* field(s) with defined CRS
-- Add required *temporal* field(s) with defined time zone
-- Remove custom indexing and replace with standard indices
+- Properly model spatial data during indexing and querying (do not collapse
+  spatial data to lat/lon bounds)
+- Properly model *temporal* data during indexing and querying
+- Capture per band spatial extents and resolution
 - Change auto-matching to require exact match of bands
-- Implement methods for bulk-insertion of datasets and streaming of dataset listings.
+- Define simpler Database API by removing complex query features and moving
+  other functionality from driver into core code
+- Add missing functionality that can not be efficiently implemented in core code
+  - Temporal/Spatial extent queries
+  - Streaming interface for metadata extraction from the database
+  - Bulk indexing of datasets
 
 # Problems with the Database API
 
@@ -48,7 +47,8 @@ and with only one low-level backend, we suspect that this is not a clear split.
 
 ## Too much complexity in the driver
 
-- *Dataset* to *Product* auto-matching (Metadata indirection)
+- Metadata indirection
+- *Dataset* to *Product* auto-matching
 - Lineage traversal and verification
 
 ### Metadata indirection (Metadata Types)
