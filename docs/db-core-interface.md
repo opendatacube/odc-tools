@@ -87,7 +87,7 @@ Broken down, this means something like:
   - and stops at:  `max(data.extent.coord.ur.lat as float, data.extent.coord.lr.lat as float, ...)`
 
 This is then compiled into an SQL expression to generate table indexes per
-product, and and an identical expression when queries are made.
+product, and an identical expression when queries are made.
 
 ## Lack of Spatial Constructs in the Interface
 
@@ -146,7 +146,7 @@ but it is still tightly coupled to the driver. The same applies for lineage trav
     - Not possible to delete or rename *Products* or *Metadata Types*
     - Inconsistent mutability: eg. it's possible to change the location for
       a while dataset, but not change locations of individual bands
-    - This is really frustrating for anyway learning or experimenting with ODC.
+    - This is really frustrating for anyone learning or experimenting with ODC.
       If you index something with the wrong name, you can either drop the
       database and start again, or resort to fragile hand written SQL.
 - Lack of extent information querying
