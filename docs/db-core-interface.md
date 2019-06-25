@@ -2,17 +2,17 @@
 
 **Date:** 2019-06-12
 
-**Author:** Kirill Kouzoubov  (@Kirill888), Damien Ayers (@omad)
+**Author:** Kirill Kouzoubov  (@Kirill888), Damien Ayers (@omad), Alex Leith (@alexgleith)
 
 **Version:** datacube-core >=  1.7
 
-# Summary
+# Introduction
 
-The Database API is used in ODC Core for all access to the ODC Index. The Index
+The Database API is used in the ODC Core for all access to the ODC Index. The Index
 is intended to be very flexible in the metadata formats it supports, while also
 maintaining high performance searching across multiple dimensions.
 
-Mostly, it has been successful in these goals.  Unfortunately, while trying to
+Mostly, it has been successful in these goals. Unfortunately, while trying to
 implement improvements like fast extents queries (link), native resolution data
 loading (insert link) and other smaller changes, we have run up against several
 assumptions and design flaws which are limiting future ODC development.
@@ -20,17 +20,22 @@ assumptions and design flaws which are limiting future ODC development.
 This proposal is for a replacement of the ODC Index and Database API and
 a change in the internal model of *Datasets*.
 
-# Background
+## Summary
 
-**Damien to expand here**
+Instead of storing heterogeneous dataset structures in the database with a lot of
+flexibility in what is indexed (in a database index sense), a new database
+structure with required fields stored as database columns, and only ancilliary
+data in the dynamic `json` metadata column will be implemented. This will result
+in simpler, more maintainable code in the ODC Core, much simpler indexes and easier and likely faster
+querying.
 
+Key changes suggested are documented in detail below, but include the following:
 
-> Instead of storing heterogeneous dataset structures in the database and in
-> code, with an unmaintainable mess of code to do dynamic searching and
-> lookups. Decide on a consistent Dataset model, and normalise datasets on
-> their way into the Index.
-
-
+- Add required *geometry* field(s) with defined CRS
+- Add required *temporal* field(s) with defined time zone
+- Remove custom indexing and replace with standard indices
+- Change auto-matching to require exact match of bands
+- Implement methods for bulk-insertion of datasets and streaming of dataset listings.
 
 # Problems with the Database API
 
