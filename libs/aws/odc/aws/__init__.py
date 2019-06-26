@@ -225,6 +225,19 @@ def this_instance(ec2=None):
     return rr['Reservations'][0]['Instances'][0]
 
 
+def ec2_tags(ec2=None):
+    """ Get tags of the current EC2 instance
+
+        returns None if not running on EC2
+        returns Str->Str dictionary of tag name:value
+    """
+    instance = this_instance(ec2=ec2)
+    if instance is None:
+        return None
+
+    return {x['Key']: x['Value'] for x in instance.get('Tags', [])}
+
+
 def read_ssm_params(params, ssm=None):
     """Build dictionary from SSM keys to values in the paramater store.
     """
