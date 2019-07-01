@@ -1,0 +1,13 @@
+[Unit]
+Description=Update DNS record on boot
+After=network.target
+
+[Service]
+Type=oneshot
+User=nobody
+ExecStart=/usr/bin/dea-dnsup.xar tag/domain
+ExecStop=/usr/bin/dea-dnsup.xar tag/domain delete
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
