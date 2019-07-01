@@ -97,6 +97,7 @@ Examples:
         return 0
     elif n == 1:
         if args[0] in ('help', '--help'):
+            help()
             return 0
         args = (args[0], 'auto')
     elif n > 2:
