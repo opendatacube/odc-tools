@@ -11,10 +11,11 @@ _xar_env: ./_xar/bin/pip
 dea-dnsup.xar: _xar_env setup.py
 	./_xar/bin/python3 setup.py bdist_xar --xar-compression-algorithm=zstd --dist-dir=.
 
-install: dea-dnsup.xar dea-dns.service
+install:
 	install -D -m 755 dea-dnsup.xar /usr/bin/dea-dnsup.xar
 	install -D -m 644 dea-dns.service /lib/systemd/system/dea-dns.service
-	echo "Run: `sudo systemctl enable dea-dns`"
+	install -D -m 755 dea-dns /lib/systemd/system-sleep/dea-dns
+	@echo "Run: 'sudo systemctl enable dea-dns' to enable it"
 
 clean:
 	rm -rf _xar build dea_dnsup.egg-info

@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# This runs before and after hibernate
+# before hibernate: delete DNS record
+# after hibernate:  re-add
+
+set -e
+
+if [ "$2" = "hibernate" ] || [ "$2" = "hybrid-sleep" ]; then
+    case "$1" in
+        pre)
+            /usr/bin/dea-dnsup.xar tag/domain delete
+            ;;
+        post)
+            sleep 2 && /usr/bin/dea-dnsup.xar tag/domain
+            ;;
+    esac
+fi
