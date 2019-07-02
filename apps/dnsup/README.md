@@ -28,3 +28,7 @@ Examples:
   tag/domain auto
   tag/domain delete
 ```
+
+For this to work, EC2 instance should have permissions to update DNS record in
+the right zone. For DEA when using `{something}.devbox.dea.ga.gov.au` the policy
+is `devbox-route53`.
