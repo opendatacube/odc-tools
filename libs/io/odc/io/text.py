@@ -36,6 +36,10 @@ def read_stdin_lines(skip_empty=False):
 
 
 def slurp(fname, binary=False):
+    """ fname -> str|bytes.
+
+    binary=True -- read bytes not text
+    """
     mode = 'rb' if binary else 'rt'
 
     with open(fname, mode) as f:
@@ -43,6 +47,8 @@ def slurp(fname, binary=False):
 
 
 def slurp_lines(fname, *args, **kwargs):
+    """ file path -> [lines]
+    """
     if len(args) > 0 or len(kwargs) > 0:
         fname = fname.format(*args, **kwargs)
 
