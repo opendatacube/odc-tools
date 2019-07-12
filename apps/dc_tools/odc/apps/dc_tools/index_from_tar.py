@@ -74,6 +74,8 @@ def cli(input_fname,
 
     # Ensure :// is present in prefix
     prefix = protocol.rstrip('://') + '://'
+    if prefix.startswith('file'):
+        prefix = prefix + '/'
 
     ds_resolve_args = dict(products=product_names,
                            exclude_products=exclude_product_names,
