@@ -4,9 +4,21 @@ import datacube
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
 from odc.index import from_yaml_doc_stream
+from odc.index import eo3_grid_spatial
 
 
-def from_tar_file(tarfname, index, mk_uri, mode, **kwargs):
+def add_eo3_parts(doc, tol=1):
+    return dict(**doc,
+                **eo3_grid_spatial(doc, tol=tol))
+
+
+def prep_eo3(doc, tol=1):
+    doc = add_eo3_parts(doc, tol=tol)
+    doc.pop('lineage')
+    return doc
+
+
+def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
     """ returns a sequence of tuples where each tuple is either
 
         (ds, None) or (None, error_message)
@@ -15,7 +27,7 @@ def from_tar_file(tarfname, index, mk_uri, mode, **kwargs):
         for doc_name, doc in tar_doc_stream(tarfname, mode=mode):
             yield mk_uri(doc_name), doc
 
-    return from_yaml_doc_stream(untar(tarfname, mk_uri), index, **kwargs)
+    return from_yaml_doc_stream(untar(tarfname, mk_uri), index, transform=doc_transform, **kwargs)
 
 
 @click.command('index_from_tar')
@@ -40,6 +52,9 @@ def from_tar_file(tarfname, index, mk_uri, mode, **kwargs):
 @click.option('--ignore-lineage',
               help="Pretend that there is no lineage data in the datasets being indexed",
               is_flag=True, default=False)
+@click.option('--eo3',
+              help="Assume EO3 metadata format",
+              is_flag=True, default=False)
 @click.option('--gzip', is_flag=True, help='Input is compressed with gzip (needed when reading from stdin)')
 @click.option('--xz', is_flag=True, help='Input is compressed with xz (needed when reading from stdin)')
 @click.option('--protocol', type=str, default='s3', show_default=True,
@@ -52,6 +67,7 @@ def cli(input_fname,
         auto_add_lineage,
         verify_lineage,
         ignore_lineage,
+        eo3,
         gzip,
         xz,
         protocol):
@@ -68,14 +84,16 @@ def cli(input_fname,
     if ignore_lineage:
         auto_add_lineage = False
 
+    doc_transform = prep_eo3 if eo3 else None
+
     def mk_uri(name):
         return prefix + name
 
     def report_error(msg):
         print(msg, file=sys.stderr)
 
-    def process_file(filename, index, fps, mode=None, n_failed=0):
-        for ds, err in from_tar_file(filename, index, mk_uri, mode=mode, **ds_resolve_args):
+    def process_file(filename, index, fps, mode=None, n_failed=0, doc_transform=None):
+        for ds, err in from_tar_file(filename, index, mk_uri, doc_transform=doc_transform, mode=mode, **ds_resolve_args):
             if ds is not None:
                 try:
                     index.datasets.add(ds, with_lineage=auto_add_lineage)
@@ -113,7 +131,7 @@ def cli(input_fname,
             filename = sys.stdin.buffer
             mode = tar_mode(is_pipe=True, gzip=gzip, xz=xz)
 
-        n_failed = process_file(filename, dc.index, fps, mode=mode, n_failed=n_failed)
+        n_failed = process_file(filename, dc.index, fps, mode=mode, n_failed=n_failed, doc_transform=doc_transform)
 
     if n_failed > 0:
         report_error("**WARNING** there were failures: {}".format(n_failed))
