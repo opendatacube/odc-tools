@@ -14,7 +14,17 @@ def add_eo3_parts(doc, tol=None):
 
 def prep_eo3(doc, tol=None):
     doc = add_eo3_parts(doc, tol=tol)
-    doc.pop('lineage')
+    lineage = doc.pop('lineage', {})
+
+    def remap_lineage(uuids):
+        """ Turn [uuid] -> {id: uuid}
+        """
+        uuid, *_ = uuids
+        return dict(id=uuid)
+
+    doc['lineage'] = dict(source_datasets={
+        n: remap_lineage(v) for n, v in lineage.items()})
+
     return doc
 
 
@@ -77,14 +87,18 @@ def cli(input_fname,
     if prefix.startswith('file'):
         prefix = prefix + '/'
 
+    if ignore_lineage:
+        auto_add_lineage = False
+
+    if eo3:
+        verify_lineage = False
+        auto_add_lineage = False
+
     ds_resolve_args = dict(products=product_names,
                            exclude_products=exclude_product_names,
                            fail_on_missing_lineage=not auto_add_lineage,
                            verify_lineage=verify_lineage,
                            skip_lineage=ignore_lineage)
-
-    if ignore_lineage:
-        auto_add_lineage = False
 
     doc_transform = prep_eo3 if eo3 else None
 
