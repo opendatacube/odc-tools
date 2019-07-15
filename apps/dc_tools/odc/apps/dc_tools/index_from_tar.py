@@ -7,12 +7,12 @@ from odc.index import from_yaml_doc_stream
 from odc.index import eo3_grid_spatial
 
 
-def add_eo3_parts(doc, tol=1):
+def add_eo3_parts(doc, tol=None):
     return dict(**doc,
                 **eo3_grid_spatial(doc, tol=tol))
 
 
-def prep_eo3(doc, tol=1):
+def prep_eo3(doc, tol=None):
     doc = add_eo3_parts(doc, tol=tol)
     doc.pop('lineage')
     return doc
