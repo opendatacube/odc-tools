@@ -19,6 +19,7 @@ addons:
       - libudunits2-0
 
 before_install:
+  - pip install --upgrade pip
 # aiobotocore is tricky because of the narrow dependencies on botocore
 # best to install it early before botocore is pulled in by other libs
   - pip install -U 'aiobotocore[boto3]'
@@ -28,8 +29,10 @@ before_install:
   - export C_INCLUDE_PATH=/usr/include/gdal
   - export GDAL_DATA="$(gdal-config --datadir)"
   - gdal-config --version
-  - pip install --upgrade pip
   - pip install GDAL=="$(gdal-config --version)"
 
 install:
   - pip freeze
+
+script:
+  - ./scripts/travis.sh
