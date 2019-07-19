@@ -9,7 +9,7 @@ setup(
     maintainer='Open Data Cube',
     maintainer_email='',
 
-    description='CLI utils for working with objects/files the cloud',
+    description='CLI utils for working with objects/files in the cloud',
     long_description='',
 
     license='Apache License 2.0',
