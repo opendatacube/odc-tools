@@ -24,6 +24,7 @@ source "${env_dir}/bin/activate"
 echo "Using pip: $(which pip)"
 pip install --upgrade pip
 pip install wheel
+pip install setuptools-scm
 pip install 'aiobotocore[boto3]'
 pip install GDAL=="$(gdal-config --version)"
 pip install datacube

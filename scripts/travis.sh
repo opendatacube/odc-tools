@@ -17,13 +17,12 @@ LIBS+=" aio"
 
 APPS="cloud dc_tools dnsup"
 
-
 for lib in $LIBS; do
     echo "Installing odc-${lib}"
-    pip install libs/${lib}
+    (cd libs/${lib} && python setup.py install)
 done
 
 for app in $APPS; do
     echo "Installing $app"
-    pip install apps/${app}
+    (cd apps/${app} && python setup.py install)
 done

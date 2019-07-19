@@ -21,6 +21,8 @@ addons:
 before_install:
   - pip install --upgrade pip
   - pip install wheel
+  - pip install setuptools-scm
+
 # aiobotocore is tricky because of the narrow dependencies on botocore
 # best to install it early before botocore is pulled in by other libs
   - pip install -U 'aiobotocore[boto3]'
@@ -37,3 +39,4 @@ install:
 
 script:
   - ./scripts/travis.sh
+  - pip freeze
