@@ -9,11 +9,11 @@ from urllib.parse import urlparse
 from thredds_crawler.crawl import Crawl
 
 
-def download(result, parsed_uri):
-    source_filename = parsed_uri.geturl() + result.id
-    target_filename = source_filename[len(parsed_uri.scheme + '://'):]
+def download(url):
+    parsed_uri = urlparse(url)
+    target_filename = url[len(parsed_uri.scheme + '://'):]
 
-    return requests.get(source_filename).content, target_filename
+    return requests.get(url).content, target_filename
 
 
 @click.command('thredds-to-tar')
@@ -50,20 +50,13 @@ def cli(thredds_catalogue,
 
     print("Found {0} metadata files".format(str(len(results))))
 
-    # construct (guess) the fileserver url based on
-    # https://www.unidata.ucar.edu/software/thredds/v4.6/tds/reference/Services.html#HTTP
-
-    parsed_uri = urlparse(thredds_catalogue)
-
-    split_path = parsed_uri.path.split('/')
-    fileserver_path = parsed_uri.scheme + '://' + parsed_uri.netloc + '/'.join(
-        split_path[:(split_path.index('thredds') + 1)] + ['fileServer', ''])
-
-    parsed_uri = urlparse(fileserver_path)
+    urls = [service['url'] for dataset in results
+            for service in dataset.services
+            if service['service'].lower() == 'httpserver']
 
     # use a threadpool to download from thredds
     pool = ThreadPool(workers)
-    yamls = pool.map(partial(download, parsed_uri=parsed_uri), results)
+    yamls = pool.map(partial(download), urls)
     pool.close()
     pool.join()
 
