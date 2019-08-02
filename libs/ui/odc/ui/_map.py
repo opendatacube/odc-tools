@@ -21,6 +21,29 @@ def dss_to_geojson(dss, bbox=False,
     return polygons
 
 
+def gridspec_to_geojson(gs, xx, yy, styles):
+    """
+    :param gs: GridSpec instance to render to GeoJSON
+    :param xx: (x_start, x_end) in tile space
+    :param yy: (y_start, y_end) in tile space
+    """
+    import itertools
+
+    def to_geojson(gs, tidx):
+        bbox = gs.tile_geobox(tidx)
+        return dict(geometry=bbox.geographic_extent.__geo_interface__,
+                    type="Feature",
+                    properties=dict(title='{:+d},{:+d}'.format(*tidx),
+                                    **styles))
+
+    tiles = itertools.product(range(*xx),
+                              range(*yy))
+
+    return {'type': 'FeatureCollection',
+            'features': [to_geojson(gs, tidx)
+                         for tidx in tiles]}
+
+
 def zoom_from_bbox(bbox):
     """ Estimate zoom level for a given bounding box region
 

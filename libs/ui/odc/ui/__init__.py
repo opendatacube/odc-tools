@@ -9,6 +9,7 @@ from ._ui import (
 
 from ._map import (
     dss_to_geojson,
+    gridspec_to_geojson,
     zoom_from_bbox,
     show_datasets,
     mk_map_region_selector,
@@ -35,6 +36,7 @@ __all__ = (
     "with_ui_cbk",
     "simple_progress_cbk",
     "dss_to_geojson",
+    "gridspec_to_geojson",
     "zoom_from_bbox",
     "show_datasets",
     "mk_map_region_selector",
