@@ -24,6 +24,7 @@ from ._images import (
     to_png_data,
     to_jpeg_data,
     mk_image_overlay,
+    write_cog,
 )
 
 from ._dc_explore import (
@@ -48,5 +49,6 @@ __all__ = (
     "to_png_data",
     "to_jpeg_data",
     "mk_image_overlay",
+    "write_cog",
     "DcViewer",
 )
