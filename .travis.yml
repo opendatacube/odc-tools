@@ -1,3 +1,4 @@
+dist: trusty
 language: python
 python:
 - '3.6'
@@ -33,6 +34,9 @@ before_install:
   - export GDAL_DATA="$(gdal-config --datadir)"
   - gdal-config --version
   - pip install GDAL=="$(gdal-config --version)"
+# datacube install
+  - pip install -r "./scripts/travis-req.txt"
+  - pip install datacube
 
 install:
   - pip freeze
