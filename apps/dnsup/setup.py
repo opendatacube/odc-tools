@@ -18,7 +18,7 @@ setup(
 
     tests_require=['pytest'],
     install_requires=[
-        'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
+        'odc_aws',
     ],
 
     entry_points={

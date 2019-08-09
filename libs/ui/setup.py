@@ -20,7 +20,7 @@ setup(
     install_requires=[
         'ipywidgets',
         'ipyleaflet',
-        'odc_index @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index',
+        'odc_index',
     ],
 
     packages=['odc.ui'],

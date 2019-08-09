@@ -8,7 +8,7 @@ Installation
 ------------
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_dnsup&subdirectory=apps/dnsup'
+pip install --extra-index-url="https://packages.dea.gadevs.ga" dea_dnsup
 ```
 
 Usage

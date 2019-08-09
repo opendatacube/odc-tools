@@ -21,8 +21,8 @@ setup(
     install_requires=[
         "click",
         'datacube',
-        'odc_index @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index',
-        'odc_io @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io',
+        'odc_index',
+        'odc_io',
     ],
 
     entry_points={

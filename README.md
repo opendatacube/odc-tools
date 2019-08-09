@@ -8,40 +8,37 @@ DEA Prototype Code
 Installation
 ============
 
-First make sure your `pip` version is up to date: `pip install -U pip`. This
-project is using features of `pip` that are relatively recent.
-
 This repository provides a number of small [libraries](https://github.com/opendatacube/dea-proto/tree/master/libs)
 and [CLI tools](https://github.com/opendatacube/dea-proto/tree/master/apps).
 
 Full list of libraries, and install instructions:
 
 - `odc.ui` tools for data visualization in notebook/lab
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_ui&subdirectory=libs/ui'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_ui`
 
 - `odc.index` extra utils for working with datacube database
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_index&subdirectory=libs/index'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_index`
 
 - `odc.aws` AWS/S3 utilities, used by apps mainly
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_aws`
 
 - `odc.geom` geometry utils and prototypes
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_geom&subdirectory=libs/geom'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_geom`
 
 - `odc.io` common IO utilities, used by apps mainly
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_io`
 
 - `odc.aio` faster concurrent fetching from S3 with async, used by apps
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aio&subdirectory=libs/aio'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_aio`
 
 - `odc.ppt` parallel processing helper methods, internal lib
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_ppt`
 
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dscache&subdirectory=libs/dscache'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_dscache`
 
 - `odc.dtools` tools/experiments in the area of dask.distributed/dask<>datacube integration
-   - `pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dtools&subdirectory=libs/dtools'`
+   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_dtools`
 
 
 CLI Tools
@@ -53,15 +50,15 @@ Installation
 
 1. For cloud (AWS only)
    ```
-   pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_cloud&subdirectory=apps/cloud'
+   pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_apps_cloud
    ```
 2. For cloud (GCP, THREDDS and AWS)
    ```
-   pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_cloud[GCP,THREDDS]&subdirectory=apps/cloud'
+   pip install --extra-index-url="https://packages.dea.gadevs.ga" 'odc_apps_cloud[GCP,THREDDS]'
    ```
 2. For `dc-index-from-tar` (indexing to datacube from tar archive)
    ```
-   pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_dc_tools&subdirectory=apps/dc_tools'
+   pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_apps_dc_tools
    ```
 
 NOTE: cloud tools depend on `aiobotocore` which has a dependency on a specific

@@ -8,7 +8,7 @@ Installation
 ------------
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws'
+pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_aws
 ```
 
 

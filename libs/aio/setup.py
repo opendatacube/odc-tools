@@ -20,8 +20,8 @@ setup(
     install_requires=[
         'aiobotocore',
         'botocore',
-        'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
-        'odc_ppt @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt',
+        'odc_aws',
+        'odc_ppt',
     ],
 
     packages=['odc.aio'],

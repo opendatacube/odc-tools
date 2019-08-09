@@ -18,9 +18,9 @@ setup(
         'affine',
         'numpy',
         'rasterio>=1.0.4',
-        'odc_aws @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_aws&subdirectory=libs/aws',
-        'odc_io @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_io&subdirectory=libs/io',
-        'odc_ppt @ git+https://github.com/opendatacube/dea-proto.git#egg=odc_ppt&subdirectory=libs/ppt',
+        'odc_aws',
+        'odc_io',
+        'odc_ppt',
     ],
     tests_require=['pytest'],
 )
