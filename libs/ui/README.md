@@ -7,7 +7,7 @@ Installation
 ------------
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_ui&subdirectory=libs/ui'
+pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_ui
 ```
 
 Make sure `ipywidgets` and `ipyleaflet` are installed and enabled:

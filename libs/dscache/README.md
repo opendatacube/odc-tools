@@ -14,7 +14,7 @@ Random access cache of `Dataset` objects backed by disk storage.
 ## Installation
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_dscache&subdirectory=libs/dscache'
+pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_dscache
 ```
 
 ## Exporting from Datacube

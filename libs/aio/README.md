@@ -7,7 +7,7 @@ Installation
 ------------
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_aio&subdirectory=libs/aio'
+pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_aio
 ```
 
 Usage

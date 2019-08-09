@@ -8,7 +8,7 @@ Installation
 ------------
 
 ```
-pip install 'git+https://github.com/opendatacube/dea-proto.git#egg=odc_apps_dc_tools&subdirectory=apps/dc_tools'
+pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_apps_dc_tools
 ```
 
 Usage
