@@ -16,6 +16,16 @@ LIBS+=" dtools index ui"
 LIBS+=" aio"
 
 APPS="cloud dc_tools dnsup"
+
+create_pip_tree() {
+    for w in $(find . -name "*.whl" | awk -F - '{sub("^./", ""); print $1}')
+    do
+        local dst="${w//_/-}"
+        mkdir -p "${dst}"
+        mv "${w}"* "${dst}/"
+    done
+}
+
 PP=()
 WHEEL_DIR=$(pwd)/wheels
 mkdir -p "${WHEEL_DIR}"
@@ -39,4 +49,5 @@ for p in "${PP[@]}"; do
     )
 done
 
+(cd ${WHEEL_DIR} && create_pip_tree)
 echo "Wheels are in: ${WHEEL_DIR}"
