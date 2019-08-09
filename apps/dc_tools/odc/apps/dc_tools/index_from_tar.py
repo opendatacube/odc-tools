@@ -1,6 +1,7 @@
 import click
 import sys
 import datacube
+from datacube.utils.changes import allow_any
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
 from odc.index import from_yaml_doc_stream
@@ -62,6 +63,9 @@ def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
 @click.option('--ignore-lineage',
               help="Pretend that there is no lineage data in the datasets being indexed",
               is_flag=True, default=False)
+@click.option('--update',
+              help="Update datasets rather than add",
+              is_flag=True, default=False)
 @click.option('--eo3',
               help="Assume EO3 metadata format",
               is_flag=True, default=False)
@@ -77,6 +81,7 @@ def cli(input_fname,
         auto_add_lineage,
         verify_lineage,
         ignore_lineage,
+        update,
         eo3,
         gzip,
         xz,
@@ -101,6 +106,7 @@ def cli(input_fname,
                            skip_lineage=ignore_lineage)
 
     doc_transform = prep_eo3 if eo3 else None
+    allowed_changes = {(): allow_any}
 
     def mk_uri(name):
         return prefix + name
@@ -112,7 +118,11 @@ def cli(input_fname,
         for ds, err in from_tar_file(filename, index, mk_uri, doc_transform=doc_transform, mode=mode, **ds_resolve_args):
             if ds is not None:
                 try:
-                    index.datasets.add(ds, with_lineage=auto_add_lineage)
+                    if update:
+                        index.datasets.update(ds, allowed_changes)
+                    else:
+                        index.datasets.add(ds, with_lineage=auto_add_lineage)
+
                 except Exception as e:
                     n_failed += 1
                     report_error(str(e))
