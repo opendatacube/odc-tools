@@ -34,7 +34,9 @@ done
 
 for p in "${PP[@]}"; do
     (cd "${p}" &&
-     python setup.py bdist_wheel --dist-dir "${WHEEL_DIR}")
+         python setup.py bdist_wheel --dist-dir "${WHEEL_DIR}" &&
+         python setup.py sdist --dist-dir "${WHEEL_DIR}"
+    )
 done
 
 echo "Wheels are in: ${WHEEL_DIR}"

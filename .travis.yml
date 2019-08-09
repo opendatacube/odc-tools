@@ -48,3 +48,4 @@ install:
 script:
   - ./scripts/travis.sh
   - pip freeze
+  - ls -lh wheels
