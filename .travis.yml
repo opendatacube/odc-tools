@@ -3,6 +3,10 @@ language: python
 python:
 - '3.6'
 
+git:
+  # needed for version tracking (setuptools-scm)
+  depth: 99999
+
 cache:
   directories:
     - $HOME/.cache/pip
