@@ -49,3 +49,20 @@ script:
   - ./scripts/travis.sh
   - pip freeze
   - find wheels
+
+# On success, upload a package to an S3 Bucket. Used for continuous deployment.
+deploy:
+  # Deploy the sdist tarball and bdist_wheel to s3 for tags or the master branch
+  # It can be installed via
+  #   pip install --extra-index-url https://packages.dea.gadevs.ga/ odc-{ui,index..}
+  - provider: s3
+    bucket: "datacube-core-deployment"
+    region: "ap-southeast-2"
+    local_dir: wheels
+    upload_dir: '/'
+    skip_cleanup: true
+    on:
+      all_branches: true  # Let the condition below decide if the branch is to be deployed
+      condition: $TRAVIS_BRANCH = "master" || ! -z "${TRAVIS_TAG}"  # master branch or tags
+      repo: opendatacube/dea-proto
+      python: "3.6"
