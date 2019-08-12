@@ -43,6 +43,11 @@ Full list of libraries, and install instructions:
    - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-dtools`
 
 
+**NOTE**: on Ubuntu 18.04 default `pip` version is awfully old and does not
+support `--extra-index-url` command line option, so make sure to upgrade `pip`
+first: `pip3 install --upgrade pip`.
+
+
 CLI Tools
 =========
 
