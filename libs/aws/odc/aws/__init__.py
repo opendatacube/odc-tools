@@ -163,10 +163,9 @@ def s3_find(url, pred=None, glob=None, s3=None):
                 yield o
 
 
-def get_boto_session(region_name=None, cache=None):
-    if region_name is None:
-        region_name = auto_find_region()
-
+def get_boto_session(region_name=None, cache=None, profile=None):
+    """ Get botocore.session with correct region_name configured
+    """
     if cache is not None:
         sessions = getattr(cache, 'sessions', None)
         if sessions is None:
@@ -178,9 +177,17 @@ def get_boto_session(region_name=None, cache=None):
         sessions, session = {}, None
 
     if session is None:
-        session = botocore.session.Session(session_vars=dict(
-            region=('region', 'AWS_DEFAULT_REGION', region_name, None)))
-        sessions[region_name] = session
+        session = botocore.session.Session(profile=profile)
+        _region = session.get_config_variable("region")
+
+        if _region is None:
+            if region_name is None or region_name == "auto":
+                _region = auto_find_region(session)
+            else:
+                _region = region_name
+            session.set_config_variable("region", _region)
+
+        sessions[_region] = session
 
     return session
 
