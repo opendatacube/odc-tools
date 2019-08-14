@@ -205,7 +205,19 @@ def get_creds_with_retry(session, max_tries=10, sleep=0.1):
     return None
 
 
-def s3_fetch(url, s3=None, **kwargs):
+def s3_fetch(url, s3=None, range=None, **kwargs):
+    """ Read entire or part of object into memory and return as bytes
+
+    :param url: s3://bucket/path/to/object
+    :param s3: pre-configured s3 client, see make_s3_client()
+    :param range: Byte range to read (first_byte, one_past_last_byte), default is whole object
+    """
+    if range is not None:
+        try:
+            kwargs['Range'] = s3_fmt_range(range)
+        except Exception:
+            raise ValueError('Bad range passed in: ' + str(range))
+
     s3 = s3 or make_s3_client()
     bucket, key = s3_url_parse(url)
     oo = s3.get_object(Bucket=bucket, Key=key, **kwargs)
