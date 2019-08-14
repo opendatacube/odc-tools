@@ -8,6 +8,8 @@ log = logging.getLogger(__name__)
 
 
 def _fetch_text(url, timeout=0.1):
+    """ Turn url into text this url points to.
+    """
     from urllib.request import urlopen
     try:
         with urlopen(url, timeout=timeout) as resp:
@@ -20,6 +22,8 @@ def _fetch_text(url, timeout=0.1):
 
 
 def ec2_metadata(timeout=0.1):
+    """ Read and parse EC metadata.
+    """
     import json
     txt = _fetch_text('http://169.254.169.254/latest/dynamic/instance-identity/document', timeout)
 
@@ -33,6 +37,8 @@ def ec2_metadata(timeout=0.1):
 
 
 def ec2_current_region():
+    """ Query EC2 metadata for region name this instance is running in.
+    """
     cfg = ec2_metadata()
     if cfg is None:
         return None
@@ -40,12 +46,24 @@ def ec2_current_region():
 
 
 def botocore_default_region(session=None):
+    """Return region configured for AWS.
+
+    With no arguments or with session=None return region configured in the default session.
+
+    Otherwise return region configured in the supplied session.
+    """
     if session is None:
         session = botocore.session.get_session()
     return session.get_config_variable('region')
 
 
 def auto_find_region(session=None):
+    """ Find region to use
+    1. Use session settings if session is supplied and has region configured
+    2. Use default session region settings if session not supplied but default one has region configured
+    3. Use region EC2 instance is running in (if running on EC2)
+    4. raise ValueError if none of the steps above worked
+    """
     region_name = botocore_default_region(session)
 
     if region_name is None:
@@ -191,6 +209,10 @@ def get_boto_session(region_name=None, cache=None, profile=None):
 
 
 def get_creds_with_retry(session, max_tries=10, sleep=0.1):
+    """ Attempt to obtain credentials upto `max_tries` times with back off
+    :param session: botocore session, see get_boto_session
+    :param max_tries: number of attempt before failing and returing None
+    """
     for i in range(max_tries):
         if i > 0:
             time.sleep(sleep)
