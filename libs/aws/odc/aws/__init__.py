@@ -81,6 +81,8 @@ def make_s3_client(region_name=None,
 
 
 def s3_url_parse(url):
+    """ Return Bucket, Key tuple
+    """
     uu = urlparse(url)
     return uu.netloc, uu.path.lstrip('/')
 
