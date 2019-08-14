@@ -62,14 +62,12 @@ def make_s3_client(region_name=None,
                    session=None,
                    profile=None,
                    use_ssl=True):
+    """ Create s3 client with correct region and configured max_pool_connections.
+    """
     if session is None:
-        if profile is None:
-            session = botocore.session.get_session()
-        else:
-            session = botocore.session.Session(profile=profile)
+        session = get_boto_session(region_name=region_name, profile=profile)
 
-    if region_name is None:
-        region_name = auto_find_region(session)
+    region_name = session.get_config_variable("region")
 
     protocol = 'https' if use_ssl else 'http'
 
