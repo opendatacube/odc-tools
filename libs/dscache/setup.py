@@ -19,6 +19,7 @@ setup(
     tests_require=['pytest'],
     install_requires=[
         'datacube',
+        'odc-index',
         'zstandard',
         'lmdb',
         'click',

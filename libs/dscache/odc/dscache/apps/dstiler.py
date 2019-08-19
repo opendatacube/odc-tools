@@ -1,9 +1,9 @@
 import click
 from odc import dscache
-from odc.dscache.tools.tiling import bin_dataset_stream, bin_by_native_tile, web_gs, extract_native_albers_tile
+from odc.dscache.tools.tiling import bin_by_native_tile, web_gs, extract_native_albers_tile
 from datacube.model import GridSpec
 import datacube.utils.geometry as geom
-
+from odc.index import bin_dataset_stream
 
 GS_ALBERS = GridSpec(crs=geom.CRS('EPSG:3577'),
                      tile_size=(100000.0, 100000.0),
