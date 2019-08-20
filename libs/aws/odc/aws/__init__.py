@@ -79,11 +79,14 @@ def make_s3_client(region_name=None,
                    max_pool_connections=32,
                    session=None,
                    profile=None,
+                   creds=None,
                    use_ssl=True):
     """ Create s3 client with correct region and configured max_pool_connections.
     """
     if session is None:
-        session = get_boto_session(region_name=region_name, profile=profile)
+        session = get_boto_session(region_name=region_name,
+                                   profile=profile,
+                                   creds=creds)
 
     region_name = session.get_config_variable("region")
 
@@ -179,7 +182,10 @@ def s3_find(url, pred=None, glob=None, s3=None):
                 yield o
 
 
-def get_boto_session(region_name=None, cache=None, profile=None):
+def get_boto_session(region_name=None,
+                     profile=None,
+                     creds=None,
+                     cache=None):
     """ Get botocore.session with correct region_name configured
     """
     if cache is not None:
@@ -192,18 +198,25 @@ def get_boto_session(region_name=None, cache=None, profile=None):
     else:
         sessions, session = {}, None
 
-    if session is None:
-        session = botocore.session.Session(profile=profile)
-        _region = session.get_config_variable("region")
+    if session is not None:
+        return session
 
-        if _region is None:
-            if region_name is None or region_name == "auto":
-                _region = auto_find_region(session)
-            else:
-                _region = region_name
-            session.set_config_variable("region", _region)
+    session = botocore.session.Session(profile=profile)
+    _region = session.get_config_variable("region")
 
-        sessions[_region] = session
+    if creds is not None:
+        session.set_credentials(creds.access_key,
+                                creds.secret_key,
+                                creds.token)
+
+    if _region is None:
+        if region_name is None or region_name == "auto":
+            _region = auto_find_region(session)
+        else:
+            _region = region_name
+        session.set_config_variable("region", _region)
+
+    sessions[_region] = session
 
     return session
 
