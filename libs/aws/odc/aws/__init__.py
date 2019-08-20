@@ -257,6 +257,29 @@ def s3_fetch(url, s3=None, range=None, **kwargs):
     return oo['Body'].read()
 
 
+def s3_dump(data, url, s3=None, **kwargs):
+    """ Write data to s3 object.
+
+    :param data: bytes to write
+    :param url: s3://bucket/path/to/object
+    :param s3: pre-configured s3 client, see make_s3_client()
+    **kwargs -- Are passed on to `s3.put_object(..)`
+
+    ContentType
+    ACL
+    """
+
+    s3 = s3 or make_s3_client()
+    bucket, key = s3_url_parse(url)
+
+    r = s3.put_object(Bucket=bucket,
+                      Key=key,
+                      Body=data,
+                      **kwargs)
+    code = r['ResponseMetadata']['HTTPStatusCode']
+    return 200 <= code < 300
+
+
 def this_instance(ec2=None):
     """ Get dictionary of parameters describing current instance
     """
