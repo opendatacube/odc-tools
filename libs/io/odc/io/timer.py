@@ -19,9 +19,9 @@ class RateEstimator(object):
     def every(self, N):
         return (self.n % N) == 0
 
-    def __call__(self, *args):
+    def __call__(self, n=1):
         self.t_last = t_now()
-        self.n += 1
+        self.n += n
 
     def __str__(self):
         state = self._compute()
