@@ -1,4 +1,4 @@
-[![Build Status](https://api.travis-ci.org/opendatacube/dea-proto.svg?branch=master)](https://travis-ci.org/opendatacube/dea-proto)
+[![Build Status](https://api.travis-ci.org/opendatacube/odc-tools.svg?branch=master)](https://travis-ci.org/opendatacube/odc-tools)
 
 DEA Prototype Code
 ==================
@@ -10,8 +10,8 @@ DEA Prototype Code
 Installation
 ============
 
-This repository provides a number of small [libraries](https://github.com/opendatacube/dea-proto/tree/master/libs)
-and [CLI tools](https://github.com/opendatacube/dea-proto/tree/master/apps).
+This repository provides a number of small [libraries](https://github.com/opendatacube/odc-tools/tree/master/libs)
+and [CLI tools](https://github.com/opendatacube/odc-tools/tree/master/apps).
 
 Full list of libraries, and install instructions:
 

@@ -409,9 +409,9 @@ API should support:
 
 # Appendix
 
-- https://github.com/opendatacube/dea-proto/blob/master/docs/change-dataset-metadata.md
+- https://github.com/opendatacube/odc-tools/blob/master/docs/change-dataset-metadata.md
 - https://github.com/orgs/opendatacube/teams/developers/discussions/5
-- https://github.com/opendatacube/dea-proto/blob/master/docs/normalised-dataset.yaml
+- https://github.com/opendatacube/odc-tools/blob/master/docs/normalised-dataset.yaml
 
 
 [DSL]: https://en.wikipedia.org/wiki/Domain-specific_language
