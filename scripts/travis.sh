@@ -3,16 +3,17 @@
 set -eux
 
 # order is important: need to install dependencies first
-# leaf nodes: io aws ppt geom dscache
+# leaf nodes: io aws ppt geom
 # nodes with odc.* dependencies:
 # ------------------------------
-#   dtools <: aws
-#   index  <: io
-#   ui     <: index
-#   aio    <: aws ppt
+#   dtools  <: aws
+#   index   <: io
+#   dscache <: index
+#   ui      <: index
+#   aio     <: aws ppt
 
-LIBS="io aws ppt geom dscache"
-LIBS+=" dtools index ui"
+LIBS="io aws ppt geom"
+LIBS+=" dtools index dscache ui"
 LIBS+=" aio"
 
 APPS="cloud dc_tools dnsup"
