@@ -7,7 +7,7 @@ except ImportError:
 
 def _parse_yaml_yaml(s):
     import yaml
-    return yaml.load(s, Loader=yaml.CSafeLoader)
+    return yaml.load(s, Loader=getattr(yaml, 'CSafeLoader', yaml.SafeLoader))
 
 
 def _parse_yaml_ruamel(s):
