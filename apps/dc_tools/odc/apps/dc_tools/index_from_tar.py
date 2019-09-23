@@ -14,6 +14,9 @@ def add_eo3_parts(doc, tol=None):
 
 
 def prep_eo3(doc, tol=None):
+    if doc is None:
+        return None
+
     doc = add_eo3_parts(doc, tol=tol)
     lineage = doc.pop('lineage', {})
 
