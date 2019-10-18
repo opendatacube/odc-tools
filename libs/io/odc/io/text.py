@@ -1,3 +1,5 @@
+from typing import Tuple
+
 try:
     from ruamel.yaml import YAML
     _YAML_C = YAML(typ='safe', pure=False)
@@ -186,3 +188,45 @@ def test_mtl():
 
     assert mtl_parse("") == {}
     assert mtl_parse("END") == {}
+
+
+
+def split_and_check(s, separator, n):
+    """ Turn string into tuple, checking that there are exactly as many parts as expected.
+    """
+    parts = s.split(separator)
+    if len(parts) != n:
+        raise ValueError('Failed to parse "{}"'.format(s))
+    return tuple(parts)
+
+
+def parse_range_int(s: str, separator : str = ':') -> Tuple[int, int]:
+    """ Parse str(<int>:<int>) -> (int, int)
+    """
+    try:
+        _in, _out = (int(x) for x in split_and_check(s, separator, 2))
+    except ValueError:
+        raise ValueError('Expect <int>{}<int> syntax, got "{}"'.format(separator, s)) from None
+
+    return (_in, _out)
+
+def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    """ Parse string like "0:3,4:5" -> ((0,3), (4,5))
+    """
+    try:
+        a, b = (parse_range_int(p, ':') for p in split_and_check(s, ',', 2))
+    except ValueError:
+        raise ValueError('Expect <int>:<int>,<int>:<int> syntax, got "{}"'.format(s)) from None
+    return a,b
+
+
+def click_range2d(ctx, param, value):
+    """
+    @click.option('--range', callback=click_range2d)
+    """
+    import click
+    if value is not None:
+        try:
+            return parse_range2d_int(value)
+        except ValueError as e:
+            raise click.ClickException(str(e)) from None
