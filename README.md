@@ -16,31 +16,31 @@ and [CLI tools](https://github.com/opendatacube/odc-tools/tree/master/apps).
 Full list of libraries, and install instructions:
 
 - `odc.ui` tools for data visualization in notebook/lab
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-ui`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-ui`
 
 - `odc.index` extra utils for working with datacube database
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-index`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-index`
 
 - `odc.aws` AWS/S3 utilities, used by apps mainly
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-aws`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-aws`
 
 - `odc.geom` geometry utils and prototypes
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-geom`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-geom`
 
 - `odc.io` common IO utilities, used by apps mainly
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-io`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-io`
 
 - `odc.aio` faster concurrent fetching from S3 with async, used by apps
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-aio`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-aio`
 
 - `odc.ppt` parallel processing helper methods, internal lib
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-ppt`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-ppt`
 
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-dscache`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-dscache`
 
 - `odc.dtools` tools/experiments in the area of dask.distributed/dask<>datacube integration
-   - `pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-dtools`
+   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-dtools`
 
 
 **NOTE**: on Ubuntu 18.04 default `pip` version is awfully old and does not
@@ -57,15 +57,15 @@ Installation
 
 1. For cloud (AWS only)
    ```
-   pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-apps-cloud
+   pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-apps-cloud
    ```
 2. For cloud (GCP, THREDDS and AWS)
    ```
-   pip install --extra-index-url="https://packages.dea.gadevs.ga" 'odc-apps-cloud[GCP,THREDDS]'
+   pip install --extra-index-url="https://packages.dea.ga.gov.au" 'odc-apps-cloud[GCP,THREDDS]'
    ```
 2. For `dc-index-from-tar` (indexing to datacube from tar archive)
    ```
-   pip install --extra-index-url="https://packages.dea.gadevs.ga" odc-apps-dc-tools
+   pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-apps-dc-tools
    ```
 
 NOTE: cloud tools depend on `aiobotocore` which has a dependency on a specific
