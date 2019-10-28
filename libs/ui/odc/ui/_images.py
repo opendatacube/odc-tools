@@ -28,7 +28,7 @@ def to_rgba(ds: xr.Dataset,
         containing uint8 rgba image.
 
     :param ds: xarray Dataset
-    :param clamp: Value of the highest intensity value to use, if None, largest internsity value across all 3 channel is used.
+    :param clamp: Value of the highest intensity value to use, if None, largest intensity value across all 3 channel is used.
     :param bands: Which bands to use, order should red,green,blue
     """
 
@@ -36,15 +36,19 @@ def to_rgba(ds: xr.Dataset,
         bands = guess_rgb_names(list(ds.data_vars))
 
     r, g, b = (ds[name] for name in bands)
-    nodata = r.nodata
+    nodata = getattr(r, 'nodata', None)
     dims = r.dims + ('band',)
 
     r, g, b = (x.values for x in (r, g, b))
 
     if r.dtype.kind == 'f':
-        a = (~np.isnan(r)) * (r != nodata)
-    else:
+        a = ~np.isnan(r)
+        if nodata is not None:
+            a = a * (r != nodata)
+    elif nodata is not None:
         a = (r != nodata)
+    else:
+        a = np.ones(r.shape, np.bool)
 
     a = a.astype('uint8')*(0xFF)
 
