@@ -54,7 +54,7 @@ script:
 deploy:
   # Deploy the sdist tarball and bdist_wheel to s3 for tags or the master branch
   # It can be installed via
-  #   pip install --extra-index-url https://packages.dea.gadevs.ga/ odc-{ui,index..}
+  #   pip install --extra-index-url https://packages.dea.ga.gov.au/ odc-{ui,index..}
   - provider: s3
     bucket: "datacube-core-deployment"
     region: "ap-southeast-2"
