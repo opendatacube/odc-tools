@@ -190,7 +190,6 @@ def test_mtl():
     assert mtl_parse("END") == {}
 
 
-
 def split_and_check(s, separator, n):
     """ Turn string into tuple, checking that there are exactly as many parts as expected.
     """
@@ -200,7 +199,7 @@ def split_and_check(s, separator, n):
     return tuple(parts)
 
 
-def parse_range_int(s: str, separator : str = ':') -> Tuple[int, int]:
+def parse_range_int(s: str, separator: str = ':') -> Tuple[int, int]:
     """ Parse str(<int>:<int>) -> (int, int)
     """
     try:
@@ -210,6 +209,7 @@ def parse_range_int(s: str, separator : str = ':') -> Tuple[int, int]:
 
     return (_in, _out)
 
+
 def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
     """ Parse string like "0:3,4:5" -> ((0,3), (4,5))
     """
@@ -217,7 +217,7 @@ def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
         a, b = (parse_range_int(p, ':') for p in split_and_check(s, ',', 2))
     except ValueError:
         raise ValueError('Expect <int>:<int>,<int>:<int> syntax, got "{}"'.format(s)) from None
-    return a,b
+    return a, b
 
 
 def click_range2d(ctx, param, value):
