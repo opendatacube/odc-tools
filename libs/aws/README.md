@@ -8,7 +8,7 @@ Installation
 ------------
 
 ```
-pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_aws
+pip install --extra-index-url="https://packages.dea.ga.gov.au" odc_aws
 ```
 
 

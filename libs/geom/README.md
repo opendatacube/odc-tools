@@ -7,7 +7,7 @@ Installation
 ------------
 
 ```
-pip install --extra-index-url="https://packages.dea.gadevs.ga" odc_geom
+pip install --extra-index-url="https://packages.dea.ga.gov.au" odc_geom
 ```
 
 Usage
