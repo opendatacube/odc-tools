@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # order is important: need to install dependencies first
-# leaf nodes: io aws ppt geom
+# leaf nodes: io aws ppt geom algo
 # nodes with odc.* dependencies:
 # ------------------------------
 #   dtools  <: aws
@@ -10,7 +10,7 @@
 #   ui      <: index
 #   aio     <: aws ppt
 
-LIBS="io aws ppt geom"
+LIBS="io aws ppt geom algo"
 LIBS+=" dtools index dscache ui"
 LIBS+=" aio"
 
