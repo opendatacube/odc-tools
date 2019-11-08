@@ -9,6 +9,7 @@ from ._masking import (
     from_float_np,
     to_f32,
     to_f32_np,
+    fmask_to_bool,
 )
 
 from ._geomedian import (
@@ -23,6 +24,7 @@ __all__ = (
     "from_float_np",
     "to_f32",
     "to_f32_np",
+    "fmask_to_bool",
     "xr_geomedian",
     "reshape_for_geomedian",
 )
