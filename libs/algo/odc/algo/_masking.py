@@ -168,3 +168,36 @@ def from_float(x, dtype, nodata, scale=1, offset=0):
                         coords=x.coords,
                         name=x.name,
                         attrs=attrs)
+
+
+def fmask_to_bool(fmask, categories, invert=False):
+    """
+
+    example:
+        xx = dc.load(.., measurements=['fmask', ...])
+        no_cloud = fmask_to_bool(xx.fmask, ('valid', 'snow', 'water'))
+
+        xx.where(no_cloud).isel(time=0).nbar_red.plot.imshow()
+    """
+    import xarray as xr
+
+    def _get_mask(names, flags):
+        enum_to_value = {n: int(v)
+                         for v, n in flags['fmask']['values'].items()}
+        m = 0
+        for n in names:
+            m |= (1 << enum_to_value[n])
+            return m
+
+    m = _get_mask(categories, fmask.flags_definition)
+    func = {False: lambda x: ((1 << x) & m) > 0,
+            True: lambda x: ((1 << x) & m) == 0}.get(invert)
+
+    mask = xr.apply_ufunc(func, fmask,
+                          keep_attrs=True,
+                          dask='parallelized',
+                          output_dtypes=['bool'])
+    mask.attrs.pop('flags_definition', None)
+    mask.attrs.pop('nodata', None)
+
+    return mask
