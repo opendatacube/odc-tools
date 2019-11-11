@@ -4,22 +4,6 @@ import numpy as np
 import xarray as xr
 import dask
 import dask.array as da
-from dask.distributed import wait as dask_wait
-from toolz import partition_all
-
-
-def chunked_persist(gm_array, n_concurrent, client, verbose=False):
-    gm_delayed = gm_array.data.to_delayed().ravel()
-
-    persisted = []
-    for chunk in partition_all(n_concurrent, gm_delayed):
-        chunk = client.persist(chunk)
-        _ = dask_wait(chunk)
-        persisted.extend(chunk)
-        if verbose:
-            print('.', end='')
-
-    return persisted
 
 
 def reshape_for_geomedian(ds, axis='time'):

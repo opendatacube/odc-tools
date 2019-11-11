@@ -17,6 +17,10 @@ from ._geomedian import (
     reshape_for_geomedian,
 )
 
+from ._dask import (
+    chunked_persist,
+)
+
 __all__ = (
     "keep_good_np",
     "keep_good_only",
@@ -27,4 +31,5 @@ __all__ = (
     "fmask_to_bool",
     "xr_geomedian",
     "reshape_for_geomedian",
+    "chunked_persist",
 )
