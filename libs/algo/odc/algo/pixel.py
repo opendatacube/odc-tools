@@ -1,11 +1,18 @@
 """Helper methods for accessing single pixel from a rasterio file object.
 
 """
-
-from . import resolve_nodata
 import rasterio
 import rasterio.warp
 import rasterio.crs
+
+from typing import Union, Iterable, Optional, List, Tuple
+
+RowCol = Tuple[int, int]
+XY = Tuple[float, float]
+LonLat = Tuple[float, float]
+SomeCoord = Union[RowCol, XY, LonLat]
+PixelValue = Union[float, int]
+
 
 NOTSET = object()
 
@@ -17,7 +24,7 @@ def make_pixel_extractor(mode='pixel',
                          dst_nodata=NOTSET):
     """Returns function that can extract single pixel from opened rasterio file.
 
-    Signature of returned function is:
+    Signature of the returned function is:
         `src, coordinate_tuple, [band] -> pixel`
 
     Where coordinate_tuple is interpreted according to `mode`
@@ -56,9 +63,9 @@ def make_pixel_extractor(mode='pixel',
     def extract_pixel(src, coord, band=default_band):
         ri, ci = coord
 
-        src_nodata = resolve_nodata(src, band,
-                                    fallback=src_nodata_fallback,
-                                    override=src_nodata_override)
+        src_nodata = _resolve_nodata(src, band,
+                                     fallback=src_nodata_fallback,
+                                     override=src_nodata_override)
 
         dst_nodata = _dst_nodata(src_nodata)
 
@@ -87,6 +94,68 @@ def make_pixel_extractor(mode='pixel',
 
     extractor = extractors.get(mode)
     if extractor is None:
-        raise ValueError('Only support mode=<pixel|nativie|lonlat>')
+        raise ValueError('Only support mode=<pixel|native|lonlat>')
 
     return extractor
+
+
+def _resolve_nodata(src, band, fallback=None, override=None):
+    """Figure out what value to use for nodata given a band and fallback/override
+    settings
+
+    :param src: Rasterio file
+    """
+    if override is not None:
+        return override
+
+    band0 = band if isinstance(band, int) else band[0]
+    nodata = src.nodatavals[band0 - 1]
+
+    if nodata is None:
+        return fallback
+
+    return nodata
+
+
+def _mode_value(pixel: Optional[RowCol] = None,
+                xy: Optional[XY] = None,
+                lonlat: Optional[LonLat] = None) -> Union[Tuple[str, SomeCoord],
+                                                          Tuple[None, None]]:
+    if pixel is not None:
+        return 'pixel', pixel
+
+    if xy is not None:
+        return 'native', xy
+
+    if lonlat is not None:
+        return 'lonlat', lonlat
+
+    return (None, None)
+
+
+def read_pixels(urls: Iterable[str],
+                pixel: Optional[RowCol] = None,
+                xy: Optional[XY] = None,
+                lonlat: Optional[LonLat] = None,
+                band: int = 1,
+                **kwargs) -> List[PixelValue]:
+    """ Read a single pixel at the same location from a bunch of different files.
+
+        Location can be specified in 3 different ways:
+
+          pixel  (row: int, column: int)  -- in pixel coords
+          xy     (X: float, Y: float)     -- in Projected coordinates of the native CRS of the image
+          lonlat (lon: float, lat: float) -- in EPSG:4326
+    """
+    mode, coord = _mode_value(pixel=pixel, xy=xy, lonlat=lonlat)
+    if mode is None:
+        raise ValueError('Have to supply one of: xy, lonlat or pixel')
+
+    extractor = make_pixel_extractor(mode=mode, band=band, **kwargs)
+
+    def read_from_url(url):
+        url = rasterio.parse_path(url)
+        with rasterio.DatasetReader(url, sharing=False) as src:
+            return extractor(src, coord=coord)
+
+    return [read_from_url(url) for url in urls]
