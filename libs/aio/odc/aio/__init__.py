@@ -194,6 +194,10 @@ async def s3_dir_dir(url, depth, dst_q, s3):
     if not url.endswith('/'):
         url = url + '/'
 
+    if depth == 0:
+        await dst_q.put(url)
+        return
+
     pp = s3.get_paginator('list_objects_v2')
 
     async def step(bucket, prefix, depth, work_q, dst_q):
