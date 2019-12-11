@@ -36,7 +36,7 @@ async def s3_fetch_object(url, s3, range=None):
     if range is not None:
         try:
             extra_args['Range'] = s3_fmt_range(range)
-        except Exception as e:
+        except Exception:
             return result(error='Bad range passed in: ' + str(range))
 
     try:
