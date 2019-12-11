@@ -91,8 +91,12 @@ def cli(uri, skip_check):
         else:
             stream = do_dir_query(qq)
 
-    for i, o in enumerate(stream):
-        print(o.url, flush=(i % flush_freq == 0))
+    try:
+        for i, o in enumerate(stream):
+            print(o.url, flush=(i % flush_freq == 0))
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':
