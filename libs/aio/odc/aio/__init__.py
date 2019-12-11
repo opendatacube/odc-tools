@@ -365,25 +365,35 @@ class S3Fetcher(object):
             async def on_file(x):
                 await q.put(x)
 
-            await _s3_find_via_cbk(url, on_file, s3=s3, pred=pred, glob=glob)
-            await q.put(EOS_MARKER)
+            try:
+                await _s3_find_via_cbk(url, on_file, s3=s3, pred=pred, glob=glob)
+            except Exception:
+                return False
+            finally:
+                await q.put(EOS_MARKER)
+            return True
 
         q = asyncio.Queue(1000, loop=self._async.loop)
         ff = self._async.submit(find_to_queue, url, self._s3, q)
         clean_exit = False
+        raise_error = False
 
         try:
             yield from self._async.from_queue(q)
-            ff.result()
+            raise_error = not ff.result()
             clean_exit = True
         finally:
             if not clean_exit:
                 ff.cancel()
+            if raise_error:
+                raise IOError(f"Failed to list: {url}")
 
     def dir_dir(self, url, depth):
         async def action(q, s3):
-            await s3_dir_dir(url, depth, q, s3)
-            await q.put(EOS_MARKER)
+            try:
+                await s3_dir_dir(url, depth, q, s3)
+            finally:
+                await q.put(EOS_MARKER)
 
         q = asyncio.Queue(1000, loop=self._async.loop)
         ff = self._async.submit(action, q, self._s3)
