@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ppa:nextgis/ppa
+# ppa:ubuntugis/ppa
 # to build needs:
 #    apt install libgdal-dev libudunits2-0
 # to run:
@@ -29,4 +29,12 @@ pip install 'aiobotocore[boto3]'
 pip install GDAL=="$(gdal-config --version)"
 pip install datacube
 
-"${SCRIPT_DIR}/travis.sh"
+if [ "${2:-}" == "dev" ]; then
+    "${SCRIPT_DIR}/dev-install.sh"
+else
+    wheel_dir="./wheels"
+    "${SCRIPT_DIR}/build-wheels.sh" "${wheel_dir}"
+    for w in $(find "${wheel_dir}" -type f -name "*whl"); do
+        pip install --find-links "${wheel_dir}" "$w"
+    done
+fi
