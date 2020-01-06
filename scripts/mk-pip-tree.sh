@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eux
+set -eu
 
 create_pip_tree() {
     local src="${1:-.}"
