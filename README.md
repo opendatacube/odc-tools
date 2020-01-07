@@ -1,4 +1,4 @@
-[![Build Status](https://api.travis-ci.org/opendatacube/odc-tools.svg?branch=master)](https://travis-ci.org/opendatacube/odc-tools)
+[![Build Status](https://github.com/opendatacube/odc-tools/workflows/build/badge.svg)](https://github.com/opendatacube/odc-tools/actions)
 
 DEA Prototype Code
 ==================
