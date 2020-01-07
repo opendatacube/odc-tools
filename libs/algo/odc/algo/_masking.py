@@ -187,7 +187,7 @@ def fmask_to_bool(fmask, categories, invert=False):
         m = 0
         for n in names:
             m |= (1 << enum_to_value[n])
-            return m
+        return m
 
     m = _get_mask(categories, fmask.flags_definition)
     func = {False: lambda x: ((1 << x) & m) > 0,
