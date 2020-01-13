@@ -48,6 +48,8 @@ async def s3_fetch_object(url, s3, range=None):
             data = await stream.read()
     except (ClientError, BotoCoreError) as e:
         return result(error=e)
+    except Exception as e:
+        return result(error="Some Error: " + str(e))
 
     last_modified = obj.get('LastModified', None)
     return result(data=data, last_modified=last_modified)
