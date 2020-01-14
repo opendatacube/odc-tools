@@ -183,13 +183,27 @@ def fmask_to_bool(fmask, categories, invert=False):
 
     def _get_mask(names, flags):
         enum_to_value = {n: int(v)
-                         for v, n in flags['fmask']['values'].items()}
+                         for v, n in flags['values'].items()}
         m = 0
         for n in names:
-            m |= (1 << enum_to_value[n])
+            v = enum_to_value.get(n, None)
+            if v is None:
+                raise ValueError(f'`{n}` is not a valid class name')
+            m |= (1 << v)
         return m
 
-    m = _get_mask(categories, fmask.flags_definition)
+    flags = getattr(fmask, 'flags_definition', None)
+    if flags is None:
+        raise ValueError('Missing flags_definition attribute')
+
+    if len(flags) == 1:
+        flags, = flags.values()
+    else:
+        flags = flags.get('fmask', None)
+        if flags is None:
+            raise ValueError('Expect `fmask` key in `flags_defition` attribute')
+
+    m = _get_mask(categories, flags)
     func = {False: lambda x: ((1 << x) & m) > 0,
             True: lambda x: ((1 << x) & m) == 0}.get(invert)
 
