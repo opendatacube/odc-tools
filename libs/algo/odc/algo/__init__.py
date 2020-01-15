@@ -10,6 +10,7 @@ from ._masking import (
     to_f32,
     to_f32_np,
     fmask_to_bool,
+    gap_fill,
 )
 
 from ._geomedian import (
@@ -29,6 +30,7 @@ __all__ = (
     "to_f32",
     "to_f32_np",
     "fmask_to_bool",
+    "gap_fill",
     "xr_geomedian",
     "reshape_for_geomedian",
     "chunked_persist",

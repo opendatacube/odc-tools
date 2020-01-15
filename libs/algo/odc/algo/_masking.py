@@ -9,6 +9,16 @@ import dask.array as da
 import numexpr as ne
 
 
+def default_nodata(dtype):
+    """ Default `nodata` for a given dtype
+        - nan for float{*}
+        - 0   for any other type
+    """
+    if dtype.kind == 'f':
+        return dtype.type(np.nan)
+    return dtype.type(0)
+
+
 def keep_good_np(xx, where, nodata):
     yy = np.full_like(xx, nodata)
     np.copyto(yy, xx, where=where)
@@ -179,7 +189,6 @@ def fmask_to_bool(fmask, categories, invert=False):
 
         xx.where(no_cloud).isel(time=0).nbar_red.plot.imshow()
     """
-    import xarray as xr
 
     def _get_mask(names, flags):
         enum_to_value = {n: int(v)
@@ -215,3 +224,127 @@ def fmask_to_bool(fmask, categories, invert=False):
     mask.attrs.pop('nodata', None)
 
     return mask
+
+
+def _gap_fill_np(a, fallback, nodata):
+    params = dict(a=a,
+                  b=fallback,
+                  nodata=a.dtype.type(nodata))
+
+    out = np.empty_like(a)
+
+    if np.isnan(nodata):
+        # a==a equivalent to `not isnan(a)`
+        expr = 'where(a==a, a, b)'
+    else:
+        expr = 'where(a!=nodata, a, b)'
+
+    return ne.evaluate(expr,
+                       local_dict=params,
+                       out=out,
+                       casting='unsafe')
+
+
+def gap_fill(x: xr.DataArray,
+             fallback: xr.DataArray,
+             nodata=None,
+             attrs=None):
+    """ Fill missing values in `x` with values from `fallback`.
+
+        x,fallback are expected to be xarray.DataArray with identical shape and dtype.
+
+            out[pix] = x[pix] if x[pix] != x.nodata else fallback[pix]
+    """
+
+    if nodata is None:
+        nodata = getattr(x, 'nodata', None)
+
+    if nodata is None:
+        nodata = default_nodata(x.dtype)
+    else:
+        nodata = x.dtype.type(nodata)
+
+    if attrs is None:
+        attrs = x.attrs.copy()
+
+    if dask.is_dask_collection(x):
+        data = da.map_blocks(_gap_fill_np,
+                             x.data, fallback.data, nodata,
+                             name='gap_fill',
+                             dtype=x.dtype)
+    else:
+        data = _gap_fill_np(x.data, fallback.data, nodata)
+
+    return xr.DataArray(data,
+                        attrs=attrs,
+                        dims=x.dims,
+                        coords=x.coords,
+                        name=x.name)
+
+
+def test_gap_fill():
+    a = np.zeros((5,), dtype='uint8')
+    b = np.empty_like(a)
+    b[:] = 33
+
+    a[0] = 11
+    ab = _gap_fill_np(a, b, 0)
+    assert ab.dtype == a.dtype
+    assert ab.tolist() == [11, 33, 33, 33, 33]
+
+    xa = xr.DataArray(a,
+                      name='test_a',
+                      dims=('t',),
+                      attrs={'p1': 1, 'nodata': 0},
+                      coords=dict(t=np.arange(a.shape[0])))
+    xb = xa + 0
+    xb.data[:] = b
+    xab = gap_fill(xa, xb)
+    assert xab.name == xa.name
+    assert xab.attrs == xa.attrs
+    assert xab.data.tolist() == [11, 33, 33, 33, 33]
+
+    xa.attrs['nodata'] = 11
+    assert gap_fill(xa, xb).data.tolist() == [33, 0, 0, 0, 0]
+
+    a = np.zeros((5,), dtype='float32')
+    a[1:] = np.nan
+    b = np.empty_like(a)
+    b[:] = 33
+    ab = _gap_fill_np(a, b, np.nan)
+
+    assert ab.dtype == a.dtype
+    assert ab.tolist() == [0, 33, 33, 33, 33]
+
+    xa = xr.DataArray(a,
+                      name='test_a',
+                      dims=('t',),
+                      attrs={'p1': 1},
+                      coords=dict(t=np.arange(a.shape[0])))
+    xb = xa + 0
+    xb.data[:] = b
+    xab = gap_fill(xa, xb)
+    assert xab.name == xa.name
+    assert xab.attrs == xa.attrs
+    assert xab.data.tolist() == [0, 33, 33, 33, 33]
+
+    xa = xr.DataArray(da.from_array(a),
+                      name='test_a',
+                      dims=('t',),
+                      attrs={'p1': 1},
+                      coords=dict(t=np.arange(a.shape[0])))
+
+    xb = xr.DataArray(da.from_array(b),
+                      name='test_a',
+                      dims=('t',),
+                      attrs={'p1': 1},
+                      coords=dict(t=np.arange(b.shape[0])))
+
+    assert dask.is_dask_collection(xa)
+    assert dask.is_dask_collection(xb)
+    xab = gap_fill(xa, xb)
+
+    assert dask.is_dask_collection(xab)
+    assert xab.name == xa.name
+    assert xab.attrs == xa.attrs
+    assert xab.compute().values.tolist() == [0, 33, 33, 33, 33]
