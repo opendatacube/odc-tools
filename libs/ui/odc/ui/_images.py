@@ -194,7 +194,10 @@ def xr_bounds(x, crs=None) -> Tuple[Tuple[float, float],
         return p1, p2
 
     if crs is None:
-        crs = getattr(x, 'crs')
+        geobox = getattr(x, 'geobox', None)
+        if geobox:
+            crs = geobox.crs
+
     if crs is None:
         raise ValueError('Need to supply CRS or use latitude/longitude coords')
 
