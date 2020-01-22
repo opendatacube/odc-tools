@@ -5,6 +5,7 @@ import xarray as xr
 import dask
 import dask.array as da
 from ._dask import randomize
+from ._masking import to_f32_np, from_float_np
 
 
 def reshape_for_geomedian(ds, axis='time'):
@@ -106,6 +107,102 @@ def xr_geomedian(ds, axis='time', where=None, **kwargs):
         return xx_out
 
     ds_out = xx_out.to_dataset(dim='band')
+    for b in ds.data_vars.keys():
+        src, dst = ds[b], ds_out[b]
+        dst.attrs.update(src.attrs)
+
+    return ds_out
+
+
+def int_geomedian_np(*bands,
+                     nodata=None,
+                     scale=1,
+                     offset=0,
+                     **kw):
+    """ On input each band is expected to be same shape and dtype with 3 dimensions: time, y, x
+        On output: band, y, x
+    """
+    from hdstats import nangeomedian_pcm
+
+    nt, ny, nx = bands[0].shape
+    dtype = bands[0].dtype
+    nb = len(bands)
+    bb_f32 = np.empty((ny, nx, nb, nt), dtype='float32')
+
+    for b_idx, b in enumerate(bands):
+        for t_idx in range(nt):
+            bb_f32[:, :, b_idx, t_idx] = to_f32_np(b[t_idx, :, :],
+                                                   nodata=nodata,
+                                                   scale=scale,
+                                                   offset=offset)
+
+    kw.setdefault('nocheck', True)
+    kw.setdefault('num_threads', 1)
+    kw.setdefault('eps', 0.5*scale)
+
+    gm_f32 = nangeomedian_pcm(bb_f32, **kw)
+
+    del bb_f32  # free temp memory early
+    gm_int = np.empty((nb, ny, nx), dtype=dtype)
+
+    for b_idx in range(nb):
+        gm_int[b_idx, :, :] = from_float_np(gm_f32[:, :, b_idx],
+                                            dtype,
+                                            nodata=nodata,
+                                            scale=1/scale,
+                                            offset=-offset/scale)
+
+    return gm_int
+
+
+def int_geomedian(ds, scale=1, offset=0, **kw):
+    """ ds -- xr.Dataset (possibly dask) with dims: (time, y, x) for each band
+
+        on output time dimension is removed
+    """
+    band_names = [dv.name for dv in ds.data_vars.values()]
+    xx, *_ = ds.data_vars.values()
+    nodata = getattr(xx, 'nodata', None)
+
+    is_dask = dask.is_dask_collection(xx)
+    if is_dask:
+        if xx.data.chunksize[0] != xx.shape[0]:
+            ds = ds.chunk(chunks={xx.dims[0]: -1})
+            xx, *_ = ds.data_vars.values()
+
+    nt, ny, nx = xx.shape
+    bands = [dv.data for dv in ds.data_vars.values()]
+    band = bands[0]
+    nb = len(bands)
+    dtype = band.dtype
+
+    if is_dask:
+        chunks = ((nb,), *xx.chunks[1:])
+
+        data = da.map_blocks(int_geomedian_np,
+                             *bands,
+                             nodata=nodata,
+                             scale=scale,
+                             offset=offset,
+                             **kw,
+                             name=randomize('geomedian'),
+                             dtype=dtype,
+                             chunks=chunks,
+                             drop_axis=[0],  # time is dropped
+                             new_axis=[0])   # band is added on the left
+    else:
+        data = int_geomedian_np(*bands,
+                                nodata=nodata,
+                                scale=scale,
+                                offset=offset, **kw)
+
+    dims = ('band', *xx.dims[1:])
+    cc = {k: xx.coords[k] for k in dims[1:]}
+    cc['band'] = band_names
+
+    ds_out = xr.DataArray(data, dims=dims, coords=cc).to_dataset(dim='band')
+
+    ds_out.attrs.update(ds.attrs)
     for b in ds.data_vars.keys():
         src, dst = ds[b], ds_out[b]
         dst.attrs.update(src.attrs)

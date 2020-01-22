@@ -16,6 +16,8 @@ from ._masking import (
 from ._geomedian import (
     xr_geomedian,
     reshape_for_geomedian,
+    int_geomedian,
+    int_geomedian_np,
 )
 
 from ._dask import (
