@@ -20,6 +20,7 @@ from ._geomedian import (
 
 from ._dask import (
     chunked_persist,
+    randomize,
 )
 
 __all__ = (
@@ -34,4 +35,5 @@ __all__ = (
     "xr_geomedian",
     "reshape_for_geomedian",
     "chunked_persist",
+    "randomize",
 )

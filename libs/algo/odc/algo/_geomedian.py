@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 import dask
 import dask.array as da
+from ._dask import randomize
 
 
 def reshape_for_geomedian(ds, axis='time'):
@@ -84,7 +85,7 @@ def xr_geomedian(ds, axis='time', where=None, **kwargs):
 
         data = da.map_blocks(lambda x: nangeomedian_pcm(x, **kwargs),
                              xx_data,
-                             name='geomedian',
+                             name=randomize('geomedian'),
                              dtype=xx_data.dtype,
                              drop_axis=3)
     else:

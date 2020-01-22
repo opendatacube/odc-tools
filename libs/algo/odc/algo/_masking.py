@@ -7,6 +7,7 @@ import xarray as xr
 import dask
 import dask.array as da
 import numexpr as ne
+from ._dask import randomize
 
 
 def default_nodata(dtype):
@@ -61,7 +62,7 @@ def keep_good_only(x, where,
     if dask.is_dask_collection(x):
         data = da.map_blocks(keep_good_np,
                              x.data, where.data, nodata,
-                             name='keep_good',
+                             name=randomize('keep_good'),
                              dtype=x.dtype)
     else:
         data = keep_good_np(x.data, where.data, nodata)
@@ -141,7 +142,7 @@ def to_f32(x, scale=1, offset=0):
                              scale=scale,
                              offset=offset,
                              dtype='float32',
-                             name='to_f32')
+                             name=randomize('to_f32'))
     else:
         data = to_f32_np(x.data,
                          nodata=nodata,
@@ -168,7 +169,7 @@ def from_float(x, dtype, nodata, scale=1, offset=0):
                              x.data, dtype, nodata,
                              scale=scale, offset=offset,
                              dtype=dtype,
-                             name='from_float')
+                             name=randomize('from_float'))
     else:
         data = from_float_np(x.data, dtype, nodata,
                              scale=scale, offset=offset)
@@ -270,7 +271,7 @@ def gap_fill(x: xr.DataArray,
     if dask.is_dask_collection(x):
         data = da.map_blocks(_gap_fill_np,
                              x.data, fallback.data, nodata,
-                             name='gap_fill',
+                             name=randomize('gap_fill'),
                              dtype=x.dtype)
     else:
         data = _gap_fill_np(x.data, fallback.data, nodata)

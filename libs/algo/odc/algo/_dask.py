@@ -2,6 +2,7 @@
 """
 from dask.distributed import wait as dask_wait
 from toolz import partition_all
+from random import randint
 
 
 def chunked_persist(data, n_concurrent, client, verbose=False):
@@ -36,3 +37,7 @@ def chunked_persist(data, n_concurrent, client, verbose=False):
 
     # at this point it should be almost no-op
     return client.persist(data)
+
+
+def randomize(prefix: str):
+    return '{}-{:08x}'.format(prefix, randint(0, 0xFFFFFFFF))
