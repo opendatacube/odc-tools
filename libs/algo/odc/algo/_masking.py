@@ -181,7 +181,7 @@ def from_float(x, dtype, nodata, scale=1, offset=0):
                         attrs=attrs)
 
 
-def fmask_to_bool(fmask, categories, invert=False):
+def fmask_to_bool(fmask, categories, invert=False, flag_name=None):
     """
 
     example:
@@ -209,9 +209,10 @@ def fmask_to_bool(fmask, categories, invert=False):
     if len(flags) == 1:
         flags, = flags.values()
     else:
-        flags = flags.get('fmask', None)
+        flag_name = 'fmask' if flag_name is None else flag_name
+        flags = flags.get(flag_name, None)
         if flags is None:
-            raise ValueError('Expect `fmask` key in `flags_defition` attribute')
+            raise ValueError(f"Expect `{flag_name}` key in `flags_defition` attribute")
 
     m = _get_mask(categories, flags)
     func = {False: lambda x: ((1 << x) & m) > 0,
