@@ -181,19 +181,30 @@ def from_float(x, dtype, nodata, scale=1, offset=0):
                         attrs=attrs)
 
 
-def fmask_to_bool(fmask, categories, invert=False, flag_name=None):
-    """
+def fmask_to_bool(mask, categories, invert=False, flag_name=None):
+    """This method works for fmask and other "enumerated" masks, so long as
+    largest label for a category is <= 32.
+
+    For non-fmask masks you might have to specify `flag_name: str`:
+    To see what name should be check this: `list(xx.your_mask.flags_definition)`
+
+    It is equivalent to `np.isin(mask, categories)`, but uses bit shifts to
+    speed things up, hence the limit <=32
 
     example:
         xx = dc.load(.., measurements=['fmask', ...])
         no_cloud = fmask_to_bool(xx.fmask, ('valid', 'snow', 'water'))
 
         xx.where(no_cloud).isel(time=0).nbar_red.plot.imshow()
+
     """
 
     def _get_mask(names, flags):
         enum_to_value = {n: int(v)
                          for v, n in flags['values'].items()}
+        if max(enum_to_value.values()) > 32:
+            raise ValueError('This method only works on enumerations with values <= 32')
+
         m = 0
         for n in names:
             v = enum_to_value.get(n, None)
@@ -202,7 +213,7 @@ def fmask_to_bool(fmask, categories, invert=False, flag_name=None):
             m |= (1 << v)
         return m
 
-    flags = getattr(fmask, 'flags_definition', None)
+    flags = getattr(mask, 'flags_definition', None)
     if flags is None:
         raise ValueError('Missing flags_definition attribute')
 
@@ -218,14 +229,14 @@ def fmask_to_bool(fmask, categories, invert=False, flag_name=None):
     func = {False: lambda x: ((1 << x) & m) > 0,
             True: lambda x: ((1 << x) & m) == 0}.get(invert)
 
-    mask = xr.apply_ufunc(func, fmask,
-                          keep_attrs=True,
-                          dask='parallelized',
-                          output_dtypes=['bool'])
-    mask.attrs.pop('flags_definition', None)
-    mask.attrs.pop('nodata', None)
+    bmask = xr.apply_ufunc(func, mask,
+                           keep_attrs=True,
+                           dask='parallelized',
+                           output_dtypes=['bool'])
+    bmask.attrs.pop('flags_definition', None)
+    bmask.attrs.pop('nodata', None)
 
-    return mask
+    return bmask
 
 
 def _gap_fill_np(a, fallback, nodata):
