@@ -25,6 +25,11 @@ from ._dask import (
     randomize,
 )
 
+from ._rgba import (
+    to_rgba,
+    to_rgba_np,
+)
+
 __all__ = (
     "keep_good_np",
     "keep_good_only",
@@ -38,4 +43,6 @@ __all__ = (
     "reshape_for_geomedian",
     "chunked_persist",
     "randomize",
+    "to_rgba",
+    "to_rgba_np",
 )
