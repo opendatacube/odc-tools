@@ -166,9 +166,8 @@ async def s3_dir(url, s3, pred=None, glob=None):
     return _dirs, _files
 
 
-async def s3_dir_dir(url, depth, dst_q, s3):
-    """
-    Find directories certain depth from the base, push them to the `dst_q`
+async def s3_dir_dir(url, depth, dst_q, s3, pred=None):
+    """Find directories certain depth from the base, push them to the `dst_q`
 
     ```
     s3://bucket/a
@@ -192,6 +191,11 @@ async def s3_dir_dir(url, depth, dst_q, s3):
          - s3://bucket/a/b2/c3/
 
     Any files are ignored.
+
+    If `pred` is supplied it is expected to be a `str -> bool` mapping, on
+    input full path of the sub-directory is given (e.g `a/b1/`) starting from
+    root, but not including bucket name. Sub-directory is only traversed
+    further if predicate returns True.
     """
     if not url.endswith('/'):
         url = url + '/'
@@ -207,6 +211,9 @@ async def s3_dir_dir(url, depth, dst_q, s3):
         async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter='/'):
             for d in o.get('CommonPrefixes', []):
                 d = d.get('Prefix')
+                if pred is not None and not pred(d):
+                    continue
+
                 if depth > 1:
                     await work_q.put((d, depth-1))
                 else:
@@ -394,10 +401,10 @@ class S3Fetcher(object):
             if raise_error:
                 raise IOError(f"Failed to list: {url}")
 
-    def dir_dir(self, url, depth):
+    def dir_dir(self, url, depth, pred=None):
         async def action(q, s3):
             try:
-                await s3_dir_dir(url, depth, q, s3)
+                await s3_dir_dir(url, depth, q, s3, pred=pred)
             finally:
                 await q.put(EOS_MARKER)
 
