@@ -2,8 +2,8 @@
 """
 import numpy as np
 import xarray as xr
-from typing import Tuple, Optional
-from odc.algo import to_rgba
+from typing import Tuple, Optional, Union
+from odc.algo import to_rgba, is_rgb
 
 
 def image_shape(d):
@@ -134,12 +134,23 @@ def xr_bounds(x, crs=None) -> Tuple[Tuple[float, float],
     return ((t, r), (b, l))
 
 
-def mk_image_overlay(xx: xr.Dataset,
+def mk_image_overlay(xx: Union[xr.Dataset, xr.DataArray],
                      clamp: Optional[float] = None,
                      bands: Optional[Tuple[str, str, str]] = None,
                      layer_name='Image',
                      fmt='png',
                      **opts):
+    """ Create ipyleaflet.ImageLayer from raster data.
+
+    xx - xarray.Dataset that will be converted to RGBA or
+         xarray.DataArray that is already in RGB(A) format
+
+    clamp, bands -- passed on to to_rgba(..), only used when xx is xarray.Dataset
+
+    Returns
+    =======
+    ipyleaflet.ImageOverlay or a list of them one per time slice
+    """
     from ipyleaflet import ImageOverlay
     comp, mime = dict(
         png=(to_png_data, 'image/png'),
@@ -161,11 +172,16 @@ def mk_image_overlay(xx: xr.Dataset,
                                      layer_name="{}-{}".format(layer_name, t),
                                      fmt=fmt, **opts) for t in range(nt)]
 
-    cc = to_rgba(xx, clamp=clamp, bands=bands)
+    if isinstance(xx, xr.Dataset):
+        rgba = to_rgba(xx, clamp=clamp, bands=bands)
+    else:
+        if not is_rgb(xx):
+            raise ValueError("Expect RGB xr.DataArray")
+        rgba = xx
 
-    im_url = mk_data_uri(comp(cc.values, **opts), mime)
+    im_url = mk_data_uri(comp(rgba.values, **opts), mime)
     return ImageOverlay(url=im_url,
-                        bounds=xr_bounds(cc),
+                        bounds=xr_bounds(rgba),
                         name=layer_name)
 
 
