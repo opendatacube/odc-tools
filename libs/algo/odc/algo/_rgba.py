@@ -8,6 +8,16 @@ from typing import Tuple, Optional, List, Union
 from ._dask import randomize
 
 
+def is_rgb(x: xr.DataArray):
+    if x.dtype != 'uint8':
+        return False
+    if x.ndim < 3:
+        return False
+    if x.shape[-1] not in (3, 4):
+        return False
+    return True
+
+
 def guess_rgb_names(bands: List[str]) -> Tuple[str, str, str]:
     out = []
     for c in ('red', 'green', 'blue'):

@@ -28,6 +28,7 @@ from ._dask import (
 )
 
 from ._rgba import (
+    is_rgb,
     to_rgba,
     to_rgba_np,
 )
@@ -49,6 +50,7 @@ __all__ = (
     "reshape_for_geomedian",
     "chunked_persist",
     "randomize",
+    "is_rgb",
     "to_rgba",
     "to_rgba_np",
 )
