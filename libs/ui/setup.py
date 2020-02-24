@@ -21,6 +21,7 @@ setup(
         'ipywidgets',
         'ipyleaflet',
         'odc_index',
+        'jupyter_ui_poll',
     ],
 
     packages=['odc.ui'],
