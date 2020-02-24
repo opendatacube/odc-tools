@@ -5,7 +5,7 @@ import xarray as xr
 import dask
 import dask.array as da
 from ._dask import randomize
-from ._masking import to_f32_np, from_float_np
+from ._masking import to_float_np, from_float_np
 
 
 def reshape_for_geomedian(ds, axis='time'):
@@ -131,10 +131,11 @@ def int_geomedian_np(*bands,
 
     for b_idx, b in enumerate(bands):
         for t_idx in range(nt):
-            bb_f32[:, :, b_idx, t_idx] = to_f32_np(b[t_idx, :, :],
-                                                   nodata=nodata,
-                                                   scale=scale,
-                                                   offset=offset)
+            bb_f32[:, :, b_idx, t_idx] = to_float_np(b[t_idx, :, :],
+                                                     nodata=nodata,
+                                                     scale=scale,
+                                                     offset=offset,
+                                                     dtype='float32')
 
     kw.setdefault('nocheck', True)
     kw.setdefault('num_threads', 1)
