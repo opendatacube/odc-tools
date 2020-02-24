@@ -2,85 +2,8 @@
 """
 import numpy as np
 import xarray as xr
-from typing import Tuple, Optional, List
-
-
-def guess_rgb_names(bands: List[str]) -> Tuple[str, str, str]:
-    out = []
-    for c in ('red', 'green', 'blue'):
-        candidates = [name for name in bands if c in name]
-        n = len(candidates)
-        if n == 0:
-            raise ValueError('Found no candidate for color "{}"'.format(c))
-        elif n > 1:
-            raise ValueError('Found too many candidates for color "{}"'.format(c))
-
-        out.append(candidates[0])
-    r, g, b = out
-    return (r, g, b)
-
-
-def to_rgba(ds: xr.Dataset,
-            clamp: Optional[float] = None,
-            bands: Optional[Tuple[str, str, str]] = None
-            ) -> xr.DataArray:
-    """ Given `xr.Dataset` with bands `red,green,blue` construct `xr.Datarray`
-        containing uint8 rgba image.
-
-    :param ds: xarray Dataset
-    :param clamp: Value of the highest intensity value to use, if None, largest intensity value across all 3 channel is used.
-    :param bands: Which bands to use, order should red,green,blue
-    """
-
-    if bands is None:
-        bands = guess_rgb_names(list(ds.data_vars))
-
-    r, g, b = (ds[name] for name in bands)
-    nodata = getattr(r, 'nodata', None)
-    dims = r.dims + ('band',)
-
-    r, g, b = (x.values for x in (r, g, b))
-
-    if r.dtype.kind == 'f':
-        a = ~np.isnan(r)
-        if nodata is not None:
-            a = a * (r != nodata)
-    elif nodata is not None:
-        a = (r != nodata)
-    else:
-        a = np.ones(r.shape, np.bool)
-
-    a = a.astype('uint8')*(0xFF)
-
-    if clamp is None:
-        clamp = max(x.max() for x in (r, g, b))
-
-    def to_u8(x, x_min, x_max):
-        x = np.clip(x, x_min, x_max)
-
-        if x.dtype.kind == 'f':
-            x = (x - x_min)*(255.0/(x_max - x_min))
-        else:
-            x = (x - x_min).astype('uint32')*255//(x_max - x_min)
-        return x.astype('uint8')
-
-    r, g, b = (to_u8(x, 0, clamp) for x in (r, g, b))
-
-    coords = dict(**{x.name: x.values
-                     for x in ds.coords.values()},
-                  band=['r', 'g', 'b', 'a'])
-
-    attrs = {}
-    crs = ds.attrs.get('crs')
-    if crs is not None:
-        attrs['crs'] = crs
-
-    rgba = xr.DataArray(np.stack([r, g, b, a], axis=r.ndim),
-                        coords=coords,
-                        dims=dims,
-                        attrs=attrs)
-
-    return rgba
+from typing import Tuple, Optional
+from odc.algo import to_rgba
 
 
 def image_shape(d):
