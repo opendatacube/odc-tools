@@ -102,58 +102,75 @@ def from_float_np(x, dtype, nodata, scale=1, offset=0, where=None):
     return out
 
 
-def to_f32_np(x, nodata=None, scale=1, offset=0):
+def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32'):
+    float_type = np.dtype(dtype).type
 
-    f32_nan = np.float32(np.nan)
-    scale = np.float32(scale)
-    offset = np.float32(offset)
+    _nan = float_type(np.nan)
+    scale = float_type(scale)
+    offset = float_type(offset)
 
-    params = dict(f32_nan=f32_nan,
+    params = dict(_nan=_nan,
                   scale=scale,
                   offset=offset,
                   x=x,
                   nodata=nodata)
+    out = np.empty_like(x, dtype=dtype)
 
     if nodata is None:
         return ne.evaluate('x*scale + offset',
+                           out=out,
+                           casting='unsafe',
                            local_dict=params)
     elif scale == 1 and offset == 0:
-        return ne.evaluate('where(x == nodata, f32_nan, x)',
+        return ne.evaluate('where(x == nodata, _nan, x)',
+                           out=out,
+                           casting='unsafe',
                            local_dict=params)
     else:
-        return ne.evaluate('where(x == nodata, f32_nan, x*scale + offset)',
+        return ne.evaluate('where(x == nodata, _nan, x*scale + offset)',
+                           out=out,
+                           casting='unsafe',
                            local_dict=params)
 
 
-def to_f32(x, scale=1, offset=0):
+def to_f32_np(x, nodata=None, scale=1, offset=0):
+    return to_float_np(x, nodata=nodata, scale=scale, offset=offset, dtype='float32')
+
+
+def to_float(x, scale=1, offset=0, dtype='float32'):
     if isinstance(x, xr.Dataset):
-        return x.apply(to_f32,
+        return x.apply(to_float,
                        scale=scale,
                        offset=offset,
+                       dtype=dtype,
                        keep_attrs=True)
 
     attrs = x.attrs.copy()
     nodata = attrs.pop('nodata', None)
 
     if dask.is_dask_collection(x.data):
-        data = da.map_blocks(to_f32_np,
+        data = da.map_blocks(to_float_np,
                              x.data,
                              nodata=nodata,
                              scale=scale,
                              offset=offset,
-                             dtype='float32',
-                             name=randomize('to_f32'))
+                             dtype=dtype,
+                             name=randomize('to_float'))
     else:
-        data = to_f32_np(x.data,
-                         nodata=nodata,
-                         scale=scale,
-                         offset=offset)
+        data = to_float_np(x.data,
+                           nodata=nodata,
+                           scale=scale,
+                           offset=offset)
 
     return xr.DataArray(data,
                         dims=x.dims,
                         coords=x.coords,
                         name=x.name,
                         attrs=attrs)
+
+
+def to_f32(x, scale=1, offset=0):
+    return to_float(x, scale=scale, offset=offset, dtype='float32')
 
 
 def from_float(x, dtype, nodata, scale=1, offset=0):
