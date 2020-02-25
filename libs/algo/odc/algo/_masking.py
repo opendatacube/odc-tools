@@ -150,10 +150,7 @@ def to_float(x, scale=1, offset=0, dtype='float32'):
 
     if dask.is_dask_collection(x.data):
         data = da.map_blocks(to_float_np,
-                             x.data,
-                             nodata=nodata,
-                             scale=scale,
-                             offset=offset,
+                             x.data, nodata, scale, offset, dtype,
                              dtype=dtype,
                              name=randomize('to_float'))
     else:
