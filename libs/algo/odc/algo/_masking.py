@@ -160,7 +160,8 @@ def to_float(x, scale=1, offset=0, dtype='float32'):
         data = to_float_np(x.data,
                            nodata=nodata,
                            scale=scale,
-                           offset=offset)
+                           offset=offset,
+                           dtype=dtype)
 
     return xr.DataArray(data,
                         dims=x.dims,
