@@ -122,7 +122,7 @@ def show_datasets(dss, mode='leaflet',
             return gg
 
 
-def mk_map_region_selector(height='600px', **kwargs):
+def mk_map_region_selector(map=None, height='600px', **kwargs):
     from ipyleaflet import Map, WidgetControl, FullScreenControl, DrawControl
     from ipywidgets.widgets import Layout, Button, HTML
     from types import SimpleNamespace
@@ -143,9 +143,19 @@ def mk_map_region_selector(height='600px', **kwargs):
     def update_info(txt):
         html_info.value = '<pre style="color:grey">' + txt + '</pre>'
 
-    m = Map(**kwargs) if len(kwargs) else Map(zoom=2)
-    m.scroll_wheel_zoom = True
-    m.layout.height = height
+    def render_bounds(bounds):
+        (lat1, lon1), (lat2, lon2) = bounds
+        txt = 'lat: [{:.{n}f}, {:.{n}f}]\nlon: [{:.{n}f}, {:.{n}f}]'.format(
+            lat1, lat2, lon1, lon2, n=4)
+        update_info(txt)
+
+    if map is None:
+        m = Map(**kwargs) if len(kwargs) else Map(zoom=2)
+        m.scroll_wheel_zoom = True
+        m.layout.height = height
+    else:
+        m = map
+        render_bounds(m.bounds)
 
     widgets = [
         WidgetControl(widget=btn_done, position='topright'),
@@ -182,10 +192,9 @@ def mk_map_region_selector(height='600px', **kwargs):
             m.remove_control(w)
 
     def bounds_handler(event):
-        (lat1, lon1), (lat2, lon2) = event['new']
-        txt = 'lat: [{:.{n}f}, {:.{n}f}]\nlon: [{:.{n}f}, {:.{n}f}]'.format(
-            lat1, lat2, lon1, lon2, n=4)
-        update_info(txt)
+        bounds = event['new']
+        render_bounds(bounds)
+        (lat1, lon1), (lat2, lon2) = bounds
         state.bounds = dict(lat=(lat1, lat2),
                             lon=(lon1, lon2))
 
@@ -206,7 +215,7 @@ def mk_map_region_selector(height='600px', **kwargs):
     return m, state
 
 
-def select_on_a_map(**kwargs):
+def select_on_a_map(map=None, **kwargs):
     """ Display a map and block execution until user selects a region of interest.
 
     Returns selected region as datacube Geometry class.
@@ -214,6 +223,7 @@ def select_on_a_map(**kwargs):
         polygon = select_on_map()
 
     **kwargs**
+      map    -- Instead of creating new map use existing Ipyleaflet map
       height -- height of the map, for example "500px", "10el"
 
     Any parameter ipyleaflet.Map(..) accepts:
@@ -224,8 +234,9 @@ def select_on_a_map(**kwargs):
     from IPython.display import display
     from ._ui import ui_poll
 
-    m, state = mk_map_region_selector(**kwargs)
-    display(m)
+    m, state = mk_map_region_selector(map=map, **kwargs)
+    if map is None:
+        display(m)
 
     def extract_geometry(state):
         from datacube.utils.geometry import Geometry
