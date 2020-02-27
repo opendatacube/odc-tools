@@ -16,32 +16,30 @@ and [CLI tools](https://github.com/opendatacube/odc-tools/tree/master/apps).
 Full list of libraries, and install instructions:
 
 - `odc.ui` tools for data visualization in notebook/lab
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-ui`
-
 - `odc.index` extra utils for working with datacube database
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-index`
-
-- `odc.aws` AWS/S3 utilities, used by apps mainly
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-aws`
-
 - `odc.geom` geometry utils and prototypes
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-geom`
-
+- `odc.algo` algorithms (GeoMedian wrapper is here)
 - `odc.io` common IO utilities, used by apps mainly
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-io`
-
+- `odc.aws` AWS/S3 utilities, used by apps mainly
 - `odc.aio` faster concurrent fetching from S3 with async, used by apps
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-aio`
-
-- `odc.ppt` parallel processing helper methods, internal lib
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-ppt`
-
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-dscache`
-
 - `odc.dtools` tools/experiments in the area of dask.distributed/dask<>datacube integration
-   - `pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-dtools`
+- `odc.ppt` parallel processing helper methods, internal lib
 
+Installation requires using custom package repo `https://packages.dea.ga.gov.au`.
+
+```
+pip install --extra-index-url="https://packages.dea.ga.gov.au" \
+  odc-ui \
+  odc-index \
+  odc-geom \
+  odc-algo \
+  odc-io \
+  odc-aws \
+  odc-aio \
+  odc-dscache \
+  odc-dtools
+```
 
 **NOTE**: on Ubuntu 18.04 default `pip` version is awfully old and does not
 support `--extra-index-url` command line option, so make sure to upgrade `pip`
