@@ -173,7 +173,8 @@ def mk_map_region_selector(map=None, height='600px', **kwargs):
     shape_opts = {"fillColor": "#fca45d",
                   "color": "#000000",
                   "fillOpacity": 0.1}
-    draw.rectangle = {"shapeOptions": shape_opts}
+    draw.rectangle = {"shapeOptions": shape_opts,
+                      "metric": ["km", "m"]}
     poly_opts = {"shapeOptions": dict(**shape_opts)}
     poly_opts["shapeOptions"]["original"] = dict(**shape_opts)
     poly_opts["shapeOptions"]["editing"] = dict(**shape_opts)
