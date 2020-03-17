@@ -100,7 +100,8 @@ def to_rgba(ds: xr.Dataset,
     red_band = ds[bands[0]]
     nodata = getattr(red_band, 'nodata', None)
     dims = red_band.dims + ('band',)
-    crs = ds.attrs.get('crs') or red_band.get('crs')
+    geobox = red_band.geobox
+    crs = str(geobox.crs) if geobox is not None else None
 
     r, g, b = (ds[name].data for name in bands)
     if is_dask:
