@@ -196,6 +196,14 @@ def from_float(x, dtype, nodata, scale=1, offset=0):
                         attrs=attrs)
 
 
+def _impl_to_bool(x, m):
+    return ((1 << x) & m) > 0
+
+
+def _impl_to_bool_inverted(x, m):
+    return ((1 << x) & m) == 0
+
+
 def fmask_to_bool(mask, categories, invert=False, flag_name=None):
     """This method works for fmask and other "enumerated" masks, so long as
     largest label for a category is <= 32.
@@ -241,10 +249,10 @@ def fmask_to_bool(mask, categories, invert=False, flag_name=None):
             raise ValueError(f"Expect `{flag_name}` key in `flags_defition` attribute")
 
     m = _get_mask(categories, flags)
-    func = {False: lambda x: ((1 << x) & m) > 0,
-            True: lambda x: ((1 << x) & m) == 0}.get(invert)
+    func = {False: _impl_to_bool,
+            True: _impl_to_bool_inverted}.get(invert)
 
-    bmask = xr.apply_ufunc(func, mask,
+    bmask = xr.apply_ufunc(func, mask, m,
                            keep_attrs=True,
                            dask='parallelized',
                            output_dtypes=['bool'])
