@@ -1,9 +1,6 @@
 import click
 import sys
-from types import SimpleNamespace
-from odc.aio import S3Fetcher
-from odc.aws._find import parse_query, norm_predicate
-from odc.ppt import future_results
+from odc.aio import s3_uri_to_stream
 
 
 @click.command('s3-find')
@@ -35,61 +32,13 @@ def cli(uri, skip_check):
        List all files named `metadata.yaml` 2 directories deep
         > s3-find 's3://mybucket/some/path/*/*/metadata.yaml'
     """
-
-    def do_file_query(qq, pred):
-        for d in s3.dir_dir(qq.base, qq.depth):
-            _, _files = s3.list_dir(d).result()
-            for f in _files:
-                if pred(f):
-                    yield f
-
-    def do_file_query2(qq):
-        fname = qq.file
-
-        stream = s3.dir_dir(qq.base, qq.depth)
-
-        if skip_check:
-            yield from (SimpleNamespace(url=d+fname) for d in stream)
-            return
-
-        stream = (s3.head_object(d+fname) for d in stream)
-
-        for (f, _), _ in future_results(stream, 32):
-            if f is not None:
-                yield f
-
-    def do_dir_query(qq):
-        return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth))
-
     flush_freq = 100
 
     try:
-        qq = parse_query(uri)
-    except ValueError as e:
-        click.echo(str(e), err=True)
+        stream = s3_uri_to_stream(uri, skip_check)
+    except ValueError as ve:
+        click.echo(str(ve), err=True)
         sys.exit(1)
-
-    s3 = S3Fetcher()
-
-    glob_or_file = qq.glob or qq.file
-
-    if qq.depth is None and glob_or_file is None:
-        stream = s3.find(qq.base)
-    elif qq.depth is None or qq.depth < 0:
-        if qq.glob:
-            stream = s3.find(qq.base, glob=qq.glob)
-        elif qq.file:
-            postfix = '/'+qq.file
-            stream = s3.find(qq.base, pred=lambda o: o.url.endswith(postfix))
-    else:
-        # fixed depth query
-        if qq.glob is not None:
-            pred = norm_predicate(glob=qq.glob)
-            stream = do_file_query(qq, pred)
-        elif qq.file is not None:
-            stream = do_file_query2(qq)
-        else:
-            stream = do_dir_query(qq)
 
     try:
         for i, o in enumerate(stream):

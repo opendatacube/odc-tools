@@ -293,6 +293,17 @@ async def s3_walker(url, nconcurrent, s3,
 
 
 def s3_uri_to_stream(uri: str, skip_check: bool):
+    """Build generator from supplied S3 URI pattern
+    Arguments:
+        uri {str} -- S3 URI to create generator for
+        skip_check {bool} -- Validity check flag
+    Raises:
+        e: ValueError if parsing URI fails
+    Returns:
+        [type] -- [description]
+    Yields:
+        [type] -- [description]
+    """
     def do_file_query(qq, pred):
         for d in s3.dir_dir(qq.base, qq.depth):
             _, _files = s3.list_dir(d).result()
@@ -317,8 +328,6 @@ def s3_uri_to_stream(uri: str, skip_check: bool):
 
     def do_dir_query(qq):
         return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth))
-
-    flush_freq = 100
 
     try:
         qq = parse_query(uri)
@@ -348,7 +357,16 @@ def s3_uri_to_stream(uri: str, skip_check: bool):
         else:
             stream = do_dir_query(qq)
 
-    return stream
+    yaml_list = []
+
+    try:
+        for i, o in enumerate(stream):
+            yaml_list.append(o.url)
+    except Exception as e:
+        # TODO: Log this error
+        raise e
+
+    return yaml_list
 
 class S3Fetcher(object):
     def __init__(self,
