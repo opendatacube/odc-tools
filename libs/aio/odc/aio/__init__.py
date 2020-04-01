@@ -1,3 +1,5 @@
+import logging
+
 import aiobotocore
 import asyncio
 from types import SimpleNamespace
@@ -292,7 +294,7 @@ async def s3_walker(url, nconcurrent, s3,
     return step
 
 
-def s3_uri_to_stream(uri: str, skip_check: bool):
+def s3_find_uri(uri: str, skip_check: bool):
     """Build generator from supplied S3 URI pattern
     Arguments:
         uri {str} -- S3 URI to create generator for
@@ -332,7 +334,7 @@ def s3_uri_to_stream(uri: str, skip_check: bool):
     try:
         qq = parse_query(uri)
     except ValueError as e:
-        # TODO: Log this error
+        logging.error(f"S3 Find Error {ve}")
         raise e
 
     s3 = S3Fetcher()
@@ -357,16 +359,12 @@ def s3_uri_to_stream(uri: str, skip_check: bool):
         else:
             stream = do_dir_query(qq)
 
-    yaml_list = []
-
     try:
         for i, o in enumerate(stream):
-            yaml_list.append(o.url)
+            yield o.url
     except Exception as e:
-        # TODO: Log this error
+        logging.error(f"S3 Find Error {e}")
         raise e
-
-    return yaml_list
 
 class S3Fetcher(object):
     def __init__(self,
