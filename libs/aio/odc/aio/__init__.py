@@ -333,9 +333,9 @@ def s3_find_uri(uri: str, skip_check: bool):
 
     try:
         qq = parse_query(uri)
-    except ValueError as e:
+    except ValueError as ve:
         logging.error(f"S3 Find Error {ve}")
-        raise e
+        raise ve
 
     s3 = S3Fetcher()
 
@@ -361,7 +361,7 @@ def s3_find_uri(uri: str, skip_check: bool):
 
     try:
         for i, o in enumerate(stream):
-            yield o.url
+            yield o
     except Exception as e:
         logging.error(f"S3 Find Error {e}")
         raise e
