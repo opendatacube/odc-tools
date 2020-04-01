@@ -1,6 +1,6 @@
 import click
 import sys
-from odc.aio import s3_uri_to_stream
+from odc.aio import s3_find_uri
 
 
 @click.command('s3-find')
@@ -35,17 +35,16 @@ def cli(uri, skip_check):
     flush_freq = 100
 
     try:
-        stream = s3_uri_to_stream(uri, skip_check)
+        stream = s3_find_uri(uri, skip_check)
+        for i, o in enumerate(stream):
+            print(o.url, flush=(i % flush_freq == 0))
     except ValueError as ve:
         click.echo(str(ve), err=True)
         sys.exit(1)
-
-    try:
-        for i, o in enumerate(stream):
-            print(o.url, flush=(i % flush_freq == 0))
     except Exception as e:
-        print(f"ERROR: {str(e)}")
+        click.echo(str(e), err=True)
         sys.exit(1)
+    
 
 
 if __name__ == '__main__':
