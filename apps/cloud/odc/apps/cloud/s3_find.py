@@ -37,7 +37,7 @@ def cli(uri, skip_check):
     try:
         stream = s3_find_uri(uri, skip_check)
         for i, o in enumerate(stream):
-            print(o.url, flush=(i % flush_freq == 0))
+            print(o, flush=(i % flush_freq == 0))
     except ValueError as ve:
         click.echo(str(ve), err=True)
         sys.exit(1)
