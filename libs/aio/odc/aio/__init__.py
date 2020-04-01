@@ -3,8 +3,8 @@ import asyncio
 from types import SimpleNamespace
 
 from odc.aws import auto_find_region, s3_url_parse, s3_fmt_range
-from odc.aws._find import norm_predicate, s3_file_info
-from odc.ppt import EOS_MARKER
+from odc.aws._find import norm_predicate, s3_file_info, parse_query
+from odc.ppt import EOS_MARKER, future_results
 from odc.ppt.async_thread import AsyncThread
 
 
@@ -291,6 +291,64 @@ async def s3_walker(url, nconcurrent, s3,
 
     return step
 
+
+def s3_uri_to_stream(uri: str, skip_check: bool):
+    def do_file_query(qq, pred):
+        for d in s3.dir_dir(qq.base, qq.depth):
+            _, _files = s3.list_dir(d).result()
+            for f in _files:
+                if pred(f):
+                    yield f
+
+    def do_file_query2(qq):
+        fname = qq.file
+
+        stream = s3.dir_dir(qq.base, qq.depth)
+
+        if skip_check:
+            yield from (SimpleNamespace(url=d+fname) for d in stream)
+            return
+
+        stream = (s3.head_object(d+fname) for d in stream)
+
+        for (f, _), _ in future_results(stream, 32):
+            if f is not None:
+                yield f
+
+    def do_dir_query(qq):
+        return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth))
+
+    flush_freq = 100
+
+    try:
+        qq = parse_query(uri)
+    except ValueError as e:
+        # TODO: Log this error
+        raise e
+
+    s3 = S3Fetcher()
+
+    glob_or_file = qq.glob or qq.file
+
+    if qq.depth is None and glob_or_file is None:
+        stream = s3.find(qq.base)
+    elif qq.depth is None or qq.depth < 0:
+        if qq.glob:
+            stream = s3.find(qq.base, glob=qq.glob)
+        elif qq.file:
+            postfix = '/'+qq.file
+            stream = s3.find(qq.base, pred=lambda o: o.url.endswith(postfix))
+    else:
+        # fixed depth query
+        if qq.glob is not None:
+            pred = norm_predicate(glob=qq.glob)
+            stream = do_file_query(qq, pred)
+        elif qq.file is not None:
+            stream = do_file_query2(qq)
+        else:
+            stream = do_dir_query(qq)
+
+    return stream
 
 class S3Fetcher(object):
     def __init__(self,
