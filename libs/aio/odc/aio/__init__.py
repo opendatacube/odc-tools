@@ -294,17 +294,13 @@ async def s3_walker(url, nconcurrent, s3,
     return step
 
 
-def s3_find_uri(uri: str, skip_check: bool):
-    """Build generator from supplied S3 URI pattern
+def s3_find_glob(glob_pattern: str, skip_check: bool):
+    """Build generator from supplied S3 URI glob pattern  
     Arguments:
-        uri {str} -- S3 URI to create generator for
-        skip_check {bool} -- Validity check flag
+        glob_pattern {str} -- Glob pattern to filter S3 Keys by
+        skip_check {bool} -- Skip validity check for S3 Key
     Raises:
-        e: ValueError if parsing URI fails
-    Returns:
-        [type] -- [description]
-    Yields:
-        [type] -- [description]
+        ve: ValueError if the glob pattern cannot be parsed
     """
     def do_file_query(qq, pred):
         for d in s3.dir_dir(qq.base, qq.depth):
@@ -332,9 +328,9 @@ def s3_find_uri(uri: str, skip_check: bool):
         return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth))
 
     try:
-        qq = parse_query(uri)
+        qq = parse_query(glob_pattern)
     except ValueError as ve:
-        logging.error(f"S3 Find Error {ve}")
+        logging.error(f"URI glob-pattern not understood : {ve}")
         raise ve
 
     s3 = S3Fetcher()
@@ -359,12 +355,7 @@ def s3_find_uri(uri: str, skip_check: bool):
         else:
             stream = do_dir_query(qq)
 
-    try:
-        for i, o in enumerate(stream):
-            yield o
-    except Exception as e:
-        logging.error(f"S3 Find Error {e}")
-        raise e
+    return stream
 
 class S3Fetcher(object):
     def __init__(self,
