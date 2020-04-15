@@ -5,43 +5,11 @@ from datacube.utils.changes import allow_any
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
 from odc.index import from_yaml_doc_stream
-from odc.index import eo3_grid_spatial
-
-# TODO: Move to library
-def add_eo3_parts(doc, tol=None):
-    return dict(**doc,
-                **eo3_grid_spatial(doc, tol=tol))
-
-# TODO: Move to library
-def prep_eo3(doc, tol=None):
-    if doc is None:
-        return None
-
-    doc = add_eo3_parts(doc, tol=tol)
-    lineage = doc.pop('lineage', {})
-
-    def remap_lineage(uuids):
-        """ Turn [uuid] -> {id: uuid}
-        """
-        uuid, *_ = uuids
-        return dict(id=uuid)
-
-    doc['lineage'] = dict(source_datasets={
-        n: remap_lineage(v) for n, v in lineage.items()})
-
-    return doc
-
-# TODO: Detect eo3
-def detect_eo3(doc : dict) -> bool:
-    """Heuristics to auto-detect and apply eo3 transforms
-    
-    Arguments:
-        doc {dict} -- ODC Metadata (typically from YAML)
-    
-    Returns:
-        bool -- is this metadata eo3 ?
-    """
-    return False
+from odc.index import (
+    add_eo3_parts,
+    prep_eo3,
+    detect_eo3
+)
 
 
 def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
