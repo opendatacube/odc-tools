@@ -118,5 +118,5 @@ When using Google Storage:
 
 # Google Storage support
 gs-to-tar --bucket data.deadev.com --prefix mangrove_cover
-dc-index-from-tar --env mangroves --ignore-lineage metadata.tar.gz
+dc-index-from-tar --protocol gs --env mangroves --ignore-lineage metadata.tar.gz
 ```
