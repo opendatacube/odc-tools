@@ -123,7 +123,6 @@ def cli(input_fname,
 
         return n_failed
 
-    # TODO: Release SQLAlchemy with context manager
     dc = datacube.Datacube(env=env)
 
     if len(input_fname) == 0:
