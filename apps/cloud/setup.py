@@ -21,6 +21,7 @@ setup(
         'odc_io',
         'odc_aio',
         'odc_ppt',
+        'odc_thredds',
         "click",
     ],
 
