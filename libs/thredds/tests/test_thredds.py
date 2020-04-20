@@ -28,3 +28,5 @@ def test_download_yaml():
     print(results)
     assert results[0][0] is not None
     assert results[1][0] is None
+    assert results[1][2] == "Yaml not found"
+    assert results[2][2] == "Thredds Failed"

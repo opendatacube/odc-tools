@@ -61,9 +61,6 @@ def _download(url: str) -> tuple:
     Arguments:
         url {str} -- URL on thredds to download YAML for
     
-    Raises:
-        Exception: Exception to indicate YAML is not valid location
-    
     Returns:
         tuple -- URL content, target file and placeholder for error
     """

@@ -1,19 +1,7 @@
 import tarfile
 import click
-import requests
 from odc.io.tar import tar_mode, add_txt_file
-from multiprocessing.dummy import Pool as ThreadPool
-from functools import partial
-
-from urllib.parse import urlparse
-from thredds_crawler.crawl import Crawl
-
-
-def download(url):
-    parsed_uri = urlparse(url)
-    target_filename = url[len(parsed_uri.scheme + '://'):]
-
-    return requests.get(url).content, target_filename
+from odc.thredds import thredds_find_glob, download_yamls
 
 
 @click.command('thredds-to-tar')
@@ -40,25 +28,12 @@ def cli(thredds_catalogue,
          -s '.*NBART.*' -s '.*/QA/.*' -w 8 --outfile 2018-11-29.tar.gz
 
     """
-
-    user_skips = Crawl.SKIPS
-    for skip in skips:
-        user_skips = user_skips+[skip]
-
     print("Searching {thredds_catalogue} for matching files".format(thredds_catalogue=thredds_catalogue))
-    results = Crawl(thredds_catalogue + '/catalog.xml', select=[select], skip=user_skips, workers=workers).datasets
+    urls = thredds_find_glob(thredds_catalogue, skips, [select], workers)
 
-    print("Found {0} metadata files".format(str(len(results))))
+    print("Found {0} metadata urls".format(str(len(urls))))
 
-    urls = [service['url'] for dataset in results
-            for service in dataset.services
-            if service['service'].lower() == 'httpserver']
-
-    # use a threadpool to download from thredds
-    pool = ThreadPool(workers)
-    yamls = pool.map(partial(download), urls)
-    pool.close()
-    pool.join()
+    yamls = download_yamls(urls, workers)
 
     # jam it all in a tar
     tar_opts = dict(name=outfile, mode='w' + tar_mode(gzip=True, xz=True, is_pipe=False))
