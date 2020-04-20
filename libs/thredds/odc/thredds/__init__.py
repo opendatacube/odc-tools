@@ -9,8 +9,8 @@ from typing import List, Tuple, Optional
 
 
 def thredds_find_glob(
-        base_catalog: str, skips: list, select: list, workers: int = 8
-    ) -> list:
+        base_catalog: str, skips: List[str], select: List[str], workers: int = 8
+    ) -> List[str]:
     """Glob YAML's from base Thredds Catalog recursively
     Arguments:
         base_catalog {str} -- Base of the catlog to crawl from
@@ -18,7 +18,7 @@ def thredds_find_glob(
         select {list} -- Paths to select (useful YAML's)
         workers {int} -- Number of workers to use for Thredds Crawling
     Returns:
-        list -- List of datasets to Index
+        list -- List of Thredds hosted dataset YAML url's to Index
     """
     user_skips = Crawl.SKIPS
     user_skips = user_skips.extend(skips)
