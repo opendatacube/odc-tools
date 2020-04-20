@@ -5,18 +5,18 @@ import requests
 from urllib.parse import urlparse
 from multiprocessing.dummy import Pool as ThreadPool
 
+from typing import List, Tuple, Optional
+
 
 def thredds_find_glob(
-    base_catalog: str, skips: list, select: list, workers: int = 8
-) -> list:
+        base_catalog: str, skips: list, select: list, workers: int = 8
+    ) -> list:
     """Glob YAML's from base Thredds Catalog recursively
-    
     Arguments:
         base_catalog {str} -- Base of the catlog to crawl from
         user_skips {list} -- Paths to skip in addition to NCI specific defaults
         select {list} -- Paths to select (useful YAML's)
         workers {int} -- Number of workers to use for Thredds Crawling
-    
     Returns:
         list -- List of datasets to Index
     """
@@ -37,13 +37,13 @@ def thredds_find_glob(
     return urls
 
 
-def download_yamls(yaml_urls: list, workers : int = 8) -> list:
-    """Download all YAML's in a list of URL's and generate 
-    
+def download_yamls(
+        yaml_urls: List[str], workers: int = 8
+    ) -> List[Tuple[Optional[bytes], str, Optional[str]]]:
+    """Download all YAML's in a list of URL's and generate content
     Arguments:
         yaml_urls {list} -- List of URL's to download YAML's from
         workers {int} -- Number of workers to use for Thredds Downloading
-    
     Returns:
         list -- tuples of contents and filenames
     """
@@ -55,12 +55,11 @@ def download_yamls(yaml_urls: list, workers : int = 8) -> list:
 
     return yamls
 
-def _download(url: str) -> tuple:
+
+def _download(url: str) -> Tuple[Optional[bytes], str, Optional[str]]:
     """Internal method to download YAML's from thredds via requests
-    
     Arguments:
         url {str} -- URL on thredds to download YAML for
-    
     Returns:
         tuple -- URL content, target file and placeholder for error
     """
@@ -71,7 +70,6 @@ def _download(url: str) -> tuple:
         if resp.status_code == 200:
             return (resp.content, target_filename, None)
         else:
-            return(None, None, "Yaml not found")
+            return (None, target_filename, "Yaml not found")
     except Exception as e:
-        return(None, None, "Thredds Failed")
-    
+        return (None, target_filename, "Thredds Failed")
