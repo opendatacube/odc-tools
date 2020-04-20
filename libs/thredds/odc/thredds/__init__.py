@@ -3,6 +3,7 @@
 from thredds_crawler.crawl import Crawl
 import requests
 from urllib.parse import urlparse
+from multiprocessing.dummy import Pool as ThreadPool
 
 
 def thredds_find_glob(
@@ -36,26 +37,23 @@ def thredds_find_glob(
     return urls
 
 
-def download_yamls(yaml_urls: list) -> list:
+def download_yamls(yaml_urls: list, workers : int = 8) -> list:
     """Download all YAML's in a list of URL's and generate 
     
     Arguments:
         yaml_urls {list} -- List of URL's to download YAML's from
+        workers {int} -- Number of workers to use for Thredds Downloading
     
     Returns:
         list -- tuples of contents and filenames
     """
-    # TODO: Make this parallel with Asyncio or Multi-processing
-    yaml_collection = []
-    for url in yaml_urls:
-        try:
-            yaml_collection.append(_download(url))
-        except Exception as e:
-            # Stash errors
-            yaml_collection.append((None, None, e))
+    # use a threadpool to download from thredds
+    pool = ThreadPool(workers)
+    yamls = pool.map(_download, yaml_urls)
+    pool.close()
+    pool.join()
 
-    return yaml_collection
-
+    return yamls
 
 def _download(url: str) -> tuple:
     """Internal method to download YAML's from thredds via requests
@@ -71,8 +69,12 @@ def _download(url: str) -> tuple:
     """
     parsed_uri = urlparse(url)
     target_filename = url[len(parsed_uri.scheme + "://") :]
-    resp = requests.get(url)
-    if resp.status_code == 200:
-        return (resp.content, target_filename, None)
-    else:
-        raise Exception("Yaml not found")
+    try:
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return (resp.content, target_filename, None)
+        else:
+            return(None, None, "Yaml not found")
+    except Exception as e:
+        return(None, None, "Thredds Failed")
+    
