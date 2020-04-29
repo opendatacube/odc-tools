@@ -1,3 +1,4 @@
+import os
 from urllib.parse import urlparse
 import botocore
 import botocore.session
@@ -68,6 +69,9 @@ def auto_find_region(session=None):
 
     if region_name is None:
         region_name = ec2_current_region()
+
+    if region_name is None:
+        region_name = os.environ.get("AWS_REGION")
 
     if region_name is None:
         raise ValueError('Region name is not supplied and default can not be found')
