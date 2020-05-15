@@ -196,12 +196,12 @@ def from_float(x, dtype, nodata, scale=1, offset=0):
                         attrs=attrs)
 
 
-def _impl_to_bool(x, m, dtype):
-    return ((1 << x.astype(dtype)) & m) > 0
+def _impl_to_bool(x, m):
+    return ((1 << x) & m) > 0
 
 
-def _impl_to_bool_inverted(x, m, dtype):
-    return ((1 << x.astype(dtype)) & m) == 0
+def _impl_to_bool_inverted(x, m):
+    return ((1 << x) & m) == 0
 
 
 def fmask_to_bool(mask, categories, invert=False, flag_name=None):
@@ -265,7 +265,7 @@ def fmask_to_bool(mask, categories, invert=False, flag_name=None):
     func = {False: _impl_to_bool,
             True: _impl_to_bool_inverted}.get(invert)
 
-    bmask = xr.apply_ufunc(func, mask, m, dtype,
+    bmask = xr.apply_ufunc(func, mask.astype(dtype), m,
                            keep_attrs=True,
                            dask='parallelized',
                            output_dtypes=['bool'])
@@ -430,3 +430,11 @@ def test_fmask_to_bool():
 
     with pytest.raises(ValueError):
         fmask_to_bool(fmask, ('cat_64'))
+
+    mm = fmask_to_bool(fmask.chunk(3), ("cat_0",)).compute()
+    ii, = np.where(mm)
+    assert tuple(ii) == (0,)
+
+    mm = fmask_to_bool(fmask.chunk(3), ("cat_31", "cat_63")).compute()
+    ii, = np.where(mm)
+    assert tuple(ii) == (31, 63)
