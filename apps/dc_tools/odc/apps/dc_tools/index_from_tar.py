@@ -1,15 +1,13 @@
-import click
+""" Index datasets from tar arachive
+"""
+
 import sys
+import click
 import datacube
 from datacube.utils.changes import allow_any
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
 from odc.index import from_yaml_doc_stream
-from odc.index import (
-    add_eo3_parts,
-    prep_eo3,
-    detect_eo3
-)
 
 
 def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
@@ -49,9 +47,6 @@ def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
 @click.option('--update',
               help="Update datasets rather than add",
               is_flag=True, default=False)
-@click.option('--eo3',
-              help="Assume EO3 metadata format",
-              is_flag=True, default=False)
 @click.option('--gzip', is_flag=True, help='Input is compressed with gzip (needed when reading from stdin)')
 @click.option('--xz', is_flag=True, help='Input is compressed with xz (needed when reading from stdin)')
 @click.option('--protocol', type=str, default='s3', show_default=True,
@@ -65,7 +60,6 @@ def cli(input_fname,
         verify_lineage,
         ignore_lineage,
         update,
-        eo3,
         gzip,
         xz,
         protocol):
@@ -78,17 +72,12 @@ def cli(input_fname,
     if ignore_lineage:
         auto_add_lineage = False
 
-    if eo3:
-        verify_lineage = False
-        auto_add_lineage = False
-
     ds_resolve_args = dict(products=product_names,
                            exclude_products=exclude_product_names,
                            fail_on_missing_lineage=not auto_add_lineage,
                            verify_lineage=verify_lineage,
                            skip_lineage=ignore_lineage)
 
-    doc_transform = prep_eo3 if eo3 else None
     allowed_changes = {(): allow_any}
 
     def mk_uri(name):
@@ -98,7 +87,7 @@ def cli(input_fname,
         print(msg, file=sys.stderr)
 
     def process_file(filename, index, fps, mode=None, n_failed=0, doc_transform=None):
-        for ds, err in from_tar_file(filename, index, mk_uri, doc_transform=doc_transform, mode=mode, **ds_resolve_args):
+        for ds, err in from_tar_file(filename, index, mk_uri, mode=mode, **ds_resolve_args):
             if ds is not None:
                 try:
                     if update:
@@ -140,7 +129,7 @@ def cli(input_fname,
             filename = sys.stdin.buffer
             mode = tar_mode(is_pipe=True, gzip=gzip, xz=xz)
 
-        n_failed = process_file(filename, dc.index, fps, mode=mode, n_failed=n_failed, doc_transform=doc_transform)
+        n_failed = process_file(filename, dc.index, fps, mode=mode, n_failed=n_failed)
 
     if n_failed > 0:
         report_error("**WARNING** there were failures: {}".format(n_failed))
