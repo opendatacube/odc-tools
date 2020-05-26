@@ -20,21 +20,23 @@ KNOWN_CONSTELLATIONS = [
 
 
 def _stac_product_lookup(item):
+    properties = item['properties']
+
     product_label = item['id']
-    product_name = item['properties']['platform']
+    product_name = properties['platform']
     region_code = None
 
-    constellation = item['properties']['constellation']
+    constellation = properties['constellation']
 
     if constellation in KNOWN_CONSTELLATIONS:
         if constellation == 'sentinel-2':
-            product_label = item['properties']["sentinel:product_id"]
-            product_split = product_label.split("_")
-            product_name = f"{product_split[0]}_{product_split[1]}"
-            region_code = "{}{}{}".format(
-                str(item['properties']["proj:epsg"])[-2:],
-                item['properties']["sentinel:latitude_band"],
-                item['properties']["sentinel:grid_square"]
+            product_label = properties['sentinel:product_id']
+            product_split = product_label.split('_')
+            product_name = f'{product_split[0]}_{product_split[1]}'
+            region_code = '{}{}{}'.format(
+                str(properties['proj:epsg'])[-2:],
+                properties['sentinel:latitude_band'],
+                properties['sentinel:grid_square']
             )
 
     return product_label, product_name, region_code
@@ -49,11 +51,11 @@ def _get_stac_bands(item, default_grid='g10.0m'):
 
     for asset_name, asset in assets.items():
         # Ignore items that are not actual COGs
-        if asset['type'] not in ["image/tiff; application=geotiff; profile=cloud-optimized"]:
+        if asset['type'] not in ['image/tiff; application=geotiff; profile=cloud-optimized']:
             continue
 
         transform = asset['proj:transform']
-        grid = "g{}m".format(transform[0])
+        grid = f'g{transform[0]}m'
 
         if grid not in grids:
             grids[grid] = {
@@ -82,9 +84,10 @@ def geographic_to_projected(geometry, target_srs):
 
     transformer = Transformer.from_crs(wgs, projection)
 
+
     new_geometry = deepcopy(geometry)
     new_geometry['coordinates'][0] = [
-        transformer.transform(p[0], p[1]) for p in new_geometry['coordinates'][0]]
+        transformer.transform(lon, lat) for lon, lat in new_geometry['coordinates'][0]]
 
     return new_geometry
 
@@ -92,38 +95,35 @@ def geographic_to_projected(geometry, target_srs):
 def stac_transform(input_stac):
     """takes in a raw STAC 1.0 dictionary and returns an ODC dictionary
     """
-    print("Starting STAC transform")
 
-    # Dodgy lookup
     product_label, product_name, region_code = _stac_product_lookup(input_stac)
 
-    # Make a proper deterministic UUID
-    deterministic_uuid = str(odc_uuid("sentinel2_stac_process", "1.0.0", [product_label]))
+    deterministic_uuid = str(odc_uuid("sentinel-2_stac_process", "1.0.0", [product_label]))
 
-    # Get grids and bands
     bands, grids = _get_stac_bands(input_stac)
+
+    properties = input_stac['properties']
 
     stac_odc = {
         '$schema': 'https://schemas.opendatacube.org/dataset',
         'id': deterministic_uuid,
-        'crs': "epsg:{}".format(input_stac['properties']['proj:epsg']),
+        'crs': "epsg:{}".format(properties['proj:epsg']),
         'geometry': geographic_to_projected(
             input_stac['geometry'],
-            input_stac['properties']['proj:epsg']
+            properties['proj:epsg']
         ),
         'grids': grids,
         'product': {
-            'name': product_name  # This is not right
+            'name': product_name
         },
         'label': product_label,
         'properties': {
-            'datetime': input_stac['properties']['datetime'].replace("000+00:00", "Z"),
-            'odc:processing_datetime': input_stac['properties']['datetime']
-                                       .replace("000+00:00", "Z"),
-            'eo:cloud_cover': input_stac['properties']['eo:cloud_cover'],
-            'eo:gsd': input_stac['properties']['gsd'],
-            'eo:instrument': input_stac['properties']['instruments'][0],
-            'eo:platform': input_stac['properties']['platform'],
+            'datetime': properties['datetime'].replace("000+00:00", "Z"),
+            'odc:processing_datetime': properties['datetime'].replace("000+00:00", "Z"),
+            'eo:cloud_cover': properties['eo:cloud_cover'],
+            'eo:gsd': properties['gsd'],
+            'eo:instrument': properties['instruments'][0],
+            'eo:platform': properties['platform'],
             'odc:file_format': 'GeoTIFF'
         },
         'measurements': bands,
@@ -132,10 +132,6 @@ def stac_transform(input_stac):
 
     if region_code:
         stac_odc['properties']['odc:region_code']: region_code
-
-    # import json
-    # with open(f'/tmp/{input_stac["id"]}.json', 'w') as outfile:
-    #     json.dump(stac_odc, outfile, indent=4)
 
     return stac_odc
 
@@ -182,7 +178,7 @@ def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
 @click.option('--protocol', type=str, default='s3', show_default=True,
               help='Override the protocol for working with data in other environments, i.e gs')
 @click.option('--stac', is_flag=True, default=False, show_default=True,
-              help='Convert STAC 1.0 metadata to ODC EO3 metadata')
+              help='Expect STAC 1.0 metadata and attempt to transform to ODC EO3 metadata')
 @click.argument('input_fname', type=str, nargs=-1)
 def cli(input_fname,
         env,
@@ -225,7 +221,8 @@ def cli(input_fname,
         print(msg, file=sys.stderr)
 
     def process_file(filename, index, fps, mode=None, n_failed=0, doc_transform=None):
-        for ds, err in from_tar_file(filename, index, mk_uri, mode=mode, doc_transform=doc_transform, **ds_resolve_args):
+        for ds, err in from_tar_file(filename, index, mk_uri, 
+                                     mode=mode, doc_transform=doc_transform, **ds_resolve_args):
             if ds is not None:
                 try:
                     if update:
