@@ -79,21 +79,17 @@ def _get_stac_bands(item, default_grid='g10.0m'):
 
 
 def geographic_to_projected(geometry, target_srs):
-    wgs = CRS.from_epsg(4326)
-    projection = CRS.from_epsg(target_srs)
+    """ Transform from WGS84 to the target projection, assuming Lon, Lat order
+    """
+    transformer = Transformer.from_crs(4326, target_srs, always_xy=True)
+    geometry['coordinates'][0] = list(transformer.itransform(
+        geometry['coordinates'][0]))
 
-    transformer = Transformer.from_crs(wgs, projection)
-
-
-    new_geometry = deepcopy(geometry)
-    new_geometry['coordinates'][0] = [
-        transformer.transform(lon, lat) for lon, lat in new_geometry['coordinates'][0]]
-
-    return new_geometry
+    return geometry
 
 
 def stac_transform(input_stac):
-    """takes in a raw STAC 1.0 dictionary and returns an ODC dictionary
+    """ Takes in a raw STAC 1.0 dictionary and returns an ODC dictionary
     """
 
     product_label, product_name, region_code = _stac_product_lookup(input_stac)
@@ -107,14 +103,14 @@ def stac_transform(input_stac):
     stac_odc = {
         '$schema': 'https://schemas.opendatacube.org/dataset',
         'id': deterministic_uuid,
-        'crs': "epsg:{}".format(properties['proj:epsg']),
+        'crs': f"epsg:{properties['proj:epsg']}",
         'geometry': geographic_to_projected(
             input_stac['geometry'],
             properties['proj:epsg']
         ),
         'grids': grids,
         'product': {
-            'name': product_name
+            'name': product_name.lower()
         },
         'label': product_label,
         'properties': {
