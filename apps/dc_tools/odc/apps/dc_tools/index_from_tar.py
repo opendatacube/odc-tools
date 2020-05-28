@@ -26,13 +26,13 @@ def _stac_product_lookup(item):
     product_name = properties['platform']
     region_code = None
 
+    # Maybe this should be the default product_name
     constellation = properties['constellation']
 
     if constellation in KNOWN_CONSTELLATIONS:
         if constellation == 'sentinel-2':
             product_label = properties['sentinel:product_id']
-            product_split = product_label.split('_')
-            product_name = f'{product_split[0]}_{product_split[1]}'
+            product_name = 's2_l2a'
             region_code = '{}{}{}'.format(
                 str(properties['proj:epsg'])[-2:],
                 properties['sentinel:latitude_band'],
