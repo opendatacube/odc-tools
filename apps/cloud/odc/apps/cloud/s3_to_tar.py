@@ -74,7 +74,7 @@ def cli(n, verbose, gzip, xz, outfile):
 
     def on_ctrlc(sig, frame):
         nonlocal exit_early
-        print('Shuttting down', file=sys.stderr)
+        print('Shutting down...', file=sys.stderr)
         exit_early = True
 
     signal.signal(signal.SIGINT, on_ctrlc)
