@@ -14,8 +14,12 @@ GS_ALBERS = GridSpec(crs=geom.CRS('EPSG:3577'),
 @click.option('--native', is_flag=True, help='Use Landsat Path/Row as grouping')
 @click.option('--native-albers', is_flag=True, help='When datasets are in Albers grid already')
 @click.option('--web', type=int, help='Use web map tiling regime at supplied zoom level')
+@click.option('--crs', type=str, help="Custom gridspec: crs")
+@click.option('--resolution', type=str, help="Custom gridspec: resolution_y,resolution_x")
+@click.option('--shape', type=str, help="Custom gridspec: shape_y,shape_x")
+@click.option('--bin-format', type=str, help="Custom gridspec: format of bin group key")
 @click.argument('dbfile', type=str, nargs=1)
-def cli(native, native_albers, web, dbfile):
+def cli(native, native_albers, web, crs, resolution, shape, bin_format, dbfile):
     """Add spatial grouping to file db.
 
     Default grid is Australian Albers (EPSG:3577) with 100k by 100k tiles. But
@@ -35,6 +39,17 @@ def cli(native, native_albers, web, dbfile):
     elif web is not None:
         gs = web_gs(web)
         group_key_fmt = 'web_' + str(web) + '/{:03d}_{:03d}'
+        binner = lambda dss: bin_dataset_stream(gs, dss)
+    elif crs is not None or resolution is not None or shape is not None or bin_format is not None:
+        settings = dict(crs=crs, resolution=resolution, shape=shape, bin_format=bin_format)
+        missing = [key for key, value in settings.items() if value is None]
+        if missing:
+            raise ValueError('Missing options in custom grid spec: {}'.format(' '.join(missing)))
+        group_key_fmt = bin_format
+        resolution = [float(comp) for comp in resolution.split(',')]
+        shape = [float(comp) for comp in shape.split(',')]
+        tile_size = [abs(res * shp) for res, shp in zip(resolution, shape)]
+        gs = GridSpec(crs=geom.CRS(crs), tile_size=tile_size, resolution=resolution)
         binner = lambda dss: bin_dataset_stream(gs, dss)
     else:
         group_key_fmt = 'albers/{:03d}_{:03d}'
