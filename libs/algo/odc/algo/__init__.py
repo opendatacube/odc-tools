@@ -33,6 +33,10 @@ from ._rgba import (
     to_rgba_np,
 )
 
+from ._warp import (
+    dask_reproject
+)
+
 __all__ = (
     "keep_good_np",
     "keep_good_only",
@@ -53,4 +57,5 @@ __all__ = (
     "is_rgb",
     "to_rgba",
     "to_rgba_np",
+    "dask_reproject",
 )
