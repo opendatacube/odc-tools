@@ -48,8 +48,26 @@ def chunked_persist(data, n_concurrent, client, verbose=False):
     return client.persist(data)
 
 
-def randomize(prefix: str):
+def randomize(prefix: str) -> str:
+    """
+    Append random token to name
+    """
     return '{}-{:08x}'.format(prefix, randint(0, 0xFFFFFFFF))
+
+
+def unpack_chunksize(chunk: int, N: int) -> Tuple[int, ...]:
+    """
+    Compute chunk sizes
+    Example: 4, 11 -> (4, 4, 3)
+    """
+    assert chunk <= N
+
+    nb = N//chunk
+    last_chunk = N - chunk*nb
+    if last_chunk == 0:
+        return tuple(chunk for _ in range(nb))
+
+    return tuple(chunk for _ in range(nb)) + (last_chunk,)
 
 
 def _stack_2d_np(shape_in_blocks, *blocks, out=None, axis=0):
