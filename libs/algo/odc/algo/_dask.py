@@ -70,6 +70,23 @@ def unpack_chunksize(chunk: int, N: int) -> Tuple[int, ...]:
     return tuple(chunk for _ in range(nb)) + (last_chunk,)
 
 
+def empty_maker(fill_value, dtype, dsk, name='empty'):
+    cache = {}
+
+    def mk_empty(shape: Tuple[int, ...]) -> str:
+        x = cache.get(shape, None)
+        if x is not None:
+            return x
+
+        b_name = name + '_' + "x".join(str(i) for i in shape)
+        b_name = randomize(b_name)
+        cache[shape] = b_name
+        dsk[b_name] = (np.full, shape, fill_value, dtype)
+        return b_name
+
+    return mk_empty
+
+
 def _stack_2d_np(shape_in_blocks, *blocks, out=None, axis=0):
     """
     Stack a bunch of blocks into one plane.
