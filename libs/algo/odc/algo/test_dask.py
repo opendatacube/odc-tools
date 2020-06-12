@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import dask.array as da
 import toolz
-from ._dask import _rechunk_2x2, _stack_2d_np, compute_chunk_range, crop_2d_dense
+from ._dask import _rechunk_2x2, _stack_2d_np, compute_chunk_range, crop_2d_dense, unpack_chunksize
 
 
 def test_1():
@@ -12,6 +12,16 @@ def test_1():
     assert xx.dtype == yy.dtype
     assert xx.shape == yy.shape
     assert (xx.compute() == yy.compute()).all()
+
+
+@pytest.mark.parametrize("chunk, n, expect", [
+    (4, 7, (4, 3)),
+    (3, 9, (3, 3, 3)),
+    (8, 8, (8,)),
+    (1, 3, (1, 1, 1)),
+])
+def test_unpack_chunks(chunk, n, expect):
+    assert unpack_chunksize(chunk, n) == expect
 
 
 @pytest.mark.parametrize("shape, block_shape", [
