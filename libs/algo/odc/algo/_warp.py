@@ -110,7 +110,7 @@ def dask_reproject(src: da.Array,
         # TODO: other dims
         k = (name, *idx)
         if k not in dsk:
-            bshape = tuple(dst_chunks[i] for i in idx)
+            bshape = tuple(ch[i] for ch, i in zip(dst_chunks, idx))
             dsk[k] = mk_empty(bshape)
 
     dsk = HighLevelGraph.from_collections(name, dsk, dependencies=deps)
