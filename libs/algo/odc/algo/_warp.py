@@ -20,15 +20,17 @@ def _reproject_block_impl(src: np.ndarray,
                           src_nodata: Optional[NodataType] = None,
                           dst_nodata: Optional[NodataType] = None,
                           axis: int = 0) -> np.ndarray:
-    dst = np.empty(dst_geobox.shape, dtype=src.dtype)
+    dst_shape = src.shape[:axis] + dst_geobox.shape + src.shape[axis+2:]
+    dst = np.empty(dst_shape, dtype=src.dtype)
 
-    rio_reproject(src,
-                  dst,
-                  src_geobox,
-                  dst_geobox,
-                  resampling,
-                  src_nodata,
-                  dst_nodata)
+    for prefix in np.ndindex(src.shape[:axis]):
+        rio_reproject(src[prefix],
+                      dst[prefix],
+                      src_geobox,
+                      dst_geobox,
+                      resampling,
+                      src_nodata,
+                      dst_nodata)
     return dst
 
 
@@ -69,8 +71,9 @@ def dask_reproject(src: da.Array,
     dst_shape = src.shape[:axis] + yx_shape + src.shape[axis+2:]
 
     #  tuple(*dims1, y, x, *dims2) -- complete shape in blocks
-    # dims1 = tuple(map(len, dst_chunks[:axis]))
-    # dims2 = tuple(map(len, dst_chunks[axis+2:]))
+    dims1 = tuple(map(len, dst_chunks[:axis]))
+    dims2 = tuple(map(len, dst_chunks[axis+2:]))
+    assert dims2 == ()
     deps = [src]
 
     gbt = GeoboxTiles(dst_geobox, chunks)
@@ -87,26 +90,27 @@ def dask_reproject(src: da.Array,
 
         deps.append(_src)
 
-        # TODO: other dims
-        dsk[(name, *idx)] = (_reproject_block_impl,
-                             (_src.name, 0, 0),
-                             _src_geobox,
-                             _dst_geobox,
-                             resampling,
-                             src_nodata,
-                             dst_nodata,
-                             axis)
+        for ii1 in np.ndindex(dims1):
+            # TODO: band dims
+            dsk[(name, *ii1, *idx)] = (_reproject_block_impl,
+                                       (_src.name, *ii1, 0, 0),
+                                       _src_geobox,
+                                       _dst_geobox,
+                                       resampling,
+                                       src_nodata,
+                                       dst_nodata,
+                                       axis)
 
     fill_value = 0 if dst_nodata is None else dst_nodata
-    yx_shape_in_blocks = tuple(map(len, yx_chunks))
+    shape_in_blocks = tuple(map(len, dst_chunks))
 
     mk_empty = empty_maker(fill_value, src.dtype, dsk)
 
-    for idx in np.ndindex(yx_shape_in_blocks):
+    for idx in np.ndindex(shape_in_blocks):
         # TODO: other dims
         k = (name, *idx)
         if k not in dsk:
-            bshape = gbt.chunk_shape(idx)
+            bshape = tuple(dst_chunks[i] for i in idx)
             dsk[k] = mk_empty(bshape)
 
     dsk = HighLevelGraph.from_collections(name, dsk, dependencies=deps)
