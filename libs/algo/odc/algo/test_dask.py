@@ -88,6 +88,7 @@ def test_chunk_range(span, chunks, summed, bspan, pspan):
     np.s_[3:-3, -5:],
 ])
 def test_crop_2d_dense(yx_roi):
+    # Y,X
     xx = da.random.uniform(0, 10, size=(16, 6),
                            chunks=(4, 3)).astype('uint8')
 
@@ -97,3 +98,42 @@ def test_crop_2d_dense(yx_roi):
     assert yy.shape == yy.chunksize
 
     assert (xx[yx_roi].compute() == yy.compute()).all()
+
+    # Y, X, Band
+    xx = da.random.uniform(0, 10, size=(16, 6, 4),
+                           chunks=(4, 3, 4)).astype('uint8')
+
+    yy = crop_2d_dense(xx, yx_roi)
+    _roi = (*yx_roi, np.s_[:])
+    assert xx.dtype == yy.dtype
+    assert yy.shape == xx[_roi].shape
+    assert yy.shape[:2] == yy.chunksize[:2]
+
+    assert (xx[_roi].compute() == yy.compute()).all()
+
+    # Time, Y, X
+    xx = da.random.uniform(0, 10, size=(5, 16, 6),
+                           chunks=(1, 4, 3)).astype('uint8')
+
+    yy = crop_2d_dense(xx, yx_roi, axis=1)
+    _roi = (np.s_[:], *yx_roi)
+    assert xx.dtype == yy.dtype
+    assert yy.shape == xx[_roi].shape
+    assert yy.shape[1:3] == yy.chunksize[1:3]
+    assert yy.chunksize[0] == xx.chunksize[0]
+
+    assert (xx[_roi].compute() == yy.compute()).all()
+
+    # Time, Y, X, Band
+    xx = da.random.uniform(0, 10, size=(5, 16, 6, 3),
+                           chunks=(1, 4, 3, 3)).astype('uint8')
+
+    yy = crop_2d_dense(xx, yx_roi, axis=1)
+    _roi = (np.s_[:], *yx_roi, np.s_[:])
+    assert xx.dtype == yy.dtype
+    assert yy.shape == xx[_roi].shape
+    assert yy.shape[1:3] == yy.chunksize[1:3]
+    assert yy.chunksize[0] == xx.chunksize[0]
+    assert yy.chunksize[-1] == xx.chunksize[-1]
+
+    assert (xx[_roi].compute() == yy.compute()).all()
