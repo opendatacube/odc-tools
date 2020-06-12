@@ -2,13 +2,16 @@
 Generic dask helpers
 """
 
-from typing import Tuple, Optional
+from typing import Tuple, Union, Optional, cast
 from random import randint
+from bisect import bisect_right, bisect_left
 import numpy as np
 from dask.distributed import wait as dask_wait
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
 from toolz import partition_all
+
+ROI = Union[slice, Tuple[slice, ...]]
 
 
 def chunked_persist(data, n_concurrent, client, verbose=False):
@@ -49,7 +52,7 @@ def randomize(prefix: str):
     return '{}-{:08x}'.format(prefix, randint(0, 0xFFFFFFFF))
 
 
-def _stack_2d_np(shape_in_blocks, *blocks, out=None):
+def _stack_2d_np(shape_in_blocks, *blocks, out=None, axis=0):
     """
     Stack a bunch of blocks into one plane.
 
@@ -61,38 +64,54 @@ def _stack_2d_np(shape_in_blocks, *blocks, out=None):
             [[a0, a1, a2],
              [a3, a4, a5]]
 
-    Blocks should have y,x dimensions first, i.e. a[y,x] or a[y, x, band] or more generally a[y,x,...]
+    By default assume that y,x dimensions are first, i.e. a[y,x] or a[y, x, band],
+    but one can also stack blocks with extra dimensions by supplying axis= parameter,
+    Example: for blocks like this: a[t, y, x, band] use axis=1
+
+    :param shape_in_blocks: (ny, nx) number of blocks
+    :param blocks: Blocks in row major order
+    :param out: Allows re-use of memory, it must match dtype and output shape exactly
+    :param axis: Index of y axis, x axis is then axis+1 (default is axis=0)
     """
     assert len(blocks) > 0
     assert len(shape_in_blocks) == 2
     assert shape_in_blocks[0]*shape_in_blocks[1] == len(blocks)
 
     dtype = blocks[0].dtype
-    extra_dims = blocks[0].shape[2:]
+    bshape = blocks[0].shape
+    dims1 = bshape[:axis]
+    dims2 = bshape[axis+2:]
+    idx1 = tuple(slice(0, None) for _ in range(len(dims1)))
+    idx2 = tuple(slice(0, None) for _ in range(len(dims2)))
 
     h, w = shape_in_blocks
 
-    chunk_y = [b.shape[0] for b in blocks[0:h*w:w]]
-    chunk_x = [b.shape[1] for b in blocks[:w]]
+    chunk_y = [b.shape[axis+0] for b in blocks[0:h*w:w]]
+    chunk_x = [b.shape[axis+1] for b in blocks[:w]]
     offset = [np.cumsum(x) for x in ([0] + chunk_y, [0] + chunk_x)]
     ny, nx = [x[-1] for x in offset]
 
     if out is None:
-        out = np.empty((ny, nx, *extra_dims), dtype=dtype)
+        out = np.empty((*dims1, ny, nx, *dims2), dtype=dtype)
     else:
         pass  # TODO: verify out shape is ok
 
     for block, idx in zip(blocks, np.ndindex(shape_in_blocks)):
+        ny, nx = block.shape[axis:axis+2]
         _y, _x = (offset[i][j] for i, j in zip([0, 1], idx))
 
-        out[_y:_y+block.shape[0],
-            _x:_x+block.shape[1]] = block
+        idx = (*idx1,
+               slice(_y, _y + ny),
+               slice(_x, _x + nx),
+               *idx2)
+
+        out[idx] = block
 
     return out
 
 
-def _extract_as_one_block(crop, shape_in_blocks, *blocks):
-    out = _stack_2d_np(shape_in_blocks, *blocks)
+def _extract_as_one_block(axis, crop, shape_in_blocks, *blocks):
+    out = _stack_2d_np(shape_in_blocks, *blocks, axis=axis)
     if crop is None:
         return out
     return out[crop]
@@ -153,7 +172,13 @@ def slice_in_out(s: slice, n: int) -> Tuple[int, int]:
     return (start, stop)
 
 
-def roi_shape(roi: Tuple[slice, ...], shape: Optional[Tuple[int, ...]] = None) -> Tuple[int, ...]:
+def roi_shape(roi: ROI, shape: Optional[Union[int, Tuple[int, ...]]] = None) -> Tuple[int, ...]:
+    if isinstance(shape, int):
+        shape = (shape,)
+
+    if isinstance(roi, slice):
+        roi = (roi,)
+
     if shape is None:
         # Assume slices are normalised
         return tuple(s.stop - (s.start or 0) for s in roi)
@@ -163,9 +188,9 @@ def roi_shape(roi: Tuple[slice, ...], shape: Optional[Tuple[int, ...]] = None) -
                                    for s, n in zip(roi, shape)))
 
 
-def compute_chunk_range(span: slice,
-                        chunks: Tuple[int, ...],
-                        summed: bool = False) -> Tuple[slice, slice]:
+def _compute_chunk_range(span: slice,
+                         chunks: Tuple[int, ...],
+                         summed: bool = False) -> Tuple[slice, slice]:
     """
     Compute slice in chunk space and slice after taking just those chunks
 
@@ -173,8 +198,6 @@ def compute_chunk_range(span: slice,
     :param chunks: example: xx.chunks[0]
 
     """
-    from bisect import bisect_right, bisect_left
-
     cs = chunks if summed else tuple(np.cumsum(chunks))
     n = cs[-1]
 
@@ -189,33 +212,71 @@ def compute_chunk_range(span: slice,
     return slice(b_start, b_end), slice(offset, offset+sz)
 
 
-def extract_dense_2d(xx: da.Array, roi: Tuple[slice, ...], name: str = 'get_roi') -> da.Array:
+def compute_chunk_range(roi: ROI,
+                        chunks: Union[Tuple[int, ...], Tuple[Tuple[int, ...]]],
+                        summed: bool = False) -> Tuple[ROI, ROI]:
     """
-    xx[roi] -> Dask array with 1 single chunk
-    """
-    assert len(roi) == xx.ndim
-    assert xx.ndim == 2
+    Convert ROI in pixels to ROI in blocks (broi) + ROI in pixels (crop) such that
 
+       xx[roi] == stack_blocks(blocks(xx)[broi])[crop]
+
+    Returns
+    =======
+      broi, crop
+    """
+    if isinstance(roi, slice):
+        chunks = cast(Tuple[int, ...], chunks)
+        return _compute_chunk_range(roi, chunks, summed)
+
+    chunks = cast(Tuple[Tuple[int, ...]], chunks)
+    assert len(roi) == len(chunks)
     broi = []
     crop = []
 
-    for span, chunks in zip(roi, xx.chunks):
-        bspan, pspan = compute_chunk_range(span, chunks)
+    for span, _chunks in zip(roi, chunks):
+        bspan, pspan = _compute_chunk_range(span, _chunks)
         broi.append(bspan)
         crop.append(pspan)
 
-    broi = tuple(broi)
-    crop = tuple(crop)
+    return tuple(broi), tuple(crop)
+
+
+def crop_2d_dense(xx: da.Array, yx_roi: Tuple[slice, slice], name: str = 'crop_2d', axis: int = 0) -> da.Array:
+    """
+    xx[.., yx_roi, ..] -> Dask array with 1 single chunk in y,x dimension
+    """
+    assert len(yx_roi) == 2
+
+    yx_broi, yx_crop = compute_chunk_range(yx_roi, xx.chunks[axis:axis+2])
+    assert isinstance(yx_crop, tuple)
+    assert isinstance(yx_broi, tuple)
 
     xx_chunks = _chunk_getter(xx)
-    bshape = roi_shape(broi)
+    bshape = roi_shape(yx_broi)
+
+    #  tuple(*dims1, y, x, *dims2) -- complete shape in blocks
+    dims1 = tuple(map(len, xx.chunks[:axis]))
+    dims2 = tuple(map(len, xx.chunks[axis+2:]))
+
+    # Adjust crop to include non-yx dimensions
+    crop = tuple(slice(0, None) for _ in dims1) + yx_crop + tuple(slice(0, None) for _ in dims2)
 
     name = randomize(name)
     dsk = {}
-    dsk[(name, 0, 0)] = (_extract_as_one_block, crop, bshape, *xx_chunks(broi))
+    for ii1 in np.ndindex(dims1):
+        roi_ii1 = tuple(slice(i, i+1) for i in ii1)
+        for ii2 in np.ndindex(dims2):
+            roi_ii2 = tuple(slice(i, i+1) for i in ii2)
+            broi = roi_ii1 + yx_broi + roi_ii2
+            blocks = xx_chunks(broi)
+            assert len(blocks) == bshape[0]*bshape[1]
+            dsk[(name, *ii1, 0, 0, *ii2)] = (_extract_as_one_block, axis, crop, bshape, *blocks)
+
     dsk = HighLevelGraph.from_collections(name, dsk, dependencies=(xx,))
-    shape = roi_shape(crop)
-    chunks = tuple((n,) for n in shape)
+    yx_shape = roi_shape(yx_crop)
+    yx_chunks = tuple((n,) for n in yx_shape)
+    chunks = xx.chunks[:axis] + yx_chunks + xx.chunks[axis+2:]
+    shape = (*xx.shape[:axis], *yx_shape, *xx.shape[axis+2:])
 
     return da.Array(dsk, name,
                     chunks=chunks,

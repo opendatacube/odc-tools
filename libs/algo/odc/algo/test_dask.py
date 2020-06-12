@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import dask.array as da
 import toolz
-from ._dask import _rechunk_2x2, _stack_2d_np, compute_chunk_range, extract_dense_2d
+from ._dask import _rechunk_2x2, _stack_2d_np, compute_chunk_range, crop_2d_dense
 
 
 def test_1():
@@ -46,6 +46,20 @@ def test_stack2d_np(shape, block_shape, verbose=False):
             print(f"x{cc.shape}")
 
 
+def test_stack2d_np_ndim(verbose=False):
+    shape = (4, 3)
+    h, w = shape
+
+    aa = np.zeros((10, 2, 3, 3), dtype='int8')
+    seq = [aa+i for i in range(w*h)]
+
+    cc = _stack_2d_np(shape, *seq, axis=1)
+    assert cc.shape == (10, 8, 9, 3)
+    if verbose:
+        print()
+        print(cc[0, :, :, 0])
+
+
 @pytest.mark.parametrize("span, chunks, summed, bspan, pspan", [
     (np.s_[:], (4, 4), False, slice(0, 2), slice(0, 8)),
     (np.s_[0:], (4, 4), False, slice(0, 2), slice(0, 8)),
@@ -66,20 +80,20 @@ def test_chunk_range(span, chunks, summed, bspan, pspan):
     assert _pspan == pspan
 
 
-@pytest.mark.parametrize("roi", [
+@pytest.mark.parametrize("yx_roi", [
     np.s_[:, :],
     np.s_[:1, :1],
     np.s_[3:, 1:],
     np.s_[3:-3, 1:-5],
     np.s_[3:-3, -5:],
 ])
-def test_extract_one_block(roi):
+def test_crop_2d_dense(yx_roi):
     xx = da.random.uniform(0, 10, size=(16, 6),
                            chunks=(4, 3)).astype('uint8')
 
-    yy = extract_dense_2d(xx, roi)
+    yy = crop_2d_dense(xx, yx_roi)
     assert xx.dtype == yy.dtype
-    assert yy.shape == xx[roi].shape
+    assert yy.shape == xx[yx_roi].shape
     assert yy.shape == yy.chunksize
 
-    assert (xx[roi].compute() == yy.compute()).all()
+    assert (xx[yx_roi].compute() == yy.compute()).all()
