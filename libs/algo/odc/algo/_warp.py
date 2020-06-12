@@ -3,12 +3,14 @@ Dask aware reproject implementation
 """
 from typing import Tuple, Optional, Union, Dict, Any
 import numpy as np
-# import xarray as xr
+import xarray as xr
+from dask import is_dask_collection
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
 from ._dask import randomize, crop_2d_dense, unpack_chunksize, empty_maker
 from datacube.utils.geometry import GeoBox, rio_reproject, compute_reproject_roi
 from datacube.utils.geometry.gbox import GeoboxTiles
+from datacube.utils import spatial_dims
 
 NodataType = Union[int, float]
 
@@ -120,3 +122,56 @@ def dask_reproject(src: da.Array,
                     chunks=dst_chunks,
                     dtype=src.dtype,
                     shape=dst_shape)
+
+
+def xr_reproject_array(src: xr.DataArray,
+                       geobox: GeoBox,
+                       resampling: str = "nearest",
+                       chunks: Optional[Tuple[int, int]] = None,
+                       dst_nodata: Optional[NodataType] = None) -> xr.DataArray:
+    """
+    Rerpoject DataArray to a given GeoBox
+
+    :param src       : Input src[(time,) y,x (, band)]
+    :param dst_geobox: GeoBox of the destination
+    :param resampling: Resampling strategy as a string: nearest, bilinear, average, mode ...
+    :param chunks    : In Y,X dimensions only, default is to use input chunk size
+    :param dst_nodata: nodata marker for dst image (default is to use src.nodata)
+    """
+    if dst_nodata is None:
+        dst_nodata = src.nodata
+
+    assert is_dask_collection(src)
+    src_geobox = src.geobox
+
+    assert src_geobox is not None
+
+    yx_dims = spatial_dims(src)
+    axis = tuple(src.dims).index(yx_dims[0])
+
+    src_dims = tuple(src.dims)
+    dst_dims = src_dims[:axis] + geobox.dims + src_dims[axis+2:]
+
+    coords = geobox.xr_coords(with_crs=True)
+    for dim in src_dims:
+        if dim not in coords:
+            coords[dim] = src.coords[dim]
+
+    attrs = {}
+    if dst_nodata is not None:
+        attrs['nodata'] = dst_nodata
+
+    data = dask_reproject(src.data,
+                          src_geobox,
+                          geobox,
+                          resampling=resampling,
+                          chunks=chunks,
+                          src_nodata=src.nodata,
+                          dst_nodata=dst_nodata,
+                          axis=axis)
+
+    return xr.DataArray(data,
+                        name=src.name,
+                        coords=coords,
+                        dims=dst_dims,
+                        attrs=attrs)

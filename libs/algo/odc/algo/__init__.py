@@ -34,7 +34,8 @@ from ._rgba import (
 )
 
 from ._warp import (
-    dask_reproject
+    dask_reproject,
+    xr_reproject_array,
 )
 
 __all__ = (
@@ -58,4 +59,5 @@ __all__ = (
     "to_rgba",
     "to_rgba_np",
     "dask_reproject",
+    "xr_reproject_array",
 )
