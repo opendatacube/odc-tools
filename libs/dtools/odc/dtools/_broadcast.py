@@ -47,7 +47,7 @@ def pool_broadcast(client: Client,
     Broadcast is achieved by blocking every task until all tasks have started,
     every worker does the following:
 
-    1. Let master task know this task has started
+    1. Let the primary task know this task has started
     2. Perform action
     3. Wait for all other tasks to start
     4. Finish

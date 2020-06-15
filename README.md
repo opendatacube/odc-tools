@@ -10,8 +10,8 @@ DEA Prototype Code
 Installation
 ============
 
-This repository provides a number of small [libraries](https://github.com/opendatacube/odc-tools/tree/master/libs)
-and [CLI tools](https://github.com/opendatacube/odc-tools/tree/master/apps).
+This repository provides a number of small [libraries](https://github.com/opendatacube/odc-tools/tree/develop/libs)
+and [CLI tools](https://github.com/opendatacube/odc-tools/tree/develop/apps).
 
 Full list of libraries, and install instructions:
 
