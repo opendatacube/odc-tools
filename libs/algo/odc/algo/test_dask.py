@@ -19,6 +19,7 @@ def test_1():
     (3, 9, (3, 3, 3)),
     (8, 8, (8,)),
     (1, 3, (1, 1, 1)),
+    (10, 3, (3,)),
 ])
 def test_unpack_chunks(chunk, n, expect):
     assert unpack_chunksize(chunk, n) == expect
