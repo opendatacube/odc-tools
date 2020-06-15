@@ -142,7 +142,7 @@ def xr_reproject_array(src: xr.DataArray,
     Rerpoject DataArray to a given GeoBox
 
     :param src       : Input src[(time,) y,x (, band)]
-    :param dst_geobox: GeoBox of the destination
+    :param geobox    : GeoBox of the destination
     :param resampling: Resampling strategy as a string: nearest, bilinear, average, mode ...
     :param chunks    : In Y,X dimensions only, default is to use input chunk size
     :param dst_nodata: nodata marker for dst image (default is to use src.nodata)
@@ -191,3 +191,32 @@ def xr_reproject_array(src: xr.DataArray,
                         coords=coords,
                         dims=dst_dims,
                         attrs=attrs)
+
+
+def xr_reproject(src: Union[xr.DataArray, xr.Dataset],
+                 geobox: GeoBox,
+                 resampling: str = "nearest",
+                 chunks: Optional[Tuple[int, int]] = None,
+                 dst_nodata: Optional[NodataType] = None) -> Union[xr.DataArray, xr.Dataset]:
+    """
+    Rerpoject DataArray to a given GeoBox
+
+    :param src       : Input src[(time,) y, x]
+    :param geobox    : GeoBox of the destination
+    :param resampling: Resampling strategy as a string: nearest, bilinear, average, mode ...
+    :param chunks    : In Y,X dimensions only, default is to use input chunk size (ignored if input is not a dask array)
+    :param dst_nodata: nodata marker for dst image (default is to use src.nodata)
+    """
+
+    if isinstance(src, xr.DataArray):
+        return xr_reproject_array(src, geobox,
+                                  resampling=resampling,
+                                  chunks=chunks,
+                                  dst_nodata=dst_nodata)
+
+    bands = {name: xr_reproject_array(band,
+                                      geobox,
+                                      resampling=resampling,
+                                      chunks=chunks) for name, band in src.data_vars.items()}
+
+    return xr.Dataset(data_vars=bands)
