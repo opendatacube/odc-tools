@@ -25,14 +25,23 @@ def _reproject_block_impl(src: np.ndarray,
     dst_shape = src.shape[:axis] + dst_geobox.shape + src.shape[axis+2:]
     dst = np.empty(dst_shape, dtype=src.dtype)
 
-    for prefix in np.ndindex(src.shape[:axis]):
-        rio_reproject(src[prefix],
-                      dst[prefix],
+    if dst.ndim == 2 or (dst.ndim == 3 and axis == 1):
+        rio_reproject(src,
+                      dst,
                       src_geobox,
                       dst_geobox,
                       resampling,
                       src_nodata,
                       dst_nodata)
+    else:
+        for prefix in np.ndindex(src.shape[:axis]):
+            rio_reproject(src[prefix],
+                          dst[prefix],
+                          src_geobox,
+                          dst_geobox,
+                          resampling,
+                          src_nodata,
+                          dst_nodata)
     return dst
 
 
