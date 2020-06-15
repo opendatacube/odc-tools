@@ -2,7 +2,7 @@
 Generic dask helpers
 """
 
-from typing import Tuple, Union, Optional, cast
+from typing import Tuple, Union, cast
 from random import randint
 from bisect import bisect_right, bisect_left
 import numpy as np
@@ -10,8 +10,7 @@ from dask.distributed import wait as dask_wait
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
 from toolz import partition_all
-
-ROI = Union[slice, Tuple[slice, ...]]
+from ._tools import ROI, roi_shape, slice_in_out
 
 
 def chunked_persist(data, n_concurrent, client, verbose=False):
@@ -195,32 +194,6 @@ def _rechunk_2x2(xx, name='2x2'):
     dsk = HighLevelGraph.from_collections(name, dsk, dependencies=(xx,))
 
     return da.Array(dsk, name, chunks=chunks, dtype=xx.dtype, shape=xx.shape)
-
-
-def slice_in_out(s: slice, n: int) -> Tuple[int, int]:
-    def fill_if_none(x: Optional[int], val_if_none: int) -> int:
-        return val_if_none if x is None else x
-
-    start = fill_if_none(s.start, 0)
-    stop = fill_if_none(s.stop, n)
-    start, stop = [x if x >= 0 else n+x for x in (start, stop)]
-    return (start, stop)
-
-
-def roi_shape(roi: ROI, shape: Optional[Union[int, Tuple[int, ...]]] = None) -> Tuple[int, ...]:
-    if isinstance(shape, int):
-        shape = (shape,)
-
-    if isinstance(roi, slice):
-        roi = (roi,)
-
-    if shape is None:
-        # Assume slices are normalised
-        return tuple(s.stop - (s.start or 0) for s in roi)
-
-    return tuple(_out - _in
-                 for _in, _out in (slice_in_out(s, n)
-                                   for s, n in zip(roi, shape)))
 
 
 def _compute_chunk_range(span: slice,
