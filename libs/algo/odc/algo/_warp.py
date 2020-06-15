@@ -150,9 +150,7 @@ def xr_reproject_array(src: xr.DataArray,
     if dst_nodata is None:
         dst_nodata = src.nodata
 
-    assert is_dask_collection(src)
     src_geobox = src.geobox
-
     assert src_geobox is not None
 
     yx_dims = spatial_dims(src)
@@ -170,14 +168,23 @@ def xr_reproject_array(src: xr.DataArray,
     if dst_nodata is not None:
         attrs['nodata'] = dst_nodata
 
-    data = dask_reproject(src.data,
-                          src_geobox,
-                          geobox,
-                          resampling=resampling,
-                          chunks=chunks,
-                          src_nodata=src.nodata,
-                          dst_nodata=dst_nodata,
-                          axis=axis)
+    if is_dask_collection(src):
+        data = dask_reproject(src.data,
+                              src_geobox,
+                              geobox,
+                              resampling=resampling,
+                              chunks=chunks,
+                              src_nodata=src.nodata,
+                              dst_nodata=dst_nodata,
+                              axis=axis)
+    else:
+        data = _reproject_block_impl(src.data,
+                                     src_geobox,
+                                     geobox,
+                                     resampling=resampling,
+                                     src_nodata=src.nodata,
+                                     dst_nodata=dst_nodata,
+                                     axis=axis)
 
     return xr.DataArray(data,
                         name=src.name,
