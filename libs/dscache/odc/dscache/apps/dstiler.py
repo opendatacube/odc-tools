@@ -2,10 +2,9 @@ import click
 from odc import dscache
 from odc.dscache.tools.tiling import bin_by_native_tile, web_gs, extract_native_albers_tile
 from datacube.model import GridSpec
-import datacube.utils.geometry as geom
 from odc.index import bin_dataset_stream
 
-GS_ALBERS = GridSpec(crs=geom.CRS('EPSG:3577'),
+GS_ALBERS = GridSpec(crs='EPSG:3577',
                      tile_size=(100000.0, 100000.0),
                      resolution=(-25, 25))
 
@@ -14,9 +13,9 @@ GS_ALBERS = GridSpec(crs=geom.CRS('EPSG:3577'),
 @click.option('--native', is_flag=True, help='Use Landsat Path/Row as grouping')
 @click.option('--native-albers', is_flag=True, help='When datasets are in Albers grid already')
 @click.option('--web', type=int, help='Use web map tiling regime at supplied zoom level')
-@click.option('--crs', type=str, help="Custom gridspec: crs")
-@click.option('--resolution', type=str, help="Custom gridspec: resolution_y,resolution_x")
-@click.option('--shape', type=str, help="Custom gridspec: shape_y,shape_x")
+@click.option('--crs', type=str, help="Custom gridspec: CRS code")
+@click.option('--resolution', type=str, help="Custom gridspec: resolution in CRS units per pixel in y,x order")
+@click.option('--shape', type=str, help="Custom gridspec: shape of tile in pixel in y,x order")
 @click.option('--bin-format', type=str, help="Custom gridspec: format of bin group key")
 @click.argument('dbfile', type=str, nargs=1)
 def cli(native, native_albers, web, crs, resolution, shape, bin_format, dbfile):
@@ -49,7 +48,7 @@ def cli(native, native_albers, web, crs, resolution, shape, bin_format, dbfile):
         resolution = [float(comp) for comp in resolution.split(',')]
         shape = [float(comp) for comp in shape.split(',')]
         tile_size = [abs(res * shp) for res, shp in zip(resolution, shape)]
-        gs = GridSpec(crs=geom.CRS(crs), tile_size=tile_size, resolution=resolution)
+        gs = GridSpec(crs=crs, tile_size=tile_size, resolution=resolution)
         binner = lambda dss: bin_dataset_stream(gs, dss)
     else:
         group_key_fmt = 'albers/{:03d}_{:03d}'
