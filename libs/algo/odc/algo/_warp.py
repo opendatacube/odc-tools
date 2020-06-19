@@ -147,8 +147,9 @@ def xr_reproject_array(src: xr.DataArray,
     :param chunks    : In Y,X dimensions only, default is to use input chunk size
     :param dst_nodata: nodata marker for dst image (default is to use src.nodata)
     """
+    src_nodata = getattr(src, 'nodata', None)
     if dst_nodata is None:
-        dst_nodata = src.nodata
+        dst_nodata = src_nodata
 
     src_geobox = src.geobox
     assert src_geobox is not None
@@ -174,7 +175,7 @@ def xr_reproject_array(src: xr.DataArray,
                               geobox,
                               resampling=resampling,
                               chunks=chunks,
-                              src_nodata=src.nodata,
+                              src_nodata=src_nodata,
                               dst_nodata=dst_nodata,
                               axis=axis)
     else:
@@ -182,7 +183,7 @@ def xr_reproject_array(src: xr.DataArray,
                                      src_geobox,
                                      geobox,
                                      resampling=resampling,
-                                     src_nodata=src.nodata,
+                                     src_nodata=src_nodata,
                                      dst_nodata=dst_nodata,
                                      axis=axis)
 
