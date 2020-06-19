@@ -45,6 +45,21 @@ def _reproject_block_impl(src: np.ndarray,
     return dst
 
 
+def _reproject_block_bool_impl(src: np.ndarray,
+                               src_geobox: GeoBox,
+                               dst_geobox: GeoBox,
+                               resampling: str = 'nearest',
+                               src_nodata: Optional[NodataType] = None,
+                               dst_nodata: Optional[NodataType] = None,
+                               axis: int = 0) -> np.ndarray:
+    assert src.dtype == 'bool'
+    assert src_nodata is None
+    assert dst_nodata is None
+    src = src.astype('uint8') << 7  # False:0, True:128
+    dst = _reproject_block_impl(src, src_geobox, dst_geobox, resampling=resampling, axis=axis)
+    return dst > 64
+
+
 def dask_reproject(src: da.Array,
                    src_geobox: GeoBox,
                    dst_geobox: GeoBox,
@@ -93,6 +108,8 @@ def dask_reproject(src: da.Array,
     name = randomize(name)
     dsk: Dict[Any, Any] = {}
 
+    block_impl = _reproject_block_bool_impl if src.dtype == 'bool' else _reproject_block_impl
+
     for idx in xy_chunks_with_data:
         _dst_geobox = gbt[idx]
         rr = compute_reproject_roi(src_geobox, _dst_geobox)
@@ -103,7 +120,7 @@ def dask_reproject(src: da.Array,
 
         for ii1 in np.ndindex(dims1):
             # TODO: band dims
-            dsk[(name, *ii1, *idx)] = (_reproject_block_impl,
+            dsk[(name, *ii1, *idx)] = (block_impl,
                                        (_src.name, *ii1, 0, 0),
                                        _src_geobox,
                                        _dst_geobox,
