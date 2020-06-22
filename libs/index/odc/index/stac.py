@@ -45,7 +45,7 @@ def _get_stac_bands(item, default_grid='g10m'):
             continue
 
         transform = asset['proj:transform']
-        grid = f'res:g{transform[0]}m'
+        grid = f'g{transform[0]:g}m'
 
         if grid not in grids:
             grids[grid] = {
