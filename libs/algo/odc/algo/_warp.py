@@ -156,7 +156,7 @@ def xr_reproject_array(src: xr.DataArray,
                        chunks: Optional[Tuple[int, int]] = None,
                        dst_nodata: Optional[NodataType] = None) -> xr.DataArray:
     """
-    Rerpoject DataArray to a given GeoBox
+    Reproject DataArray to a given GeoBox
 
     :param src       : Input src[(time,) y,x (, band)]
     :param geobox    : GeoBox of the destination
@@ -217,7 +217,7 @@ def xr_reproject(src: Union[xr.DataArray, xr.Dataset],
                  chunks: Optional[Tuple[int, int]] = None,
                  dst_nodata: Optional[NodataType] = None) -> Union[xr.DataArray, xr.Dataset]:
     """
-    Rerpoject DataArray to a given GeoBox
+    Reproject DataArray to a given GeoBox
 
     :param src       : Input src[(time,) y, x]
     :param geobox    : GeoBox of the destination
