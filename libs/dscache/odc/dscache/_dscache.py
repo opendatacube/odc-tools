@@ -1,7 +1,12 @@
+from typing import Tuple, Dict, List
+from uuid import UUID
+
 import toolz
-from datacube.model import Dataset
+from datacube.model import Dataset, GridSpec
+from datacube.utils.geometry import CRS
 from . import _jsoncache as base
 
+from odc.io.text import split_and_check
 
 def ds2doc(ds):
     return (ds.id, dict(uris=ds.uris,
@@ -17,6 +22,20 @@ def doc2ds(doc, products):
     if p is None:
         raise ValueError('No product named: %s' % doc['product'])
     return Dataset(p, doc['metadata'], uris=doc['uris'])
+
+
+def gs2doc(gs: GridSpec):
+    return dict(crs=str(gs.crs),
+                tile_size=list(gs.tile_size),
+                resolution=list(gs.resolution),
+                origin=list(gs.origin))
+
+
+def doc2gs(doc):
+    return GridSpec(crs=CRS(doc['crs']),
+                    tile_size=tuple(doc['tile_size']),
+                    resolution=tuple(doc['resolution']),
+                    origin=tuple(doc['origin']))
 
 
 def build_dc_product_map(metadata_json, products_json):
@@ -59,6 +78,27 @@ def train_dictionary(dss, dict_sz=8*1024):
     return base.train_dictionary(docs, dict_sz=dict_sz)
 
 
+def mk_group_name(idx: Tuple[int, int], name: str = "unnamed_grid") -> str:
+    return f"{name}/{idx[0]:+05d}/{idx[1]:+05d}"
+
+
+def parse_group_name(group_name: str) -> Tuple[Tuple[int, int], str]:
+    """ Return an ((int, int), prefix:str) tuple from group name.
+
+        Expects group to be in the form {prefix}/{x}/{y}
+
+        raises ValueError if group_name is not in the expected format.
+    """
+
+    try:
+        prefix, x, y = split_and_check(group_name, '/', 3)
+        x, y = map(int, (x, y))
+    except ValueError:
+        raise ValueError('Bad group name: ' + group_name)
+
+    return (x, y), prefix
+
+
 class DatasetCache(object):
     """
     info:
@@ -66,6 +106,7 @@ class DatasetCache(object):
        zdict: pre-trained compression dictionary, optional
        product/{name}: json
        metadata/{name}: json
+       grid/{name}: json
 
     groups:
        Each group is named list of uuids
@@ -176,6 +217,41 @@ class DatasetCache(object):
     def stream_group(self, group_name):
         for _, v in self._db.stream_group(group_name):
             yield doc2ds(v, self._products)
+
+    @property
+    def grids(self):
+        """Grids defined for this dataset cache"""
+        return {key: doc2gs(value)
+                for key, value in self._db.get_info_dict("grid/").items()}
+
+    def add_grid(self, gs: GridSpec, name: str):
+        """Register a grid"""
+        self._db.append_info_dict("grid/", {name: gs2doc(gs)})
+
+    def add_grid_tile(self, grid: str, idx, dss):
+        """Add list of dataset UUIDs to a tile"""
+        key = mk_group_name(idx, grid)
+        self._db.put_group(key, dss)
+
+    def add_grid_tiles(self, grid: str, tiles: Dict[Tuple[int, int], List[UUID]]):
+        """Add multiple tiles to a grid"""
+        for idx, dss in tiles.items():
+            self.add_grid_tile(grid, idx, dss)
+
+    def tiles(self, grid: str) -> List[Tuple[Tuple[int, int], int]]:
+        """Return tile indexes and dataset counts"""
+
+        def tile_index(group_name):
+            idx, prefix = parse_group_name(group_name)
+            assert prefix == grid
+            return idx
+
+        return [(tile_index(group_name), count)
+                for group_name, count in self.groups(prefix=grid + '/')]
+
+    def stream_grid_tiles(self, idx: Tuple[int,int], grid: str):
+        """Iterate over datasets in tile"""
+        return self.stream_group(mk_group_name(idx, grid))
 
 
 def open_ro(path,

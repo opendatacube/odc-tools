@@ -5,6 +5,9 @@ import datacube
 from odc import dscache
 from odc.dscache.tools import db_connect, raw_dataset_stream, mk_raw2ds
 from odc.dscache.tools import dictionary_from_product_list
+from odc.dscache.tools.tiling import parse_gridspec
+from odc.dscache._dscache import doc2ds
+from odc.index import bin_dataset_stream
 
 
 EOS = object()
@@ -28,9 +31,12 @@ def qmap(proc, q, eos_marker=None):
 @click.command('slurpy')
 @click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.option('-z', 'complevel', type=int, default=6, help='Compression setting for zstandard 1-fast, 9+ good but slow')
+@click.option('--grid', type=str,
+              help="Grid spec or name 'crs;pixel_resolution;shape_in_pixels'",
+              default=None)
 @click.argument('output', type=str, nargs=1)
 @click.argument('products', type=str, nargs=-1)
-def cli(env, output, products, complevel):
+def cli(env, grid, output, products, complevel):
 
     if len(products) == 0:
         click.echo('Have to supply at least one product')
@@ -85,10 +91,25 @@ def cli(env, output, products, complevel):
     dss = qmap(lambda ds: ds, q, eos_marker=EOS)
     dss = cache.tee(dss)
 
+    cells = {}
+    if grid is not None:
+        gs = parse_gridspec(grid)
+        # TODO for named gridspecs should we use the name as group_prefix?
+        group_prefix = f"epsg{gs.crs.epsg:d}"
+        cache.add_grid(gs, group_prefix)
+        dss = bin_dataset_stream(gs, (doc2ds(doc, cache.products) for uuid, doc in dss), cells)
+
     label = 'Processing ({:8,d})'.format(n_total)
     with click.progressbar(dss, label=label, length=n_total) as dss:
         for ds in dss:
             pass
+
+    if grid is not None:
+        click.echo('Total bins: {:d}'.format(len(cells)))
+
+        with click.progressbar(cells.values(), length=len(cells), label='Saving') as groups:
+            for group in groups:
+                cache.add_grid_tile(group_prefix, group.idx, group.dss)
 
     db_thread.join()
     cache.close()

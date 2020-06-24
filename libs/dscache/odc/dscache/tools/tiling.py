@@ -6,6 +6,7 @@ from datacube.utils.geometry import CRS
 from datacube.model import GridSpec, Dataset
 from odc.io.text import split_and_check, parse_range_int
 
+
 epsg3577 = CRS('epsg:3577')
 epsg6933 = CRS('epsg:6933')
 
@@ -70,10 +71,11 @@ def extract_ls_path_row(ds: Dataset) -> Optional[Tuple[int, int]]:
             int(full_id[6:9]))
 
 
-def bin_by_native_tile(dss, persist=None, native_tile_id=None):
+def bin_by_native_tile(dss, cells, persist=None, native_tile_id=None):
     """Group datasets by native tiling, like path/row for Landsat.
 
     :param dss: Sequence of datasets (can be lazy)
+    :param cells: Dictionary to populate with tiles
 
     :param persist: Dataset -> SomeThing mapping, defaults to keeping dataset
     id only
@@ -82,8 +84,6 @@ def bin_by_native_tile(dss, persist=None, native_tile_id=None):
     tuple from metadata's `tile_id` field, but could be anything, only
     constraint is that Key value can be used as index to python dict.
     """
-
-    cells = {}
 
     def default_persist(ds):
         return ds.id
@@ -105,29 +105,7 @@ def bin_by_native_tile(dss, persist=None, native_tile_id=None):
             raise ValueError('Missing tile id')
         else:
             register(tile, ds_val)
-
-    return cells
-
-
-def parse_group_name(group_name: str) -> Tuple[Tuple[int, int], str]:
-    """ Return an ((int, int), prefix:str) tuple from group name.
-
-        Expects group to be in the form {prefix}/{x}/{y}
-
-        raises ValueError if group_name is not in the expected format.
-    """
-
-    try:
-        prefix, x, y = split_and_check(group_name, '/', 3)
-        x, y = map(int, (x, y))
-    except ValueError:
-        raise ValueError('Bad group name: ' + group_name)
-
-    return (x, y), prefix
-
-
-def mk_group_name(idx: Tuple[int, int], name: str = "grid") -> str:
-    return f"{name}/{idx[0]:+05d}/{idx[1]:+05d}"
+        yield ds
 
 
 def parse_gridspec(s: str) -> GridSpec:

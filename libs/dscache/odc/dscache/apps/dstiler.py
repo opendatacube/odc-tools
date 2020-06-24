@@ -1,11 +1,13 @@
+from functools import partial
+
 import click
 from odc import dscache
 from odc.dscache.tools.tiling import (
     bin_by_native_tile,
     web_gs,
     extract_native_albers_tile,
-    parse_gridspec,
-    mk_group_name)
+    parse_gridspec)
+from odc.dscache._dscache import mk_group_name
 from odc.index import bin_dataset_stream
 
 
@@ -37,33 +39,35 @@ def cli(native, native_albers, web, grid, dbfile):
     group_prefix = 'grid'
     gs = None
 
+    cells = {}
     if native:
         group_prefix = 'native'
-        binner = bin_by_native_tile
+        binner = partial(bin_by_native_tile, cells=cells)
     elif native_albers:
         group_prefix = 'albers'
-        binner = lambda dss: bin_by_native_tile(dss, native_tile_id=extract_native_albers_tile)
+        binner = lambda dss: bin_by_native_tile(dss, cells, native_tile_id=extract_native_albers_tile)
     elif web is not None:
         gs = web_gs(web)
         group_prefix = 'web_' + str(web)
-        binner = lambda dss: bin_dataset_stream(gs, dss)
+        binner = lambda dss: bin_dataset_stream(gs, dss, cells)
     else:
         gs = parse_gridspec(grid)
         group_prefix = f"epsg{gs.crs.epsg:d}"
-        binner = lambda dss: bin_dataset_stream(gs, dss)
+        binner = lambda dss: bin_dataset_stream(gs, dss, cells)
 
     if gs is not None:
         click.echo(f'Using gridspec: {gs}')
+        cache.add_grid(gs, group_prefix)
 
     with click.progressbar(cache.get_all(), length=cache.count, label=label) as dss:
-        bins = binner(dss)
+        for ds in binner(dss):
+            pass
 
-    click.echo('Total bins: {:d}'.format(len(bins)))
+    click.echo('Total bins: {:d}'.format(len(cells)))
 
-    with click.progressbar(bins.values(), length=len(bins), label='Saving') as groups:
+    with click.progressbar(cells.values(), length=len(cells), label='Saving') as groups:
         for group in groups:
-            k = mk_group_name(group.idx, group_prefix)
-            cache.put_group(k, group.dss)
+            cache.add_grid_tile(group_prefix, group.idx, group.dss)
 
 
 if __name__ == '__main__':
