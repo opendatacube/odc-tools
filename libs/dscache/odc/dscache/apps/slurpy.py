@@ -6,7 +6,6 @@ from odc import dscache
 from odc.dscache.tools import db_connect, raw_dataset_stream, mk_raw2ds
 from odc.dscache.tools import dictionary_from_product_list
 from odc.dscache.tools.tiling import parse_gridspec
-from odc.dscache._dscache import doc2ds
 from odc.index import bin_dataset_stream
 
 
@@ -97,7 +96,7 @@ def cli(env, grid, output, products, complevel):
         # TODO for named gridspecs should we use the name as group_prefix?
         group_prefix = f"epsg{gs.crs.epsg:d}"
         cache.add_grid(gs, group_prefix)
-        dss = bin_dataset_stream(gs, (doc2ds(doc, cache.products) for uuid, doc in dss), cells)
+        dss = bin_dataset_stream(gs, dss, cells)
 
     label = 'Processing ({:8,d})'.format(n_total)
     with click.progressbar(dss, label=label, length=n_total) as dss:
