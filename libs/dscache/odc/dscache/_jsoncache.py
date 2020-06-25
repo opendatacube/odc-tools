@@ -218,13 +218,16 @@ class JsonBlobCache(object):
         finally:
             self._current_transaction = None
 
-    def tee(self, docs, max_transaction_size=10000):
+    def tee(self, docs, max_transaction_size=10000, transform=None):
         """Given a lazy stream of (k,v) pairs persist them to disk and then pass through
         for further processing.
         :docs: stream of documents (uuid, {..}) pairs
         :max_transaction_size int: How often to commit results to disk
+        :transform: If docs contains some other objects you can supply mapping from that Data type to Tuple[uuid, dict]
         """
         have_some = True
+        if transform is None:
+            transform = lambda x: x
 
         try:
             while have_some:
@@ -233,7 +236,7 @@ class JsonBlobCache(object):
                     have_some = False
                     for ds in itertools.islice(docs, max_transaction_size):
                         have_some = True
-                        self._doc_save(ds, tr)
+                        self._doc_save(transform(ds), tr)
                         yield ds
         finally:
             self._current_transaction = None

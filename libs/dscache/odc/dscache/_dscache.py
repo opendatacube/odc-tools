@@ -203,8 +203,7 @@ class DatasetCache(object):
         :dss: stream of datasets
         :max_transaction_size int: How often to commit results to disk
         """
-        docs = (self._ds2doc(ds) for ds in dss)
-        return self._db.tee(docs, max_transaction_size=max_transaction_size)
+        return self._db.tee(dss, max_transaction_size=max_transaction_size, transform=self._ds2doc)
 
     def get(self, uuid):
         """Extract single dataset with a given uuid, or return None if not found"""
