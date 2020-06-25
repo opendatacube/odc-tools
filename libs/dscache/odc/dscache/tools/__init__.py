@@ -1,6 +1,15 @@
 """
 """
+from typing import List
 import random
+import xarray as xr
+import numpy as np
+from datacube import Datacube
+from datacube.model import Dataset
+from datacube.utils.dates import normalise_dt
+from datacube.api.grid_workflow import Tile
+from datacube.api.query import query_group_by
+
 from .. import train_dictionary
 
 
@@ -81,7 +90,6 @@ def mk_raw2ds(products):
     see `raw_dataset_stream`
 
     """
-    from datacube.model import Dataset
 
     def raw2ds(ds):
         product = products.get(ds['product'], None)
@@ -152,7 +160,6 @@ class DcTileExtract(object):
                  group_by='time',
                  key_fmt=None,
                  grid_spec=None):
-        from datacube.api.query import query_group_by
 
         self._cache = cache
         self._grouper = query_group_by(group_by=group_by)
@@ -160,9 +167,6 @@ class DcTileExtract(object):
         self._key_fmt = 'albers/{:03d}_{:03d}' if key_fmt is None else key_fmt
 
     def __call__(self, tile_idx, _y=None):
-        from datacube import Datacube
-        from datacube.api.grid_workflow import Tile
-
         if _y is not None:
             tile_idx = (tile_idx, _y)
 
@@ -172,3 +176,22 @@ class DcTileExtract(object):
         geobox = self._grid_spec.tile_geobox(tile_idx)
         sources = Datacube.group_datasets(dss, self._grouper)
         return Tile(sources, geobox)
+
+
+def group_by_nothing(dss: List[Dataset]) -> xr.DataArray:
+    """
+    Construct "sources" just like ``.group_dataset`` but with every slice
+    containing just one Dataset object wrapped in a tuple.
+
+    Time -> (Dataset,)
+    """
+    dss = sorted(dss, key=lambda ds: (normalise_dt(ds.center_time), ds.id))
+    time = np.asarray([np.datetime64(normalise_dt(ds.center_time)) for ds in dss])
+    data = np.empty(len(dss), dtype='O')
+
+    for i, ds in enumerate(dss):
+        data[i] = (ds,)
+
+    return xr.DataArray(data=data,
+                        coords=dict(time=time),
+                        dims=('time',))
