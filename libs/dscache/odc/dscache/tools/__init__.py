@@ -8,7 +8,6 @@ from datacube import Datacube
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.api.grid_workflow import Tile
-from datacube.api.query import query_group_by
 
 from .. import train_dictionary
 
@@ -157,24 +156,32 @@ class DcTileExtract(object):
     """
 
     def __init__(self, cache,
-                 group_by='time',
-                 key_fmt=None,
-                 grid_spec=None):
+                 grid=None,
+                 group_by='time'):
+
+        gs = cache.grids.get(grid, None)
+        if gs is None:
+            raise ValueError(f"No such grid: ${grid}")
 
         self._cache = cache
-        self._grouper = query_group_by(group_by=group_by)
-        self._grid_spec = gs_albers() if grid_spec is None else grid_spec
-        self._key_fmt = 'albers/{:03d}_{:03d}' if key_fmt is None else key_fmt
+        self._grid = grid
+        self._gs = gs
+        self._default_groupby = group_by
 
-    def __call__(self, tile_idx, _y=None):
+    def __call__(self, tile_idx, _y=None, group_by=None):
         if _y is not None:
             tile_idx = (tile_idx, _y)
 
-        k = self._key_fmt.format(*tile_idx)
-        dss = list(self._cache.stream_group(k))
+        if group_by is None:
+            group_by = self._default_groupby
 
-        geobox = self._grid_spec.tile_geobox(tile_idx)
-        sources = Datacube.group_datasets(dss, self._grouper)
+        dss = list(self._cache.stream_grid_tiles(tile_idx, grid=self._grid))
+        if group_by == "nothing":
+            sources = group_by_nothing(dss)
+        else:
+            sources = Datacube.group_datasets(dss, group_by)
+
+        geobox = self._gs.tile_geobox(tile_idx)
         return Tile(sources, geobox)
 
 
