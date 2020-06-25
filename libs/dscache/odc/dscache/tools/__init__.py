@@ -1,6 +1,6 @@
 """
 """
-from typing import List
+from typing import List, Dict, Any, Optional
 import random
 import xarray as xr
 import numpy as np
@@ -9,7 +9,7 @@ from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.api.grid_workflow import Tile
 
-from .. import train_dictionary
+from .. import train_dictionary, DatasetCache
 
 
 def dictionary_from_product_list(dc,
@@ -202,3 +202,44 @@ def group_by_nothing(dss: List[Dataset]) -> xr.DataArray:
     return xr.DataArray(data=data,
                         coords=dict(time=time),
                         dims=('time',))
+
+
+def grid_tiles_to_geojson(cache: DatasetCache,
+                          grid: str,
+                          style: Optional[Dict[str, Any]] = None,
+                          wrapdateline: bool = False) -> Dict[str, Any]:
+    """
+    Render tiles of a given grid to GeoJSON.
+
+    each tile is a GeoJSON Feature with following properties:
+
+     .title   -- str: grid index as a string
+     .count   -- int: count of datasets overlapping with this grid tile
+
+    :param cache: Dataset cache from which to read gridspec and tiles
+    :param grid: Name of the grid to dump
+    :param style: Optional style dictionary (will be included in every tile)
+    :param wrapdateline: If set check for lon=180 intersect and do "the right thing" (slower)
+    """
+    if style is None:
+        # these are understood by github renderer
+        style = {'fill-opacity': 0,
+                 'stroke-width': 0.5}
+
+    gs = cache.grids.get(grid, None)
+    if gs is None:
+        raise ValueError(f"No such grid: {grid}")
+
+    resolution = abs(gs.tile_size[0])/4  # up to 4 points per side
+
+    features = [dict(type='Feature',
+                     geometry=gs.tile_geobox(tidx).extent.to_crs('epsg:4326',
+                                                                 resolution=resolution,
+                                                                 wrapdateline=wrapdateline).json,
+                     properties={
+                         'title': f"{tidx[0]:+05d},{tidx[1]:+05d}",
+                         'count': cc,
+                         **style}) for tidx, cc in cache.tiles(grid)]
+
+    return {'type': 'FeatureCollection',
+            'features': features}
