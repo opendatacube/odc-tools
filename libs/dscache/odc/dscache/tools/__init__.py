@@ -175,7 +175,7 @@ class DcTileExtract(object):
         if group_by is None:
             group_by = self._default_groupby
 
-        dss = list(self._cache.stream_grid_tiles(tile_idx, grid=self._grid))
+        dss = list(self._cache.stream_grid_tile(tile_idx, grid=self._grid))
         if group_by == "nothing":
             sources = group_by_nothing(dss)
         else:

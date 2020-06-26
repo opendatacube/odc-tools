@@ -248,8 +248,8 @@ class DatasetCache(object):
         return [(tile_index(group_name), count)
                 for group_name, count in self.groups(prefix=grid + '/')]
 
-    def stream_grid_tiles(self, idx: Tuple[int,int], grid: str):
-        """Iterate over datasets in tile"""
+    def stream_grid_tile(self, idx: Tuple[int, int], grid: str):
+        """Iterate over datasets in a given tile"""
         return self.stream_group(mk_group_name(idx, grid))
 
 
