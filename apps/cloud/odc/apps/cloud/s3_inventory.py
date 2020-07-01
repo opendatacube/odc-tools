@@ -2,7 +2,7 @@ import re
 from fnmatch import fnmatch
 import sys
 import click
-from odc.aws import make_s3_client
+from odc.aws import s3_client
 from odc.aws.inventory import list_inventory
 
 
@@ -62,7 +62,7 @@ def cli(inventory, prefix, regex, glob, aws_profile):
         return 's3://{e.Bucket}/{e.Key}'.format(e=entry)
 
     flush_freq = 100
-    s3 = make_s3_client(profile=aws_profile)
+    s3 = s3_client(profile=aws_profile)
 
     if glob == '':
         glob = None

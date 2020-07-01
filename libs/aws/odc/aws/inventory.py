@@ -4,7 +4,7 @@ from gzip import GzipFile
 import csv
 import json
 
-from . import make_s3_client, s3_fetch, s3_ls_dir
+from . import s3_client, s3_fetch, s3_ls_dir
 
 
 def find_latest_manifest(prefix, s3):
@@ -22,7 +22,7 @@ def list_inventory(manifest, s3=None, **kw):
 
     manifest -- s3:// url to manifest.json or a folder in which case latest one is chosen.
     """
-    s3 = s3 or make_s3_client(**kw)
+    s3 = s3 or s3_client(**kw)
 
     if manifest.endswith('/'):
         manifest = find_latest_manifest(manifest, s3)
