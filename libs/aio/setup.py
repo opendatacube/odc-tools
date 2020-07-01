@@ -18,7 +18,7 @@ setup(
 
     tests_require=['pytest'],
     install_requires=[
-        'aiobotocore',
+        'aiobotocore >= 1.0',
         'botocore',
         'odc_aws',
         'odc_ppt',
