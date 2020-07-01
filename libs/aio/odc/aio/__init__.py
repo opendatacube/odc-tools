@@ -5,6 +5,7 @@ import aiobotocore
 from aiobotocore.config import AioConfig
 import asyncio
 from types import SimpleNamespace
+from typing import Optional, Iterator, Any
 
 from odc.aws import auto_find_region, s3_url_parse, s3_fmt_range, _aws_unsigned_check_env
 from odc.aws._find import norm_predicate, s3_file_info, parse_query
@@ -296,70 +297,6 @@ async def s3_walker(url, nconcurrent, s3,
     return step
 
 
-def s3_find_glob(glob_pattern: str, skip_check: bool):
-    """Build generator from supplied S3 URI glob pattern
-    Arguments:
-        glob_pattern {str} -- Glob pattern to filter S3 Keys by
-        skip_check {bool} -- Skip validity check for S3 Key
-    Raises:
-        ve: ValueError if the glob pattern cannot be parsed
-    """
-    def do_file_query(qq, pred):
-        for d in s3.dir_dir(qq.base, qq.depth):
-            _, _files = s3.list_dir(d).result()
-            for f in _files:
-                if pred(f):
-                    yield f
-
-    def do_file_query2(qq):
-        fname = qq.file
-
-        stream = s3.dir_dir(qq.base, qq.depth)
-
-        if skip_check:
-            yield from (SimpleNamespace(url=d+fname) for d in stream)
-            return
-
-        stream = (s3.head_object(d+fname) for d in stream)
-
-        for (f, _), _ in future_results(stream, 32):
-            if f is not None:
-                yield f
-
-    def do_dir_query(qq):
-        return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth))
-
-    try:
-        qq = parse_query(glob_pattern)
-    except ValueError as ve:
-        logging.error(f"URI glob-pattern not understood : {ve}")
-        raise ve
-
-    s3 = S3Fetcher()
-
-    glob_or_file = qq.glob or qq.file
-
-    if qq.depth is None and glob_or_file is None:
-        stream = s3.find(qq.base)
-    elif qq.depth is None or qq.depth < 0:
-        if qq.glob:
-            stream = s3.find(qq.base, glob=qq.glob)
-        elif qq.file:
-            postfix = '/'+qq.file
-            stream = s3.find(qq.base, pred=lambda o: o.url.endswith(postfix))
-    else:
-        # fixed depth query
-        if qq.glob is not None:
-            pred = norm_predicate(glob=qq.glob)
-            stream = do_file_query(qq, pred)
-        elif qq.file is not None:
-            stream = do_file_query2(qq)
-        else:
-            stream = do_dir_query(qq)
-
-    return stream
-
-
 class S3Fetcher(object):
     def __init__(self,
                  nconcurrent=24,
@@ -545,3 +482,72 @@ class S3Fetcher(object):
                 assert(not "s3_fetch_object should not raise exceptions, but did")
             else:
                 yield rr
+
+
+def s3_find_glob(glob_pattern: str,
+                 skip_check: bool = False,
+                 s3: Optional[S3Fetcher] = None) -> Iterator[Any]:
+    """
+    Build generator from supplied S3 URI glob pattern
+
+    Arguments:
+        glob_pattern {str} -- Glob pattern to filter S3 Keys by
+        skip_check {bool} -- Skip validity check for S3 Key
+    Raises:
+        ve: ValueError if the glob pattern cannot be parsed
+    """
+    if s3 is None:
+        s3 = S3Fetcher()
+
+    def do_file_query(qq, pred):
+        for d in s3.dir_dir(qq.base, qq.depth):
+            _, _files = s3.list_dir(d).result()
+            for f in _files:
+                if pred(f):
+                    yield f
+
+    def do_file_query2(qq):
+        fname = qq.file
+
+        stream = s3.dir_dir(qq.base, qq.depth)
+
+        if skip_check:
+            yield from (SimpleNamespace(url=d+fname) for d in stream)
+            return
+
+        stream = (s3.head_object(d+fname) for d in stream)
+
+        for (f, _), _ in future_results(stream, 32):
+            if f is not None:
+                yield f
+
+    def do_dir_query(qq):
+        return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth))
+
+    try:
+        qq = parse_query(glob_pattern)
+    except ValueError as ve:
+        logging.error(f"URI glob-pattern not understood : {ve}")
+        raise ve
+
+    glob_or_file = qq.glob or qq.file
+
+    if qq.depth is None and glob_or_file is None:
+        stream = s3.find(qq.base)
+    elif qq.depth is None or qq.depth < 0:
+        if qq.glob:
+            stream = s3.find(qq.base, glob=qq.glob)
+        elif qq.file:
+            postfix = '/'+qq.file
+            stream = s3.find(qq.base, pred=lambda o: o.url.endswith(postfix))
+    else:
+        # fixed depth query
+        if qq.glob is not None:
+            pred = norm_predicate(glob=qq.glob)
+            stream = do_file_query(qq, pred)
+        elif qq.file is not None:
+            stream = do_file_query2(qq)
+        else:
+            stream = do_dir_query(qq)
+
+    return stream
