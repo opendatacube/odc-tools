@@ -1,10 +1,12 @@
 import logging
 
+import botocore
 import aiobotocore
+from aiobotocore.config import AioConfig
 import asyncio
 from types import SimpleNamespace
 
-from odc.aws import auto_find_region, s3_url_parse, s3_fmt_range
+from odc.aws import auto_find_region, s3_url_parse, s3_fmt_range, _aws_unsigned_check_env
 from odc.aws._find import norm_predicate, s3_file_info, parse_query
 from odc.ppt import EOS_MARKER, future_results
 from odc.ppt.async_thread import AsyncThread
@@ -295,7 +297,7 @@ async def s3_walker(url, nconcurrent, s3,
 
 
 def s3_find_glob(glob_pattern: str, skip_check: bool):
-    """Build generator from supplied S3 URI glob pattern  
+    """Build generator from supplied S3 URI glob pattern
     Arguments:
         glob_pattern {str} -- Glob pattern to filter S3 Keys by
         skip_check {bool} -- Skip validity check for S3 Key
@@ -357,17 +359,26 @@ def s3_find_glob(glob_pattern: str, skip_check: bool):
 
     return stream
 
+
 class S3Fetcher(object):
     def __init__(self,
                  nconcurrent=24,
                  region_name=None,
-                 addressing_style='path'):
-        from aiobotocore.config import AioConfig
+                 addressing_style='path',
+                 aws_unsigned=None):
 
         if region_name is None:
             region_name = auto_find_region()
 
+        opts = {}
+        if aws_unsigned is None:
+            aws_unsigned = _aws_unsigned_check_env()
+
+        if aws_unsigned:
+            opts['signature_version'] = botocore.UNSIGNED
+
         s3_cfg = AioConfig(max_pool_connections=nconcurrent,
+                           **opts,
                            s3=dict(addressing_style=addressing_style))
 
         self._nconcurrent = nconcurrent
@@ -378,14 +389,16 @@ class S3Fetcher(object):
 
         async def setup(s3_cfg):
             session = aiobotocore.get_session()
-            s3 = session.create_client('s3',
-                                       region_name=region_name,
-                                       config=s3_cfg)
-            return (session, s3)
+            s3_ctx = session.create_client('s3',
+                                           region_name=region_name,
+                                           config=s3_cfg)
+            s3 = await s3_ctx.__aenter__()
+            return (session, s3, s3_ctx)
 
-        session, s3 = self._async.submit(setup, s3_cfg).result()
+        session, s3, s3_ctx = self._async.submit(setup, s3_cfg).result()
         self._session = session
         self._s3 = s3
+        self._s3_ctx = s3_ctx
 
     def close(self):
         async def _close(s3):
