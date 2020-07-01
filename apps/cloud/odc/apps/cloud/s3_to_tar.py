@@ -17,8 +17,10 @@ from odc.io.timer import RateEstimator
 @click.option('--verbose', '-v', is_flag=True, help='Be verbose')
 @click.option('--gzip', is_flag=True, help='Compress with gzip')
 @click.option('--xz', is_flag=True, help='Compress with xz')
+@click.option('--aws-unsigned', is_flag=True,
+              help='Do not sign AWS S3 requests')
 @click.argument("outfile", type=str, nargs=1, default='-')
-def cli(n, verbose, gzip, xz, outfile):
+def cli(n, verbose, gzip, xz, outfile, aws_unsigned=None):
     """ Fetch a bunch of s3 files into a tar archive.
 
     \b
@@ -58,7 +60,7 @@ def cli(n, verbose, gzip, xz, outfile):
         if verbose:
             print(' {}'.format(str(fps)), file=stderr)
 
-    fetcher = S3Fetcher(nconcurrent=nconnections)
+    fetcher = S3Fetcher(nconcurrent=nconnections, aws_unsigned=aws_unsigned)
     is_pipe = outfile == '-'
     tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe))
     if is_pipe:
