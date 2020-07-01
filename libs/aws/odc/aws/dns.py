@@ -1,6 +1,6 @@
 """ Tools for interacting with route53
 """
-from . import get_boto_session, _fetch_text
+from . import mk_boto_session, _fetch_text
 
 
 def public_ip():
@@ -20,7 +20,7 @@ def _find_zone_id(domain, route53):
 
 def dns_update(domain, ip=None, route53=None, ttl=300):
     if route53 is None:
-        route53 = get_boto_session().create_client('route53')
+        route53 = mk_boto_session().create_client('route53')
 
     domain = domain.rstrip('.') + '.'
     zone_id = _find_zone_id(domain, route53)
@@ -48,7 +48,7 @@ def dns_update(domain, ip=None, route53=None, ttl=300):
 
 def dns_delete(domain, route53=None):
     if route53 is None:
-        route53 = get_boto_session().create_client('route53')
+        route53 = mk_boto_session().create_client('route53')
 
     domain = domain.rstrip('.') + '.'
     zone_id = _find_zone_id(domain, route53)
