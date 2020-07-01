@@ -2,6 +2,7 @@
 
 """
 
+from typing import Dict, Tuple, Any, Iterable, Union
 import numpy as np
 import xarray as xr
 import dask
@@ -204,15 +205,81 @@ def _impl_to_bool_inverted(x, m):
     return ((1 << x) & m) == 0
 
 
-def fmask_to_bool(mask, categories, invert=False, flag_name=None):
-    """This method works for fmask and other "enumerated" masks, so long as
-    largest label for a category is <= 63.
+def _flags_invert(flags: Dict[str, Any]) -> Dict[str, Any]:
+    _out = dict(**flags)
+    _out['values'] = {n: int(v)
+                      for v, n in flags['values'].items()}
+    return _out
 
-    For non-fmask masks you might have to specify `flag_name: str`:
-    To see what name should be check this: `list(xx.your_mask.flags_definition)`
 
-    It is equivalent to `np.isin(mask, categories)`, but uses bit shifts to
-    speed things up, hence the limit <= 63
+def _get_enum_values(names: Iterable[str],
+                     flags_definition: Dict[str, Dict[str, Any]],
+                     flag: str = '') -> Tuple[int, ...]:
+    """
+    Lookup enum values in flags definition library
+
+    :param names: enum value to lookup e.g. ("cloud", "shadow")
+    :param flags_definition: Flags definition dictionary as used by Datacube
+    :param flag: Name of the enum (for example "fmask", auto-guessed if omitted)
+    """
+    if flag != '':
+        flags_definition = {flag: flags_definition[flag]}
+
+    names = list(names)
+    names_set = set(names)
+    unmatched = set()
+    for ff in flags_definition.values():
+        values = _flags_invert(ff)['values']
+        unmatched = names_set - set(values.keys())
+        if len(unmatched) == 0:
+            return tuple(values[n] for n in names)
+
+    if len(flags_definition) > 1:
+        raise ValueError("Can not find flags definitions that match query")
+    else:
+        unmatched_human = ",".join(f'"{name}"' for name in unmatched)
+        raise ValueError(f"Not all enumeration names were found: {unmatched_human}")
+
+def _mk_ne_isin_condition(values: Tuple[int,...],
+                          var_name: str = 'a',
+                          invert: bool = False) -> str:
+    """
+    Produce numexpr expression equivalent to numpys `.isin`
+
+     - ((a==v1)|(a==v2)|..|a==vn)   when invert=False
+     - ((a!=v1)&(a!=v2)&..&a!=vn)   when invert=True
+    """
+    op1, op2 = ('!=', '&') if invert else ('==', '|')
+    parts = [f'({var_name}{op1}{val})' for val in values]
+    return f'({op2.join(parts)})'
+
+
+def _enum_to_mask_numexpr(mask: np.ndarray,
+                          classes: Tuple[int, ...],
+                          invert: bool = False,
+                          value_true: int = 1,
+                          value_false: int = 0,
+                          dtype: Union[str, np.dtype] = 'bool') -> np.ndarray:
+    cond = _mk_ne_isin_condition(classes, 'm', invert=invert)
+    expr = f"where({cond}, {value_true}, {value_false})"
+    out = np.empty_like(mask, dtype=dtype)
+
+    ne.evaluate(expr,
+                local_dict=dict(m=mask),
+                out=out,
+                casting='unsafe')
+
+    return out
+
+
+def fmask_to_bool(mask: xr.DataArray,
+                  categories: Iterable[str],
+                  invert: bool = False,
+                  flag_name: str = '') -> xr.DataArray:
+    """
+    This method works for fmask and other "enumerated" masks
+
+    It is equivalent to `np.isin(mask, categories)`
 
     example:
         xx = dc.load(.., measurements=['fmask', ...])
@@ -222,50 +289,15 @@ def fmask_to_bool(mask, categories, invert=False, flag_name=None):
 
     """
 
-    def _pick_dtype(max_v, candidates):
-        for dtype in candidates:
-            if np.iinfo(dtype).max > max_v:
-                return dtype
-
-        raise ValueError("Largest enumeration value is too big")
-
-    def _get_mask(names, flags):
-        enum_to_value = {n: int(v)
-                         for v, n in flags['values'].items()}
-
-        m = 0
-        dtype = mask.dtype
-        for n in names:
-            v = enum_to_value.get(n, None)
-            if v is None:
-                raise ValueError(f'`{n}` is not a valid class name')
-            if v >= 64:
-                raise ValueError(f'{n} = {v} is too large, supported value range is [0, 63]')
-            m |= (1 << v)
-
-        if m > np.iinfo(dtype).max:
-            dtype = _pick_dtype(m, ('uint16', 'uint32', 'uint64'))
-
-        return m, dtype
-
     flags = getattr(mask, 'flags_definition', None)
     if flags is None:
         raise ValueError('Missing flags_definition attribute')
 
-    if len(flags) == 1:
-        flags, = flags.values()
-    else:
-        flag_name = 'fmask' if flag_name is None else flag_name
-        flags = flags.get(flag_name, None)
-        if flags is None:
-            raise ValueError(f"Expect `{flag_name}` key in `flags_defition` attribute")
+    classes = _get_enum_values(categories, flags, flag=flag_name)
 
-    m, dtype = _get_mask(categories, flags)
-
-    func = {False: _impl_to_bool,
-            True: _impl_to_bool_inverted}.get(invert)
-
-    bmask = xr.apply_ufunc(func, mask.astype(dtype), m,
+    bmask = xr.apply_ufunc(_enum_to_mask_numexpr,
+                           mask,
+                           kwargs=dict(classes=classes, invert=invert),
                            keep_attrs=True,
                            dask='parallelized',
                            output_dtypes=['bool'])
@@ -402,9 +434,11 @@ def test_gap_fill():
 def test_fmask_to_bool():
     import pytest
 
-    fake_flags = dict(bits=list(range(8)),
-                      values={str(i): f'cat_{i}' for i in range(0, 65)})
-    flags_definition = dict(fmask=fake_flags)
+    def _fake_flags(prefix='cat_', n = 65):
+        return dict(bits=list(range(8)),
+                    values={str(i): f'{prefix}{i}' for i in range(0, n)})
+
+    flags_definition = dict(fmask=_fake_flags())
 
     fmask = xr.DataArray(np.arange(0, 65, dtype='uint8'),
                          attrs=dict(flags_definition=flags_definition))
@@ -438,3 +472,38 @@ def test_fmask_to_bool():
     mm = fmask_to_bool(fmask.chunk(3), ("cat_31", "cat_63")).compute()
     ii, = np.where(mm)
     assert tuple(ii) == (31, 63)
+
+    # check _get_enum_values
+    flags_definition = dict(cat=_fake_flags("cat_"),
+                            dog=_fake_flags("dog_"))
+    assert _get_enum_values(("cat_0",), flags_definition) == (0,)
+    assert _get_enum_values(("cat_0", "cat_12"), flags_definition) == (0, 12)
+    assert _get_enum_values(("dog_0", "dog_13"), flags_definition) == (0, 13)
+    assert _get_enum_values(("dog_0", "dog_13"), flags_definition, flag='dog') == (0, 13)
+
+    with pytest.raises(ValueError) as e:
+        _get_enum_values(("cat_10", "_nope"), flags_definition)
+    assert "Can not find flags definitions" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        _get_enum_values(("cat_10", "bah", "dog_0"), flags_definition, flag="dog")
+    assert "cat_10" in str(e)
+
+
+def test_enum_to_mask_numexpr():
+    elements = (1, 4, 23)
+    mm = np.asarray([1,2,3,4,5,23], dtype='uint8')
+
+    np.testing.assert_array_equal(_enum_to_mask_numexpr(mm, elements),
+                                  np.isin(mm, elements))
+    np.testing.assert_array_equal(_enum_to_mask_numexpr(mm, elements, invert=True),
+                                  np.isin(mm, elements, invert=True))
+
+    bb8 = _enum_to_mask_numexpr(mm, elements, dtype='uint8', value_true=255)
+    assert bb8.dtype == 'uint8'
+
+    np.testing.assert_array_equal(
+        _enum_to_mask_numexpr(mm, elements, dtype='uint8', value_true=255) == 255,
+        np.isin(mm, elements))
+
+
