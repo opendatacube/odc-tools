@@ -45,8 +45,12 @@ def build_predicate(glob=None, regex=None, prefix=None):
 @click.option('--prefix', type=str, help='Only print entries with Key starting with `prefix`')
 @click.option('--regex', type=str, help='Only print entries matching regex')
 @click.option('--aws-profile', type=str, help='Use non-default aws profile')
+@click.option('--no-sign-request', is_flag=True,
+              help='Do not sign AWS S3 requests')
+@click.option('--request-payer', is_flag=True,
+              help='Needed when accessing requester pays public buckets')
 @click.argument('glob', type=str, default='', nargs=1)
-def cli(inventory, prefix, regex, glob, aws_profile):
+def cli(inventory, prefix, regex, glob, aws_profile, no_sign_request=None, request_payer=False):
     """List S3 inventory entries.
 
         prefix can be combined with regex or glob pattern, but supplying both
@@ -61,8 +65,12 @@ def cli(inventory, prefix, regex, glob, aws_profile):
     def entry_to_url(entry):
         return 's3://{e.Bucket}/{e.Key}'.format(e=entry)
 
+    opts = {}
+    if request_payer:
+        opts['RequestPayer'] = 'requester'
+
     flush_freq = 100
-    s3 = s3_client(profile=aws_profile)
+    s3 = s3_client(profile=aws_profile, aws_unsigned=no_sign_request)
 
     if glob == '':
         glob = None
@@ -79,7 +87,7 @@ def cli(inventory, prefix, regex, glob, aws_profile):
 
     to_str = entry_to_url
 
-    for i, entry in enumerate(list_inventory(inventory, s3=s3)):
+    for i, entry in enumerate(list_inventory(inventory, s3=s3, **opts)):
         if predicate(entry):
             print(to_str(entry), flush=(i % flush_freq) == 0)
 
