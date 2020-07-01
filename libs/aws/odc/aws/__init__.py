@@ -358,19 +358,19 @@ def s3_dump(data: Union[bytes, str, IO],
 # Code above is also in datacube, code below not yet
 ###########################################################################
 
-def s3_ls(url, s3=None):
+def s3_ls(url, s3=None, **kw):
     bucket, prefix = s3_url_parse(url)
 
     s3 = s3 or s3_client()
     paginator = s3.get_paginator('list_objects_v2')
 
     n_skip = len(prefix)
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix, **kw):
         for o in page.get('Contents', []):
             yield o['Key'][n_skip:]
 
 
-def s3_ls_dir(uri, s3=None):
+def s3_ls_dir(uri, s3=None, **kw):
     bucket, prefix = s3_url_parse(uri)
 
     if len(prefix) > 0 and not prefix.endswith('/'):
@@ -381,7 +381,8 @@ def s3_ls_dir(uri, s3=None):
 
     for page in paginator.paginate(Bucket=bucket,
                                    Prefix=prefix,
-                                   Delimiter='/'):
+                                   Delimiter='/',
+                                   **kw):
         sub_dirs = page.get('CommonPrefixes', [])
         files = page.get('Contents', [])
 
@@ -392,7 +393,7 @@ def s3_ls_dir(uri, s3=None):
             yield 's3://{bucket}/{path}'.format(bucket=bucket, path=o['Key'])
 
 
-def s3_find(url, pred=None, glob=None, s3=None):
+def s3_find(url, pred=None, glob=None, s3=None, **kw):
     """ List all objects under certain path
 
         each s3 object is represented by a SimpleNamespace with attributes:
@@ -416,7 +417,7 @@ def s3_find(url, pred=None, glob=None, s3=None):
     s3 = s3 or s3_client()
     paginator = s3.get_paginator('list_objects_v2')
 
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix, **kw):
         for o in page.get('Contents', []):
             o = s3_file_info(o, bucket)
             if pred is not None and pred(o):
