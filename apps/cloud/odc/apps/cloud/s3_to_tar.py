@@ -17,10 +17,12 @@ from odc.io.timer import RateEstimator
 @click.option('--verbose', '-v', is_flag=True, help='Be verbose')
 @click.option('--gzip', is_flag=True, help='Compress with gzip')
 @click.option('--xz', is_flag=True, help='Compress with xz')
-@click.option('--aws-unsigned', is_flag=True,
+@click.option('--no-sign-request', is_flag=True,
               help='Do not sign AWS S3 requests')
+@click.option('--request-payer', is_flag=True,
+              help='Needed when accessing requester pays public buckets')
 @click.argument("outfile", type=str, nargs=1, default='-')
-def cli(n, verbose, gzip, xz, outfile, aws_unsigned=None):
+def cli(n, verbose, gzip, xz, outfile, no_sign_request=None, request_payer=False):
     """ Fetch a bunch of s3 files into a tar archive.
 
     \b
@@ -28,6 +30,11 @@ def cli(n, verbose, gzip, xz, outfile, aws_unsigned=None):
        - Treat line as a URI and fetch document from it
        - Write content of the file to a tar archive using `bucket-name/path/to/file` as file name
     """
+
+    opts = {}
+    if request_payer:
+        opts['RequestPayer'] = 'requester'
+
     logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s', level=logging.ERROR)
 
     nconnections = 24 if n is None else n
@@ -60,7 +67,7 @@ def cli(n, verbose, gzip, xz, outfile, aws_unsigned=None):
         if verbose:
             print(' {}'.format(str(fps)), file=stderr)
 
-    fetcher = S3Fetcher(nconcurrent=nconnections, aws_unsigned=aws_unsigned)
+    fetcher = S3Fetcher(nconcurrent=nconnections, aws_unsigned=no_sign_request)
     is_pipe = outfile == '-'
     tar_opts = dict(mode='w'+tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe))
     if is_pipe:
@@ -82,7 +89,7 @@ def cli(n, verbose, gzip, xz, outfile, aws_unsigned=None):
     signal.signal(signal.SIGINT, on_ctrlc)
 
     with tarfile.open(**tar_opts) as tar:
-        dump_to_tar(fetcher(urls), tar)
+        dump_to_tar(fetcher(urls, **opts), tar)
 
     fetcher.close()
 
