@@ -7,8 +7,8 @@ import json
 from . import s3_client, s3_fetch, s3_ls_dir
 
 
-def find_latest_manifest(prefix, s3):
-    manifest_dirs = sorted(s3_ls_dir(prefix, s3=s3), reverse=True)
+def find_latest_manifest(prefix, s3, **kw):
+    manifest_dirs = sorted(s3_ls_dir(prefix, s3=s3, **kw), reverse=True)
 
     for d in manifest_dirs:
         if d.endswith('/'):
@@ -22,12 +22,12 @@ def list_inventory(manifest, s3=None, **kw):
 
     manifest -- s3:// url to manifest.json or a folder in which case latest one is chosen.
     """
-    s3 = s3 or s3_client(**kw)
+    s3 = s3 or s3_client()
 
     if manifest.endswith('/'):
-        manifest = find_latest_manifest(manifest, s3)
+        manifest = find_latest_manifest(manifest, s3, **kw)
 
-    info = s3_fetch(manifest, s3=s3)
+    info = s3_fetch(manifest, s3=s3, **kw)
     info = json.loads(info)
 
     must_have_keys = {'fileFormat', 'fileSchema', 'files', 'destinationBucket'}
@@ -44,7 +44,7 @@ def list_inventory(manifest, s3=None, **kw):
     data_urls = [prefix + f['key'] for f in info['files']]
 
     for u in data_urls:
-        bb = s3_fetch(u, s3=s3)
+        bb = s3_fetch(u, s3=s3, **kw)
         gz = GzipFile(fileobj=BytesIO(bb), mode='r')
         csv_rdr = csv.reader(l.decode('utf8') for l in gz)
 
