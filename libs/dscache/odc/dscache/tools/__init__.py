@@ -1,13 +1,17 @@
 """
 """
+from datetime import timedelta
 from typing import List, Dict, Any, Optional
 import random
 import xarray as xr
+import pandas as pd
 import numpy as np
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.api.grid_workflow import Tile
+from datacube.utils.geometry import Geometry
+
 
 from .. import train_dictionary, DatasetCache
 
@@ -185,7 +189,23 @@ class DcTileExtract(object):
         return Tile(sources, geobox)
 
 
-def group_by_nothing(dss: List[Dataset]) -> xr.DataArray:
+def mid_longitude(geom: Geometry) -> float:
+    ((lon,), _) = geom.centroid.to_crs('epsg:4326').xy
+    return lon
+
+
+def solar_offset(geom: Geometry) -> timedelta:
+    """
+    Given a geometry compute offset to add to UTC timestamp to get solar day right.
+
+    This only work when geometry is "local enough".
+    """
+    # 240 == (24*60*60)/360 (seconds of a day per degree of longitude)
+    return timedelta(seconds=int(mid_longitude(geom)*240))
+
+
+def group_by_nothing(dss: List[Dataset],
+                     solar_day_offset: Optional[timedelta] = None) -> xr.DataArray:
     """
     Construct "sources" just like ``.group_dataset`` but with every slice
     containing just one Dataset object wrapped in a tuple.
@@ -193,15 +213,32 @@ def group_by_nothing(dss: List[Dataset]) -> xr.DataArray:
     Time -> (Dataset,)
     """
     dss = sorted(dss, key=lambda ds: (normalise_dt(ds.center_time), ds.id))
-    time = np.asarray([np.datetime64(normalise_dt(ds.center_time)) for ds in dss])
+    time = [normalise_dt(ds.center_time) for ds in dss]
+    solar_day = None
+
+    if solar_day_offset is not None:
+        solar_day = np.asarray([(dt+solar_day_offset).date() for dt in time],
+                               dtype='datetime64[D]')
+
+    idx = np.arange(0, len(dss), dtype='uint32')
+    uuids = np.empty(len(dss), dtype='O')
     data = np.empty(len(dss), dtype='O')
 
     for i, ds in enumerate(dss):
         data[i] = (ds,)
+        uuids[i] = ds.id
+
+    coords = [np.asarray(time, dtype="datetime64[ms]"), idx, uuids]
+    names = ['time', 'idx', 'uuid']
+    if solar_day is not None:
+        coords.append(solar_day)
+        names.append('solar_day')
+
+    coord = pd.MultiIndex.from_arrays(coords, names=names)
 
     return xr.DataArray(data=data,
-                        coords=dict(time=time),
-                        dims=('time',))
+                        coords=dict(spec=coord),
+                        dims=('spec',))
 
 
 def grid_tiles_to_geojson(cache: DatasetCache,
