@@ -12,6 +12,7 @@ from ._masking import (
     to_float,
     to_float_np,
     fmask_to_bool,
+    enum_to_bool,
     gap_fill,
 )
 
@@ -47,6 +48,7 @@ __all__ = (
     "to_float",
     "to_float_np",
     "fmask_to_bool",
+    "enum_to_bool",
     "gap_fill",
     "xr_geomedian",
     "int_geomedian",
