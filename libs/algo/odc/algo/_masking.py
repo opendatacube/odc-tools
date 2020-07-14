@@ -272,10 +272,55 @@ def _enum_to_mask_numexpr(mask: np.ndarray,
     return out
 
 
+def enum_to_bool(mask: xr.DataArray,
+                 categories: Iterable[Union[str, int]],
+                 invert: bool = False,
+                 flag_name: str = '',
+                 value_true: int = 1,
+                 value_false: int = 0,
+                 dtype: Union[str, np.dtype] = 'bool') -> xr.DataArray:
+    """
+    This method works for fmask and other "enumerated" masks
+
+    It is equivalent to `np.isin(mask, categories)`
+
+    example:
+        xx = dc.load(.., measurements=['fmask', ...])
+        no_cloud = enum_to_bool(xx.fmask, ('valid', 'snow', 'water'))
+
+        xx.where(no_cloud).isel(time=0).nbar_red.plot.imshow()
+
+    """
+    categories_s = tuple(c for c in categories if isinstance(c, str))
+    classes = tuple(c for c in categories if isinstance(c, int))
+
+    if len(categories_s) > 0:
+        flags = getattr(mask, 'flags_definition', None)
+        if flags is None:
+            raise ValueError('Missing flags_definition attribute')
+
+        classes = classes + _get_enum_values(categories_s, flags, flag=flag_name)
+
+    bmask = xr.apply_ufunc(_enum_to_mask_numexpr,
+                           mask,
+                           kwargs=dict(classes=classes,
+                                       invert=invert,
+                                       value_false=value_false,
+                                       value_true=value_true,
+                                       dtype=dtype),
+                           keep_attrs=True,
+                           dask='parallelized',
+                           output_dtypes=[dtype])
+    bmask.attrs.pop('flags_definition', None)
+    bmask.attrs.pop('nodata', None)
+
+    return bmask
+
+
 def fmask_to_bool(mask: xr.DataArray,
                   categories: Iterable[str],
                   invert: bool = False,
-                  flag_name: str = '') -> xr.DataArray:
+                  flag_name: str = '', **kw) -> xr.DataArray:
     """
     This method works for fmask and other "enumerated" masks
 
@@ -288,23 +333,7 @@ def fmask_to_bool(mask: xr.DataArray,
         xx.where(no_cloud).isel(time=0).nbar_red.plot.imshow()
 
     """
-
-    flags = getattr(mask, 'flags_definition', None)
-    if flags is None:
-        raise ValueError('Missing flags_definition attribute')
-
-    classes = _get_enum_values(categories, flags, flag=flag_name)
-
-    bmask = xr.apply_ufunc(_enum_to_mask_numexpr,
-                           mask,
-                           kwargs=dict(classes=classes, invert=invert),
-                           keep_attrs=True,
-                           dask='parallelized',
-                           output_dtypes=['bool'])
-    bmask.attrs.pop('flags_definition', None)
-    bmask.attrs.pop('nodata', None)
-
-    return bmask
+    return enum_to_bool(mask, categories, invert=invert, flag_name=flag_name, **kw)
 
 
 def _gap_fill_np(a, fallback, nodata):
@@ -488,6 +517,44 @@ def test_fmask_to_bool():
     with pytest.raises(ValueError) as e:
         _get_enum_values(("cat_10", "bah", "dog_0"), flags_definition, flag="dog")
     assert "cat_10" in str(e)
+
+
+def test_enum_to_mask():
+    import pytest
+    nmax = 129
+
+    def _fake_flags(prefix='cat_', n = nmax+1):
+        return dict(bits=list(range(8)),
+                    values={str(i): f'{prefix}{i}' for i in range(0, n)})
+
+    flags_definition = dict(fmask=_fake_flags())
+
+    fmask_no_flags = xr.DataArray(np.arange(0, nmax+1, dtype='uint16'))
+    fmask = xr.DataArray(np.arange(0, nmax+1, dtype='uint16'),
+                         attrs=dict(flags_definition=flags_definition))
+
+    mm = enum_to_bool(fmask, ("cat_1", "cat_3", nmax, 33))
+    ii, = np.where(mm)
+    assert tuple(ii) == (1, 3, 33, nmax)
+
+    mm = enum_to_bool(fmask, (0, 3, 17))
+    ii, = np.where(mm)
+    assert tuple(ii) == (0, 3, 17)
+
+    mm = enum_to_bool(fmask_no_flags, (0, 3, 17))
+    ii, = np.where(mm)
+    assert tuple(ii) == (0, 3, 17)
+    assert mm.dtype == 'bool'
+
+    mm = enum_to_bool(fmask_no_flags, (0, 3, 8, 17), dtype='uint8', value_true=255)
+    ii, = np.where(mm == 255)
+    assert tuple(ii) == (0, 3, 8, 17)
+    assert mm.dtype == 'uint8'
+
+    mm = enum_to_bool(fmask_no_flags, (0, 3, 8, 17), dtype='uint8', value_true=255, invert=True)
+    ii, = np.where(mm != 255)
+    assert tuple(ii) == (0, 3, 8, 17)
+    assert mm.dtype == 'uint8'
 
 
 def test_enum_to_mask_numexpr():
