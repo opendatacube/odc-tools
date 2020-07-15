@@ -1,12 +1,17 @@
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Union, Iterator, Optional
 from uuid import UUID
 
 import toolz
-from datacube.model import Dataset, GridSpec
+from datacube.model import Dataset, GridSpec, DatasetType
 from datacube.utils.geometry import CRS
 from . import _jsoncache as base
 
 from odc.io.text import split_and_check
+
+ProductCollection = Union[Iterator[DatasetType],
+                          List[DatasetType],
+                          Dict[str, DatasetType]]
+
 
 def ds2doc(ds):
     return (ds.id, dict(uris=ds.uris,
@@ -59,7 +64,7 @@ def build_dc_product_map(metadata_json, products_json):
 
 def _metadata_from_products(products):
     mm = {}
-    for p in products:
+    for p in products.values():
         m = p.metadata_type
         if m.name not in mm:
             mm[m.name] = m
@@ -119,7 +124,8 @@ class DatasetCache(object):
                               uris: [str],
                               metadata: object}))
     """
-    def __init__(self, db: base.JsonBlobCache, products=None):
+    def __init__(self, db: base.JsonBlobCache,
+                 products: Optional[ProductCollection] = None):
         """ Don't use this directly, use create_cache or open_(rw|ro).
         """
 
@@ -127,6 +133,9 @@ class DatasetCache(object):
             metadata, products = build_dc_product_map(db.get_info_dict('metadata/'),
                                                       db.get_info_dict('product/'))
         else:
+            if not isinstance(products, dict):
+                products = {p.name: p for p in products}
+
             metadata = _metadata_from_products(products)
 
         self._db = db
@@ -253,12 +262,14 @@ class DatasetCache(object):
         return self.stream_group(mk_group_name(idx, grid))
 
 
-def open_ro(path,
-            products=None,
-            lock=False):
+def open_ro(path: str,
+            products: Optional[ProductCollection] = None,
+            lock: bool = False) -> DatasetCache:
     """Open existing database in readonly mode.
 
-    NOTE: default mode assumes db file is static (not being modified
+    .. note::
+
+    default mode assumes db file is static (not being modified
     externally), if this is not the case, supply `lock=True` parameter.
 
     :path str: Path to the db could be folder or actual file
@@ -273,7 +284,7 @@ def open_ro(path,
     """
 
     db = base.open_ro(path, lock=lock)
-    return DatasetCache(db)
+    return DatasetCache(db, products=products)
 
 
 def open_rw(path,
