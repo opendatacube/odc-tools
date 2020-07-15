@@ -19,7 +19,9 @@ from .. import train_dictionary, DatasetCache
 def dictionary_from_product_list(dc,
                                  products,
                                  samples_per_product=10,
-                                 dict_sz=8 * 1024):
+                                 dict_sz=8 * 1024,
+                                 query=None):
+
     """Get a sample of datasets from a bunch of products and train compression
     dictionary.
 
@@ -32,11 +34,14 @@ def dictionary_from_product_list(dc,
     if isinstance(products, str):
         products = [products]
 
+    if query is None:
+        query = {}
+
     limit = samples_per_product * 10
 
     samples = []
     for p in products:
-        dss = dc.find_datasets(product=p, limit=limit)
+        dss = dc.find_datasets(product=p, limit=limit, **query)
         random.shuffle(dss)
         samples.extend(dss[:samples_per_product])
 

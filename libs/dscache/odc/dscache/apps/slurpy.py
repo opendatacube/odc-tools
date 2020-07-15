@@ -6,7 +6,7 @@ from odc import dscache
 from odc.dscache.tools import db_connect, raw_dataset_stream, mk_raw2ds
 from odc.dscache.tools import dictionary_from_product_list
 from odc.dscache.tools.tiling import parse_gridspec
-from odc.index import bin_dataset_stream
+from odc.index import bin_dataset_stream, ordered_dss, dataset_count
 
 
 EOS = object()
@@ -31,11 +31,19 @@ def qmap(proc, q, eos_marker=None):
 @click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.option('-z', 'complevel', type=int, default=6, help='Compression setting for zstandard 1-fast, 9+ good but slow')
 @click.option('--grid', type=str,
-              help="Grid spec or name 'crs;pixel_resolution;shape_in_pixels'",
+              help=("Grid spec or name 'crs;pixel_resolution;shape_in_pixels',"
+                    "albers_au_25, albers_africa_{10|20|30|60}"),
               default=None)
+@click.option('--year',
+              type=int,
+              help="Only extract datasets for a given year")
 @click.argument('output', type=str, nargs=1)
 @click.argument('products', type=str, nargs=-1)
-def cli(env, grid, output, products, complevel):
+def cli(env, grid, year, output, products, complevel):
+    """ Extract product(s) to an on disk cache.
+
+        Optionally tile datasets into a grid while extracting (see --grid option)
+    """
 
     if len(products) == 0:
         click.echo('Have to supply at least one product')
@@ -54,9 +62,13 @@ def cli(env, grid, output, products, complevel):
             click.echo('No such product found: %s' % p)
             raise click.Abort()
 
+    query = {}
+    if year is not None:
+        query.update(time=f"{year}")
+
     click.echo('Getting dataset counts')
-    counts = {p.name: count
-              for p, count in dc.index.datasets.count_by_product(product=[p for p in products])}
+    counts = {p: dataset_count(dc.index, product=p, **query)
+              for p in products}
 
     n_total = 0
     for p, c in counts.items():
@@ -68,7 +80,7 @@ def cli(env, grid, output, products, complevel):
         raise click.Abort()
 
     click.echo('Training compression dictionary')
-    zdict = dictionary_from_product_list(dc, products, samples_per_product=50)
+    zdict = dictionary_from_product_list(dc, products, samples_per_product=50, query=query)
     click.echo('..done')
 
     # TODO: check for overwrite
@@ -78,7 +90,12 @@ def cli(env, grid, output, products, complevel):
 
     def db_task(products, conn, q):
         for p in products:
-            for ds in map(raw2ds, raw_dataset_stream(p, conn)):
+            if len(query) == 0:
+                dss = map(raw2ds, raw_dataset_stream(p, conn))
+            else:
+                dss = ordered_dss(dc, product=p, **query)
+
+            for ds in dss:
                 q.put(ds)
         q.put(EOS)
 
@@ -100,7 +117,7 @@ def cli(env, grid, output, products, complevel):
 
     label = 'Processing ({:8,d})'.format(n_total)
     with click.progressbar(dss, label=label, length=n_total) as dss:
-        for ds in dss:
+        for _ in dss:
             pass
 
     if grid is not None:
