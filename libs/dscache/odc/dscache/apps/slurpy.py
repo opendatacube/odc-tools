@@ -23,8 +23,10 @@ def qmap(proc, q, eos_marker=None):
             q.task_done()
             break
         else:
-            yield proc(item)
-            q.task_done()
+            try:
+                yield proc(item)
+            finally:
+                q.task_done()
 
 
 @click.command('slurpy')
