@@ -1,7 +1,7 @@
 """
 """
 from datetime import timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Iterator, Hashable, Iterable
 import random
 import xarray as xr
 import pandas as pd
@@ -209,6 +209,20 @@ def solar_offset(geom: Geometry) -> timedelta:
     return timedelta(seconds=int(mid_longitude(geom)*240))
 
 
+def key2num(objs: Iterable[Hashable]) -> Iterator[int]:
+    """
+    Given a sequence of hashable objects return sequence of numeric ids starting from 0.
+    For example ``'A' 'B' 'A' 'A' 'C' -> 0 1 0 0 2``
+    """
+    o2id: Dict[Any, int] = {}
+    c = 0
+    for obj in objs:
+        _c = o2id.setdefault(obj, c)
+        if _c == c:
+            c = c + 1
+        yield _c
+
+
 def group_by_nothing(dss: List[Dataset],
                      solar_day_offset: Optional[timedelta] = None) -> xr.DataArray:
     """
@@ -228,13 +242,14 @@ def group_by_nothing(dss: List[Dataset],
     idx = np.arange(0, len(dss), dtype='uint32')
     uuids = np.empty(len(dss), dtype='O')
     data = np.empty(len(dss), dtype='O')
+    grids = list(key2num(ds.crs for ds in dss))
 
     for i, ds in enumerate(dss):
         data[i] = (ds,)
         uuids[i] = ds.id
 
-    coords = [np.asarray(time, dtype="datetime64[ms]"), idx, uuids]
-    names = ['time', 'idx', 'uuid']
+    coords = [np.asarray(time, dtype="datetime64[ms]"), idx, uuids, grids]
+    names = ['time', 'idx', 'uuid', 'grids']
     if solar_day is not None:
         coords.append(solar_day)
         names.append('solar_day')
