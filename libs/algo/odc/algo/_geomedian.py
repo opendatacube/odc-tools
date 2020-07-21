@@ -37,7 +37,7 @@ def reshape_for_geomedian(ds, axis='time'):
     return xx
 
 
-def xr_geomedian(ds, axis='time', where=None, **kwargs):
+def xr_geomedian(ds, axis='time', where=None, **kw):
     """
 
     :param ds: xr.Dataset|xr.DataArray|numpy array
@@ -67,6 +67,10 @@ def xr_geomedian(ds, axis='time', where=None, **kwargs):
                 raise ValueError("Expect 4 dimensions on input: y,x,band,time")
             return None, None, xx_data
 
+    kw.setdefault('nocheck', True)
+    kw.setdefault('num_threads', 1)
+    kw.setdefault('eps', 1e-6)
+
     ds, xx, xx_data = norm_input(ds, axis)
     is_dask = dask.is_dask_collection(xx_data)
 
@@ -84,13 +88,13 @@ def xr_geomedian(ds, axis='time', where=None, **kwargs):
         if xx_data.shape[-2:] != xx_data.chunksize[-2:]:
             xx_data = xx_data.rechunk(xx_data.chunksize[:2] + (-1, -1))
 
-        data = da.map_blocks(lambda x: nangeomedian_pcm(x, **kwargs),
+        data = da.map_blocks(lambda x: nangeomedian_pcm(x, **kw),
                              xx_data,
                              name=randomize('geomedian'),
                              dtype=xx_data.dtype,
                              drop_axis=3)
     else:
-        data = nangeomedian_pcm(xx_data, **kwargs)
+        data = nangeomedian_pcm(xx_data, **kw)
 
     if set_nan is not None:
         data[set_nan, :] = np.nan
@@ -137,10 +141,6 @@ def int_geomedian_np(*bands,
                                                      offset=offset,
                                                      dtype='float32')
 
-    kw.setdefault('nocheck', True)
-    kw.setdefault('num_threads', 1)
-    kw.setdefault('eps', 0.5*scale)
-
     gm_f32 = nangeomedian_pcm(bb_f32, **kw)
 
     del bb_f32  # free temp memory early
@@ -176,6 +176,10 @@ def int_geomedian(ds, scale=1, offset=0, **kw):
     band = bands[0]
     nb = len(bands)
     dtype = band.dtype
+
+    kw.setdefault('nocheck', True)
+    kw.setdefault('num_threads', 1)
+    kw.setdefault('eps', 1e-6)
 
     if is_dask:
         chunks = ((nb,), *xx.chunks[1:])
