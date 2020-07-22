@@ -24,6 +24,8 @@ setup(
         'xarray',
         'numpy',
         'toolz',
+        'odc-index',
+        'datacube',
     ],
 
     packages=['odc.algo'],
