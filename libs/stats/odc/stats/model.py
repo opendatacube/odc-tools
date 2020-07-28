@@ -1,26 +1,82 @@
-from typing import Dict, Tuple
-from uuid import UUID
+from typing import Dict, Tuple, Any
+from copy import deepcopy
 from datetime import datetime
 from dataclasses import dataclass, field
+from uuid import UUID
+import pandas as pd
 
-from datacube.model import GridSpec
+from datacube.model import GridSpec, Dataset
 from datacube.utils.geometry import GeoBox
+from datacube.utils.dates import normalise_dt
 from odc.index import odc_uuid
+
+
+default_href_prefix = 'https://collections.dea.ga.gov.au/product'
+
+
+@dataclass
+class DateTimeRange:
+    start: datetime
+    end: datetime = field(init=False)
+    freq: str
+
+    def __post_init__(self):
+        self.freq = self.freq.upper()
+        period = pd.Period(self.start, freq=self.freq)
+        self.start = normalise_dt(period.start_time.to_pydatetime())
+        self.end = normalise_dt(period.end_time.floor('us').to_pydatetime())  # need to remove ns to avoid UserWarning
+
+    def to_stac(self) -> Dict[str, str]:
+        """
+        Return dictionary of values to go into STAC's `properties:` section.
+        """
+        def fmt(dt: datetime) -> str:
+            assert dt.tzinfo is None
+            return dt.isoformat(timespec='microseconds')
+
+        start = fmt(self.start)
+        end = fmt(self.end)
+
+        return {'datetime': start,
+                'dtr:start_datetime': start,
+                'dtr:end_datetime': end}
+
+    def short(self) -> str:
+        """
+        Short string representation of the time period.
+
+        Examples: 2019--1Y, 2020-01--3M, 2013-03-21--10D
+        """
+        freq = self.freq
+        dt = self.start
+        if freq.endswith('Y'):
+            return f'{dt.year}--P{freq}'
+        elif freq.endswith('M'):
+            return f'{dt.year}-{dt.month:02d}--P{freq}'
+        else:
+            return f'{dt.year}-{dt.month:02d}-{dt.day:02d}--P{freq}'
 
 
 @dataclass
 class OutputProduct:
     name: str
     version: str
-    info: Dict[str, str]
     short_name: str
     location: str
     properties: Dict[str, str]
     measurements: Tuple[str, ...]
     gridspec: GridSpec
-    period: str = '1Y'
+    href: str = ''
+    freq: str = '1Y'
+
+    def __post_init__(self):
+        if self.href == '':
+            self.href = f'{default_href_prefix}/{self.name}'
 
     def region_code(self, tidx: Tuple[int, int], sep='', n=4) -> str:
+        """
+        Render tile index into a string.
+        """
         return f"x{tidx[0]:+0{n}d}{sep}y{tidx[1]:+0{n}d}"
 
 
@@ -29,17 +85,18 @@ class Task:
     product: OutputProduct
     tile_index: Tuple[int, int]
     geobox: GeoBox
-    start_datetime: datetime
-    end_datetime: datetime
-    short_time: str
-    input_dataset_ids: Tuple[UUID, ...]
+    time_range: DateTimeRange
+    datasets: Tuple[Dataset, ...] = field(repr=False)
     uuid: UUID = UUID(int=0)
+    short_time: str = field(init=False, repr=False)
 
     def __post_init__(self):
+        self.short_time = self.time_range.short()
+
         if self.uuid.int == 0:
             self.uuid = odc_uuid(self.product.name,
                                  self.product.version,
-                                 sources=self.input_dataset_ids,
+                                 sources=self._lineage(),
                                  time=self.short_time,
                                  tile=self.tile_index)
 
@@ -50,7 +107,10 @@ class Task:
         """
         return self.product.region_code(self.tile_index, '/') + '/' + self.short_time
 
-    def _prefix(self, relative_to) -> str:
+    def _lineage(self) -> Tuple[UUID, ...]:
+        return tuple(ds.id for ds in self.datasets)
+
+    def _prefix(self, relative_to: str = 'dataset') -> str:
         product = self.product
         region_code = product.region_code(self.tile_index)
         file_prefix = f'{product.short_name}_{region_code}_{self.short_time}'
@@ -62,7 +122,7 @@ class Task:
         else:
             return product.location + '/' + self.location + '/' + file_prefix
 
-    def paths(self, relative_to='dataset', ext='tiff') -> Dict[str, str]:
+    def paths(self, relative_to: str = 'dataset', ext: str = 'tiff') -> Dict[str, str]:
         """
         Compute dictionary mapping band name to paths.
 
@@ -71,10 +131,43 @@ class Task:
         prefix = self._prefix(relative_to)
         return {band: f'{prefix}_{band}.{ext}' for band in self.product.measurements}
 
-    def metadata_path(self, relative_to='dataset', ext='yaml') -> str:
+    def metadata_path(self, relative_to: str = 'dataset', ext: str = 'yaml') -> str:
         """
         Compute path for metadata file.
 
         :param relative_to: dataset|product|absolute
         """
         return self._prefix(relative_to) + '.' + ext
+
+    def render_metadata(self, ext: str = 'tiff') -> Dict[str, Any]:
+        """
+        Put together EO3 metadata document for the output of this task.
+        """
+        product = self.product
+        geobox = self.geobox
+        region_code = product.region_code(self.tile_index)
+        properties = deepcopy(product.properties)
+
+        properties.update(self.time_range.to_stac())
+        properties['odc:region_code'] = region_code
+
+        measurements = {band: {'path': path}
+                        for band, path in self.paths(ext=ext).items()}
+
+        inputs = list(map(str, self._lineage()))
+
+        return {
+            '$schema': 'https://schemas.opendatacube.org/dataset',
+            'id': str(self.uuid),
+            'product': dict(name=product.name,
+                            href=product.href),
+            'location': self.metadata_path('absolute', ext='yaml'),
+
+            'crs': str(geobox.crs),
+            'grids': {'default': dict(shape=list(geobox.shape),
+                                      transform=list(geobox.transform))},
+
+            'measurements': measurements,
+            'properties': properties,
+            'lineage': dict(inputs=inputs),
+        }
