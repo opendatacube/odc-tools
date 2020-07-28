@@ -14,7 +14,6 @@ class OutputProduct:
     version: str
     info: Dict[str, str]
     short_name: str
-    algo_info: Dict[str, str]
     location: str
     properties: Dict[str, str]
     measurements: Tuple[str, ...]
