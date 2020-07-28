@@ -5,7 +5,6 @@ import click
 
 from datacube.model import GridSpec
 from odc import dscache
-from odc.index import odc_uuid
 from .model import OutputProduct, Task
 
 
@@ -48,12 +47,6 @@ def clear_pixel_count_product(gridspec: GridSpec) -> OutputProduct:
         'href': f'https://collections.digitalearth.africa/product/{name}'
     }
 
-    algo_info = {
-        'algorithm': 'odc-stats',
-        'algorithm_version': '???',
-        'deployment_id': '???'
-    }
-
     bucket_name = 'deafrica-stats-processing'
     location = f's3://{bucket_name}/{name}/v{version}'
     measurements = ('clear', 'total')
@@ -68,7 +61,6 @@ def clear_pixel_count_product(gridspec: GridSpec) -> OutputProduct:
                          version=version,
                          info=info,
                          short_name=short_name,
-                         algo_info=algo_info,
                          location=location,
                          properties=properties,
                          measurements=measurements,
