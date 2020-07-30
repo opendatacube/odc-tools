@@ -140,3 +140,11 @@ def parse_gridspec(s: str) -> GridSpec:
                     tile_size=tsz,
                     resolution=res,
                     origin=(0, 0))
+
+
+def parse_gridspec_with_name(s: str) -> Tuple[str, GridSpec]:
+    gs = parse_gridspec(s)
+    if s in GRIDS:
+        return (s, gs)
+    s = s.replace(';', '_')
+    return (s, gs)
