@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Union, Iterator, Optional
+from typing import Tuple, Dict, List, Union, Iterator, Optional, Any
 from uuid import UUID
 
 import toolz
@@ -260,6 +260,15 @@ class DatasetCache(object):
     def stream_grid_tile(self, idx: Tuple[int, int], grid: str):
         """Iterate over datasets in a given tile"""
         return self.stream_group(mk_group_name(idx, grid))
+
+    def append_info_dict(self, prefix: str, oo: Dict[str, Any], transaction=None):
+        self._db.append_info_dict(prefix, oo, transaction=transaction)
+
+    def get_info_dict(self, prefix: str, transaction=None) -> Dict[str, Any]:
+        return self._db.get_info_dict(prefix, transaction=transaction)
+
+    def clear_info_dict(self, prefix: str, transaction=None):
+        return self._db.clear_info_dict(prefix, transaction=transaction)
 
 
 def open_ro(path: str,
