@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional
 from copy import deepcopy
 from datetime import datetime
 from dataclasses import dataclass, field
@@ -12,6 +12,16 @@ from odc.index import odc_uuid
 
 
 default_href_prefix = 'https://collections.dea.ga.gov.au/product'
+
+
+def format_datetime(dt: datetime,
+                    with_tz=True,
+                    timespec='microseconds') -> str:
+    dt = normalise_dt(dt)
+    dt = dt.isoformat(timespec=timespec)
+    if with_tz:
+        dt = dt + 'Z'
+    return dt
 
 
 @dataclass
@@ -30,12 +40,8 @@ class DateTimeRange:
         """
         Return dictionary of values to go into STAC's `properties:` section.
         """
-        def fmt(dt: datetime) -> str:
-            assert dt.tzinfo is None
-            return dt.isoformat(timespec='microseconds')
-
-        start = fmt(self.start)
-        end = fmt(self.end)
+        start = format_datetime(self.start)
+        end = format_datetime(self.end)
 
         return {'datetime': start,
                 'dtr:start_datetime': start,
@@ -139,16 +145,21 @@ class Task:
         """
         return self._prefix(relative_to) + '.' + ext
 
-    def render_metadata(self, ext: str = 'tiff') -> Dict[str, Any]:
+    def render_metadata(self, ext: str = 'tiff',
+                        processing_dt: Optional[datetime] = None) -> Dict[str, Any]:
         """
         Put together EO3 metadata document for the output of this task.
         """
+        if processing_dt is None:
+            processing_dt = datetime.utcnow()
+
         product = self.product
         geobox = self.geobox
         region_code = product.region_code(self.tile_index)
         properties = deepcopy(product.properties)
 
         properties.update(self.time_range.to_stac())
+        properties['odc:processing_datetime'] = format_datetime(processing_dt, timespec='seconds')
         properties['odc:region_code'] = region_code
 
         measurements = {band: {'path': path}
