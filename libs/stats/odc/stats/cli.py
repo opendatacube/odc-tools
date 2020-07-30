@@ -45,7 +45,7 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
       - multi-product inputs
 
     """
-    from odc.index import ordered_dss, bin_dataset_stream, dataset_count
+    from odc.index import chopped_dss, bin_dataset_stream, dataset_count
     from odc.dscache import create_cache
     from odc.dscache.tools import dictionary_from_product_list
     from odc.dscache.tools.tiling import parse_gridspec_with_name
@@ -80,7 +80,7 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     cache.add_grid(gridspec, grid)
 
     cells = {}
-    dss = ordered_dss(dc, product=product, time=time_period)
+    dss = chopped_dss(dc, product=product, time=time_period, freq='w')
     dss = cache.tee(dss)
     dss = bin_dataset_stream(gridspec, dss, cells)
     dss = tqdm(dss, total=n_dss)
