@@ -1,8 +1,8 @@
-from typing import Tuple, Dict, List, Union, Iterator, Optional, Any
+from typing import Tuple, Dict, List, Union, Iterator, Optional, Any, Iterable, Collection
 from uuid import UUID
 
 import toolz
-from datacube.model import Dataset, GridSpec, DatasetType
+from datacube.model import Dataset, GridSpec, DatasetType, MetadataType
 from datacube.utils.geometry import CRS
 from . import _jsoncache as base
 
@@ -11,15 +11,19 @@ from odc.io.text import split_and_check
 ProductCollection = Union[Iterator[DatasetType],
                           List[DatasetType],
                           Dict[str, DatasetType]]
+Document = base.Document
+LaxUUID = base.LaxUUID
+TileIdx = Tuple[int, int]
 
 
-def ds2doc(ds):
+def ds2doc(ds) -> Tuple[UUID, Document]:
     return (ds.id, dict(uris=ds.uris,
                         product=ds.type.name,
                         metadata=ds.metadata_doc))
 
 
-def doc2ds(doc, products):
+def doc2ds(doc: Optional[Document],
+           products: Dict[str, DatasetType]) -> Optional[Dataset]:
     if doc is None:
         return None
 
@@ -29,22 +33,24 @@ def doc2ds(doc, products):
     return Dataset(p, doc['metadata'], uris=doc['uris'])
 
 
-def gs2doc(gs: GridSpec):
+def gs2doc(gs: GridSpec) -> base.Document:
     return dict(crs=str(gs.crs),
                 tile_size=list(gs.tile_size),
                 resolution=list(gs.resolution),
                 origin=list(gs.origin))
 
 
-def doc2gs(doc):
+def doc2gs(doc: Document) -> GridSpec:
     return GridSpec(crs=CRS(doc['crs']),
                     tile_size=tuple(doc['tile_size']),
                     resolution=tuple(doc['resolution']),
                     origin=tuple(doc['origin']))
 
 
-def build_dc_product_map(metadata_json, products_json):
-    from datacube.model import metadata_from_doc, DatasetType
+def build_dc_product_map(metadata_json: Document,
+                         products_json: Document) -> Tuple[Dict[str, MetadataType],
+                                                           Dict[str, DatasetType]]:
+    from datacube.model import metadata_from_doc
 
     mm = toolz.valmap(metadata_from_doc, metadata_json)
 
@@ -62,7 +68,7 @@ def build_dc_product_map(metadata_json, products_json):
     return mm, {k: mk_product(doc, k) for k, doc in products_json.items()}
 
 
-def _metadata_from_products(products):
+def _metadata_from_products(products: Dict[str, DatasetType]) -> Dict[str, MetadataType]:
     mm = {}
     for p in products.values():
         m = p.metadata_type
@@ -72,22 +78,22 @@ def _metadata_from_products(products):
     return mm
 
 
-def train_dictionary(dss, dict_sz=8*1024):
+def train_dictionary(dss: Iterator[Dataset], dict_sz=8*1024) -> Optional[bytes]:
     """ Given a finite sequence of Datasets train zstandard compression dictionary of a given size.
 
         Accepts both `Dataset` as well as "raw" datasets.
 
         Will return None if input sequence is empty.
     """
-    docs = map(ds2doc, dss)
+    docs = list(map(ds2doc, dss))
     return base.train_dictionary(docs, dict_sz=dict_sz)
 
 
-def mk_group_name(idx: Tuple[int, int], name: str = "unnamed_grid") -> str:
+def mk_group_name(idx: TileIdx, name: str = "unnamed_grid") -> str:
     return f"{name}/{idx[0]:+05d}/{idx[1]:+05d}"
 
 
-def parse_group_name(group_name: str) -> Tuple[Tuple[int, int], str]:
+def parse_group_name(group_name: str) -> Tuple[TileIdx, str]:
     """ Return an ((int, int), prefix:str) tuple from group name.
 
         Expects group to be in the form {prefix}/{x}/{y}
@@ -104,7 +110,7 @@ def parse_group_name(group_name: str) -> Tuple[Tuple[int, int], str]:
     return (x, y), prefix
 
 
-class DatasetCache(object):
+class DatasetCache:
     """
     info:
        version: 4-bytes
@@ -150,19 +156,19 @@ class DatasetCache(object):
         self._db.close()
 
     @property
-    def readonly(self):
+    def readonly(self) -> bool:
         return self._db.readonly
 
     @property
-    def count(self):
+    def count(self) -> int:
         return self._db.count
 
-    def put_group(self, name, uuids):
+    def put_group(self, name: str, uuids: Collection[UUID]):
         """ Group is a named list of uuids
         """
         self._db.put_group(name, uuids)
 
-    def get_group(self, name):
+    def get_group(self, name: str) -> Optional[List[UUID]]:
         """ Group is a named list of uuids
         """
         return self._db.get_group(name)
@@ -179,34 +185,34 @@ class DatasetCache(object):
         return self._db.groups(raw=raw, prefix=prefix)
 
     @property
-    def products(self):
+    def products(self) -> Dict[str, DatasetType]:
         return self._products
 
     @property
-    def metadata(self):
+    def metadata(self) -> Dict[str, MetadataType]:
         return self._metadata
 
-    def _add_metadata(self, metadata, transaction):
+    def _add_metadata(self, metadata: MetadataType, transaction: base.MaybeTransaction):
         self._metadata[metadata.name] = metadata
         self._db.append_info_dict('metadata/', {metadata.name: metadata.definition}, transaction)
 
-    def _add_product(self, product, transaction):
+    def _add_product(self, product: DatasetType, transaction: base.MaybeTransaction):
         if product.metadata_type.name not in self._metadata:
             self._add_metadata(product.metadata_type, transaction)
 
         self._products[product.name] = product
         self._db.append_info_dict('product/', {product.name: product.definition}, transaction)
 
-    def _ds2doc(self, ds):
+    def _ds2doc(self, ds: Dataset) -> Tuple[UUID, Document]:
         if ds.type.name not in self._products:
             self._add_product(ds.type, self._db.current_transaction)
         return ds2doc(ds)
 
-    def bulk_save(self, dss):
+    def bulk_save(self, dss: Iterable[Dataset]):
         docs = (self._ds2doc(ds) for ds in dss)
         return self._db.bulk_save(docs)
 
-    def tee(self, dss, max_transaction_size=10000):
+    def tee(self, dss: Iterable[Dataset], max_transaction_size: int = 10000) -> Iterator[Dataset]:
         """Given a lazy stream of datasets persist them to disk and then pass through
         for further processing.
         :dss: stream of datasets
@@ -214,20 +220,20 @@ class DatasetCache(object):
         """
         return self._db.tee(dss, max_transaction_size=max_transaction_size, transform=self._ds2doc)
 
-    def get(self, uuid):
+    def get(self, uuid: LaxUUID) -> Dataset:
         """Extract single dataset with a given uuid, or return None if not found"""
         return doc2ds(self._db.get(uuid), self._products)
 
-    def get_all(self):
+    def get_all(self) -> Iterator[Dataset]:
         for _, v in self._db.get_all():
             yield doc2ds(v, self._products)
 
-    def stream_group(self, group_name):
+    def stream_group(self, group_name: str) -> Iterator[Dataset]:
         for _, v in self._db.stream_group(group_name):
             yield doc2ds(v, self._products)
 
     @property
-    def grids(self):
+    def grids(self) -> Dict[str, GridSpec]:
         """Grids defined for this dataset cache"""
         return {key: doc2gs(value)
                 for key, value in self._db.get_info_dict("grid/").items()}
@@ -236,17 +242,19 @@ class DatasetCache(object):
         """Register a grid"""
         self._db.append_info_dict("grid/", {name: gs2doc(gs)})
 
-    def add_grid_tile(self, grid: str, idx, dss):
+    def add_grid_tile(self, grid: str,
+                      idx: TileIdx,
+                      uuids: Collection[UUID]):
         """Add list of dataset UUIDs to a tile"""
         key = mk_group_name(idx, grid)
-        self._db.put_group(key, dss)
+        self._db.put_group(key, uuids)
 
-    def add_grid_tiles(self, grid: str, tiles: Dict[Tuple[int, int], List[UUID]]):
+    def add_grid_tiles(self, grid: str, tiles: Dict[TileIdx, List[UUID]]):
         """Add multiple tiles to a grid"""
-        for idx, dss in tiles.items():
-            self.add_grid_tile(grid, idx, dss)
+        for idx, uuids in tiles.items():
+            self.add_grid_tile(grid, idx, uuids)
 
-    def tiles(self, grid: str) -> List[Tuple[Tuple[int, int], int]]:
+    def tiles(self, grid: str) -> List[Tuple[TileIdx, int]]:
         """Return tile indexes and dataset counts"""
 
         def tile_index(group_name):
@@ -257,17 +265,17 @@ class DatasetCache(object):
         return [(tile_index(group_name), count)
                 for group_name, count in self.groups(prefix=grid + '/')]
 
-    def stream_grid_tile(self, idx: Tuple[int, int], grid: str):
+    def stream_grid_tile(self, idx: TileIdx, grid: str) -> Iterator[Dataset]:
         """Iterate over datasets in a given tile"""
         return self.stream_group(mk_group_name(idx, grid))
 
-    def append_info_dict(self, prefix: str, oo: Dict[str, Any], transaction=None):
+    def append_info_dict(self, prefix: str, oo: Document, transaction: base.MaybeTransaction = None):
         self._db.append_info_dict(prefix, oo, transaction=transaction)
 
-    def get_info_dict(self, prefix: str, transaction=None) -> Dict[str, Any]:
+    def get_info_dict(self, prefix: str, transaction: base.MaybeTransaction = None) -> Document:
         return self._db.get_info_dict(prefix, transaction=transaction)
 
-    def clear_info_dict(self, prefix: str, transaction=None):
+    def clear_info_dict(self, prefix: str, transaction: base.MaybeTransaction = None):
         return self._db.clear_info_dict(prefix, transaction=transaction)
 
 
