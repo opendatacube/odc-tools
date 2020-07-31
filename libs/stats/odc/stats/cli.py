@@ -46,7 +46,7 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
 
     """
     from odc.index import chopped_dss, bin_dataset_stream, dataset_count
-    from odc.dscache import create_cache
+    from odc.dscache import create_cache, db_exists
     from odc.dscache.tools import dictionary_from_product_list
     from odc.dscache.tools.tiling import parse_gridspec_with_name
     from odc.dscache.tools.profiling import ds_stream_test_func
@@ -57,13 +57,17 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     if output == '':
         output = f'{product}_{year}.db'
 
+    if db_exists(output) and overwrite is False:
+        print(f"File database already exists: {output}, use --overwrite flag to force deletion", file=sys.stderr)
+        sys.exit(1)
+
     try:
         grid, gridspec = parse_gridspec_with_name(grid)
     except ValueError:
         print(f"""Failed to recognize/parse gridspec: '{grid}'
   Try one of the named ones: albers_au_25, albers_africa_{10|20|30|60}
   or define custom 'crs:3857;30;5000' - 30m pixels 5,000 pixels per side""", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(2)
 
     print(f"Will write to {output}")
     dc = Datacube(env=env)
