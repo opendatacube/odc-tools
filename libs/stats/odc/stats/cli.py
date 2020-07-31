@@ -69,10 +69,16 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
   or define custom 'crs:3857;30;5000' - 30m pixels 5,000 pixels per side""", file=sys.stderr)
         sys.exit(2)
 
+    cfg = dict(
+        freq='1Y',
+        year=year,
+        grid=grid,
+    )
+
     print(f"Will write to {output}")
     dc = Datacube(env=env)
 
-    print("Connecting to the database")
+    print("Connecting to the database, counting datasets")
     n_dss = dataset_count(dc.index, product=product, time=time_period)
     print(f"Processing {n_dss:,d} datasets for the year {year}")
 
@@ -82,6 +88,7 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
 
     cache = create_cache(output, zdict=zdict, complevel=complevel, truncate=overwrite)
     cache.add_grid(gridspec, grid)
+    cache.append_info_dict("stats/", dict(config=cfg))
 
     cells = {}
     dss = chopped_dss(dc, product=product, time=time_period, freq='w')
