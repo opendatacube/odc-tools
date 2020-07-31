@@ -90,7 +90,10 @@ def jsonKV2dict(kv: Iterable[Tuple[bytes, bytes]],
             doc = decompressor.decompress(doc)
         return k.decode('utf8'), json.loads(doc)
 
-    return {k: doc for k, doc in map(decode, kv)}
+    doc = {k: doc for k, doc in map(decode, kv)}
+    if len(doc) == 1 and list(doc)[0] == '':
+        doc = doc['']
+    return doc
 
 
 def doc2bytes(doc: Document_,
