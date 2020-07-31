@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from pathlib import Path
 
 FORMAT_VERSION = b'0001'
+RESERVED_INFO_KEYS = set(['version', 'zdict'])
 
 Prefix = Union[str, bytes]
 LaxUUID = Union[str, UUID]
@@ -190,32 +191,53 @@ class JsonBlobCache:
         for k, _ in prefix_visit(tr, prefix, full_key=True, db=db_info):
             tr.delete(k, db=db_info)
 
-    def _get_info_dict(self, prefix: Prefix, tr: lmdb.Transaction):
+    def _get_info_dict(self, prefix: Prefix, tr: lmdb.Transaction) -> Document:
         return jsonKV2dict(prefix_visit(tr, prefix, db=self._dbs.info), self._decomp)
 
     def append_info_dict(self,
                          prefix: str,
                          oo: Document,
                          transaction: MaybeTransaction = None):
+        if prefix in RESERVED_INFO_KEYS:
+            raise ValueError(f"Prefix '{prefix}' can not be used, it is reserved for internal use")
+
         if transaction is None:
             with self._dbs.main.begin(write=True) as tr:
                 self._append_info_dict(prefix, oo, tr)
         else:
             self._append_info_dict(prefix, oo, transaction)
 
-    def get_info_dict(self, prefix: Prefix, transaction: MaybeTransaction = None):
+    def get_info_dict(self, prefix: str, transaction: MaybeTransaction = None) -> Document:
+        if prefix in RESERVED_INFO_KEYS:
+            raise ValueError(f"Prefix '{prefix}' can not be read, it is reserved for internal use")
+
         if transaction is None:
             with self._dbs.main.begin(write=False) as tr:
                 return self._get_info_dict(prefix, tr)
         else:
             return self._get_info_dict(prefix, transaction)
 
-    def clear_info_dict(self, prefix: Prefix, transaction: MaybeTransaction = None):
+    def clear_info_dict(self, prefix: str, transaction: MaybeTransaction = None):
+        if prefix in RESERVED_INFO_KEYS:
+            raise ValueError(f"Prefix '{prefix}' can not be cleared, it is reserved for internal use")
+
         if transaction is None:
             with self._dbs.main.begin(write=True) as tr:
                 return self._clear_info_dict(prefix, tr)
         else:
             return self._clear_info_dict(prefix, transaction)
+
+    def get_info_keys(self, prefix: str = '') -> Iterator[str]:
+        with self._dbs.main.begin(self._dbs.info, write=False, buffers=True) as tr:
+            if prefix == '':
+                kv_stream = tr.cursor()
+            else:
+                kv_stream = prefix_visit(tr, prefix, full_key=True)
+
+            for k, _ in kv_stream:
+                ks = bytes(k).decode('utf8')
+                if ks not in RESERVED_INFO_KEYS:
+                    yield ks
 
     @property
     def current_transaction(self) -> MaybeTransaction:
