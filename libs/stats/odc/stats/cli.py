@@ -93,7 +93,7 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     cells = {}
     dss = chopped_dss(dc, product=product, time=time_period, freq='w')
     dss = cache.tee(dss)
-    dss = bin_dataset_stream(gridspec, dss, cells)
+    dss = bin_dataset_stream(gridspec, dss, cells, persist=lambda ds: (ds.id, ds.center_time))
     dss = tqdm(dss, total=n_dss)
 
     rr = ds_stream_test_func(dss)
@@ -103,5 +103,5 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     print(f"Total of {n_tiles:,d} output tiles")
 
     print("Saving spatial index to disk")
-    cache.add_grid_tiles(grid, {k: x.dss for k, x in cells.items()})
+    cache.add_grid_tiles(grid, {k: [d[0] for d in x.dss] for k, x in cells.items()})
     print(".. done")
