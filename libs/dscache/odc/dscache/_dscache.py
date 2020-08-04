@@ -13,7 +13,8 @@ ProductCollection = Union[Iterator[DatasetType],
                           Dict[str, DatasetType]]
 Document = base.Document
 LaxUUID = base.LaxUUID
-TileIdx = Tuple[int, int]
+TileIdx = Union[Tuple[int, int],
+                Tuple[str, int, int]]
 
 
 def ds2doc(ds) -> Tuple[UUID, Document]:
@@ -90,24 +91,38 @@ def train_dictionary(dss: Iterator[Dataset], dict_sz=8*1024) -> Optional[bytes]:
 
 
 def mk_group_name(idx: TileIdx, name: str = "unnamed_grid") -> str:
-    return f"{name}/{idx[0]:+05d}/{idx[1]:+05d}"
+    x, y = idx[-2:]
+    if len(idx) == 2:
+        return f"{name}/{x:+05d}/{y:+05d}"
+    elif len(idx) == 3:
+        t = idx[0]
+        return f"{name}/{t}/{x:+05d}/{y:+05d}"
+    raise ValueError(f"Expect index in (x, y) or (t, x, y) format")
 
 
 def parse_group_name(group_name: str) -> Tuple[TileIdx, str]:
-    """ Return an ((int, int), prefix:str) tuple from group name.
+    """ Return an
+          ((int, int), prefix:str)       x,y
+          ((str, int, int), prefix:str)  t,x,y
 
-        Expects group to be in the form {prefix}/{x}/{y}
+        tuple from group name.
+
+        Expects group to be in the form
+         {prefix}/{x}/{y}
+        or
+         {prefix}/{t}/{x}/{y}
 
         raises ValueError if group_name is not in the expected format.
     """
 
     try:
-        prefix, x, y = split_and_check(group_name, '/', 3)
-        x, y = map(int, (x, y))
+        prefix, *tidx = split_and_check(group_name, '/', (3, 4))
+        x, y = map(int, tidx[-2:])
+        temporal = tuple(tidx[:-2])
     except ValueError:
         raise ValueError('Bad group name: ' + group_name)
 
-    return (x, y), prefix
+    return temporal + (x, y), prefix
 
 
 class DatasetCache:
