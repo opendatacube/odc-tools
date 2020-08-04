@@ -54,6 +54,8 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
 
     time_period = f'{year}'
 
+    query = dict(product=product, time=time_period)
+
     if output == '':
         output = f'{product}_{year}.db'
 
@@ -70,16 +72,17 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
         sys.exit(2)
 
     cfg = dict(
+        grid=grid,
         freq='1Y',
         year=year,
-        grid=grid,
+        query=query,
     )
 
     print(f"Will write to {output}")
     dc = Datacube(env=env)
 
     print("Connecting to the database, counting datasets")
-    n_dss = dataset_count(dc.index, product=product, time=time_period)
+    n_dss = dataset_count(dc.index, **query)
     print(f"Processing {n_dss:,d} datasets for the year {year}")
 
     print("Training compression dictionary")
@@ -91,7 +94,7 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     cache.append_info_dict("stats/", dict(config=cfg))
 
     cells = {}
-    dss = chopped_dss(dc, product=product, time=time_period, freq='w')
+    dss = chopped_dss(dc, freq='w', **query)
     dss = cache.tee(dss)
     dss = bin_dataset_stream(gridspec, dss, cells, persist=lambda ds: (ds.id, ds.center_time))
     dss = tqdm(dss, total=n_dss)
