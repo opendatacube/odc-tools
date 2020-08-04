@@ -62,7 +62,7 @@ def slurp_lines(fname: str, *args, **kwargs) -> List[str]:
         return [s.rstrip() for s in f.readlines()]
 
 
-def mtl_parse(txt: str) -> Dict[str, Any]:
+def parse_mtl(txt: str) -> Dict[str, Any]:
     def parse_value(s):
         if len(s) == 0:
             return s
