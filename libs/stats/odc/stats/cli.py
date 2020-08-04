@@ -102,6 +102,8 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     n_tiles = len(cells)
     print(f"Total of {n_tiles:,d} output tiles")
 
+    temporal_k = (f'{cfg["year"]}--{cfg["freq"]}',)
     print("Saving spatial index to disk")
-    cache.add_grid_tiles(grid, {k: [d[0] for d in x.dss] for k, x in cells.items()})
+    cache.add_grid_tiles(grid, {temporal_k + k: [d[0] for d in x.dss]
+                                for k, x in cells.items()})
     print(".. done")
