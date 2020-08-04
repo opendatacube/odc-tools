@@ -1,4 +1,8 @@
-from typing import Tuple
+from typing import Tuple, Union, Dict, Any, Iterator, List
+from pathlib import Path
+
+PathLike = Union[str, Path]
+RawDoc = Union[str, bytes]
 
 try:
     from ruamel.yaml import YAML
@@ -7,19 +11,19 @@ except ImportError:
     _YAML_C = None
 
 
-def _parse_yaml_yaml(s):
+def _parse_yaml_yaml(s: str) -> Dict[str, Any]:
     import yaml
     return yaml.load(s, Loader=getattr(yaml, 'CSafeLoader', yaml.SafeLoader))
 
 
-def _parse_yaml_ruamel(s):
+def _parse_yaml_ruamel(s: str) -> Dict[str, Any]:
     return _YAML_C.load(s)
 
 
 parse_yaml = _parse_yaml_yaml if _YAML_C is None else _parse_yaml_ruamel
 
 
-def read_stdin_lines(skip_empty=False):
+def read_stdin_lines(skip_empty: bool = False) -> Iterator[str]:
     """ Read lines from stdin.
 
     Returns iterator of lines with any whitespace trimmed.
@@ -37,7 +41,7 @@ def read_stdin_lines(skip_empty=False):
             yield line
 
 
-def slurp(fname, binary=False):
+def slurp(fname: PathLike, binary: bool = False) -> RawDoc:
     """ fname -> str|bytes.
 
     binary=True -- read bytes not text
@@ -48,7 +52,7 @@ def slurp(fname, binary=False):
         return f.read()
 
 
-def slurp_lines(fname, *args, **kwargs):
+def slurp_lines(fname: str, *args, **kwargs) -> List[str]:
     """ file path -> [lines]
     """
     if len(args) > 0 or len(kwargs) > 0:
@@ -58,17 +62,7 @@ def slurp_lines(fname, *args, **kwargs):
         return [s.rstrip() for s in f.readlines()]
 
 
-def test_parse_yaml():
-    o = parse_yaml('''
-a: 3
-b: foo
-''')
-
-    assert o['a'] == 3 and o['b'] == "foo"
-    assert set(o) == {'a', 'b'}
-
-
-def mtl_parse(txt):
+def mtl_parse(txt: str) -> Dict[str, Any]:
     def parse_value(s):
         if len(s) == 0:
             return s
@@ -100,7 +94,7 @@ def mtl_parse(txt):
             v = s[i+1:].strip()
             yield (k, v)
 
-    tree = {}
+    tree: Dict[str, Any] = {}
     node, name = tree, None
     nodes = []
 
@@ -125,76 +119,20 @@ def mtl_parse(txt):
     return tree
 
 
-def test_mtl():
-    import pytest
-
-    txt = '''
-    GROUP = a
-      a_int = 10
-      GROUP = b
-         b_string = "string with spaces"
-         GROUP = c
-           c_float = 1.34
-           c_int = 3
-         END_GROUP = c
-         b_more = 2e-4
-      END_GROUP = b
-      a_date = 2018-09-23
-    END_GROUP = a
-    END
-    '''
-
-    expect = {'a': {'a_int': 10,
-                    'a_date': "2018-09-23",
-                    'b': {'b_string': "string with spaces",
-                          'b_more': 2e-4,
-                          'c': {'c_float': 1.34,
-                                'c_int': 3}}}}
-
-    doc = mtl_parse(txt)
-    assert doc == expect
-
-    with pytest.raises(ValueError):
-        mtl_parse("""
-        GROUP = a
-        END_GROUP = b
-        """)
-
-    with pytest.raises(ValueError):
-        mtl_parse("""
-        GROUP = a
-        GROUP = b
-        END_GROUP = b
-        END_GROUP = a
-        END_GROUP = a
-        """)
-
-    # test duplicate keys: values
-    with pytest.raises(ValueError):
-        mtl_parse("""
-        a = 10
-        a = 3
-        """)
-
-    # test duplicate keys: values/subtrees
-    with pytest.raises(ValueError):
-        mtl_parse("""
-        GROUP = a
-        b = 10
-          GROUP = b
-          END_GROUP = b
-        END_GROUP = a
-        """)
-
-    assert mtl_parse("") == {}
-    assert mtl_parse("END") == {}
-
-
-def split_and_check(s, separator, n):
+def split_and_check(s: str,
+                    separator: str,
+                    n: Union[int, Tuple[int, ...]]) -> Tuple[str, ...]:
     """ Turn string into tuple, checking that there are exactly as many parts as expected.
+    :param s: String to parse
+    :param separator: Separator character
+    :param n: Expected number of parts, can be a single integer value or several,
+              example `(2, 3)` accepts 2 or 3 parts.
     """
+    if isinstance(n, int):
+        n = (n, )
+
     parts = s.split(separator)
-    if len(parts) != n:
+    if len(parts) not in n:
         raise ValueError('Failed to parse "{}"'.format(s))
     return tuple(parts)
 
