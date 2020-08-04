@@ -3,7 +3,7 @@
 from .text import (
     parse_yaml,
     read_stdin_lines,
-    mtl_parse,
+    parse_mtl,
     slurp_lines,
     slurp,
 )
@@ -17,7 +17,7 @@ __all__ = (
     'read_stdin_lines',
     'slurp',
     'slurp_lines',
-    'mtl_parse',
+    'parse_mtl',
     'tar_doc_stream',
     'default_base_dir',
     'normalise_path',

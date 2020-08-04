@@ -1,5 +1,5 @@
 import pytest
-from odc.io.text import mtl_parse, parse_yaml, split_and_check
+from odc.io.text import parse_mtl, parse_yaml, split_and_check
 
 
 def test_mtl():
@@ -27,17 +27,17 @@ def test_mtl():
                           'c': {'c_float': 1.34,
                                 'c_int': 3}}}}
 
-    doc = mtl_parse(txt)
+    doc = parse_mtl(txt)
     assert doc == expect
 
     with pytest.raises(ValueError):
-        mtl_parse("""
+        parse_mtl("""
         GROUP = a
         END_GROUP = b
         """)
 
     with pytest.raises(ValueError):
-        mtl_parse("""
+        parse_mtl("""
         GROUP = a
         GROUP = b
         END_GROUP = b
@@ -47,14 +47,14 @@ def test_mtl():
 
     # test duplicate keys: values
     with pytest.raises(ValueError):
-        mtl_parse("""
+        parse_mtl("""
         a = 10
         a = 3
         """)
 
     # test duplicate keys: values/subtrees
     with pytest.raises(ValueError):
-        mtl_parse("""
+        parse_mtl("""
         GROUP = a
         b = 10
           GROUP = b
@@ -62,8 +62,8 @@ def test_mtl():
         END_GROUP = a
         """)
 
-    assert mtl_parse("") == {}
-    assert mtl_parse("END") == {}
+    assert parse_mtl("") == {}
+    assert parse_mtl("END") == {}
 
 
 def test_parse_yaml():
