@@ -1,6 +1,7 @@
 import click
 from tqdm.auto import tqdm
 import sys
+import pickle
 from collections import namedtuple
 
 CompressedDataset = namedtuple("CompressedDataset", ['id', 'time'])
@@ -34,11 +35,16 @@ def main():
               is_flag=True,
               default=False,
               help='Overwrite output if it exists')
+@click.option('--debug',
+              is_flag=True,
+              default=False,
+              hidden=True,
+              help='Dump debug data to pickle')
 @click.argument('product', type=str, nargs=1)
 @click.argument('output', type=str, nargs=1, default='')
-def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
+def save_tasks(grid, year, output, product, env, complevel, overwrite=False, debug=False):
     """
-    Prepare tasks for processing (query db)
+    Prepare tasks for processing (query db).
 
     <todo more help goes here>
 
@@ -60,6 +66,11 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
         return CompressedDataset(ds.id, ds.center_time)
 
     time_period = f'{year}'
+
+    if year == 2020 and debug:
+        # TODO: delete this when done testing
+        print("!!!!!One week query!!!!!")
+        time_period = ('2020-03-01', '2020-03-08')
 
     query = dict(product=product, time=time_period)
 
@@ -118,3 +129,9 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     cache.add_grid_tiles(grid, {temporal_k + k: [ds.id for ds in x.dss]
                                 for k, x in cells.items()})
     print(".. done")
+
+    if debug:
+        pkl_path = output.replace('.db', '-cells.pkl')
+        print(f"Saving debug info to: {pkl_path}")
+        with open(pkl_path, "wb") as f:
+            pickle.dump(cells, f)
