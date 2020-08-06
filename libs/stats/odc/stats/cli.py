@@ -1,6 +1,9 @@
 import click
 from tqdm.auto import tqdm
 import sys
+from collections import namedtuple
+
+CompressedDataset = namedtuple("CompressedDataset", ['id', 'time'])
 
 
 @click.group(help="Stats command line interface")
@@ -51,6 +54,10 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     from odc.dscache.tools.tiling import parse_gridspec_with_name
     from odc.dscache.tools.profiling import ds_stream_test_func
     from datacube import Datacube
+    from datacube.model import Dataset
+
+    def compress_ds(ds: Dataset) -> CompressedDataset:
+        return CompressedDataset(ds.id, ds.center_time)
 
     time_period = f'{year}'
 
@@ -96,7 +103,7 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     cells = {}
     dss = chopped_dss(dc, freq='w', **query)
     dss = cache.tee(dss)
-    dss = bin_dataset_stream(gridspec, dss, cells, persist=lambda ds: (ds.id, ds.center_time))
+    dss = bin_dataset_stream(gridspec, dss, cells, persist=compress_ds)
     dss = tqdm(dss, total=n_dss)
 
     rr = ds_stream_test_func(dss)
@@ -105,8 +112,9 @@ def save_tasks(grid, year, output, product, env, complevel, overwrite=False):
     n_tiles = len(cells)
     print(f"Total of {n_tiles:,d} output tiles")
 
-    temporal_k = (f'{cfg["year"]}--{cfg["freq"]}',)
+    temporal_k = (f'{cfg["year"]}--P{cfg["freq"]}',)
+
     print("Saving spatial index to disk")
-    cache.add_grid_tiles(grid, {temporal_k + k: [d[0] for d in x.dss]
+    cache.add_grid_tiles(grid, {temporal_k + k: [ds.id for ds in x.dss]
                                 for k, x in cells.items()})
     print(".. done")
