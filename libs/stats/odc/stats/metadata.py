@@ -2,8 +2,30 @@ from typing import Tuple
 from datetime import datetime
 
 from datacube.model import GridSpec
+from datacube.utils.geometry import polygon_from_transform, Geometry
 from odc import dscache
 from .model import OutputProduct, Task, DateTimeRange
+
+
+def gs_bounds(gs: GridSpec, tiles: Tuple[Tuple[int, int],
+                                         Tuple[int, int]]) -> Geometry:
+    """
+    Compute Polygon for a selection of tiles.
+
+    :param gs: GridSpec
+    :param tiles: (x_range, y_range)
+
+    X,Y ranges are inclusive on the left and exclusive on the right, same as numpy slicing.
+    """
+    ((x0, x1), (y0, y1)) = tiles
+    if gs.resolution[0] < 0:
+        gb = gs.tile_geobox((x0, y1-1))
+    else:
+        gb = gs.tile_geobox((x0, y0))
+
+    nx = (x1 - x0)*gb.shape[1]
+    ny = (y1 - y0)*gb.shape[0]
+    return polygon_from_transform(nx, ny, gb.affine, gb.crs)
 
 
 def clear_pixel_count_product(gridspec: GridSpec) -> OutputProduct:
