@@ -1,4 +1,5 @@
 import click
+import json
 from tqdm.auto import tqdm
 import sys
 import pickle
@@ -75,7 +76,7 @@ def save_tasks(grid, year, output, product, env, complevel,
     from datacube import Datacube
     from datacube.model import Dataset
     from datacube.utils.geometry import Geometry
-    from .metadata import gs_bounds
+    from .metadata import gs_bounds, compute_grid_info, gjson_from_tasks
 
     if output == '':
         if year is not None:
@@ -204,6 +205,16 @@ def save_tasks(grid, year, output, product, env, complevel,
             n_days = len(set(ds.time.date() for ds in dss))
             line = f'"{p}", {x:+05d}, {y:+05d}, {n_dss:4d}, {n_days:4d}\n'
             f.write(line)
+
+    print("Dumping GeoJSON")
+    grid_info = compute_grid_info(cells,
+                                  resolution=max(gridspec.tile_size)/4)
+    tasks_geo = gjson_from_tasks(tasks, grid_info)
+    for period, gjson in tasks_geo.items():
+        fname = out_path(f'-{period}.geojson')
+        print(f"Writing to {fname}")
+        with open(fname, 'wt') as f:
+            json.dump(gjson, f)
 
     if debug:
         pkl_path = out_path('-cells.pkl')
