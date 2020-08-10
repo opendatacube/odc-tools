@@ -1,9 +1,13 @@
-from typing import Tuple
-from datetime import datetime
+import math
+from copy import deepcopy
+import toolz
+from typing import Tuple, Dict, Any
+from datetime import datetime, timedelta
 
 from datacube.model import GridSpec
 from datacube.utils.geometry import polygon_from_transform, Geometry
 from odc import dscache
+from odc.index import solar_offset
 from .model import OutputProduct, Task, DateTimeRange
 
 
@@ -78,3 +82,74 @@ def load_task(cache: dscache.DatasetCache,
                 geobox=geobox,
                 time_range=time_range,
                 datasets=dss)
+
+
+def timedelta_to_hours(td: timedelta) -> float:
+    return td.days*24 + td.seconds/3600
+
+
+def compute_grid_info(cells: Dict[Tuple[int, int], Any],
+                      resolution: float = math.inf,
+                      title_width: int = 5) -> Dict[Tuple[int, int], Any]:
+    """
+    Compute geojson feature for every cell in ``cells``.
+    Where ``cells`` is produced by ``odc.index.bin_dataset_stream``
+    """
+    grid_info = {}
+
+    for idx, cell in cells.items():
+        geobox = cell.geobox
+        utc_offset = timedelta_to_hours(solar_offset(geobox.extent))
+        wrapdateline = (utc_offset <= -11 or utc_offset >= 11)
+
+        geom = geobox.extent.to_crs('epsg:4326',
+                                    resolution=resolution,
+                                    wrapdateline=wrapdateline)
+        ix, iy = idx
+        grid_info[idx] = {
+            'type': 'Feature',
+            'geometry': geom.json,
+            'properties': {
+                'title': f'{ix:+0{title_width}d},{iy:+0{title_width}d}',
+                'utc_offset': utc_offset,
+                'total': len(cell.dss),
+            },
+        }
+
+    return grid_info
+
+
+def gjson_from_tasks(tasks: Dict[Tuple[str, int, int], Any],
+                     grid_info: Dict[Tuple[int, int], Any]) -> Dict[str, Dict[str, Any]]:
+    """
+    Group tasks by time period and computer geosjon describing every tile covered by each time period.
+
+    Returns time_period -> GeoJSON mapping
+
+    Each feature in GeoJSON describes one tile and has following propreties
+
+      .total      -- number of datasets
+      .days       -- number of days with at least one observation
+      .utc_offset -- utc_offset used to compute day boundaries
+    """
+    def _get(idx):
+        xy_idx = idx[-2:]
+        geo = deepcopy(grid_info[xy_idx])
+
+        dss = tasks[idx]
+        utc_offset = timedelta(hours=geo['properties']['utc_offset'])
+
+        ndays = len(set((ds.time+utc_offset).date()
+                        for ds in dss))
+        geo['properties']['total'] = len(dss)
+        geo['properties']['days'] = ndays
+
+        return geo
+
+    def process(idxs):
+        return dict(type='FeatureCollection',
+                    features=[_get(idx) for idx in idxs])
+
+    return {t: process(idxs)
+            for t, idxs in toolz.groupby(toolz.first,
+                                         sorted(tasks)).items()}
