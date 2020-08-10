@@ -27,4 +27,10 @@ setup(
 
     packages=['odc.stats'],
     zip_safe=False,
+
+    entry_points={
+        'console_scripts': [
+            'odc-stats = odc.stats.cli:main'
+        ]
+    }
 )
