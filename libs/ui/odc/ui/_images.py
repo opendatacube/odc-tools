@@ -161,7 +161,7 @@ def mk_image_overlay(xx: Union[xr.Dataset, xr.DataArray],
     if comp is None or mime is None:
         raise ValueError('Only support png an jpeg formats')
 
-    if 'time' in xx.coords:
+    if 'time' in xx.dims:
         nt = xx.time.shape[0]
         if nt == 1:
             xx = xx.isel(time=0)
