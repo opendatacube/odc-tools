@@ -1,7 +1,7 @@
 import math
 from copy import deepcopy
 import toolz
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Union
 from datetime import datetime, timedelta
 
 from datacube.model import GridSpec
@@ -9,6 +9,13 @@ from datacube.utils.geometry import polygon_from_transform, Geometry
 from odc import dscache
 from odc.index import solar_offset
 from .model import OutputProduct, Task, DateTimeRange
+
+TileIdx_xy = Tuple[int, int]
+TileIdx_txy = Tuple[str, int, int]
+TileIdx = Union[TileIdx_txy, TileIdx_xy]
+
+def _xy(tidx: TileIdx) -> TileIdx_xy:
+    return tidx[-2:]
 
 
 def gs_bounds(gs: GridSpec, tiles: Tuple[Tuple[int, int],
@@ -60,7 +67,7 @@ def clear_pixel_count_product(gridspec: GridSpec) -> OutputProduct:
 
 # TODO: assumes annual only for now
 def load_task(cache: dscache.DatasetCache,
-              tile_index: Tuple[int, int],
+              tile_index: TileIdx,
               product: OutputProduct,
               year: int = 0,
               grid: str = '') -> Task:
@@ -69,7 +76,7 @@ def load_task(cache: dscache.DatasetCache,
 
     gridspec = cache.grids[grid]
     dss = tuple(ds for ds in cache.stream_grid_tile(tile_index, grid))
-    geobox = gridspec.tile_geobox(tile_index)
+    geobox = gridspec.tile_geobox(_xy(tile_index))
 
     if year == 0:
         raise NotImplementedError("TODO: compute time period from datasets")
@@ -88,9 +95,9 @@ def timedelta_to_hours(td: timedelta) -> float:
     return td.days*24 + td.seconds/3600
 
 
-def compute_grid_info(cells: Dict[Tuple[int, int], Any],
+def compute_grid_info(cells: Dict[TileIdx_xy, Any],
                       resolution: float = math.inf,
-                      title_width: int = 5) -> Dict[Tuple[int, int], Any]:
+                      title_width: int = 5) -> Dict[TileIdx_xy, Any]:
     """
     Compute geojson feature for every cell in ``cells``.
     Where ``cells`` is produced by ``odc.index.bin_dataset_stream``
@@ -119,8 +126,8 @@ def compute_grid_info(cells: Dict[Tuple[int, int], Any],
     return grid_info
 
 
-def gjson_from_tasks(tasks: Dict[Tuple[str, int, int], Any],
-                     grid_info: Dict[Tuple[int, int], Any]) -> Dict[str, Dict[str, Any]]:
+def gjson_from_tasks(tasks: Dict[TileIdx_txy, Any],
+                     grid_info: Dict[TileIdx_xy, Any]) -> Dict[str, Dict[str, Any]]:
     """
     Group tasks by time period and computer geosjon describing every tile covered by each time period.
 
