@@ -96,7 +96,7 @@ def cli(input_fname,
         print(msg, file=sys.stderr)
 
     def process_file(filename, index, fps, mode=None, n_failed=0, doc_transform=None):
-        for ds, err in from_tar_file(filename, index, mk_uri, 
+        for ds, err in from_tar_file(filename, index, mk_uri,
                                      mode=mode, doc_transform=doc_transform, **ds_resolve_args):
             if ds is not None:
                 try:
