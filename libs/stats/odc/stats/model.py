@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Any, Optional
+from typing import Dict, Tuple, Any, Optional, Union
 from copy import deepcopy
 from datetime import datetime
 from dataclasses import dataclass, field
@@ -9,6 +9,7 @@ from datacube.model import GridSpec, Dataset
 from datacube.utils.geometry import GeoBox
 from datacube.utils.dates import normalise_dt
 from odc.index import odc_uuid
+from odc.io.text import split_and_check
 
 
 default_href_prefix = 'https://collections.dea.ga.gov.au/product'
@@ -26,15 +27,36 @@ def format_datetime(dt: datetime,
 
 @dataclass
 class DateTimeRange:
-    start: datetime
-    end: datetime = field(init=False)
-    freq: str
+    __slots__ = ('start', 'end', 'freq')
 
-    def __post_init__(self):
-        self.freq = self.freq.upper()
-        period = pd.Period(self.start, freq=self.freq)
-        self.start = normalise_dt(period.start_time.to_pydatetime())
-        self.end = normalise_dt(period.end_time.floor('us').to_pydatetime())  # need to remove ns to avoid UserWarning
+    def __init__(self, start: Union[str, datetime],
+                 freq: Optional[str] = None):
+        """
+
+        DateTimeRange('2019-03--P3M')
+        DateTimeRange('2019-03', '3M')
+        DateTimeRange(datetime(2019, 3, 1), '3M')
+
+        """
+        if freq is None:
+            assert isinstance(start, str)
+            start, freq = split_and_check(start, '--P', 2)
+
+        freq = freq.upper()
+        # Pandas period snaps to frequency resolution, we need to undo that by re-adding the snapping delta
+        t0 = pd.Timestamp(start)
+        period = pd.Period(t0, freq=freq)
+        dt = t0 - period.start_time
+
+        self.freq: str = freq
+        self.start: datetime = normalise_dt(t0.to_pydatetime(warn=False))
+        self.end: datetime = normalise_dt((period.end_time + dt).to_pydatetime(warn=False))
+
+    def __str__(self):
+        return self.short
+
+    def __repr__(self):
+        return f'DateTimeRange({repr(self.start)}, {repr(self.freq)})'
 
     def to_stac(self) -> Dict[str, str]:
         """
@@ -47,6 +69,7 @@ class DateTimeRange:
                 'dtr:start_datetime': start,
                 'dtr:end_datetime': end}
 
+    @property
     def short(self) -> str:
         """
         Short string representation of the time period.
@@ -55,9 +78,9 @@ class DateTimeRange:
         """
         freq = self.freq
         dt = self.start
-        if freq.endswith('Y'):
+        if freq.endswith('Y') and dt.month == 1 and dt.day == 1:
             return f'{dt.year}--P{freq}'
-        elif freq.endswith('M'):
+        elif freq.endswith('M') and dt.day == 1:
             return f'{dt.year}-{dt.month:02d}--P{freq}'
         else:
             return f'{dt.year}-{dt.month:02d}-{dt.day:02d}--P{freq}'
@@ -97,7 +120,7 @@ class Task:
     short_time: str = field(init=False, repr=False)
 
     def __post_init__(self):
-        self.short_time = self.time_range.short()
+        self.short_time = self.time_range.short
 
         if self.uuid.int == 0:
             self.uuid = odc_uuid(self.product.name,
