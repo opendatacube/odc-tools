@@ -11,6 +11,9 @@ from datacube.utils.dates import normalise_dt
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
 
+TileIdx_xy = Tuple[int, int]
+TileIdx_txy = Tuple[str, int, int]
+TileIdx = Union[TileIdx_txy, TileIdx_xy]
 
 default_href_prefix = 'https://collections.dea.ga.gov.au/product'
 
@@ -102,17 +105,30 @@ class OutputProduct:
         if self.href == '':
             self.href = f'{default_href_prefix}/{self.name}'
 
-    def region_code(self, tidx: Tuple[int, int], sep='', n=4) -> str:
+    def region_code(self, tidx: TileIdx_xy, sep='', n=4) -> str:
         """
         Render tile index into a string.
         """
         return f"x{tidx[0]:+0{n}d}{sep}y{tidx[1]:+0{n}d}"
 
+    @staticmethod
+    def dummy(gridspec: GridSpec) -> 'OutputProduct':
+        version = '0.0.0'
+        name = 'dummy'
+        short_name = 'dmy'
+        return OutputProduct(name=name,
+                             version=version,
+                             short_name=short_name,
+                             location=f's3://dummy-bucket/{name}/{version}',
+                             properties={'odc:file_format': 'GeoTIFF'},
+                             measurements=('red', 'green', 'blue'),
+                             gridspec=gridspec)
+
 
 @dataclass
 class Task:
     product: OutputProduct
-    tile_index: Tuple[int, int]
+    tile_index: TileIdx_xy
     geobox: GeoBox
     time_range: DateTimeRange
     datasets: Tuple[Dataset, ...] = field(repr=False)

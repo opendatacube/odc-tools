@@ -8,11 +8,7 @@ from datacube.model import GridSpec
 from datacube.utils.geometry import polygon_from_transform, Geometry
 from odc import dscache
 from odc.index import solar_offset
-from .model import OutputProduct, Task, DateTimeRange
-
-TileIdx_xy = Tuple[int, int]
-TileIdx_txy = Tuple[str, int, int]
-TileIdx = Union[TileIdx_txy, TileIdx_xy]
+from .model import OutputProduct, Task, DateTimeRange, TileIdx, TileIdx_xy, TileIdx_txy
 
 def _xy(tidx: TileIdx) -> TileIdx_xy:
     return tidx[-2:]
@@ -65,28 +61,21 @@ def clear_pixel_count_product(gridspec: GridSpec) -> OutputProduct:
                          freq='1Y')
 
 
-# TODO: assumes annual only for now
 def load_task(cache: dscache.DatasetCache,
-              tile_index: TileIdx,
+              tile_index: TileIdx_txy,
               product: OutputProduct,
-              year: int = 0,
               grid: str = '') -> Task:
     if grid == '':
-        grid, *_ = cache.grids
+        grid = cache.get_info_dict('stats/config')['grid']
 
-    gridspec = cache.grids[grid]
+    time_range = DateTimeRange(tile_index[0])
+    tidx_xy = _xy(tile_index)
+
     dss = tuple(ds for ds in cache.stream_grid_tile(tile_index, grid))
-    geobox = gridspec.tile_geobox(_xy(tile_index))
-
-    if year == 0:
-        raise NotImplementedError("TODO: compute time period from datasets")
-
-    time_range = DateTimeRange(start=datetime(year=year, month=1, day=1),
-                               freq=product.freq)
 
     return Task(product=product,
-                tile_index=tile_index,
-                geobox=geobox,
+                tile_index=tidx_xy,
+                geobox=product.gridspec.tile_geobox(tidx_xy),
                 time_range=time_range,
                 datasets=dss)
 
