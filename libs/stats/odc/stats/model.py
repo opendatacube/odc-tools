@@ -1,6 +1,6 @@
 from typing import Dict, Tuple, Any, Optional, Union
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from uuid import UUID
 import pandas as pd
@@ -45,7 +45,7 @@ class DateTimeRange:
             assert isinstance(start, str)
             start, freq = split_and_check(start, '--P', 2)
 
-        freq = freq.upper()
+        freq = freq.upper().lstrip('P')
         # Pandas period snaps to frequency resolution, we need to undo that by re-adding the snapping delta
         t0 = pd.Timestamp(start)
         period = pd.Period(t0, freq=freq)
@@ -55,11 +55,35 @@ class DateTimeRange:
         self.start: datetime = normalise_dt(t0.to_pydatetime(warn=False))
         self.end: datetime = normalise_dt((period.end_time + dt).to_pydatetime(warn=False))
 
+    @staticmethod
+    def year(year: int) -> 'DateTimeRange':
+        """
+        Construct ``DateTimeRange`` covering one whole year.
+        """
+        return DateTimeRange(datetime(year, 1, 1), '1Y')
+
     def __str__(self):
         return self.short
 
     def __repr__(self):
         return f'DateTimeRange({repr(self.start)}, {repr(self.freq)})'
+
+    def dc_query(self, pad: Optional[Union[timedelta, float, int]] = None) -> Dict[str, Any]:
+        """
+        Transform to form understood by datacube
+
+        :param pad: optionally pad the region by X days, or timedelta
+
+        Example: ``dc.load(..., **p.dc_query(pad=0.5))``
+        """
+        if pad is None:
+            return {'time': (self.start, self.end)}
+
+        if isinstance(pad, (int, float)):
+            pad = timedelta(days=pad)
+
+        return {'time': (self.start - pad,
+                         self.end + pad)}
 
     def to_stac(self) -> Dict[str, str]:
         """
@@ -77,7 +101,7 @@ class DateTimeRange:
         """
         Short string representation of the time period.
 
-        Examples: 2019--1Y, 2020-01--3M, 2013-03-21--10D
+        Examples: 2019--P1Y, 2020-01--P3M, 2013-03-21--P10D
         """
         freq = self.freq
         dt = self.start
@@ -87,6 +111,23 @@ class DateTimeRange:
             return f'{dt.year}-{dt.month:02d}--P{freq}'
         else:
             return f'{dt.year}-{dt.month:02d}-{dt.day:02d}--P{freq}'
+
+    def __contains__(self, t: datetime) -> bool:
+        return self.start <= t <= self.end
+
+    def to_pandas(self) -> pd.Period:
+        """
+        Convert to pandas Period object
+        """
+        return pd.Period(self.start, self.freq)
+
+    def __add__(self, v: int) -> 'DateTimeRange':
+        p = self.to_pandas() + v
+        return DateTimeRange(p.start_time.to_pydatetime(warn=False), self.freq)
+
+    def __sub__(self, v: int) -> 'DateTimeRange':
+        p = self.to_pandas() - v
+        return DateTimeRange(p.start_time.to_pydatetime(warn=False), self.freq)
 
 
 @dataclass

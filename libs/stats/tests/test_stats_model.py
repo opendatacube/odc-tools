@@ -25,3 +25,19 @@ def test_dt_range():
 
     assert str(dtr) == dtr.short
     assert repr(dtr).startswith('DateTimeRange')
+
+    assert DateTimeRange.year(2019) == DateTimeRange('2019--P1Y')
+
+    qq = DateTimeRange.year(2017).dc_query()
+    assert qq == {'time': (datetime(2017, 1, 1), datetime(2018, 1, 1) - _1us)}
+
+    qq = DateTimeRange.year(2017).dc_query(pad=1)
+    assert qq == {'time': (datetime(2016, 12, 31), datetime(2018, 1, 2) - _1us)}
+
+    assert datetime(2017, 1, 1) in DateTimeRange('2017--P1Y')
+    assert datetime(2017, 6, 29) in DateTimeRange('2017--P1Y')
+    assert datetime(2018, 6, 29) not in DateTimeRange('2017--P1Y')
+    assert datetime(2018, 1, 1) not in DateTimeRange('2017--P1Y')
+
+    assert DateTimeRange.year(2000) + 1 == DateTimeRange.year(2001)
+    assert DateTimeRange.year(2000) - 1 == DateTimeRange.year(1999)
