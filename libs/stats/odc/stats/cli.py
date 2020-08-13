@@ -3,6 +3,7 @@ import json
 from tqdm.auto import tqdm
 import sys
 import pickle
+from datetime import datetime
 from collections import namedtuple
 from odc.io.text import click_range2d
 
@@ -33,6 +34,9 @@ def main():
 @click.option('--year',
               type=int,
               help="Only extract datasets for a given year")
+@click.option('--period',
+              type=str,
+              help="Only extract datasets for a given time period, Example '2020-05--P1M' month of May 2020")
 @click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.option('-z', 'complevel',
               type=int,
@@ -52,7 +56,8 @@ def main():
               help='Dump debug data to pickle')
 @click.argument('product', type=str, nargs=1)
 @click.argument('output', type=str, nargs=1, default='')
-def save_tasks(grid, year, output, product, env, complevel,
+def save_tasks(grid, year, period,
+               output, product, env, complevel,
                overwrite=False,
                tiles=None,
                debug=False):
@@ -76,11 +81,27 @@ def save_tasks(grid, year, output, product, env, complevel,
     from datacube import Datacube
     from datacube.model import Dataset
     from datacube.utils.geometry import Geometry
+    from datacube.utils.documents import transform_object_tree
     from .metadata import gs_bounds, compute_grid_info, gjson_from_tasks
+    from .model import DateTimeRange
+
+    if period is not None and year is not None:
+        print("Can only supply one of --year or --period", file=sys.stderr)
+        sys.exit(1)
+
+    if period is not None:
+        try:
+            period = DateTimeRange(period)
+        except ValueError:
+            print(f"Failed to parse supplied period: '{period}'")
+            sys.exit(1)
+
+    if year is not None:
+        period = DateTimeRange.year(year)
 
     if output == '':
-        if year is not None:
-            output = f'{product}_{year}.db'
+        if period is not None:
+            output = f'{product}_{period.short}.db'
         else:
             output = f'{product}_all.db'
 
@@ -94,8 +115,10 @@ def save_tasks(grid, year, output, product, env, complevel,
         def sanitize(v):
             if isinstance(v, Geometry):
                 return v.json
+            if isinstance(v, datetime):
+                return v.isoformat()
             return v
-        return {k: sanitize(v) for k, v in query.items()}
+        return transform_object_tree(sanitize, query)
 
     try:
         grid, gridspec = parse_gridspec_with_name(grid)
@@ -118,9 +141,11 @@ def save_tasks(grid, year, output, product, env, complevel,
         cfg['tiles'] = tiles
         query['geopolygon'] = gs_bounds(gridspec, tiles)
 
-    if year is not None:
-        cfg['year'] = year
-        query['time'] = f'{year}'
+    # TODO: properly handle UTC offset when limiting query to a given time period
+    #       Basically need to pad query by 12hours, then trim datasets post-query
+    if period is not None:
+        query.update(period.dc_query())
+        cfg['period'] = period.short
 
     if db_exists(output) and overwrite is False:
         print(f"File database already exists: {output}, use --overwrite flag to force deletion", file=sys.stderr)
@@ -175,13 +200,16 @@ def save_tasks(grid, year, output, product, env, complevel,
     n_tiles = len(cells)
     print(f"Total of {n_tiles:,d} spatial tiles")
 
-    if year is not None:
-        temporal_k = (f'{year}--P1Y',)
+    if period is not None:
+        # TODO: deal with UTC offsets for day boundary determination and trim
+        # datasets that fall outside of requested time period
+        temporal_k = (period.short,)
         tasks = {temporal_k + k: x.dss
                  for k, x in cells.items()}
     else:
         tasks = {}
         for tidx, cell in cells.items():
+            # TODO: deal with UTC offsets for day boundary determination
             grouped = toolz.groupby(lambda ds: ds.time.year, cell.dss)
             for year, dss in grouped.items():
                 temporal_k = (f"{year}--P1Y",)
@@ -206,13 +234,13 @@ def save_tasks(grid, year, output, product, env, complevel,
             line = f'"{p}", {x:+05d}, {y:+05d}, {n_dss:4d}, {n_days:4d}\n'
             f.write(line)
 
-    print("Dumping GeoJSON")
+    print("Dumping GeoJSON(s)")
     grid_info = compute_grid_info(cells,
                                   resolution=max(gridspec.tile_size)/4)
     tasks_geo = gjson_from_tasks(tasks, grid_info)
     for period, gjson in tasks_geo.items():
         fname = out_path(f'-{period}.geojson')
-        print(f"Writing to {fname}")
+        print(f"..writing to {fname}")
         with open(fname, 'wt') as f:
             json.dump(gjson, f)
 
