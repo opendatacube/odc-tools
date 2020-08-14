@@ -340,7 +340,8 @@ def s3_head_object(url: str,
     if 200 <= code < 300:
         return oo
 
-    return {}
+    # it actually raises exceptions when http code is in the "fail" range
+    return None  # pragma: no cover
 
 
 def s3_fetch(url: str,
