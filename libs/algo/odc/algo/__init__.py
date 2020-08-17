@@ -14,6 +14,7 @@ from ._masking import (
     fmask_to_bool,
     enum_to_bool,
     gap_fill,
+    choose_first_valid,
 )
 
 from ._geomedian import (
@@ -50,6 +51,7 @@ __all__ = (
     "fmask_to_bool",
     "enum_to_bool",
     "gap_fill",
+    "choose_first_valid",
     "xr_geomedian",
     "int_geomedian",
     "int_geomedian_np",

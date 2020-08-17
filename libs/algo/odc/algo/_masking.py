@@ -3,6 +3,7 @@
 """
 
 from typing import Dict, Tuple, Any, Iterable, Union
+from functools import partial
 import numpy as np
 import xarray as xr
 import dask
@@ -241,7 +242,7 @@ def _get_enum_values(names: Iterable[str],
         raise ValueError(f"Not all enumeration names were found: {unmatched_human}")
 
 
-def _mk_ne_isin_condition(values: Tuple[int,...],
+def _mk_ne_isin_condition(values: Tuple[int, ...],
                           var_name: str = 'a',
                           invert: bool = False) -> str:
     """
@@ -393,3 +394,48 @@ def gap_fill(x: xr.DataArray,
                         name=x.name)
 
 
+def _first_valid_np(*aa: np.ndarray, nodata: Union[float, int, None] = None) -> np.ndarray:
+    out = aa[0].copy()
+    if nodata is None:
+        nodata = default_nodata(out.dtype)
+
+    for a in aa[1:]:
+        out = _gap_fill_np(out, a, nodata)
+
+    return out
+
+
+def _choose_with_custom_op(x: xr.DataArray, op) -> xr.DataArray:
+    """
+    Out[0, y, x] = op(In[0:1, y, x], In[1:2, y, x], In[2:3, y, x]...)
+
+    Expects data in _,y,x order. Works on Dask inputs too.
+    """
+    slices = [x.data[i:i+1]
+              for i in range(x.shape[0])]
+    if dask.is_dask_collection(x):
+        data = da.map_blocks(op, *slices)
+    else:
+        data = op(*slices)
+
+    coords = {k: v for k, v in x.coords.items()}
+    coords[x.dims[0]] = x.coords[x.dims[0]][0:1]
+
+    return xr.DataArray(data,
+                        attrs=x.attrs,
+                        dims=x.dims,
+                        coords=coords,
+                        name=x.name)
+
+
+def choose_first_valid(x: xr.DataArray, nodata=None) -> xr.DataArray:
+    """
+    ``Out[0, y, x] = In[i, y, x]`` where ``i`` is index of the first slice
+    with valid data in it for a pixel at ``y,x`` coordinate.
+
+    Expects data in ``_, y, x`` order. Works on Dask inputs too.
+    """
+    if nodata is None:
+        nodata = x.attrs.get('nodata', None)
+
+    return _choose_with_custom_op(x, partial(_first_valid_np, nodata=nodata))
