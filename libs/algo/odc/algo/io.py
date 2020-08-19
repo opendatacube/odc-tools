@@ -138,7 +138,7 @@ def load_with_native_transform(dss: List[Dataset],
     if len(xx) == 1:
         xx = xx[0]
     else:
-        xx = xr.concat(xx, groupby)
+        xx = xr.concat(xx, sources.dims[0])
         if fuser is not None:
             xx = xx.groupby(groupby).map(fuser)
 
