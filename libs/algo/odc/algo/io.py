@@ -118,6 +118,9 @@ def load_with_native_transform(dss: List[Dataset],
     4. [Optional] fuse rasters that happened on the same day/time
 
     """
+    if fuser is None:
+        fuser = _nodata_fuser
+
     if groupby is None:
         groupby = kw.get('group_by', 'idx')
     if chunks is None:
@@ -139,7 +142,7 @@ def load_with_native_transform(dss: List[Dataset],
         xx = xx[0]
     else:
         xx = xr.concat(xx, sources.dims[0])
-        if fuser is not None:
+        if groupby != 'idx':
             xx = xx.groupby(groupby).map(fuser)
 
     # TODO: probably want to replace spec MultiIndex with just `time` component
