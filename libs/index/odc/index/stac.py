@@ -86,7 +86,7 @@ def _geographic_to_projected(geometry, crs):
         return None
 
 def stac_transform_absolute(input_stac):
-    stac_transform(input_stac, relative=False)
+    return stac_transform(input_stac, relative=False)
 
 
 def stac_transform(input_stac, relative=True):
