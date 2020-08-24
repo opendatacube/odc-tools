@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Union, Iterator, Optional, Any, Iterable, Collection
+from typing import Tuple, Dict, List, Union, Iterator, Optional, Iterable, Collection, cast
 from uuid import UUID
 
 import toolz
@@ -97,7 +97,7 @@ def mk_group_name(idx: TileIdx, name: str = "unnamed_grid") -> str:
     elif len(idx) == 3:
         t = idx[0]
         return f"{name}/{t}/{x:+05d}/{y:+05d}"
-    raise ValueError(f"Expect index in (x, y) or (t, x, y) format")
+    raise ValueError("Expect index in (x, y) or (t, x, y) format")
 
 
 def parse_group_name(group_name: str) -> Tuple[TileIdx, str]:
@@ -118,11 +118,13 @@ def parse_group_name(group_name: str) -> Tuple[TileIdx, str]:
     try:
         prefix, *tidx = split_and_check(group_name, '/', (3, 4))
         x, y = map(int, tidx[-2:])
-        temporal = tuple(tidx[:-2])
     except ValueError:
         raise ValueError('Bad group name: ' + group_name)
 
-    return temporal + (x, y), prefix
+    if len(tidx) == 2:
+        return (x, y), prefix
+
+    return (cast(str, tidx[0]), x, y), prefix
 
 
 class DatasetCache:
