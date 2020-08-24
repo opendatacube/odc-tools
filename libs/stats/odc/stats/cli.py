@@ -225,7 +225,7 @@ def save_tasks(grid, year, period,
     csv_path = out_path(".csv")
     print(f"Writing summary to {csv_path}")
     with open(csv_path, 'wt') as f:
-        f.write('"Period", "X", "Y", "datasets", "days"\n')
+        f.write('"Period","X","Y","datasets","days"\n')
 
         for p, x, y in sorted(tasks):
             dss = tasks[(p, x, y)]
