@@ -1,4 +1,5 @@
 from odc.stats.model import DateTimeRange
+from odc.stats._cli_common import parse_task
 from datetime import datetime, timedelta
 
 
@@ -41,3 +42,10 @@ def test_dt_range():
 
     assert DateTimeRange.year(2000) + 1 == DateTimeRange.year(2001)
     assert DateTimeRange.year(2000) - 1 == DateTimeRange.year(1999)
+
+
+def test_parse_task():
+    assert parse_task("2017--P1Y/3/4") == ('2017--P1Y', 3, 4)
+    assert parse_task("2017--P1Y,+3,+004") == ('2017--P1Y', 3, 4)
+    assert parse_task("2017--P1Y,x+3,y+004") == ('2017--P1Y', 3, 4)
+    assert parse_task("x+003/y-004/2018--P3Y") == ('2018--P3Y', 3, -4)

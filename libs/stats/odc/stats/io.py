@@ -69,8 +69,11 @@ class S3COGSink:
         self._meta_contentype = 'application/json'
         self._band_ext = 'tiff'
 
+    def uri(self, task: Task) -> str:
+        return task.metadata_path('absolute', ext=self._meta_ext)
+
     def exists(self, task: Task) -> bool:
-        uri = task.metadata_path('absolute', ext=self._meta_ext)
+        uri = self.uri(task)
         s3 = s3_client(creds=self._creds, cache=True)
         meta = s3_head_object(uri, s3=s3)
         return meta is not None

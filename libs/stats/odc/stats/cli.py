@@ -6,6 +6,8 @@ import pickle
 from datetime import datetime
 from collections import namedtuple
 from odc.io.text import click_range2d
+from ._cli_common import main
+from . import _pq_cli
 
 CompressedDataset = namedtuple("CompressedDataset", ['id', 'time'])
 
@@ -14,11 +16,6 @@ def is_tile_in(tidx, tiles):
     (x0, x1), (y0, y1) = tiles
     x, y = tidx
     return (x0 <= x < x1) and (y0 <= y < y1)
-
-
-@click.group(help="Stats command line interface")
-def main():
-    pass
 
 
 @main.command('save-tasks')
