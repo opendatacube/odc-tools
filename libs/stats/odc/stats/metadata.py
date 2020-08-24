@@ -1,14 +1,15 @@
 import math
 from copy import deepcopy
 import toolz
-from typing import Tuple, Dict, Any, Union
-from datetime import datetime, timedelta
+from typing import Tuple, Dict, Any
+from datetime import timedelta
 
 from datacube.model import GridSpec
 from datacube.utils.geometry import polygon_from_transform, Geometry
 from odc import dscache
 from odc.index import solar_offset
 from .model import OutputProduct, Task, DateTimeRange, TileIdx, TileIdx_xy, TileIdx_txy
+
 
 def _xy(tidx: TileIdx) -> TileIdx_xy:
     return tidx[-2:]
@@ -35,13 +36,15 @@ def gs_bounds(gs: GridSpec, tiles: Tuple[Tuple[int, int],
     return polygon_from_transform(nx, ny, gb.affine, gb.crs)
 
 
-def clear_pixel_count_product(gridspec: GridSpec) -> OutputProduct:
+def clear_pixel_count_product(gridspec: GridSpec, location=None) -> OutputProduct:
     name = 'ga_s2_clear_pixel_count'
-    short_name = 'deafrica_s2_cpc'
+    short_name = 'ga_s2_cpc'
     version = '0.0.0'
 
-    bucket_name = 'deafrica-stats-processing'
-    location = f's3://{bucket_name}/{name}/v{version}'
+    if location is None:
+        bucket = 'deafrica-stats-processing'
+        location = f's3://{bucket}/{name}/v{version}'
+
     measurements = ('clear', 'total')
 
     properties = {
