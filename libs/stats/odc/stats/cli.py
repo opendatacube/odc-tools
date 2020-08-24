@@ -109,7 +109,9 @@ def save_tasks(grid, year, period,
         return CompressedDataset(ds.id, ds.center_time)
 
     def out_path(suffix, base=output):
-        return base.rstrip(".db") + suffix
+        if base.endswith(".db"):
+            base = base[:-3]
+        return base + suffix
 
     def sanitize_query(query):
         def sanitize(v):
