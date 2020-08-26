@@ -1,4 +1,4 @@
-from typing import Tuple, Union, Dict, Any, Iterator, List
+from typing import Tuple, Union, Dict, Any, Iterator, List, Optional
 from pathlib import Path
 
 PathLike = Union[str, Path]
@@ -166,5 +166,36 @@ def click_range2d(ctx, param, value):
     if value is not None:
         try:
             return parse_range2d_int(value)
+        except ValueError as e:
+            raise click.ClickException(str(e)) from None
+
+
+def parse_slice(s: str) -> slice:
+    """
+    Parse slice syntax in the form start:stop[:step]
+    Examples "::4", "2:5", "2::10", "3:100:5"
+    """
+    def parse(part: str) -> Optional[int]:
+        if part == '':
+            return None
+        return int(part)
+
+    try:
+        parts = [parse(p) for p in split_and_check(s, ':', (2, 3))]
+    except ValueError:
+        raise ValueError(f'Expect <start>:<stop>[:<step>] syntax, got "{s}"') from None
+
+    return slice(*parts)
+
+
+def click_slice(ctx, param, value):
+    """
+    @click.option('--slice', callback=click_slice)
+    Examples "::4", "2:5", "2::10", "3:100:5"
+    """
+    import click
+    if value is not None:
+        try:
+            return parse_slice(value)
         except ValueError as e:
             raise click.ClickException(str(e)) from None
