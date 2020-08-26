@@ -1,5 +1,6 @@
+import pytest
 from odc.stats.model import DateTimeRange
-from odc.stats._cli_common import parse_task
+from odc.stats._cli_common import parse_task, parse_all_tasks
 from datetime import datetime, timedelta
 
 
@@ -49,3 +50,21 @@ def test_parse_task():
     assert parse_task("2017--P1Y,+3,+004") == ('2017--P1Y', 3, 4)
     assert parse_task("2017--P1Y,x+3,y+004") == ('2017--P1Y', 3, 4)
     assert parse_task("x+003/y-004/2018--P3Y") == ('2018--P3Y', 3, -4)
+
+
+def test_parse_all_tasks():
+    all_tasks = [('2019--P1Y', 1, i) for i in range(10)]
+
+    assert parse_all_tasks(["::2"], all_tasks) == all_tasks[::2]
+    assert parse_all_tasks(["0", "1", str(len(all_tasks)-1)], all_tasks) == [
+        all_tasks[i] for i in [0, 1, len(all_tasks) - 1]]
+    assert parse_all_tasks(["0", '2019--P1Y/1/1'], all_tasks) == [all_tasks[i] for i in [0, 1]]
+    assert parse_all_tasks(["0", '2019--P1Y,+001,+001'], all_tasks) == [all_tasks[i] for i in [0, 1]]
+
+    for bad in (["0", "1", "10"],   # 10 is out of range
+                ["2000--P1Y/3/3"],  # no such task
+                ["jjjk"],           # int doesn't parse
+                ["klkl:opop"],      # slice int doesn't parse
+                ):
+        with pytest.raises(ValueError):
+            parse_all_tasks(bad, all_tasks)
