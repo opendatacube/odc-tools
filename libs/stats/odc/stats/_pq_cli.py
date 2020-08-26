@@ -1,6 +1,6 @@
 import sys
 import click
-from ._cli_common import main, parse_task
+from ._cli_common import main, parse_all_tasks
 
 
 @main.command('run-pq')
@@ -15,11 +15,20 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
     """
     Run Pixel Quality stats
 
+    Task could be one of the 3 things
+
     \b
-    Each task is a comma-separated triplet: period,x,y
+    1. Comma-separated triplet: period,x,y or 'x[+-]<int>/y[+-]<int>/period
        2019--P1Y,+003,-004
        2019--P1Y/3/-4          `/` is also accepted
        x+003/y-004/2019--P1Y   is accepted as well
+    2. A zero based index
+    3. A slice following python convention <start>:<stop>[:<step]
+        ::10 -- every tenth task: 0,10,20,..
+       1::10 -- every tenth but skip first one 1, 11, 21 ..
+        :100 -- first 100 tasks
+
+    If no tasks are supplied whole file be processed.
     """
     from tqdm.auto import tqdm
     from functools import partial
@@ -87,17 +96,13 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
             print(f"Found {len(tasks):,d} tasks in the file")
     else:
         try:
-            tasks = [parse_task(t) for t in tasks]
+            tasks = parse_all_tasks(tasks, all_tasks)
         except ValueError as e:
             print(str(e), file=sys.stderr)
             sys.exit(1)
 
-        all_tasks_set = set(all_tasks)
-        for t in tasks:
-            if t not in all_tasks_set:
-                print(f"No such task: {t}")
-                sys.exit(2)
-        del all_tasks_set
+    if verbose:
+        print(f"Will process {len(tasks):,d} tasks")
 
     sink = S3COGSink(cog_opts=COG_OPTS)
     if verbose:
