@@ -8,9 +8,10 @@ from ._cli_common import main, parse_task
 @click.option('--threads', type=int, help='Number of worker threads', default=0)
 @click.option('--dryrun', is_flag=True, help='Do not run computation just print what work will be done')
 @click.option('--overwrite', is_flag=True, help='Do not check if output already exists')
+@click.option('--location', type=str, help='Output location prefix as a uri: s3://bucket/path/')
 @click.argument('cache_file', type=str, nargs=1)
 @click.argument('tasks', type=str, nargs=-1)
-def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite):
+def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
     """
     Run Pixel Quality stats
 
@@ -24,8 +25,8 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite):
     from functools import partial
     from odc.dscache import open_ro
     from .io import S3COGSink
-    from ._pq import pq_input_data, pq_reduce
-    from .metadata import load_task, clear_pixel_count_product
+    from ._pq import pq_input_data, pq_reduce, pq_product
+    from .metadata import load_task
     from .proc import process_tasks
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
@@ -45,10 +46,10 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite):
 
     grid = cfg['grid']
     gs = cache.grids[grid]
-    pq_product = clear_pixel_count_product(gs)
+    product = pq_product(gs, location=location)
 
     def get_task(tidx):
-        return load_task(cache, tidx, pq_product, grid)
+        return load_task(cache, tidx, product, grid)
 
     def pq_proc(task):
         ds_in = pq_input_data(task, resampling=resampling)
