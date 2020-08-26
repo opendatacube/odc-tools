@@ -1,5 +1,5 @@
 import pytest
-from odc.io.text import parse_mtl, parse_yaml, split_and_check
+from odc.io.text import parse_mtl, parse_yaml, split_and_check, parse_slice
 
 
 def test_mtl():
@@ -82,3 +82,12 @@ def test_split_check():
 
     with pytest.raises(ValueError):
         split_and_check("a:b", ":", 3)
+
+
+def test_parse_slice():
+    from numpy import s_
+    assert parse_slice("::2") == s_[::2]
+    assert parse_slice("1:") == s_[1:]
+    assert parse_slice("1:4") == s_[1:4]
+    assert parse_slice("1:4:2") == s_[1:4:2]
+    assert parse_slice("1::2") == s_[1::2]
