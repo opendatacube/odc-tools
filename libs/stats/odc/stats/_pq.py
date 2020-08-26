@@ -1,11 +1,15 @@
 """
 Sentinel 2 pixel quality stats
 """
+from typing import Optional
 import xarray as xr
 
+from datacube.model import GridSpec
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import enum_to_bool
+from .model import OutputProduct
+
 
 bad_pixel_classes = (0, 'saturated or defective')
 cloud_classes = ('cloud shadows',
@@ -14,7 +18,37 @@ cloud_classes = ('cloud shadows',
                  'thin cirrus')
 
 
-def _pq_native_transform(xx):
+def pq_product(gridspec: GridSpec, location: Optional[str] = None) -> OutputProduct:
+    name = 'ga_s2_clear_pixel_count'
+    short_name = 'ga_s2_cpc'
+    version = '0.0.0'
+
+    if location is None:
+        bucket = 'deafrica-stats-processing'
+        location = f's3://{bucket}/{name}/v{version}'
+    else:
+        location = location.rstrip('/')
+
+    measurements = ('clear', 'total')
+
+    properties = {
+        'odc:file_format': 'GeoTIFF',
+        'odc:producer': 'ga.gov.au',
+        'odc:product_family': 'pixel_quality_statistics'
+    }
+
+    return OutputProduct(name=name,
+                         version=version,
+                         short_name=short_name,
+                         location=location,
+                         properties=properties,
+                         measurements=measurements,
+                         gridspec=gridspec,
+                         href=f'https://collections.digitalearth.africa/product/{name}',
+                         freq='1Y')
+
+
+def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
     """
     config:
     bad_pixel_classes

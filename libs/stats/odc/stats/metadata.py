@@ -36,34 +36,6 @@ def gs_bounds(gs: GridSpec, tiles: Tuple[Tuple[int, int],
     return polygon_from_transform(nx, ny, gb.affine, gb.crs)
 
 
-def clear_pixel_count_product(gridspec: GridSpec, location=None) -> OutputProduct:
-    name = 'ga_s2_clear_pixel_count'
-    short_name = 'ga_s2_cpc'
-    version = '0.0.0'
-
-    if location is None:
-        bucket = 'deafrica-stats-processing'
-        location = f's3://{bucket}/{name}/v{version}'
-
-    measurements = ('clear', 'total')
-
-    properties = {
-        'odc:file_format': 'GeoTIFF',
-        'odc:producer': 'ga.gov.au',
-        'odc:product_family': 'pixel_quality_statistics'
-    }
-
-    return OutputProduct(name=name,
-                         version=version,
-                         short_name=short_name,
-                         location=location,
-                         properties=properties,
-                         measurements=measurements,
-                         gridspec=gridspec,
-                         href=f'https://collections.digitalearth.africa/product/{name}',
-                         freq='1Y')
-
-
 def load_task(cache: dscache.DatasetCache,
               tile_index: TileIdx_txy,
               product: OutputProduct,
