@@ -3,9 +3,11 @@ import json
 from tqdm.auto import tqdm
 import sys
 import pickle
+import pandas as pd
 from datetime import datetime
 from collections import namedtuple
 from odc.io.text import click_range2d
+from datacube.utils.dates import normalise_dt
 from ._cli_common import main
 from . import _pq_cli
 
@@ -202,20 +204,41 @@ def save_tasks(grid, year, period,
     if period is not None:
         # TODO: deal with UTC offsets for day boundary determination and trim
         # datasets that fall outside of requested time period
-        temporal_k = (period.short,)
-        tasks = {temporal_k + k: x.dss
-                 for k, x in cells.items()}
-    else:
+
+            # tasks = {temporal_k + k: x.dss
+        #          for k, x in cells.items()}
         tasks = {}
         for tidx, cell in cells.items():
-            # TODO: deal with UTC offsets for day boundary determination
-            grouped = toolz.groupby(lambda ds: ds.time.year, cell.dss)
-            for year, dss in grouped.items():
-                temporal_k = (f"{year}--P1Y",)
-                tasks[temporal_k + tidx] = dss
+            start = period.start
+            ids = [dss.id for dss in cell.dss]
+            timestamps = [dss.time for dss in cell.dss]
+            df = pd.DataFrame({"id": ids, "timestamp": timestamps})
+            df['timestamp'] = df['timestamp'].apply(lambda x: normalise_dt(x))
+
+            df_masked = df.query('timestamp > @start')
+            grouped = df_masked.groupby(pd.Grouper(key='timestamp', freq=period.freq))
+            for timestamp, sdf in grouped:
+                print(type(timestamp))
+                temporal_k = timestamp
+                tasks[str(temporal_k) + tidx] = sdf.id
+    else:
+        tasks = {}
+        # TODO: deal with UTC offsets for day boundary determination
+        ids = []
+        timestamps = []
+        for tidx, cell in cells.items():
+            ids.extend([dss.id for dss in cell.dss])
+            timestamps.extend([dss.time for dss in cell.dss])
+        df = pd.DataFrame({"id": ids, "timestamp": timestamps})
+        df['timestamp'] = df['timestamp'].apply(lambda x: normalise_dt(x))
+        start = df['timestamp'].min()
+        end = df['timestamp'].max()
+        temporal_lbl =  (f"{start}--P{end - start + 1}Y",)
+        tasks[temporal_lbl] = df["id"]
 
     tasks_uuid = {k: [ds.id for ds in dss]
                   for k, dss in tasks.items()}
+    print(tasks_uuid)
 
     print(f"Saving tasks to disk ({len(tasks)})")
     cache.add_grid_tiles(grid, tasks_uuid)
