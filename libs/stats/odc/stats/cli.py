@@ -4,6 +4,7 @@ from tqdm.auto import tqdm
 import sys
 import pickle
 import pandas as pd
+from typing import Dict, Tuple, List
 from datetime import datetime
 from collections import namedtuple
 from odc.io.text import click_range2d
@@ -19,7 +20,6 @@ def is_tile_in(tidx, tiles):
     x, y = tidx
     return (x0 <= x < x1) and (y0 <= y < y1)
 
-
 @main.command('save-tasks')
 @click.option('--grid',
               type=str,
@@ -32,10 +32,13 @@ def is_tile_in(tidx, tiles):
               default=None)
 @click.option('--year',
               type=int,
-              help="Only extract datasets for a given year")
+              help="Only extract datasets for a given year. This is a shortcut for --temporal-range=<int>--P1Y")
+@click.option('--temporal_range',
+              type=str,
+              help="Only extract datasets for a given time temporal_range, Example '2020-05--P1M' month of May 2020")
 @click.option('--period',
               type=str,
-              help="Only extract datasets for a given time period, Example '2020-05--P1M' month of May 2020")
+              help="Extract datasets for a given period specified, Example 'all', 'annual', '2020-03--P2M' ")
 @click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.option('-z', 'complevel',
               type=int,
@@ -55,7 +58,7 @@ def is_tile_in(tidx, tiles):
               help='Dump debug data to pickle')
 @click.argument('product', type=str, nargs=1)
 @click.argument('output', type=str, nargs=1, default='')
-def save_tasks(grid, year, period,
+def save_tasks(grid, year, temporal_range, period,
                output, product, env, complevel,
                overwrite=False,
                tiles=None,
@@ -84,25 +87,85 @@ def save_tasks(grid, year, period,
     from .metadata import gs_bounds, compute_grid_info, gjson_from_tasks
     from .model import DateTimeRange
 
-    if period is not None and year is not None:
-        print("Can only supply one of --year or --period", file=sys.stderr)
+    if temporal_range is not None and year is not None:
+        print("Can only supply one of --year or --temporal_range", file=sys.stderr)
         sys.exit(1)
+
+    if temporal_range is not None:
+        try:
+            temporal_range = DateTimeRange(temporal_range)
+        except ValueError:
+            print(f"Failed to parse supplied temporal_range: '{temporal_range}'")
+            sys.exit(1)
+
+    if year is not None:
+        temporal_range = DateTimeRange.year(year)
 
     if period is not None:
         try:
-            period = DateTimeRange(period)
+            period = DateTimeRange(period) if not period in ['all' , 'annual'] else period
         except ValueError:
             print(f"Failed to parse supplied period: '{period}'")
             sys.exit(1)
 
-    if year is not None:
-        period = DateTimeRange.year(year)
-
     if output == '':
-        if period is not None:
-            output = f'{product}_{period.short}.db'
+        if temporal_range is not None:
+            output = f'{product}_{temporal_range.short}.db'
         else:
             output = f'{product}_all.db'
+
+    def bin_data(dss: Dict[Tuple, list]) -> Dict[Tuple, List]:
+        ids = []
+        timestamps = []
+        tidxs = []
+        datasets = []
+
+        # Read all the data
+        for tidx, cell in cells.items():
+            ids.extend([dss.id for dss in cell.dss])
+            timestamps.extend([normalise_dt(dss.time) for dss in cell.dss])
+            datasets.extend(dss for dss in cell.dss)
+            tidxs.extend([tidx] * len(cell.dss))
+
+        # Find min and max timestamps in the dataset(s)
+        start = min(timestamps)
+        end = max(timestamps)
+
+        # Put all the data in one bin
+        if period == 'all':
+            bin = (f"{start.year}--P{end.year - start.year + 1}Y",)
+            tasks = {bin + tidxs[0]: datasets}
+
+        # Seasonal binning
+        # 1900 is a dummy start year for the case where start year is %Y
+        elif period is not None and period.start.year == 1900:
+            tasks = {}
+            anchor = period.start.month
+            df = pd.DataFrame({"id": ids, "timestamp": timestamps, "tidx": tidxs, 'ds': datasets})
+            for dt in tqdm(timestamps):
+                df['bin'] = find_seasonal_bin(dt, period.freq, anchor).short
+
+            for k, v in df.groupby(['tidx', "bin"]):
+                tasks[(k[1],)+ k[0]] = v['ds']
+        else:
+            # Annual binning, this is the default
+            tasks = {}
+            for tidx, cell in cells.items():
+                # TODO: deal with UTC offsets for day boundary determination
+                grouped = toolz.groupby(lambda ds: ds.time.year, cell.dss)
+                for year, dss in grouped.items():
+                    temporal_k = (f"{year}--P1Y",)
+                    tasks[temporal_k + tidx] = dss
+        return tasks
+
+    def find_seasonal_bin(dt: datetime, freq: int, anchor: int) -> DateTimeRange:
+        dtr = DateTimeRange(f"{dt.year}-{anchor}--P{freq}")
+        if dt in dtr:
+            return dtr
+        step = 1 if dt > dtr else -1
+        while dt not in dtr:
+            dtr = dtr + step
+        return dtr
 
     def compress_ds(ds: Dataset) -> CompressedDataset:
         return CompressedDataset(ds.id, ds.center_time)
@@ -142,11 +205,11 @@ def save_tasks(grid, year, period,
         cfg['tiles'] = tiles
         query['geopolygon'] = gs_bounds(gridspec, tiles)
 
-    # TODO: properly handle UTC offset when limiting query to a given time period
+    # TODO: properly handle UTC offset when limiting query to a given time temporal_range
     #       Basically need to pad query by 12hours, then trim datasets post-query
-    if period is not None:
-        query.update(period.dc_query())
-        cfg['period'] = period.short
+    if temporal_range is not None:
+        query.update(temporal_range.dc_query())
+        cfg['temporal_range'] = temporal_range.short
 
     if db_exists(output) and overwrite is False:
         print(f"File database already exists: {output}, use --overwrite flag to force deletion", file=sys.stderr)
@@ -201,44 +264,17 @@ def save_tasks(grid, year, period,
     n_tiles = len(cells)
     print(f"Total of {n_tiles:,d} spatial tiles")
 
-    if period is not None:
+    tasks = bin_data(cells)
+
+    if temporal_range is not None:
         # TODO: deal with UTC offsets for day boundary determination and trim
         # datasets that fall outside of requested time period
-
-            # tasks = {temporal_k + k: x.dss
-        #          for k, x in cells.items()}
-        tasks = {}
-        for tidx, cell in cells.items():
-            start = period.start
-            ids = [dss.id for dss in cell.dss]
-            timestamps = [dss.time for dss in cell.dss]
-            df = pd.DataFrame({"id": ids, "timestamp": timestamps})
-            df['timestamp'] = df['timestamp'].apply(lambda x: normalise_dt(x))
-
-            df_masked = df.query('timestamp > @start')
-            grouped = df_masked.groupby(pd.Grouper(key='timestamp', freq=period.freq))
-            for timestamp, sdf in grouped:
-                print(type(timestamp))
-                temporal_k = timestamp
-                tasks[str(temporal_k) + tidx] = sdf.id
-    else:
-        tasks = {}
-        # TODO: deal with UTC offsets for day boundary determination
-        ids = []
-        timestamps = []
-        for tidx, cell in cells.items():
-            ids.extend([dss.id for dss in cell.dss])
-            timestamps.extend([dss.time for dss in cell.dss])
-        df = pd.DataFrame({"id": ids, "timestamp": timestamps})
-        df['timestamp'] = df['timestamp'].apply(lambda x: normalise_dt(x))
-        start = df['timestamp'].min()
-        end = df['timestamp'].max()
-        temporal_lbl =  (f"{start}--P{end - start + 1}Y",)
-        tasks[temporal_lbl] = df["id"]
+        temporal_k = (temporal_range.short,)
+        tasks = {temporal_k + k: x.dss
+                 for k, x in cells.items()}
 
     tasks_uuid = {k: [ds.id for ds in dss]
                   for k, dss in tasks.items()}
-    print(tasks_uuid)
 
     print(f"Saving tasks to disk ({len(tasks)})")
     cache.add_grid_tiles(grid, tasks_uuid)
@@ -247,7 +283,7 @@ def save_tasks(grid, year, period,
     csv_path = out_path(".csv")
     print(f"Writing summary to {csv_path}")
     with open(csv_path, 'wt') as f:
-        f.write('"Period","X","Y","datasets","days"\n')
+        f.write('"temporal_range","X","Y","datasets","days"\n')
 
         for p, x, y in sorted(tasks):
             dss = tasks[(p, x, y)]
@@ -260,8 +296,8 @@ def save_tasks(grid, year, period,
     grid_info = compute_grid_info(cells,
                                   resolution=max(gridspec.tile_size)/4)
     tasks_geo = gjson_from_tasks(tasks, grid_info)
-    for period, gjson in tasks_geo.items():
-        fname = out_path(f'-{period}.geojson')
+    for temporal_range, gjson in tasks_geo.items():
+        fname = out_path(f'-{temporal_range}.geojson')
         print(f"..writing to {fname}")
         with open(fname, 'wt') as f:
             json.dump(gjson, f)
