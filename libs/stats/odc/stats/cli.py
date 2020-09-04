@@ -5,10 +5,8 @@ import sys
 import pickle
 from datetime import datetime
 from collections import namedtuple
-from .utils import bin_data
 from odc.io.text import click_range2d
 from ._cli_common import main
-from . import _pq_cli
 
 CompressedDataset = namedtuple("CompressedDataset", ['id', 'time'])
 
@@ -17,6 +15,7 @@ def is_tile_in(tidx, tiles):
     (x0, x1), (y0, y1) = tiles
     x, y = tidx
     return (x0 <= x < x1) and (y0 <= y < y1)
+
 
 @main.command('save-tasks')
 @click.option('--grid',
@@ -36,7 +35,7 @@ def is_tile_in(tidx, tiles):
               help="Only extract datasets for a given time range, Example '2020-05--P1M' month of May 2020")
 @click.option('--frequency',
               type=str,
-              help="Extract datasets for a given frequency specified, example 'all', 'annual', '%Y-03--P2M' ")
+              help="Specify temporal binning: annual|seasonal|all")
 @click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.option('-z', 'complevel',
               type=int,
@@ -72,7 +71,7 @@ def save_tasks(grid, year, temporal_range, frequency,
       - multi-product inputs
 
     """
-    import toolz
+    from types import SimpleNamespace
     from odc.index import chopped_dss, bin_dataset_stream, dataset_count, all_datasets
     from odc.dscache import create_cache, db_exists
     from odc.dscache.tools import dictionary_from_product_list
@@ -82,8 +81,10 @@ def save_tasks(grid, year, temporal_range, frequency,
     from datacube.model import Dataset
     from datacube.utils.geometry import Geometry
     from datacube.utils.documents import transform_object_tree
+    from datacube.utils.dates import normalise_dt
     from .metadata import gs_bounds, compute_grid_info, gjson_from_tasks
     from .model import DateTimeRange
+    from .utils import bin_annual, bin_full_history, bin_generic, bin_seasonal
 
     if temporal_range is not None and year is not None:
         print("Can only supply one of --year or --temporal_range", file=sys.stderr)
@@ -100,15 +101,8 @@ def save_tasks(grid, year, temporal_range, frequency,
         temporal_range = DateTimeRange.year(year)
 
     if frequency is not None:
-        try:
-            # Replace Any year with a dummy year
-            if frequency.startswith("%Y"):
-                frequency = frequency.replace('%Y', '1900')
-
-            frequency = DateTimeRange(frequency) if not frequency in ['all' , 'annual'] else frequency
-
-        except ValueError:
-            print(f"Failed to parse supplied frequency: '{frequency}'")
+        if frequency not in ('annual', 'all', 'seasonal'):
+            print(f"Frequency must be one of annual|seasonal|all and not '{frequency}'")
             sys.exit(1)
 
     if output == '':
@@ -117,8 +111,20 @@ def save_tasks(grid, year, temporal_range, frequency,
         else:
             output = f'{product}_all.db'
 
+    dt_range = SimpleNamespace(start=None, end=None)
+
+    def _update_start_end(x, out):
+        if out.start is None:
+            out.start = x
+            out.end = x
+        else:
+            out.start = min(out.start, x)
+            out.end = max(out.end, x)
+
     def compress_ds(ds: Dataset) -> CompressedDataset:
-        return CompressedDataset(ds.id, ds.center_time)
+        dt = normalise_dt(ds.center_time)
+        _update_start_end(dt, dt_range)
+        return CompressedDataset(ds.id, dt)
 
     def out_path(suffix, base=output):
         if base.endswith(".db"):
@@ -214,14 +220,20 @@ def save_tasks(grid, year, temporal_range, frequency,
     n_tiles = len(cells)
     print(f"Total of {n_tiles:,d} spatial tiles")
 
-    tasks = bin_data(cells, frequency)
-
-    if temporal_range is not None:
-        # TODO: deal with UTC offsets for day boundary determination and trim
-        # datasets that fall outside of requested time period
-        temporal_k = (temporal_range.short,)
-        tasks = {temporal_k + k: x.dss
-                 for k, x in cells.items()}
+    if frequency == 'all':
+        tasks = bin_full_history(cells,
+                                 start=dt_range.start,
+                                 end=dt_range.end)
+    elif frequency == 'seasonal':
+        tasks = bin_seasonal(cells,
+                             start=dt_range.start,
+                             end=dt_range.end,
+                             months=3,
+                             anchor=12)
+    elif temporal_range is not None:
+        tasks = bin_generic(cells, [temporal_range])
+    else:
+        tasks = bin_annual(cells)
 
     tasks_uuid = {k: [ds.id for ds in dss]
                   for k, dss in tasks.items()}
