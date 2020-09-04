@@ -1,7 +1,6 @@
 from ._dscache import (
     TileIdx,
     DatasetCache,
-    train_dictionary,
     create_cache,
     open_rw,
     open_ro,
@@ -19,6 +18,5 @@ __all__ = (
     'db_exists',
     'TileIdx',
     'DatasetCache',
-    'train_dictionary',
     'JsonBlobCache',
 )

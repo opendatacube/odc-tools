@@ -1,5 +1,6 @@
 from typing import Tuple, Dict, List, Union, Iterator, Optional, Iterable, Collection, cast
 from uuid import UUID
+from pathlib import Path
 
 import toolz
 from datacube.model import Dataset, GridSpec, DatasetType, MetadataType
@@ -77,17 +78,6 @@ def _metadata_from_products(products: Dict[str, DatasetType]) -> Dict[str, Metad
             mm[m.name] = m
 
     return mm
-
-
-def train_dictionary(dss: Iterator[Dataset], dict_sz=8*1024) -> Optional[bytes]:
-    """ Given a finite sequence of Datasets train zstandard compression dictionary of a given size.
-
-        Accepts both `Dataset` as well as "raw" datasets.
-
-        Will return None if input sequence is empty.
-    """
-    docs = list(map(ds2doc, dss))
-    return base.train_dictionary(docs, dict_sz=dict_sz)
 
 
 def mk_group_name(idx: TileIdx, name: str = "unnamed_grid") -> str:
@@ -171,6 +161,17 @@ class DatasetCache:
 
         """
         self._db.close()
+
+    @staticmethod
+    def train_dictionary(dss: Iterator[Dataset], dict_sz=8*1024) -> Optional[bytes]:
+        """ Given a finite sequence of Datasets train zstandard compression dictionary of a given size.
+
+            Accepts both `Dataset` as well as "raw" datasets.
+
+            Will return None if input sequence is empty.
+        """
+        docs = list(map(ds2doc, dss))
+        return base.JsonBlobCache.train_dictionary(docs, dict_sz=dict_sz)
 
     @property
     def readonly(self) -> bool:
@@ -295,10 +296,45 @@ class DatasetCache:
     def clear_info_dict(self, prefix: str, transaction: base.MaybeTransaction = None):
         return self._db.clear_info_dict(prefix, transaction=transaction)
 
+    @property
+    def path(self) -> Path:
+        return self._db.path
+
+    @staticmethod
+    def open_ro(path: str, lock: bool = False) -> 'DatasetCache':
+        return open_ro(path, lock=lock)
+
+    @staticmethod
+    def open_rw(path: str, **kw) -> 'DatasetCache':
+        return open_rw(path, **kw)
+
+    @staticmethod
+    def create(path: str,
+               complevel: int = 6,
+               zdict: Optional[bytes] = None,
+               max_db_sz: Optional[int] = None,
+               lock: bool = False,
+               subdir: bool = False,
+               truncate: bool = False,
+               **kw) -> 'DatasetCache':
+        return create_cache(path,
+                            complevel=complevel,
+                            zdict=zdict,
+                            max_db_sz=max_db_sz,
+                            lock=lock,
+                            subdir=subdir,
+                            truncate=truncate,
+                            **kw)
+
+    @staticmethod
+    def exists(path: str) -> bool:
+        return base.db_exists(path)
+
 
 def open_ro(path: str,
             products: Optional[ProductCollection] = None,
-            lock: bool = False) -> DatasetCache:
+            lock: bool = False,
+            **kw) -> DatasetCache:
     """Open existing database in readonly mode.
 
     .. note::
@@ -317,14 +353,16 @@ def open_ro(path: str,
 
     """
 
-    db = base.open_ro(path, lock=lock)
+    db = base.open_ro(path, lock=lock, **kw)
     return DatasetCache(db, products=products)
 
 
-def open_rw(path,
-            products=None,
-            max_db_sz=None,
-            complevel=6):
+def open_rw(path: str,
+            products: Optional[ProductCollection] = None,
+            max_db_sz: Optional[int] = None,
+            complevel: int = 6,
+            lock: bool = False,
+            **kw) -> DatasetCache:
     """Open existing database in append mode.
 
     :path str: Path to the db could be folder or actual file
@@ -339,30 +377,42 @@ def open_rw(path,
     :complevel: Compression level (Zstandard) to use when storing datasets, 1
     fastest, 6 good and still fast, 20+ best but slower.
     """
-    db = base.open_rw(path, max_db_sz=max_db_sz, complevel=complevel)
+    db = base.open_rw(path, max_db_sz=max_db_sz, complevel=complevel, lock=lock, **kw)
     return DatasetCache(db, products)
 
 
-def create_cache(path,
-                 complevel=6,
-                 zdict=None,
-                 max_db_sz=None,
-                 truncate=False):
+def create_cache(path: str,
+                 complevel: int = 6,
+                 zdict: Optional[bytes] = None,
+                 max_db_sz: Optional[int] = None,
+                 truncate: bool = False,
+                 lock: bool = False,
+                 subdir: bool = False,
+                 **kw) -> DatasetCache:
     """Create new file database or open existing one.
 
     :path str: Path where to create new database (this will be a directory with 2 files in it)
-
     :complevel int: Level of compressions to apply per dataset, bigger is slower but better compression.
-
     :zdict: Optional pre-trained compression dictionary
-
     :max_db_sz int: Maximum size in bytes (defaults to 10GiB)
+    :lock: By default we assume exclusive access to the file, if you expect sharing set ``lock=True``
+    :subdir: If set to True treat path as directory
 
     :truncate bool: If True wipe out any existing database and create new empty one.
+    :kw: Passed on to ``lmdb.open(.., **kw)``
+      meminit
+      writemap
+      sync
+      metasync
+      ...and other
+
     """
     db = base.create_cache(path,
                            complevel=complevel,
                            zdict=zdict,
                            max_db_sz=max_db_sz,
-                           truncate=truncate)
+                           truncate=truncate,
+                           lock=lock,
+                           subdir=subdir,
+                           **kw)
     return DatasetCache(db)
