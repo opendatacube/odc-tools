@@ -43,9 +43,6 @@ class DateTimeRange:
 
         """
 
-        if isinstance(start, str) and start.startswith("%Y"):
-            # Replace Any year with a dummy year
-            start = start.replace('%Y', '1900')
         if freq is None:
             assert isinstance(start, str)
             start, freq = split_and_check(start, '--P', 2)

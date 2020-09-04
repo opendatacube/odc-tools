@@ -3,12 +3,10 @@ import json
 from tqdm.auto import tqdm
 import sys
 import pickle
-import pandas as pd
-from typing import Dict, Tuple, List
 from datetime import datetime
 from collections import namedtuple
+from .utils import bin_data
 from odc.io.text import click_range2d
-from datacube.utils.dates import normalise_dt
 from ._cli_common import main
 from . import _pq_cli
 
@@ -35,10 +33,10 @@ def is_tile_in(tidx, tiles):
               help="Only extract datasets for a given year. This is a shortcut for --temporal-range=<int>--P1Y")
 @click.option('--temporal_range',
               type=str,
-              help="Only extract datasets for a given time temporal_range, Example '2020-05--P1M' month of May 2020")
-@click.option('--period',
+              help="Only extract datasets for a given time range, Example '2020-05--P1M' month of May 2020")
+@click.option('--frequency',
               type=str,
-              help="Extract datasets for a given period specified, Example 'all', 'annual', '2020-03--P2M' ")
+              help="Extract datasets for a given frequency specified, example 'all', 'annual', '%Y-03--P2M' ")
 @click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.option('-z', 'complevel',
               type=int,
@@ -58,7 +56,7 @@ def is_tile_in(tidx, tiles):
               help='Dump debug data to pickle')
 @click.argument('product', type=str, nargs=1)
 @click.argument('output', type=str, nargs=1, default='')
-def save_tasks(grid, year, temporal_range, period,
+def save_tasks(grid, year, temporal_range, frequency,
                output, product, env, complevel,
                overwrite=False,
                tiles=None,
@@ -101,11 +99,16 @@ def save_tasks(grid, year, temporal_range, period,
     if year is not None:
         temporal_range = DateTimeRange.year(year)
 
-    if period is not None:
+    if frequency is not None:
         try:
-            period = DateTimeRange(period) if not period in ['all' , 'annual'] else period
+            # Replace Any year with a dummy year
+            if frequency.startswith("%Y"):
+                frequency = frequency.replace('%Y', '1900')
+
+            frequency = DateTimeRange(frequency) if not frequency in ['all' , 'annual'] else frequency
+
         except ValueError:
-            print(f"Failed to parse supplied period: '{period}'")
+            print(f"Failed to parse supplied frequency: '{frequency}'")
             sys.exit(1)
 
     if output == '':
@@ -113,59 +116,6 @@ def save_tasks(grid, year, temporal_range, period,
             output = f'{product}_{temporal_range.short}.db'
         else:
             output = f'{product}_all.db'
-
-    def bin_data(dss: Dict[Tuple, list]) -> Dict[Tuple, List]:
-        ids = []
-        timestamps = []
-        tidxs = []
-        datasets = []
-
-        # Read all the data
-        for tidx, cell in cells.items():
-            ids.extend([dss.id for dss in cell.dss])
-            timestamps.extend([normalise_dt(dss.time) for dss in cell.dss])
-            datasets.extend(dss for dss in cell.dss)
-            tidxs.extend([tidx] * len(cell.dss))
-
-        # Find min and max timestamps in the dataset(s)
-        start = min(timestamps)
-        end = max(timestamps)
-
-        # Put all the data in one bin
-        if period == 'all':
-            bin = (f"{start.year}--P{end.year - start.year + 1}Y",)
-            tasks = {bin + tidxs[0]: datasets}
-
-        # Seasonal binning
-        # 1900 is a dummy start year for the case where start year is %Y
-        elif period is not None and period.start.year == 1900:
-            tasks = {}
-            anchor = period.start.month
-            df = pd.DataFrame({"id": ids, "timestamp": timestamps, "tidx": tidxs, 'ds': datasets})
-            for dt in tqdm(timestamps):
-                df['bin'] = find_seasonal_bin(dt, period.freq, anchor).short
-
-            for k, v in df.groupby(['tidx', "bin"]):
-                tasks[(k[1],)+ k[0]] = v['ds']
-        else:
-            # Annual binning, this is the default
-            tasks = {}
-            for tidx, cell in cells.items():
-                # TODO: deal with UTC offsets for day boundary determination
-                grouped = toolz.groupby(lambda ds: ds.time.year, cell.dss)
-                for year, dss in grouped.items():
-                    temporal_k = (f"{year}--P1Y",)
-                    tasks[temporal_k + tidx] = dss
-        return tasks
-
-    def find_seasonal_bin(dt: datetime, freq: int, anchor: int) -> DateTimeRange:
-        dtr = DateTimeRange(f"{dt.year}-{anchor}--P{freq}")
-        if dt in dtr:
-            return dtr
-        step = 1 if dt > dtr else -1
-        while dt not in dtr:
-            dtr = dtr + step
-        return dtr
 
     def compress_ds(ds: Dataset) -> CompressedDataset:
         return CompressedDataset(ds.id, ds.center_time)
@@ -264,7 +214,7 @@ def save_tasks(grid, year, temporal_range, period,
     n_tiles = len(cells)
     print(f"Total of {n_tiles:,d} spatial tiles")
 
-    tasks = bin_data(cells)
+    tasks = bin_data(cells, frequency)
 
     if temporal_range is not None:
         # TODO: deal with UTC offsets for day boundary determination and trim
@@ -283,7 +233,7 @@ def save_tasks(grid, year, temporal_range, period,
     csv_path = out_path(".csv")
     print(f"Writing summary to {csv_path}")
     with open(csv_path, 'wt') as f:
-        f.write('"temporal_range","X","Y","datasets","days"\n')
+        f.write('"T","X","Y","datasets","days"\n')
 
         for p, x, y in sorted(tasks):
             dss = tasks[(p, x, y)]
