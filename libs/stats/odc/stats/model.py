@@ -30,6 +30,7 @@ def format_datetime(dt: datetime,
 
 @dataclass
 class DateTimeRange:
+
     __slots__ = ('start', 'end', 'freq')
 
     def __init__(self, start: Union[str, datetime],
@@ -41,10 +42,10 @@ class DateTimeRange:
         DateTimeRange(datetime(2019, 3, 1), '3M')
 
         """
+
         if freq is None:
             assert isinstance(start, str)
             start, freq = split_and_check(start, '--P', 2)
-
         freq = freq.upper().lstrip('P')
         # Pandas period snaps to frequency resolution, we need to undo that by re-adding the snapping delta
         t0 = pd.Timestamp(start)
@@ -52,6 +53,7 @@ class DateTimeRange:
         dt = t0 - period.start_time
 
         self.freq: str = freq
+
         self.start: datetime = normalise_dt(t0.to_pydatetime(warn=False))
         self.end: datetime = normalise_dt((period.end_time + dt).to_pydatetime(warn=False))
 
@@ -114,6 +116,12 @@ class DateTimeRange:
 
     def __contains__(self, t: datetime) -> bool:
         return self.start <= t <= self.end
+
+    def __lt__(self, t: datetime) -> bool:
+        return self.start < t
+
+    def __gt__(self, t: datetime) -> bool:
+        return self.end > t
 
     def to_pandas(self) -> pd.Period:
         """

@@ -5,6 +5,7 @@ import sys
 import pickle
 from datetime import datetime
 from collections import namedtuple
+from .utils import bin_data
 from odc.io.text import click_range2d
 from ._cli_common import main
 from . import _pq_cli
@@ -16,7 +17,6 @@ def is_tile_in(tidx, tiles):
     (x0, x1), (y0, y1) = tiles
     x, y = tidx
     return (x0 <= x < x1) and (y0 <= y < y1)
-
 
 @main.command('save-tasks')
 @click.option('--grid',
@@ -30,10 +30,13 @@ def is_tile_in(tidx, tiles):
               default=None)
 @click.option('--year',
               type=int,
-              help="Only extract datasets for a given year")
-@click.option('--period',
+              help="Only extract datasets for a given year. This is a shortcut for --temporal-range=<int>--P1Y")
+@click.option('--temporal_range',
               type=str,
-              help="Only extract datasets for a given time period, Example '2020-05--P1M' month of May 2020")
+              help="Only extract datasets for a given time range, Example '2020-05--P1M' month of May 2020")
+@click.option('--frequency',
+              type=str,
+              help="Extract datasets for a given frequency specified, example 'all', 'annual', '%Y-03--P2M' ")
 @click.option('--env', '-E', type=str, help='Datacube environment name')
 @click.option('-z', 'complevel',
               type=int,
@@ -53,7 +56,7 @@ def is_tile_in(tidx, tiles):
               help='Dump debug data to pickle')
 @click.argument('product', type=str, nargs=1)
 @click.argument('output', type=str, nargs=1, default='')
-def save_tasks(grid, year, period,
+def save_tasks(grid, year, temporal_range, frequency,
                output, product, env, complevel,
                overwrite=False,
                tiles=None,
@@ -82,23 +85,35 @@ def save_tasks(grid, year, period,
     from .metadata import gs_bounds, compute_grid_info, gjson_from_tasks
     from .model import DateTimeRange
 
-    if period is not None and year is not None:
-        print("Can only supply one of --year or --period", file=sys.stderr)
+    if temporal_range is not None and year is not None:
+        print("Can only supply one of --year or --temporal_range", file=sys.stderr)
         sys.exit(1)
 
-    if period is not None:
+    if temporal_range is not None:
         try:
-            period = DateTimeRange(period)
+            temporal_range = DateTimeRange(temporal_range)
         except ValueError:
-            print(f"Failed to parse supplied period: '{period}'")
+            print(f"Failed to parse supplied temporal_range: '{temporal_range}'")
             sys.exit(1)
 
     if year is not None:
-        period = DateTimeRange.year(year)
+        temporal_range = DateTimeRange.year(year)
+
+    if frequency is not None:
+        try:
+            # Replace Any year with a dummy year
+            if frequency.startswith("%Y"):
+                frequency = frequency.replace('%Y', '1900')
+
+            frequency = DateTimeRange(frequency) if not frequency in ['all' , 'annual'] else frequency
+
+        except ValueError:
+            print(f"Failed to parse supplied frequency: '{frequency}'")
+            sys.exit(1)
 
     if output == '':
-        if period is not None:
-            output = f'{product}_{period.short}.db'
+        if temporal_range is not None:
+            output = f'{product}_{temporal_range.short}.db'
         else:
             output = f'{product}_all.db'
 
@@ -140,11 +155,11 @@ def save_tasks(grid, year, period,
         cfg['tiles'] = tiles
         query['geopolygon'] = gs_bounds(gridspec, tiles)
 
-    # TODO: properly handle UTC offset when limiting query to a given time period
+    # TODO: properly handle UTC offset when limiting query to a given time temporal_range
     #       Basically need to pad query by 12hours, then trim datasets post-query
-    if period is not None:
-        query.update(period.dc_query())
-        cfg['period'] = period.short
+    if temporal_range is not None:
+        query.update(temporal_range.dc_query())
+        cfg['temporal_range'] = temporal_range.short
 
     if db_exists(output) and overwrite is False:
         print(f"File database already exists: {output}, use --overwrite flag to force deletion", file=sys.stderr)
@@ -199,20 +214,14 @@ def save_tasks(grid, year, period,
     n_tiles = len(cells)
     print(f"Total of {n_tiles:,d} spatial tiles")
 
-    if period is not None:
+    tasks = bin_data(cells, frequency)
+
+    if temporal_range is not None:
         # TODO: deal with UTC offsets for day boundary determination and trim
         # datasets that fall outside of requested time period
-        temporal_k = (period.short,)
+        temporal_k = (temporal_range.short,)
         tasks = {temporal_k + k: x.dss
                  for k, x in cells.items()}
-    else:
-        tasks = {}
-        for tidx, cell in cells.items():
-            # TODO: deal with UTC offsets for day boundary determination
-            grouped = toolz.groupby(lambda ds: ds.time.year, cell.dss)
-            for year, dss in grouped.items():
-                temporal_k = (f"{year}--P1Y",)
-                tasks[temporal_k + tidx] = dss
 
     tasks_uuid = {k: [ds.id for ds in dss]
                   for k, dss in tasks.items()}
@@ -224,7 +233,7 @@ def save_tasks(grid, year, period,
     csv_path = out_path(".csv")
     print(f"Writing summary to {csv_path}")
     with open(csv_path, 'wt') as f:
-        f.write('"Period","X","Y","datasets","days"\n')
+        f.write('"T","X","Y","datasets","days"\n')
 
         for p, x, y in sorted(tasks):
             dss = tasks[(p, x, y)]
@@ -237,8 +246,8 @@ def save_tasks(grid, year, period,
     grid_info = compute_grid_info(cells,
                                   resolution=max(gridspec.tile_size)/4)
     tasks_geo = gjson_from_tasks(tasks, grid_info)
-    for period, gjson in tasks_geo.items():
-        fname = out_path(f'-{period}.geojson')
+    for temporal_range, gjson in tasks_geo.items():
+        fname = out_path(f'-{temporal_range}.geojson')
         print(f"..writing to {fname}")
         with open(fname, 'wt') as f:
             json.dump(gjson, f)
