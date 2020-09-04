@@ -7,7 +7,7 @@ from datacube.model import Dataset
 from datacube.api.grid_workflow import Tile
 
 from odc.index import group_by_nothing
-from .. import train_dictionary, DatasetCache
+from .. import DatasetCache
 
 
 def dictionary_from_product_list(dc,
@@ -42,7 +42,7 @@ def dictionary_from_product_list(dc,
     if len(samples) == 0:
         return None
 
-    return train_dictionary(samples, dict_sz)
+    return DatasetCache.train_dictionary(samples, dict_sz)
 
 
 def db_connect(cfg=None):

@@ -111,36 +111,21 @@ def doc2bytes(doc: Document_,
         k, d = doc
     else:
         k_ = doc.get('id')
-        if k_ not in (str, UUID):
+        if not isinstance(k_, (str, UUID)):
             raise ValueError("Expect id key to be a string or a UUID")
 
         k = k_
         d = toolz.dissoc(doc, ['id']) if purge_id else doc
 
     if not isinstance(k, UUID):
+        if not isinstance(k, str):
+            raise ValueError("Expect id key to be a string or a UUID")
+
         k = UUID(k)
 
     raw_k = k.bytes
     raw_doc = json.dumps(d, separators=(',', ':')).encode('utf8')
     return (raw_k, raw_doc)
-
-
-def train_dictionary(docs: Iterable[Document_],
-                     dict_sz: int = 8*1024) -> Optional[bytes]:
-    """ Given a finite sequence of Documents train zstandard compression dictionary of a given size.
-
-        Document is either a
-         - (id, {..}) tuple
-         - {id: str|UUID, ...} a dictionary with `id` key of type UUID (possibly string formatted UUID)
-
-        Will return None if input sequence is empty.
-    """
-    sample = list(v for _, v in map(doc2bytes, docs))
-
-    if len(sample) == 0:
-        return None
-
-    return zstandard.train_dictionary(dict_sz, sample).as_bytes()
 
 
 class JsonBlobCache:
@@ -181,6 +166,24 @@ class JsonBlobCache:
 
     def __del__(self):
         self.close()
+
+    @staticmethod
+    def train_dictionary(docs: Iterable[Document_],
+                         dict_sz: int = 8*1024) -> Optional[bytes]:
+        """ Given a finite sequence of Documents train zstandard compression dictionary of a given size.
+
+            Document is either a
+             - (id, {..}) tuple
+             - {id: str|UUID, ...} a dictionary with `id` key of type UUID (possibly string formatted UUID)
+
+            Will return None if input sequence is empty.
+        """
+        sample = list(v for _, v in map(doc2bytes, docs))
+
+        if len(sample) == 0:
+            return None
+
+        return zstandard.train_dictionary(dict_sz, sample).as_bytes()
 
     def _append_info_dict(self, prefix: str, oo: Document, tr: lmdb.Transaction):
         for k, v in dict2jsonKV(oo, prefix, self._comp):
@@ -391,6 +394,58 @@ class JsonBlobCache:
         with self._dbs.main.begin(self._dbs.ds) as tr:
             return tr.stat()['entries']
 
+    @property
+    def path(self) -> Path:
+        return Path(self._dbs.main.path())
+
+    @staticmethod
+    def open_ro(path: str, lock: bool = False) -> 'JsonBlobCache':
+        return open_ro(path, lock=lock)
+
+    @staticmethod
+    def open_rw(path: str, **kw) -> 'JsonBlobCache':
+        return open_rw(path, **kw)
+
+    @staticmethod
+    def create(path: str,
+               complevel: int = 6,
+               zdict: Optional[bytes] = None,
+               max_db_sz: Optional[int] = None,
+               lock: bool = False,
+               subdir: bool = False,
+               truncate: bool = False,
+               **kw) -> 'JsonBlobCache':
+        """Create new file database or open existing one.
+
+        :path str: Path where to create new database (this will be a directory with 2 files in it)
+        :complevel int: Level of compressions to apply per dataset, bigger is slower but better compression.
+        :zdict: Optional pre-trained compression dictionary
+        :max_db_sz int: Maximum size in bytes (defaults to 10GiB)
+        :lock: By default we assume exclusive access to the file, if you expect sharing set ``lock=True``
+        :subdir: If set to True treat path as directory
+
+        :truncate bool: If True wipe out any existing database and create new empty one.
+        :kw: Passed on to ``lmdb.open(.., **kw)``
+           meminit
+            writemap
+            sync
+            metasync
+            ...and other
+        """
+
+        return create_cache(path,
+                            complevel=complevel,
+                            zdict=zdict,
+                            max_db_sz=max_db_sz,
+                            lock=lock,
+                            subdir=subdir,
+                            truncate=truncate,
+                            **kw)
+
+    @staticmethod
+    def exists(path: str) -> bool:
+        return db_exists(path)
+
 
 def db_exists(path: str) -> bool:
     path = Path(path)
@@ -500,7 +555,8 @@ def _from_empty_db(db,
 
 
 def open_ro(path: str,
-            lock: bool = False) -> JsonBlobCache:
+            lock: bool = False,
+            **kw) -> JsonBlobCache:
     """Open existing database in readonly mode.
 
     .. note:
@@ -520,14 +576,17 @@ def open_ro(path: str,
                    max_dbs=8,
                    lock=lock,
                    create=False,
-                   readonly=True)
+                   readonly=True,
+                   **kw)
 
     return _from_existing_db(db)
 
 
 def open_rw(path: str,
             max_db_sz: Optional[int] = None,
-            complevel: int = 6) -> JsonBlobCache:
+            complevel: int = 6,
+            lock: bool = False,
+            **kw) -> JsonBlobCache:
     """Open existing database in append mode.
 
     :path str: Path to the db could be folder or actual file
@@ -552,29 +611,39 @@ def open_rw(path: str,
                    subdir=subdir,
                    max_dbs=8,
                    map_size=max_db_sz,
-                   lock=True,
+                   lock=lock,
                    create=False,
-                   readonly=False)
+                   readonly=False,
+                   **kw)
 
     return _from_existing_db(db, complevel=complevel)
 
 
 def create_cache(path: str,
                  complevel: int = 6,
-                 zdict=None,
+                 zdict: Optional[bytes] = None,
                  max_db_sz: Optional[int] = None,
-                 truncate: bool = False):
+                 truncate: bool = False,
+                 lock: bool = False,
+                 subdir: bool = False,
+                 **kw) -> JsonBlobCache:
     """Create new file database or open existing one.
 
     :path str: Path where to create new database (this will be a directory with 2 files in it)
-
     :complevel int: Level of compressions to apply per dataset, bigger is slower but better compression.
-
     :zdict: Optional pre-trained compression dictionary
-
     :max_db_sz int: Maximum size in bytes (defaults to 10GiB)
+    :lock: By default we assume exclusive access to the file, if you expect sharing set ``lock=True``
+    :subdir: If set to True treat path as directory
 
     :truncate bool: If True wipe out any existing database and create new empty one.
+    :kw: Passed on to ``lmdb.open(.., **kw)``
+      meminit
+      writemap
+      sync
+      metasync
+      ...and other
+
     """
 
     if truncate:
@@ -587,7 +656,10 @@ def create_cache(path: str,
                    max_dbs=8,
                    map_size=max_db_sz,
                    create=True,
-                   readonly=False)
+                   readonly=False,
+                   lock=lock,
+                   subdir=subdir,
+                   **kw)
 
     # If db is not empty just call open on it
     if db.stat()['entries'] > 0:
