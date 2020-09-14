@@ -105,6 +105,12 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
         print(f"Will process {len(tasks):,d} tasks")
 
     sink = S3COGSink(cog_opts=COG_OPTS)
+
+    if product.location.startwith('s3:'):
+        if not sink.verify_s3_credentials():
+            print("Failed to load S3 credentials")
+            sys.exit(2)
+
     if verbose:
         creds_rw = sink._creds
         print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
