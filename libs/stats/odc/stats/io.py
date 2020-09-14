@@ -4,11 +4,13 @@ Various I/O adaptors
 
 from typing import Dict, Any, Optional
 import json
+from urllib.parse import urlparse
 from dask.delayed import Delayed
+from pathlib import Path
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
-from datacube.utils.dask import save_blob_to_s3
+from datacube.utils.dask import save_blob_to_s3, save_blob_to_file
 from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
@@ -21,23 +23,6 @@ DEFAULT_COG_OPTS = dict(
     zlevel=6,
     blocksize=512,
 )
-
-
-def ds_to_cog(ds: Dataset,
-              paths: Dict[str, str],
-              creds: ReadOnlyCredentials,
-              **cog_opts: Dict[str, Any]):
-    out = []
-    for band, dv in ds.data_vars.items():
-        url = paths.get(band, None)
-        if url is None:
-            raise ValueError(f"No path for band: '{band}'")
-        cog_bytes = to_cog(dv, **cog_opts)
-        out.append(save_blob_to_s3(cog_bytes,
-                                   url,
-                                   creds=creds,
-                                   ContentType='image/tiff'))
-    return out
 
 
 def load_creds(profile: Optional[str] = None) -> ReadOnlyCredentials:
@@ -56,7 +41,8 @@ def dump_json(meta: Dict[str, Any]) -> str:
 class S3COGSink:
     def __init__(self,
                  creds: Optional[ReadOnlyCredentials] = None,
-                 cog_opts: Optional[Dict[str, Any]] = None):
+                 cog_opts: Optional[Dict[str, Any]] = None,
+                 public: bool = False):
         if creds is None:
             creds = load_creds()
 
@@ -68,28 +54,74 @@ class S3COGSink:
         self._meta_ext = 'json'
         self._meta_contentype = 'application/json'
         self._band_ext = 'tiff'
+        self._public = public
 
     def uri(self, task: Task) -> str:
         return task.metadata_path('absolute', ext=self._meta_ext)
 
+    def _write_blob(self,
+                    data,
+                    url: str,
+                    ContentType: Optional[str] = None,
+                    with_deps = None) -> Delayed:
+        _u = urlparse(url)
+        if _u.scheme == 's3':
+            kw = dict(creds=self._creds)
+            if ContentType is not None:
+                kw['ContentType'] = ContentType
+            if self._public:
+                kw['ACL'] = 'public-read'
+
+            return save_blob_to_s3(data, url, with_deps=with_deps, **kw)
+        elif _u.scheme == 'file':
+            _dir = Path(_u.path).parent
+            if not _dir.exists():
+                _dir.mkdir(parents=True, exist_ok=True)
+            return save_blob_to_file(data, _u.path, with_deps=with_deps)
+        else:
+            raise ValueError(f"Don't know how to save to '{url}'")
+
+
+    def _ds_to_cog(self,
+                   ds: Dataset,
+                   paths: Dict[str, str]):
+        out = []
+        for band, dv in ds.data_vars.items():
+            url = paths.get(band, None)
+            if url is None:
+                raise ValueError(f"No path for band: '{band}'")
+            cog_bytes = to_cog(dv, **self._cog_opts)
+            out.append(self._write_blob(cog_bytes,
+                                        url,
+                                        ContentType='image/tiff'))
+        return out
+
+
     def exists(self, task: Task) -> bool:
         uri = self.uri(task)
-        s3 = s3_client(creds=self._creds, cache=True)
-        meta = s3_head_object(uri, s3=s3)
-        return meta is not None
+        _u = urlparse(uri)
+        if _u.scheme == 's3':
+            s3 = s3_client(creds=self._creds, cache=True)
+            meta = s3_head_object(uri, s3=s3)
+            return meta is not None
+        elif _u.scheme == 'file':
+            return Path(_u.path).exists()
+        else:
+            raise ValueError(f"Can't handle url: {uri}")
+
 
     def dump(self,
              task: Task,
              ds: Dataset) -> Delayed:
         paths = task.paths('absolute', ext=self._band_ext)
-        cogs = ds_to_cog(ds, paths, self._creds, **self._cog_opts)
+        cogs = self._ds_to_cog(ds, paths)
+
         json_url = task.metadata_path('absolute', ext=self._meta_ext)
         meta = task.render_metadata(ext=self._band_ext)
 
         json_txt = dump_json(meta)
 
-        return save_blob_to_s3(json_txt,
-                               json_url,
-                               creds=self._creds,
-                               ContentType=self._meta_contentype,
-                               with_deps=cogs)
+        return self._write_blob(json_txt.encode('utf8'),
+                                json_url,
+                                ContentType=self._meta_contentype,
+                                with_deps=cogs)
