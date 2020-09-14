@@ -43,8 +43,6 @@ class S3COGSink:
                  creds: Optional[ReadOnlyCredentials] = None,
                  cog_opts: Optional[Dict[str, Any]] = None,
                  public: bool = False):
-        if creds is None:
-            creds = load_creds()
 
         if cog_opts is None:
             cog_opts = dict(**DEFAULT_COG_OPTS)
@@ -59,6 +57,22 @@ class S3COGSink:
     def uri(self, task: Task) -> str:
         return task.metadata_path('absolute', ext=self._meta_ext)
 
+    def _get_creds(self) -> ReadOnlyCredentials:
+        if self._creds is None:
+            self._creds = load_creds()
+        return self._creds
+
+    def verify_s3_credentials(self, test_uri: Optional[str] = None) -> bool:
+        try:
+            creds = self._get_creds()
+        except ValueError:
+            return False
+        if test_uri is None:
+            return True
+        path, ok = self._write_blob(b"verifying S3 permissions", test_uri).compute()
+        assert path == test_uri
+        return ok
+
     def _write_blob(self,
                     data,
                     url: str,
@@ -66,7 +80,7 @@ class S3COGSink:
                     with_deps = None) -> Delayed:
         _u = urlparse(url)
         if _u.scheme == 's3':
-            kw = dict(creds=self._creds)
+            kw = dict(creds=self._get_creds())
             if ContentType is not None:
                 kw['ContentType'] = ContentType
             if self._public:
