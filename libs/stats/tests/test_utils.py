@@ -1,7 +1,16 @@
 from uuid import UUID
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from odc.stats.utils import bin_seasonal, bin_annual, bin_full_history, find_seasonal_bin, CompressedDataset, bin_generic
+from odc.stats.utils import (
+    bin_seasonal,
+    bin_annual,
+    bin_full_history,
+    CompressedDataset,
+    bin_generic,
+    season_binner,
+    mk_season_rules,
+)
+
 from odc.stats.model import DateTimeRange
 
 
@@ -15,14 +24,6 @@ def gen_compressed_dss(n,
     for i in range(n):
         yield CompressedDataset(UUID(int=i), dt)
         dt = dt + step
-
-
-def test_find_seasonal_bin():
-    assert find_seasonal_bin(datetime(2020, 1, 3), 3, 3) == DateTimeRange('2019-12--P3M')
-    assert find_seasonal_bin(datetime(2019, 12, 30), 3, 3) == DateTimeRange('2019-12--P3M')
-    assert find_seasonal_bin(datetime(2019, 12, 1), 3, 3) == DateTimeRange('2019-12--P3M')
-    assert find_seasonal_bin(datetime(2020, 2, 28), 3, 3) == DateTimeRange('2019-12--P3M')
-    assert find_seasonal_bin(datetime(2020, 1, 3), 3, 3) == DateTimeRange('2020-03--P3M')
 
 
 def test_binning():
@@ -56,5 +57,33 @@ def test_binning():
 
         assert set(ds.id for ds in dss1) == set(ds.id for ds in dss2)
 
-    tasks = bin_seasonal(cells, start, end, 6, 1)
+    tasks = bin_seasonal(cells, 6, 1)
     verify(tasks)
+
+
+def test_season_binner():
+    four_seasons_rules = {
+        12: '12--P3M', 1: '12--P3M', 2: '12--P3M',
+        3: '03--P3M', 4: '03--P3M', 5: '03--P3M',
+        6: '06--P3M', 7: '06--P3M', 8: '06--P3M',
+        9: '09--P3M', 10: '09--P3M', 11: '09--P3M',
+    }
+
+    assert mk_season_rules(3, anchor=12) == four_seasons_rules
+
+    binner = season_binner(four_seasons_rules)
+    assert binner(datetime(2020, 1, 28)) == '2019-12--P3M'
+    assert binner(datetime(2020, 2, 21)) == '2019-12--P3M'
+    assert binner(datetime(2020, 3, 1)) == '2020-03--P3M'
+    assert binner(datetime(2020, 4, 1)) == '2020-03--P3M'
+    assert binner(datetime(2020, 5, 31)) == '2020-03--P3M'
+    assert binner(datetime(2020, 6, 1)) == '2020-06--P3M'
+    assert binner(datetime(2020, 12, 30)) == '2020-12--P3M'
+
+    binner = season_binner({})
+    for m in range(1, 13):
+        assert binner(datetime(2003, m, 10)) == ''
+
+    binner = season_binner({1: '01--P1M'})
+    assert binner(datetime(2001, 10, 19)) == ''
+    assert binner(datetime(2001, 1, 19)) == '2001-01--P1M'
