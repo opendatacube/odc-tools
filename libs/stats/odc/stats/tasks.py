@@ -183,8 +183,6 @@ class SaveTasks:
                                      end=dt_range.end)
         elif self._frequency == 'seasonal':
             tasks = bin_seasonal(cells,
-                                 start=dt_range.start,
-                                 end=dt_range.end,
                                  months=3,
                                  anchor=12)
         elif temporal_range is not None:
