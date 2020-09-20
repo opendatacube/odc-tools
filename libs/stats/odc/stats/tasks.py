@@ -125,7 +125,7 @@ class SaveTasks:
         # TODO: properly handle UTC offset when limiting query to a given time temporal_range
         #       Basically need to pad query by 12hours, then trim datasets post-query
         if temporal_range is not None:
-            query.update(temporal_range.dc_query())
+            query.update(temporal_range.dc_query(pad=0.6))  # pad a bit more than half a day on each side
             cfg['temporal_range'] = temporal_range.short
 
         cfg['query'] = sanitize_query(query)
