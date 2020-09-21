@@ -160,6 +160,12 @@ def int_geomedian(ds, scale=1, offset=0, **kw):
     """ ds -- xr.Dataset (possibly dask) with dims: (time, y, x) for each band
 
         on output time dimension is removed
+
+    :param ds: Dataset with int data variables
+    :param scale: Normalize data for running computation (output is scaled back to original values)
+    :param offset: ``(x*scale + offset)``
+    :param kw: Passed on to hdstats (eps=1e-4, num_threads=1, maxiters=10_000, nocheck=True)
+
     """
     band_names = [dv.name for dv in ds.data_vars.values()]
     xx, *_ = ds.data_vars.values()
@@ -179,7 +185,8 @@ def int_geomedian(ds, scale=1, offset=0, **kw):
 
     kw.setdefault('nocheck', True)
     kw.setdefault('num_threads', 1)
-    kw.setdefault('eps', 1e-6)
+    kw.setdefault('eps', 1e-4)
+    kw.setdefault('maxiters', 10_000)
 
     if is_dask:
         chunks = ((nb,), *xx.chunks[1:])
