@@ -8,10 +8,12 @@ from ._cli_common import main, parse_all_tasks
 @click.option('--threads', type=int, help='Number of worker threads', default=0)
 @click.option('--dryrun', is_flag=True, help='Do not run computation just print what work will be done')
 @click.option('--overwrite', is_flag=True, help='Do not check if output already exists')
+@click.option('--public/--no-public', is_flag=True, default=False,
+              help='Mark outputs for public access (default: no)')
 @click.option('--location', type=str, help='Output location prefix as a uri: s3://bucket/path/')
 @click.argument('cache_file', type=str, nargs=1)
 @click.argument('tasks', type=str, nargs=-1)
-def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
+def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, location):
     """
     Run Pixel Quality stats
 
@@ -28,7 +30,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
        1::10 -- every tenth but skip first one 1, 11, 21 ..
         :100 -- first 100 tasks
 
-    If no tasks are supplied whole file be processed.
+    If no tasks are supplied the whole file will be processed.
     """
     from tqdm.auto import tqdm
     from functools import partial
@@ -45,7 +47,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
     COG_OPTS = dict(compress='deflate',
                     predict=2,
                     zlevel=6,
-                    blocksize=512)
+                    blocksize=800)
     # ..
 
     cache = open_ro(cache_file)
@@ -104,14 +106,15 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, location):
     if verbose:
         print(f"Will process {len(tasks):,d} tasks")
 
-    sink = S3COGSink(cog_opts=COG_OPTS)
+    sink = S3COGSink(cog_opts=COG_OPTS,
+                     public=public)
 
-    if product.location.startwith('s3:'):
+    if product.location.startswith('s3:'):
         if not sink.verify_s3_credentials():
             print("Failed to load S3 credentials")
             sys.exit(2)
 
-    if verbose:
+    if verbose and sink._creds:
         creds_rw = sink._creds
         print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
 

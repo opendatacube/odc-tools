@@ -26,7 +26,7 @@ GRIDS = {
                                  resolution=(-30, 30)),
     'albers_africa_60': GridSpec(crs=epsg6933,
                                  tile_size=(96_000.0, 96_000.0),
-                                 resolution=(-30, 30)),
+                                 resolution=(-60, 60)),
 }
 
 
