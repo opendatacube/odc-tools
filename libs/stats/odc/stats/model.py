@@ -148,7 +148,6 @@ class OutputProduct:
     measurements: Tuple[str, ...]
     gridspec: GridSpec
     href: str = ''
-    freq: str = '1Y'
 
     def __post_init__(self):
         if self.href == '':

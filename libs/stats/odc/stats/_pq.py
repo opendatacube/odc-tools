@@ -44,8 +44,7 @@ def pq_product(gridspec: GridSpec, location: Optional[str] = None) -> OutputProd
                          properties=properties,
                          measurements=measurements,
                          gridspec=gridspec,
-                         href=f'https://collections.digitalearth.africa/product/{name}',
-                         freq='1Y')
+                         href=f'https://collections.digitalearth.africa/product/{name}')
 
 
 def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
