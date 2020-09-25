@@ -33,6 +33,20 @@ def image_aspect(d):
     return w/h
 
 
+def replace_transparent_pixels(rgba: np.ndarray,
+                               color: Tuple[int, int, int] = (255, 0, 255)) -> np.ndarray:
+    """
+    RGBA -> RGB with transparent pixels replaced with given color
+    """
+    assert rgba.ndim == 3
+    assert rgba.shape[-1] == 4
+
+    m = rgba[..., -1] == 0
+    rgb = rgba[..., :3].copy()
+    rgb[m] = color
+    return rgb
+
+
 def mk_data_uri(data: bytes, mimetype: str = "image/png") -> str:
     from base64 import encodebytes
     return "data:{};base64,{}".format(mimetype, encodebytes(data).decode('ascii'))
@@ -98,7 +112,9 @@ def to_png_data(im: np.ndarray, zlevel=6) -> bytes:
     return _compress_image(im, 'PNG', zlevel=zlevel)
 
 
-def to_jpeg_data(im: np.ndarray, quality=95) -> bytes:
+def to_jpeg_data(im: np.ndarray, quality=95, transparent=None) -> bytes:
+    if transparent is not None:
+        im = replace_transparent_pixels(im, transparent)
     return _compress_image(im, 'JPEG', quality=quality)
 
 
