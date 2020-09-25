@@ -11,6 +11,9 @@ import dask.array as da
 import numexpr as ne
 from ._dask import randomize
 
+from skimage.morphology import disk
+from dask_image.ndmorph import binary_erosion, binary_dilation
+
 
 def default_nodata(dtype):
     """ Default `nodata` for a given dtype
@@ -272,6 +275,44 @@ def _enum_to_mask_numexpr(mask: np.ndarray,
                 casting='unsafe')
 
     return out
+
+
+def cloud_buffer(mask: xr.DataArray,
+                radius: int,
+                dilation_radius: int = None):
+
+    """ This method accepts cloud masks and applies morphological functions to improve cloud masking
+        The buffer is formed by applying dilation(dilation_radius) followed by erosion(radius + dilation_radius) if
+        dilation_radius is specified otherwise just erosion(radius)
+        The sequential application of these functions will improve false cloud detection for sandy beaches
+
+        :param mask: A mask which has cloud classes (cloud shadows, cloud medium probability,
+                    cloud high probability, thin cirrus) set to False
+        :param radius: kernel radius
+        :param dilation_radius: kernel Radius
+
+        example:
+        clouds_not = enum_to_bool(xx.scl, cloud_classes, invert=True)
+        cloud_buffer(clouds_not, radius, dilation_radius)
+    """
+    dilation_kernel = disk(dilation_radius) if dilation_radius is not None else None
+    if len(mask.shape) == 3 and dilation_radius is not None:
+        dilation_kernel = disk(dilation_radius)[np.newaxis, :, :]
+
+    erosion_radius = radius if dilation_radius is None else (dilation_radius + radius)
+    if len(mask.shape) == 3:
+        erosion_kernel = disk(erosion_radius)[np.newaxis, :, :]
+    else:
+        erosion_kernel = disk(erosion_radius)
+
+    if dilation_radius is None:
+        return xr.DataArray(data=binary_erosion(mask.data, erosion_kernel, border_value=True),
+                            coords=mask.coords)
+    else:
+        return xr.DataArray(data=binary_erosion(binary_dilation(mask.data, dilation_kernel,
+                                                border_value=True),
+                                                erosion_kernel, border_value=True),
+                                                coords=mask.coords)
 
 
 def enum_to_bool(mask: xr.DataArray,
