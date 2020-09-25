@@ -6,6 +6,7 @@ from typing import Tuple, Union, cast
 from random import randint
 from bisect import bisect_right, bisect_left
 import numpy as np
+import xarray as xr
 from dask.distributed import wait as dask_wait
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
@@ -45,6 +46,35 @@ def chunked_persist(data, n_concurrent, client, verbose=False):
 
     # at this point it should be almost no-op
     return client.persist(data)
+
+
+def chunked_persist_ds(xx: xr.Dataset, client, verbose: bool = False) -> xr.Dataset:
+    names = list(xx.data_vars)
+    data = [xx[n].data for n in names]
+    delayed = [d.to_delayed().ravel() for d in data]
+    delayed = list(zip(*delayed))
+
+    persisted = []
+    for chunk in delayed:
+        chunk = client.persist(chunk)
+        _ = dask_wait(chunk)
+        persisted.extend(chunk)
+        if verbose:
+            print('.', end='')
+
+    # at this point it should be almost no-op
+    data = client.persist(data)
+
+    # reconstruct xr.Dataset from persisted chunks
+    _vars = {}
+    for n, d in zip(names, data):
+        dv = xx[n]
+        _vars[n] = xr.DataArray(data=d,
+                                dims=dv.dims,
+                                coords=dv.coords,
+                                name=n)
+
+    return xr.Dataset(_vars)
 
 
 def randomize(prefix: str) -> str:
