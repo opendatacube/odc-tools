@@ -6,13 +6,8 @@ from datetime import timedelta
 
 from datacube.model import GridSpec
 from datacube.utils.geometry import polygon_from_transform, Geometry
-from odc import dscache
 from odc.index import solar_offset
-from .model import OutputProduct, Task, DateTimeRange, TileIdx, TileIdx_xy, TileIdx_txy
-
-
-def _xy(tidx: TileIdx) -> TileIdx_xy:
-    return tidx[-2:]
+from .model import TileIdx_xy, TileIdx_txy
 
 
 def gs_bounds(gs: GridSpec, tiles: Tuple[Tuple[int, int],
@@ -34,27 +29,6 @@ def gs_bounds(gs: GridSpec, tiles: Tuple[Tuple[int, int],
     nx = (x1 - x0)*gb.shape[1]
     ny = (y1 - y0)*gb.shape[0]
     return polygon_from_transform(nx, ny, gb.affine, gb.crs)
-
-
-def load_task(cache: dscache.DatasetCache,
-              tile_index: TileIdx_txy,
-              product: OutputProduct,
-              grid: str = '') -> Task:
-    if grid == '':
-        grid = cache.get_info_dict('stats/config')['grid']
-
-    gridspec = cache.grids[grid]
-
-    time_range = DateTimeRange(tile_index[0])
-    tidx_xy = _xy(tile_index)
-
-    dss = tuple(ds for ds in cache.stream_grid_tile(tile_index, grid))
-
-    return Task(product=product,
-                tile_index=tidx_xy,
-                geobox=gridspec.tile_geobox(tidx_xy),
-                time_range=time_range,
-                datasets=dss)
 
 
 def timedelta_to_hours(td: timedelta) -> float:
@@ -95,7 +69,7 @@ def compute_grid_info(cells: Dict[TileIdx_xy, Any],
 def gjson_from_tasks(tasks: Dict[TileIdx_txy, Any],
                      grid_info: Dict[TileIdx_xy, Any]) -> Dict[str, Dict[str, Any]]:
     """
-    Group tasks by time period and computer geosjon describing every tile covered by each time period.
+    Group tasks by time period and compute geosjon describing every tile covered by each time period.
 
     Returns time_period -> GeoJSON mapping
 

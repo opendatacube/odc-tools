@@ -34,11 +34,10 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
     """
     from tqdm.auto import tqdm
     from functools import partial
-    from odc.dscache import open_ro
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
-    from .metadata import load_task
     from .proc import process_tasks
+    from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
 
@@ -50,17 +49,11 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
                     blocksize=800)
     # ..
 
-    cache = open_ro(cache_file)
-    cfg = cache.get_info_dict('stats/config')
-    if verbose:
-        print(cfg)
-
-    grid = cfg['grid']
-    gs = cache.grids[grid]
+    rdr = TaskReader(cache_file)
     product = pq_product(location=location)
 
-    def get_task(tidx):
-        return load_task(cache, tidx, product, grid)
+    if verbose:
+        print(repr(rdr))
 
     def pq_proc(task):
         ds_in = pq_input_data(task, resampling=resampling)
@@ -90,24 +83,19 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
 
         return uri
 
-    all_tasks = sorted(idx for idx, _ in cache.tiles(grid))
-
     if len(tasks) == 0:
-        tasks = all_tasks
+        tasks = rdr.all_tiles
         if verbose:
             print(f"Found {len(tasks):,d} tasks in the file")
     else:
         try:
-            tasks = parse_all_tasks(tasks, all_tasks)
+            tasks = parse_all_tasks(tasks, rdr.all_tiles)
         except ValueError as e:
             print(str(e), file=sys.stderr)
             sys.exit(1)
 
     if verbose:
         print(f"Will process {len(tasks):,d} tasks")
-
-    if verbose:
-        print(f"Using grid: {grid} ({gs})")
 
     sink = S3COGSink(cog_opts=COG_OPTS,
                      public=public)
@@ -121,7 +109,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
         creds_rw = sink._creds
         print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
 
-    _tasks = map(get_task, tasks)
+    _tasks = rdr.stream(tasks, product)
 
     client = None
     if not dryrun:

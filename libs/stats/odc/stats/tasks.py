@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union, Callable, Any, Dict
+from typing import Optional, Tuple, Union, Callable, Any, Dict, List, Iterable, Iterator
 from types import SimpleNamespace
 from collections import namedtuple
 from datetime import datetime
@@ -18,12 +18,16 @@ from odc.dscache.tools import dictionary_from_product_list
 from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
 
-from .model import DateTimeRange
+from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
 from .metadata import gs_bounds, compute_grid_info, gjson_from_tasks
 from .utils import bin_annual, bin_full_history, bin_generic, bin_seasonal
 
 TilesRange2d = Tuple[Tuple[int, int], Tuple[int, int]]
 CompressedDataset = namedtuple("CompressedDataset", ['id', 'time'])
+
+
+def _xy(tidx: TileIdx) -> TileIdx_xy:
+    return tidx[-2:]
 
 
 def compress_ds(ds: Dataset) -> CompressedDataset:
@@ -231,3 +235,63 @@ class SaveTasks:
                 pickle.dump(tasks, fb)
 
         return True
+
+
+class TaskReader:
+    def __init__(self,
+                 cache: Union[str, DatasetCache],
+                 product: Optional[OutputProduct] = None):
+        if isinstance(cache, str):
+            cache = DatasetCache.open_ro(cache)
+
+        # TODO: verify this things are set in the file
+        cfg = cache.get_info_dict('stats/config')
+        grid = cfg['grid']
+        gridspec = cache.grids[grid]
+
+        self._product = product
+        self._dscache = cache
+        self._cfg = cfg
+        self._grid = grid
+        self._gridspec = gridspec
+        self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid))
+
+    def __repr__(self) -> str:
+        grid, path, n = self._grid, str(self._dscache.path), len(self._all_tiles)
+        return f'<{path}> grid:{grid} n:{n:,d}'
+
+    def _resolve_product(self, product: Optional[OutputProduct]) -> OutputProduct:
+        if product is None:
+            product = self._product
+
+        if product is None:
+            raise ValueError("Product is not supplied and default is not set")
+        return product
+
+    @property
+    def all_tiles(self) -> List[TileIdx_txy]:
+        return self._all_tiles
+
+    def datasets(self, tile_index: TileIdx_txy) -> Tuple[Dataset, ...]:
+        return tuple(ds for ds in self._dscache.stream_grid_tile(tile_index, self._grid))
+
+    def load_task(self,
+                  tile_index: TileIdx_txy,
+                  product: Optional[OutputProduct] = None) -> Task:
+        product = self._resolve_product(product)
+
+        dss = self.datasets(tile_index)
+        tidx_xy = _xy(tile_index)
+
+        return Task(product=product,
+                    tile_index=tidx_xy,
+                    geobox=self._gridspec.tile_geobox(tidx_xy),
+                    time_range=DateTimeRange(tile_index[0]),
+                    datasets=dss)
+
+    def stream(self,
+               tiles: Iterable[TileIdx_txy],
+               product: Optional[OutputProduct] = None) -> Iterator[Task]:
+        product = self._resolve_product(product)
+        for tidx in tiles:
+            yield self.load_task(tidx, product)
