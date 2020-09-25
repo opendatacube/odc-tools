@@ -18,7 +18,7 @@ cloud_classes = ('cloud shadows',
                  'thin cirrus')
 
 
-def pq_product(gridspec: GridSpec, location: Optional[str] = None) -> OutputProduct:
+def pq_product(location: Optional[str] = None) -> OutputProduct:
     name = 'ga_s2_clear_pixel_count'
     short_name = 'ga_s2_cpc'
     version = '0.0.0'
@@ -43,7 +43,6 @@ def pq_product(gridspec: GridSpec, location: Optional[str] = None) -> OutputProd
                          location=location,
                          properties=properties,
                          measurements=measurements,
-                         gridspec=gridspec,
                          href=f'https://collections.digitalearth.africa/product/{name}')
 
 

@@ -57,7 +57,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
 
     grid = cfg['grid']
     gs = cache.grids[grid]
-    product = pq_product(gs, location=location)
+    product = pq_product(location=location)
 
     def get_task(tidx):
         return load_task(cache, tidx, product, grid)
@@ -105,6 +105,9 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
 
     if verbose:
         print(f"Will process {len(tasks):,d} tasks")
+
+    if verbose:
+        print(f"Using grid: {grid} ({gs})")
 
     sink = S3COGSink(cog_opts=COG_OPTS,
                      public=public)

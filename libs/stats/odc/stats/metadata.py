@@ -43,6 +43,8 @@ def load_task(cache: dscache.DatasetCache,
     if grid == '':
         grid = cache.get_info_dict('stats/config')['grid']
 
+    gridspec = cache.grids[grid]
+
     time_range = DateTimeRange(tile_index[0])
     tidx_xy = _xy(tile_index)
 
@@ -50,7 +52,7 @@ def load_task(cache: dscache.DatasetCache,
 
     return Task(product=product,
                 tile_index=tidx_xy,
-                geobox=product.gridspec.tile_geobox(tidx_xy),
+                geobox=gridspec.tile_geobox(tidx_xy),
                 time_range=time_range,
                 datasets=dss)
 
