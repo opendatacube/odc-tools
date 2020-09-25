@@ -19,7 +19,7 @@ from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
 
 from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
-from .metadata import gs_bounds, compute_grid_info, gjson_from_tasks
+from ._gjson import gs_bounds, compute_grid_info, gjson_from_tasks
 from .utils import bin_annual, bin_full_history, bin_generic, bin_seasonal
 
 TilesRange2d = Tuple[Tuple[int, int], Tuple[int, int]]
