@@ -86,12 +86,12 @@ def gm_input_data(task: Task, resampling: str, chunk: int = 1600) -> xr.Dataset:
     return xx
 
 
-def gm_reduce(xx: xr.Dataset) -> xr.Dataset:
+def gm_reduce(xx: xr.Dataset, num_threads=4) -> xr.Dataset:
     """
     """
     return int_geomedian(xx,
                          scale=1/10_000,
                          wk_rows=16*4,
                          eps=1e-4,
-                         num_threads=4,
+                         num_threads=num_threads,
                          maxiters=1_000)
