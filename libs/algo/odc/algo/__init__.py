@@ -13,6 +13,7 @@ from ._masking import (
     to_float_np,
     fmask_to_bool,
     enum_to_bool,
+    cloud_buffer,
     gap_fill,
     choose_first_valid,
 )
@@ -52,6 +53,7 @@ __all__ = (
     "to_float_np",
     "fmask_to_bool",
     "enum_to_bool",
+    "cloud_buffer",
     "gap_fill",
     "choose_first_valid",
     "xr_geomedian",
