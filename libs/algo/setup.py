@@ -26,6 +26,8 @@ setup(
         'toolz',
         'odc-index',
         'datacube',
+        'skimage',
+        'dask_image'
     ],
 
     packages=['odc.algo'],
