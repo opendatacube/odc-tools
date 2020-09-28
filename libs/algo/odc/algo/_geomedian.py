@@ -118,10 +118,20 @@ def xr_geomedian(ds, axis='time', where=None, **kw):
     return ds_out
 
 
+def _slices(step, n):
+    if step < 0:
+        yield slice(0, n)
+        return
+
+    for x in range(0, n, step):
+        yield slice(x, min(x+step, n))
+
+
 def int_geomedian_np(*bands,
                      nodata=None,
                      scale=1,
                      offset=0,
+                     wk_rows=-1,
                      **kw):
     """ On input each band is expected to be same shape and dtype with 3 dimensions: time, y, x
         On output: band, y, x
@@ -131,32 +141,40 @@ def int_geomedian_np(*bands,
     nt, ny, nx = bands[0].shape
     dtype = bands[0].dtype
     nb = len(bands)
-    bb_f32 = np.empty((ny, nx, nb, nt), dtype='float32')
-
-    for b_idx, b in enumerate(bands):
-        for t_idx in range(nt):
-            bb_f32[:, :, b_idx, t_idx] = to_float_np(b[t_idx, :, :],
-                                                     nodata=nodata,
-                                                     scale=scale,
-                                                     offset=offset,
-                                                     dtype='float32')
-
-    gm_f32 = nangeomedian_pcm(bb_f32, **kw)
-
-    del bb_f32  # free temp memory early
     gm_int = np.empty((nb, ny, nx), dtype=dtype)
 
-    for b_idx in range(nb):
-        gm_int[b_idx, :, :] = from_float_np(gm_f32[:, :, b_idx],
-                                            dtype,
-                                            nodata=nodata,
-                                            scale=1/scale,
-                                            offset=-offset/scale)
+    if wk_rows > ny or wk_rows <= 0:
+        wk_rows = ny
+
+    _wk_f32 = np.empty((wk_rows, nx, nb, nt), dtype='float32')
+
+    for _y in _slices(wk_rows, ny):
+        _ny = _y.stop - _y.start
+        bb_f32 = _wk_f32[:_ny, ...]
+        # extract part of the image with scaling
+        for b_idx, b in enumerate(bands):
+            for t_idx in range(nt):
+                bb_f32[:, :, b_idx, t_idx] = to_float_np(b[t_idx, _y, :],
+                                                         nodata=nodata,
+                                                         scale=scale,
+                                                         offset=offset,
+                                                         dtype='float32')
+
+        # run partial computation
+        gm_f32 = nangeomedian_pcm(bb_f32, **kw)
+
+        # extract results with scaling back
+        for b_idx in range(nb):
+            gm_int[b_idx, _y, :] = from_float_np(gm_f32[:, :, b_idx],
+                                                 dtype,
+                                                 nodata=nodata,
+                                                 scale=1/scale,
+                                                 offset=-offset/scale)
 
     return gm_int
 
 
-def int_geomedian(ds, scale=1, offset=0, **kw):
+def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, **kw):
     """ ds -- xr.Dataset (possibly dask) with dims: (time, y, x) for each band
 
         on output time dimension is removed
@@ -164,6 +182,7 @@ def int_geomedian(ds, scale=1, offset=0, **kw):
     :param ds: Dataset with int data variables
     :param scale: Normalize data for running computation (output is scaled back to original values)
     :param offset: ``(x*scale + offset)``
+    :param wk_rows: reduce memory requirements by processing that many rows of a chunk at a time
     :param kw: Passed on to hdstats (eps=1e-4, num_threads=1, maxiters=10_000, nocheck=True)
 
     """
@@ -196,6 +215,7 @@ def int_geomedian(ds, scale=1, offset=0, **kw):
                              nodata=nodata,
                              scale=scale,
                              offset=offset,
+                             wk_rows=wk_rows,
                              **kw,
                              name=randomize('geomedian'),
                              dtype=dtype,
@@ -206,7 +226,9 @@ def int_geomedian(ds, scale=1, offset=0, **kw):
         data = int_geomedian_np(*bands,
                                 nodata=nodata,
                                 scale=scale,
-                                offset=offset, **kw)
+                                offset=offset,
+                                wk_rows=wk_rows,
+                                **kw)
 
     dims = ('band', *xx.dims[1:])
     cc = {k: xx.coords[k] for k in dims[1:]}
