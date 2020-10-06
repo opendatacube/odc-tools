@@ -174,7 +174,12 @@ def int_geomedian_np(*bands,
     return gm_int
 
 
-def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, **kw):
+def int_geomedian(ds,
+                  scale=1,
+                  offset=0,
+                  wk_rows=-1,
+                  as_array=False,
+                  **kw):
     """ ds -- xr.Dataset (possibly dask) with dims: (time, y, x) for each band
 
         on output time dimension is removed
@@ -183,6 +188,7 @@ def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, **kw):
     :param scale: Normalize data for running computation (output is scaled back to original values)
     :param offset: ``(x*scale + offset)``
     :param wk_rows: reduce memory requirements by processing that many rows of a chunk at a time
+    :param as_array: If set to True return DataArray with band dimension instead of Dataset
     :param kw: Passed on to hdstats (eps=1e-4, num_threads=1, maxiters=10_000, nocheck=True)
 
     """
@@ -234,8 +240,12 @@ def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, **kw):
     cc = {k: xx.coords[k] for k in dims[1:]}
     cc['band'] = band_names
 
-    ds_out = xr.DataArray(data, dims=dims, coords=cc).to_dataset(dim='band')
+    da_out = xr.DataArray(data, dims=dims, coords=cc)
 
+    if as_array:
+        return da_out
+
+    ds_out = da_out.to_dataset(dim='band')
     ds_out.attrs.update(ds.attrs)
     for b in ds.data_vars.keys():
         src, dst = ds[b], ds_out[b]
