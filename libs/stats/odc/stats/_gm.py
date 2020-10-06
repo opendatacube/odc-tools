@@ -70,18 +70,22 @@ def _gm_native_transform(xx: xr.Dataset) -> xr.Dataset:
     return xx
 
 
-def gm_input_data(task: Task, resampling: str, chunk: int = 1600) -> xr.Dataset:
+def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]] = 1600) -> xr.Dataset:
     """
     .valid  Bool
     .clear  Bool
     """
+    if isinstance(chunk, int):
+        chunk = (chunk, chunk)
+
     xx = load_with_native_transform(task.datasets,
                                     ['SCL', *task.product.measurements],
                                     task.geobox,
                                     _gm_native_transform,
                                     groupby='solar_day',
                                     resampling=resampling,
-                                    chunks={'x': chunk, 'y': chunk})
+                                    chunks={'y': chunk[0],
+                                            'x': chunk[1]})
     return xx
 
 
