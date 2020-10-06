@@ -48,6 +48,14 @@ def chunked_persist(data, n_concurrent, client, verbose=False):
     return client.persist(data)
 
 
+def chunked_persist_da(xx: xr.DataArray, n_concurrent, client, verbose=False) -> xr.DataArray:
+    data = chunked_persist(xx.data,
+                           n_concurrent,
+                           client=client,
+                           verbose=verbose)
+    return xr.DataArray(data, dims=xx.dims, coords=xx.coords, attrs=xx.attrs)
+
+
 def chunked_persist_ds(xx: xr.Dataset, client, verbose: bool = False) -> xr.Dataset:
     names = list(xx.data_vars)
     data = [xx[n].data for n in names]
