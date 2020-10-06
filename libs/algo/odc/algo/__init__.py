@@ -26,6 +26,8 @@ from ._geomedian import (
 
 from ._dask import (
     chunked_persist,
+    chunked_persist_ds,
+    chunked_persist_da,
     randomize,
 )
 
@@ -57,6 +59,8 @@ __all__ = (
     "int_geomedian_np",
     "reshape_for_geomedian",
     "chunked_persist",
+    "chunked_persist_da",
+    "chunked_persist_ds",
     "randomize",
     "is_rgb",
     "to_rgba",
