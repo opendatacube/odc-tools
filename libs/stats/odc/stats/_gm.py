@@ -1,10 +1,9 @@
 """
 Sentinel-2 Geomedian
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import xarray as xr
 
-from datacube.model import GridSpec
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import enum_to_bool, int_geomedian, keep_good_only
@@ -86,12 +85,16 @@ def gm_input_data(task: Task, resampling: str, chunk: int = 1600) -> xr.Dataset:
     return xx
 
 
-def gm_reduce(xx: xr.Dataset, num_threads=4) -> xr.Dataset:
+def gm_reduce(xx: xr.Dataset,
+              num_threads: int = 4,
+              wk_rows: int = 64,
+              as_array: bool = False) -> Union[xr.Dataset, xr.DataArray]:
     """
     """
     return int_geomedian(xx,
                          scale=1/10_000,
-                         wk_rows=16*4,
+                         wk_rows=wk_rows,
+                         as_array=as_array,
                          eps=1e-4,
                          num_threads=num_threads,
                          maxiters=1_000)
