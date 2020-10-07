@@ -1,12 +1,15 @@
-from typing import Iterable, Iterator, Callable, Optional, List, Set, Any, Tuple
+from typing import Iterable, Iterator, Callable, Optional, List, Set, Any, Tuple, Union
 import dask.distributed
 from dask.distributed import Client, wait as dask_wait
 import xarray as xr
 
 from .model import Task
 from .io import S3COGSink
+from odc.algo import chunked_persist_da
+
 
 Future = Any
+TaskProc = Callable[[Task], Union[xr.Dataset, xr.DataArray]]
 
 
 def drain(futures: Set[Future],
@@ -46,14 +49,15 @@ def _with_lookahead1(it: Iterable[Any]) -> Iterator[Any]:
 
 
 def process_tasks(tasks: Iterable[Task],
-                  proc: Callable[[Task], xr.Dataset],
+                  proc: TaskProc,
                   client: Client,
                   sink: S3COGSink,
                   check_exists: bool = True,
+                  chunked_persist: int = 0,
                   verbose: bool = True) -> Iterator[str]:
 
     def prep_stage(tasks: Iterable[Task],
-                   proc: Callable[[Task], xr.Dataset]) -> Iterator[Tuple[Optional[xr.Dataset], Task, str]]:
+                   proc: TaskProc) -> Iterator[Tuple[Union[xr.Dataset, xr.DataArray, None], Task, str]]:
         for task in tasks:
             path = sink.uri(task)
             if check_exists:
@@ -72,12 +76,19 @@ def process_tasks(tasks: Iterable[Task],
             yield path
             continue
 
-        ds = client.persist(ds, fifo_timeout='1ms')
+        if chunked_persist > 0:
+            assert isinstance(ds, xr.DataArray)
+            ds = chunked_persist_da(ds, chunked_persist, client)
+        else:
+            ds = client.persist(ds, fifo_timeout='1ms')
 
         if len(in_flight_cogs):
             done, in_flight_cogs = drain(in_flight_cogs, 1.0)
             for r in done:
                 yield r
+
+        if isinstance(ds, xr.DataArray):
+            ds = ds.to_dataset(dim='band')
 
         cog = client.compute(sink.dump(task, ds),
                              fifo_timeout='1ms')
