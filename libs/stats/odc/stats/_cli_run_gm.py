@@ -40,6 +40,12 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
     from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
+    import dask
+
+    dask.config.set({'distributed.worker.memory.target': False})
+    dask.config.set({'distributed.worker.memory.spill': False})
+    dask.config.set({'distributed.worker.memory.pause': False})
+    dask.config.set({'distributed.worker.memory.terminate': False})
 
     # config
     resampling = 'nearest'
@@ -47,6 +53,9 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
                     predict=2,
                     zlevel=6,
                     blocksize=800)
+    x_chunks = 8
+    y_chunks = 6
+    ncpus = 32
     # ..
 
     rdr = TaskReader(cache_file)
@@ -56,8 +65,15 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
         print(repr(rdr))
 
     def _proc(task):
-        ds_in = gm_input_data(task, resampling=resampling)
-        ds = gm_reduce(ds_in)
+        NY, NX = task.geobox.shape
+
+        ds_in = gm_input_data(task, resampling=resampling, chunk=(NY//y_chunks, NX))
+        tdim = list(ds_in.dims)[0]
+        ds_in = ds_in.chunk({tdim: -1, 'x': NX//x_chunks})
+        ds = gm_reduce(ds_in,
+                       num_threads=ncpus//x_chunks + 2,
+                       wk_rows=(NY//y_chunks)//4,
+                       as_array=True)
         return ds
 
     def dry_run_proc(task, sink, check_s3=False):
@@ -132,6 +148,7 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
     else:
         results = process_tasks(_tasks, _proc, client, sink,
                                 check_exists=not overwrite,
+                                chunked_persist=x_chunks,
                                 verbose=verbose)
     if not dryrun and verbose:
         results = tqdm(results, total=len(tasks))
