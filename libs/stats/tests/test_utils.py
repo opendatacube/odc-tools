@@ -1,25 +1,16 @@
-from uuid import UUID
-from datetime import datetime, timedelta
-from types import SimpleNamespace
-from odc.stats.model import Task, OutputProduct
-from odc.stats._gm import gm_product
 import json
 import pathlib
+from datetime import datetime, timedelta
+from types import SimpleNamespace
+from uuid import UUID
 
-from odc.stats.tasks import TaskReader
 from odc.index.stac import stac_transform
-
-from odc.stats.utils import (
-    bin_seasonal,
-    bin_annual,
-    bin_full_history,
-    CompressedDataset,
-    bin_generic,
-    season_binner,
-    mk_season_rules,
-)
-
-from odc.stats.model import DateTimeRange
+from odc.stats._gm import gm_product
+from odc.stats.model import DateTimeRange, Task
+from odc.stats.tasks import TaskReader
+from odc.stats.utils import (CompressedDataset, bin_annual, bin_full_history,
+                             bin_generic, bin_seasonal, mk_season_rules,
+                             season_binner)
 
 TEST_DIR = pathlib.Path(__file__).parent.absolute()
 
@@ -41,10 +32,14 @@ def test_stac():
     reader = TaskReader(str(TEST_DIR / 'test_tiles.db'), product)
     task = reader.load_task(reader.all_tiles[0])
 
-    odc_meta = stac_transform(task.render_metadata())
+    stac_meta = task.render_metadata()
+    odc_meta = stac_transform(stac_meta)
 
     # with open(TEST_DIR / 'meta.json', 'w') as outfile:
     #     json.dump(task.render_metadata(), outfile, indent=2)
+
+    # with open(TEST_DIR / 'odc-meta.json', 'w') as outfile:
+    #     json.dump(odc_meta, outfile, indent=2)
 
 
 def test_binning():
