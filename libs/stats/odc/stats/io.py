@@ -64,7 +64,7 @@ class S3COGSink:
 
     def verify_s3_credentials(self, test_uri: Optional[str] = None) -> bool:
         try:
-            creds = self._get_creds()
+            _ = self._get_creds()
         except ValueError:
             return False
         if test_uri is None:
@@ -77,7 +77,7 @@ class S3COGSink:
                     data,
                     url: str,
                     ContentType: Optional[str] = None,
-                    with_deps = None) -> Delayed:
+                    with_deps=None) -> Delayed:
         _u = urlparse(url)
         if _u.scheme == 's3':
             kw = dict(creds=self._get_creds())
@@ -95,7 +95,6 @@ class S3COGSink:
         else:
             raise ValueError(f"Don't know how to save to '{url}'")
 
-
     def _ds_to_cog(self,
                    ds: Dataset,
                    paths: Dict[str, str]):
@@ -110,7 +109,6 @@ class S3COGSink:
                                         ContentType='image/tiff'))
         return out
 
-
     def exists(self, task: Task) -> bool:
         uri = self.uri(task)
         _u = urlparse(uri)
@@ -122,7 +120,6 @@ class S3COGSink:
             return Path(_u.path).exists()
         else:
             raise ValueError(f"Can't handle url: {uri}")
-
 
     def dump(self,
              task: Task,
