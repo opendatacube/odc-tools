@@ -6,6 +6,8 @@ from ._cli_common import main, parse_all_tasks
 @main.command('run-gm')
 @click.option('--verbose', '-v', is_flag=True, help='Be verbose')
 @click.option('--threads', type=int, help='Number of worker threads', default=0)
+@click.option('--x_chunks', type=int, help='Advanced option (8)', default=8)
+@click.option('--y_chunks', type=int, help='Advanced option (6)', default=6)
 @click.option('--dryrun', is_flag=True, help='Do not run computation just print what work will be done')
 @click.option('--overwrite', is_flag=True, help='Do not check if output already exists')
 @click.option('--public/--no-public', is_flag=True, default=False,
@@ -13,7 +15,7 @@ from ._cli_common import main, parse_all_tasks
 @click.option('--location', type=str, help='Output location prefix as a uri: s3://bucket/path/')
 @click.argument('cache_file', type=str, nargs=1)
 @click.argument('tasks', type=str, nargs=-1)
-def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, location):
+def run_gm(cache_file, tasks, dryrun, verbose, threads, x_chunks, y_chunks, overwrite, public, location):
     """
     Run Pixel Quality stats
 
@@ -34,13 +36,14 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
     """
     from tqdm.auto import tqdm
     from functools import partial
+    import dask
+    import psutil
     from .io import S3COGSink
     from ._gm import gm_input_data, gm_reduce, gm_product
     from .proc import process_tasks
     from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
-    import dask
 
     dask.config.set({'distributed.worker.memory.target': False})
     dask.config.set({'distributed.worker.memory.spill': False})
@@ -53,9 +56,7 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
                     predict=2,
                     zlevel=6,
                     blocksize=800)
-    x_chunks = 8
-    y_chunks = 6
-    ncpus = 32
+    ncpus = psutil.cpu_count()
     # ..
 
     rdr = TaskReader(cache_file)
