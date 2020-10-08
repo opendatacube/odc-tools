@@ -111,4 +111,6 @@ def save_tasks(grid, year, temporal_range, frequency,
         print(str(e))
         sys.exit(2)
 
-    assert ok
+    if not ok:
+        # exit with error code, failure message was already printed
+        sys.exit(3)
