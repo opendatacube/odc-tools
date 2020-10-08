@@ -283,15 +283,15 @@ class Task:
             }
         ]
 
-        geobox_wgs84_json = geobox.extent.to_crs('epsg:4326', resolution=math.inf).json
+        geobox_wgs84 = geobox.extent.to_crs('epsg:4326', resolution=math.inf, wrapdateline=True)
+        bbox = geobox_wgs84.boundingbox
 
         return {
             "type": "Feature",
             "stac_version": "1.0.0-beta.2",
             'id': str(self.uuid),
-            "bbox": [geobox_wgs84_json['coordinates'][0][0] + geobox_wgs84_json['coordinates'][0][2]],
-            "geometry": geobox_wgs84_json,
-            'crs': str(geobox.crs),
+            "bbox": [bbox.left, bbox.bottom, bbox.right, bbox.top],
+            "geometry": geobox_wgs84.json,
             'properties': properties,
             'assets': assets,
             'links': links
