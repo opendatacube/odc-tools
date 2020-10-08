@@ -1,4 +1,5 @@
 import math
+import re
 from pathlib import Path
 from typing import Dict, Tuple, Any, Optional
 from uuid import UUID
@@ -32,10 +33,10 @@ MAPPING_STAC_TO_EO3 = {
 }
 
 
-def _stac_product_lookup(item: Document) -> Tuple[str, str, Optional[str], str]:
+def _stac_product_lookup(item: Document) -> Tuple[Optional[str], str, Optional[str], str]:
     properties = item['properties']
 
-    product_label = item['id']
+    product_label = None
     product_name = properties['platform']
     region_code = None
     default_grid = None
@@ -59,6 +60,12 @@ def _stac_product_lookup(item: Document) -> Tuple[str, str, Optional[str], str]:
         product_name = properties.get('odc:product')
         region_code = properties.get('odc:region_code')
         default_grid = "g30m"
+
+    # On many stac documents the 'id' is a usable label.
+    # (But we don't want to use it if it's only an unreadable uuid)
+    if not product_label:
+        if not _looks_like_an_id(item['id']):
+            product_label = item['id']
 
     return product_label, product_name, region_code, default_grid
 
@@ -194,10 +201,12 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     if _check_valid_uuid(input_stac["id"]):
         deterministic_uuid = input_stac["id"]
     else:
+        stable_identifier = product_label or input_stac['id']
+
         if product_name in ["s2_l2a"]:
-            deterministic_uuid = str(odc_uuid("sentinel-2_stac_process", "1.0.0", [product_label]))
+            deterministic_uuid = str(odc_uuid("sentinel-2_stac_process", "1.0.0", [stable_identifier]))
         else:
-            deterministic_uuid = str(odc_uuid(f"{product_name}_stac_process", "1.0.0", [product_label]))
+            deterministic_uuid = str(odc_uuid(f"{product_name}_stac_process", "1.0.0", [stable_identifier]))
 
     bands, grids = _get_stac_bands(input_stac, default_grid, relative=relative)
 
@@ -209,15 +218,22 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 
     geometry = _geographic_to_projected(input_stac['geometry'], native_crs)
 
+    product_label = product_label or input_stac.pop('title', None)
+
+    optional_properties = {}
+    if product_label:
+        optional_properties['label'] = product_label
+
     stac_odc = {
         '$schema': 'https://schemas.opendatacube.org/dataset',
         'id': deterministic_uuid,
+        **optional_properties,
+
         'crs': native_crs,
         'grids': grids,
         'product': {
             'name': product_name.lower()
         },
-        'label': product_label,
         'properties': stac_properties,
         'measurements': bands,
         'lineage': {}
@@ -233,3 +249,31 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
         stac_odc['lineage'] = lineage
 
     return stac_odc
+
+
+def _looks_like_an_id(s: str) -> bool:
+    """
+    Is this purely numeric or a uuid?
+
+    >>> _looks_like_an_id('123')
+    True
+    >>> _looks_like_an_id('23d8a399-137d-45b3-9ba1-fd610bca2a13')
+    True
+    >>> _looks_like_an_id('DA6E7559-8957-482C-B389-4A90263655D0')
+    True
+    >>> _looks_like_an_id('ga_ls5t_ard_3-1-20200605_113081_1988-03-30_final')
+    False
+    >>> _looks_like_an_id('LT05_L1TP_113081_19880330_20170209_01_T1')
+    False
+    >>> _looks_like_an_id('beef-feed-34')
+    False
+    """
+    # Numeric?
+    if re.fullmatch(r'[0-9]+', s) is not None:
+        return True
+
+    # UUID?
+    if re.fullmatch(r'[0-9A-Fa-f-]+(-[0-9A-Fa-f]+){4}', s) is not None:
+        return True
+
+    return False
