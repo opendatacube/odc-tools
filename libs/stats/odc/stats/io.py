@@ -14,7 +14,7 @@ from datacube.utils.dask import save_blob_to_s3, save_blob_to_file
 from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
-from .model import Task
+from .model import Task, EXT_TIFF
 
 
 DEFAULT_COG_OPTS = dict(
@@ -51,7 +51,7 @@ class S3COGSink:
         self._cog_opts = cog_opts
         self._meta_ext = 'json'
         self._meta_contentype = 'application/json'
-        self._band_ext = 'tiff'
+        self._band_ext = EXT_TIFF
         self._public = public
 
     def uri(self, task: Task) -> str:

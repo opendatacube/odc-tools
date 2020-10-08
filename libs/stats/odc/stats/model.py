@@ -16,6 +16,7 @@ TileIdx_txy = Tuple[str, int, int]
 TileIdx = Union[TileIdx_txy, TileIdx_xy]
 
 default_href_prefix = 'https://collections.dea.ga.gov.au/product'
+EXT_TIFF = 'tif'  # because "consistency"
 
 
 def format_datetime(dt: datetime,
@@ -213,7 +214,7 @@ class Task:
         else:
             return product.location + '/' + self.location + '/' + file_prefix
 
-    def paths(self, relative_to: str = 'dataset', ext: str = 'tiff') -> Dict[str, str]:
+    def paths(self, relative_to: str = 'dataset', ext: str = EXT_TIFF) -> Dict[str, str]:
         """
         Compute dictionary mapping band name to paths.
 
@@ -230,7 +231,7 @@ class Task:
         """
         return self._prefix(relative_to) + '.' + ext
 
-    def render_metadata(self, ext: str = 'tiff',
+    def render_metadata(self, ext: str = EXT_TIFF,
                         processing_dt: Optional[datetime] = None) -> Dict[str, Any]:
         """
         Put together EO3 metadata document for the output of this task.
