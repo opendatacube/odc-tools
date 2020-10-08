@@ -48,7 +48,7 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
     dask.config.set({'distributed.worker.memory.terminate': False})
 
     # config
-    resampling = 'nearest'
+    resampling = 'bilinear'
     COG_OPTS = dict(compress='deflate',
                     predict=2,
                     zlevel=6,
