@@ -167,7 +167,12 @@ def _get_stac_properties_lineage(input_stac: Document) -> Tuple[Document, Any]:
     prop = {MAPPING_STAC_TO_EO3.get(key, key): _convert_value_to_eo3_type(key, val)
             for key, val in properties.items()}
     if prop.get('odc:processing_datetime') is None:
-        prop['odc:processing_datetime'] = properties['datetime'].replace("000+00:00", "Z")
+        prop['odc:processing_datetime'] = (
+            # Stac's 'created' property.
+            prop.pop('created', None) or
+            # TODO: This is not ideal. Perhaps the file ctime?
+            properties['datetime'].replace("000+00:00", "Z")
+        )
     if prop.get('odc:file_format') is None:
         prop['odc:file_format'] = 'GeoTIFF'
 
