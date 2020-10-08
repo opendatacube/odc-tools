@@ -26,7 +26,7 @@ setup(
         'toolz',
         'odc-index',
         'datacube',
-        'skimage',
+        'scikit-image',
         'dask_image'
     ],
 
