@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from uuid import UUID
 import pandas as pd
 
+import math
+
 from datacube.model import GridSpec, Dataset
 from datacube.utils.geometry import GeoBox
 from datacube.utils.dates import normalise_dt
@@ -234,7 +236,7 @@ class Task:
     def render_metadata(self, ext: str = EXT_TIFF,
                         processing_dt: Optional[datetime] = None) -> Dict[str, Any]:
         """
-        Put together EO3 metadata document for the output of this task.
+        Put together STAC metadata document for the output of this task.
         """
         if processing_dt is None:
             processing_dt = datetime.utcnow()
@@ -242,29 +244,55 @@ class Task:
         product = self.product
         geobox = self.geobox
         region_code = product.region_code(self.tile_index)
+        inputs = list(map(str, self._lineage()))
+
         properties = deepcopy(product.properties)
 
         properties.update(self.time_range.to_stac())
         properties['odc:processing_datetime'] = format_datetime(processing_dt, timespec='seconds')
         properties['odc:region_code'] = region_code
+        properties['odc:lineage'] = dict(inputs=inputs)
+        properties['odc:product'] = product.name
+        properties['proj:epsg'] = geobox.crs.epsg
+        properties['platform'] = "sentinel-2"
 
-        measurements = {band: {'path': path}
-                        for band, path in self.paths(ext=ext).items()}
+        assets = {
+            band: {
+                'title': band,
+                'type': "image/tiff; application=geotiff",
+                'roles': [
+                    "data"
+                ],
+                'href': path,
+                'proj:shape': geobox.shape,
+                'proj:transform': geobox.transform
+                }
+            for band, path in self.paths(ext=ext).items()
+        }
 
-        inputs = list(map(str, self._lineage()))
+        links = [
+            {
+                "rel": "self",
+                "type": "application/json",
+                "href": self.metadata_path('absolute', ext='json')
+            },
+            {
+                "rel": "product_overview",
+                "type": "application/json",
+                "href": product.href
+            }
+        ]
+
+        geobox_wgs84_json = geobox.extent.to_crs('epsg:4326', resolution=math.inf).json
 
         return {
-            '$schema': 'https://schemas.opendatacube.org/dataset',
+            "type": "Feature",
+            "stac_version": "1.0.0-beta.2",
             'id': str(self.uuid),
-            'product': dict(name=product.name,
-                            href=product.href),
-            'location': self.metadata_path('absolute', ext='yaml'),
-
+            "bbox": [geobox_wgs84_json['coordinates'][0][0] + geobox_wgs84_json['coordinates'][0][2]],
+            "geometry": geobox_wgs84_json,
             'crs': str(geobox.crs),
-            'grids': {'default': dict(shape=list(geobox.shape),
-                                      transform=list(geobox.transform))},
-
-            'measurements': measurements,
             'properties': properties,
-            'lineage': dict(inputs=inputs),
+            'assets': assets,
+            'links': links
         }
