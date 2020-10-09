@@ -1,7 +1,7 @@
 import math
 import re
 from pathlib import Path
-from typing import Dict, Tuple, Any, Optional
+from typing import Dict, Tuple, Any, Optional, Iterable
 from uuid import UUID
 
 from datacube.utils.geometry import Geometry
@@ -154,9 +154,40 @@ def _convert_value_to_eo3_type(key: str, value):
 
     """
     if key == "instruments":
-        return value[0] if len(value) > 0 else None
-    else:
-        return value
+        return _stac_to_eo3_instruments(value)
+    if key == 'platform':
+        return _normalise_platform(value)
+
+    return value
+
+
+def _normalise_platform(s: str) -> str:
+    """
+    EO3's eo:platform field is formatted according to stac examples circa version 0.6.
+
+    Stac doccuments on the web use a few different cases and separators, but ODC's matching
+    is case-sensitive and exact, so we want need to be consisent.
+
+    >>> _normalise_platform('LANDSAT_8')
+    'landsat-8'
+    """
+    return s.lower().replace("_", "-")
+
+
+def _stac_to_eo3_instruments(value: Iterable[str]) -> str:
+    """
+    EO3's eo:instrument field follows the stac examples circa stac version 0.6.
+
+    For landsat, this matches the exact instrument formatting in USGS's MTL files.
+
+    >>> _stac_to_eo3_instruments(['tm'])
+    'TM'
+    >>> _stac_to_eo3_instruments(['oli'])
+    'OLI'
+    >>> _stac_to_eo3_instruments(['tirs', 'oli'])
+    'OLI_TIRS'
+    """
+    return '_'.join(sorted(v.strip().upper() for v in value))
 
 
 def _get_stac_properties_lineage(input_stac: Document) -> Tuple[Document, Any]:
