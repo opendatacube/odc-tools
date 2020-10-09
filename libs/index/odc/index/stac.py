@@ -37,7 +37,7 @@ def _stac_product_lookup(item: Document) -> Tuple[Optional[str], str, Optional[s
     properties = item['properties']
 
     product_label = None
-    product_name = properties['platform']
+    product_name = properties.pop('odc:product', None) or properties['platform']
     region_code = None
     default_grid = None
 
@@ -57,7 +57,6 @@ def _stac_product_lookup(item: Document) -> Tuple[Optional[str], str, Optional[s
     elif properties.get('platform') in LANDSAT_PLATFORMS:
         self_href = _find_self_href(item)
         product_label = Path(self_href).stem.replace(".stac-item", "")
-        product_name = properties.get('odc:product')
         region_code = properties.get('odc:region_code')
         default_grid = "g30m"
 
