@@ -88,7 +88,10 @@ def process_tasks(tasks: Iterable[Task],
                 yield r
 
         if isinstance(ds, xr.DataArray):
+            attrs = ds.attrs.copy()
             ds = ds.to_dataset(dim='band')
+            for dv in ds.data_vars.values():
+                dv.attrs.update(attrs)
 
         cog = client.compute(sink.dump(task, ds),
                              fifo_timeout='1ms')
