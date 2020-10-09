@@ -243,6 +243,8 @@ def int_geomedian(ds,
     da_out = xr.DataArray(data, dims=dims, coords=cc)
 
     if as_array:
+        if nodata is not None:
+            da_out.attrs['nodata'] = nodata
         return da_out
 
     ds_out = da_out.to_dataset(dim='band')
