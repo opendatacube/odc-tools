@@ -1,15 +1,14 @@
-from typing import Dict, Tuple, Any, Optional, Union
-from copy import deepcopy
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from uuid import UUID
-import pandas as pd
-
 import math
+from copy import deepcopy
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional, Tuple, Union
+from uuid import UUID
 
-from datacube.model import GridSpec, Dataset
-from datacube.utils.geometry import GeoBox
+import pandas as pd
+from datacube.model import Dataset, GridSpec
 from datacube.utils.dates import normalise_dt
+from datacube.utils.geometry import GeoBox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
 
@@ -254,7 +253,6 @@ class Task:
         properties['odc:lineage'] = dict(inputs=inputs)
         properties['odc:product'] = product.name
         properties['proj:epsg'] = geobox.crs.epsg
-        properties['platform'] = "sentinel-2"
 
         assets = {
             band: {

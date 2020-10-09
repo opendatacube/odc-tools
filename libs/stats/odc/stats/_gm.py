@@ -39,7 +39,8 @@ def gm_product(location: Optional[str] = None,
     properties = {
         'odc:file_format': 'GeoTIFF',
         'odc:producer': 'ga.gov.au',
-        'odc:product_family': 'statistics'  # TODO: ???
+        'odc:product_family': 'statistics',  # TODO: ???
+        'platform': "sentinel-2"
     }
 
     return OutputProduct(name=name,
