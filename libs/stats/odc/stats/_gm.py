@@ -96,8 +96,10 @@ def gm_reduce(xx: xr.Dataset,
               as_array: bool = False) -> Union[xr.Dataset, xr.DataArray]:
     """
     """
+    scale = 1/10_000
     return int_geomedian(xx,
-                         scale=1/10_000,
+                         scale=scale,
+                         offset=-1*scale,
                          wk_rows=wk_rows,
                          as_array=as_array,
                          eps=1e-4,
