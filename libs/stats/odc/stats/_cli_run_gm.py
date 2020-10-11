@@ -59,6 +59,9 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, x_chunks, y_chunks, over
     ncpus = psutil.cpu_count()
     # ..
 
+    if threads <= 0:
+        threads = ncpus
+
     rdr = TaskReader(cache_file)
     product = gm_product(location=location)
 
