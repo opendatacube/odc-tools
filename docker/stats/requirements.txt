@@ -1,19 +1,14 @@
---pre
 --extra-index-url https://packages.dea.ga.gov.au/
 datacube[performance,s3]==1.8.3
 aiobotocore[boto3,awscli]==1.1.1
-aiohttp==3.6.2
-pandas==1.0.5
 tqdm==4.48.2
-digitalearthau
-thredds-crawler
 wget
 requests
 odc-aws
 odc-aio
 odc-stats
-odc-thredds
 odc-apps-cloud
+git+https://github.com/opendatacube/datacube-index.git
 odc-index
 # Pinned for Alex to index STAC
 sat-search==0.3.0
