@@ -31,7 +31,7 @@ spec:
                 - memory-optimised-r5-8xl
       containers:
       - name: sandbox
-        image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/statistician:0.0.10-24-gd703139
+        image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/statistician:0.0.10-25-gba266b9
         imagePullPolicy: IfNotPresent
 
         resources:
