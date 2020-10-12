@@ -55,7 +55,9 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, x_chunks, y_chunks, over
     COG_OPTS = dict(compress='deflate',
                     predict=2,
                     zlevel=6,
-                    blocksize=800)
+                    blocksize=800,
+                    ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
+                    overview_resampling='bilinear')
     ncpus = psutil.cpu_count()
     # ..
 
