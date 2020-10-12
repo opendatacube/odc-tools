@@ -4,5 +4,5 @@ exec odc-stats run-gm tasks.db \
   --verbose \
   --public \
   --threads 40 \
-  --location s3://deafrica-stats-processing/kk/gm-0910/ \
+  --location s3://deafrica-stats-processing/kk/gm-1210/ \
   $@
