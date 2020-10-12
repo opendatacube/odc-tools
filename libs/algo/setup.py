@@ -24,6 +24,7 @@ setup(
         'xarray',
         'numpy',
         'toolz',
+        'hdstats',
         'odc-index',
         'datacube',
         'scikit-image',
