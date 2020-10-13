@@ -1,17 +1,18 @@
-from uuid import UUID
+import json
+import pathlib
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from odc.stats.utils import (
-    bin_seasonal,
-    bin_annual,
-    bin_full_history,
-    CompressedDataset,
-    bin_generic,
-    season_binner,
-    mk_season_rules,
-)
+from uuid import UUID
 
-from odc.stats.model import DateTimeRange
+from odc.index.stac import stac_transform
+from odc.stats._gm import gm_product
+from odc.stats.model import DateTimeRange, Task
+from odc.stats.tasks import TaskReader
+from odc.stats.utils import (CompressedDataset, bin_annual, bin_full_history,
+                             bin_generic, bin_seasonal, mk_season_rules,
+                             season_binner)
+
+TEST_DIR = pathlib.Path(__file__).parent.absolute()
 
 
 def gen_compressed_dss(n,
@@ -24,6 +25,21 @@ def gen_compressed_dss(n,
     for i in range(n):
         yield CompressedDataset(UUID(int=i), dt)
         dt = dt + step
+
+
+def test_stac():
+    product = gm_product(location='/tmp/')
+    reader = TaskReader(str(TEST_DIR / 'test_tiles.db'), product)
+    task = reader.load_task(reader.all_tiles[0])
+
+    stac_meta = task.render_metadata()
+    odc_meta = stac_transform(stac_meta)
+
+    # with open(TEST_DIR / 'meta.json', 'w') as outfile:
+    #     json.dump(task.render_metadata(), outfile, indent=2)
+
+    # with open(TEST_DIR / 'odc-meta.json', 'w') as outfile:
+    #     json.dump(odc_meta, outfile, indent=2)
 
 
 def test_binning():

@@ -13,6 +13,7 @@ from ._masking import (
     to_float_np,
     fmask_to_bool,
     enum_to_bool,
+    cloud_buffer,
     gap_fill,
     choose_first_valid,
 )
@@ -26,6 +27,8 @@ from ._geomedian import (
 
 from ._dask import (
     chunked_persist,
+    chunked_persist_ds,
+    chunked_persist_da,
     randomize,
 )
 
@@ -50,6 +53,7 @@ __all__ = (
     "to_float_np",
     "fmask_to_bool",
     "enum_to_bool",
+    "cloud_buffer",
     "gap_fill",
     "choose_first_valid",
     "xr_geomedian",
@@ -57,6 +61,8 @@ __all__ = (
     "int_geomedian_np",
     "reshape_for_geomedian",
     "chunked_persist",
+    "chunked_persist_da",
+    "chunked_persist_ds",
     "randomize",
     "is_rgb",
     "to_rgba",

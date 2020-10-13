@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-scratch
+  namespace: processing
+  labels:
+    app.kubernetes.io/name: stats-scratch
+spec:
+  selector:
+    matchLabels:
+      app: stats-scratch
+  replicas: 0
+  template:
+    metadata:
+      labels:
+        app: stats-scratch
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nodetype
+                operator: In
+                values:
+                - spot
+            - matchExpressions:
+              - key: nodegroup
+                operator: In
+                values:
+                - memory-optimised-r5-8xl
+      containers:
+      - name: sandbox
+        image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/statistician:0.0.10-25-gba266b9
+        imagePullPolicy: IfNotPresent
+
+        resources:
+            requests:
+              memory: 233Gi 
+              cpu: 31000m
+
+        env:
+            - name: DB_HOSTNAME
+              value: database.local
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              value: africa
+            - name: DB_USERNAME
+              valueFrom:
+                  secretKeyRef:
+                      name: stats-db
+                      key: postgres-username
+            - name: DB_PASSWORD
+              valueFrom:
+                  secretKeyRef:
+                      name: stats-db
+                      key: postgres-password
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                   secretKeyRef:
+                       name: processing-aws-creds-stats
+                       key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                   secretKeyRef:
+                       name: processing-aws-creds-stats
+                       key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                   secretKeyRef:
+                       name: processing-aws-creds-stats
+                       key: AWS_DEFAULT_REGION
+            - name: JUPYTERHUB_SERVICE_PREFIX
+              value: ""
+            - name: TASK_DB_S3
+              value: "s3://deafrica-stats-processing/gmrun_09102020/gm_s2_2019.db"
+        command: ['/bin/bash']
+        args:
+            - '-c'
+            - |
+                ## odc_libs=$(pip list | awk '/^odc-/{print $1}')
+                ## pip install -U \
+                ##   --no-deps \
+                ##   --extra-index-url="https://packages.dea.ga.gov.au" \
+                ##   'datacube[performance,s3]>=1.8.3.dev' \
+                ##   ${odc_libs}
+
+                [ -f /build.info ] && cat /build.info
+
+                aws s3 cp "${TASK_DB_S3}" tasks.db
+
+                while true ; do
+                   for i in {1..10}; do
+                     printf .
+                     sleep 6
+                   done
+                   date
+                done

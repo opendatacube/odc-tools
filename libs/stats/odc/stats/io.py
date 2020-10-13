@@ -14,7 +14,7 @@ from datacube.utils.dask import save_blob_to_s3, save_blob_to_file
 from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
-from .model import Task
+from .model import Task, EXT_TIFF
 
 
 DEFAULT_COG_OPTS = dict(
@@ -51,7 +51,7 @@ class S3COGSink:
         self._cog_opts = cog_opts
         self._meta_ext = 'json'
         self._meta_contentype = 'application/json'
-        self._band_ext = 'tiff'
+        self._band_ext = EXT_TIFF
         self._public = public
 
     def uri(self, task: Task) -> str:
@@ -64,7 +64,7 @@ class S3COGSink:
 
     def verify_s3_credentials(self, test_uri: Optional[str] = None) -> bool:
         try:
-            creds = self._get_creds()
+            _ = self._get_creds()
         except ValueError:
             return False
         if test_uri is None:
@@ -77,7 +77,7 @@ class S3COGSink:
                     data,
                     url: str,
                     ContentType: Optional[str] = None,
-                    with_deps = None) -> Delayed:
+                    with_deps=None) -> Delayed:
         _u = urlparse(url)
         if _u.scheme == 's3':
             kw = dict(creds=self._get_creds())
@@ -95,7 +95,6 @@ class S3COGSink:
         else:
             raise ValueError(f"Don't know how to save to '{url}'")
 
-
     def _ds_to_cog(self,
                    ds: Dataset,
                    paths: Dict[str, str]):
@@ -110,7 +109,6 @@ class S3COGSink:
                                         ContentType='image/tiff'))
         return out
 
-
     def exists(self, task: Task) -> bool:
         uri = self.uri(task)
         _u = urlparse(uri)
@@ -122,7 +120,6 @@ class S3COGSink:
             return Path(_u.path).exists()
         else:
             raise ValueError(f"Can't handle url: {uri}")
-
 
     def dump(self,
              task: Task,

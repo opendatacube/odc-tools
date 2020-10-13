@@ -1,13 +1,14 @@
-from typing import Dict, Tuple, Any, Optional, Union
+import math
 from copy import deepcopy
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
-import pandas as pd
 
-from datacube.model import GridSpec, Dataset
-from datacube.utils.geometry import GeoBox
+import pandas as pd
+from datacube.model import Dataset, GridSpec
 from datacube.utils.dates import normalise_dt
+from datacube.utils.geometry import GeoBox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
 
@@ -16,6 +17,7 @@ TileIdx_txy = Tuple[str, int, int]
 TileIdx = Union[TileIdx_txy, TileIdx_xy]
 
 default_href_prefix = 'https://collections.dea.ga.gov.au/product'
+EXT_TIFF = 'tif'  # because "consistency"
 
 
 def format_datetime(dt: datetime,
@@ -213,7 +215,7 @@ class Task:
         else:
             return product.location + '/' + self.location + '/' + file_prefix
 
-    def paths(self, relative_to: str = 'dataset', ext: str = 'tiff') -> Dict[str, str]:
+    def paths(self, relative_to: str = 'dataset', ext: str = EXT_TIFF) -> Dict[str, str]:
         """
         Compute dictionary mapping band name to paths.
 
@@ -230,10 +232,10 @@ class Task:
         """
         return self._prefix(relative_to) + '.' + ext
 
-    def render_metadata(self, ext: str = 'tiff',
+    def render_metadata(self, ext: str = EXT_TIFF,
                         processing_dt: Optional[datetime] = None) -> Dict[str, Any]:
         """
-        Put together EO3 metadata document for the output of this task.
+        Put together STAC metadata document for the output of this task.
         """
         if processing_dt is None:
             processing_dt = datetime.utcnow()
@@ -241,29 +243,54 @@ class Task:
         product = self.product
         geobox = self.geobox
         region_code = product.region_code(self.tile_index)
+        inputs = list(map(str, self._lineage()))
+
         properties = deepcopy(product.properties)
 
         properties.update(self.time_range.to_stac())
         properties['odc:processing_datetime'] = format_datetime(processing_dt, timespec='seconds')
         properties['odc:region_code'] = region_code
+        properties['odc:lineage'] = dict(inputs=inputs)
+        properties['odc:product'] = product.name
+        properties['proj:epsg'] = geobox.crs.epsg
 
-        measurements = {band: {'path': path}
-                        for band, path in self.paths(ext=ext).items()}
+        assets = {
+            band: {
+                'title': band,
+                'type': "image/tiff; application=geotiff",
+                'roles': [
+                    "data"
+                ],
+                'href': path,
+                'proj:shape': geobox.shape,
+                'proj:transform': geobox.transform
+                }
+            for band, path in self.paths(ext=ext).items()
+        }
 
-        inputs = list(map(str, self._lineage()))
+        links = [
+            {
+                "rel": "self",
+                "type": "application/json",
+                "href": self.metadata_path('absolute', ext='json')
+            },
+            {
+                "rel": "product_overview",
+                "type": "application/json",
+                "href": product.href
+            }
+        ]
+
+        geobox_wgs84 = geobox.extent.to_crs('epsg:4326', resolution=math.inf, wrapdateline=True)
+        bbox = geobox_wgs84.boundingbox
 
         return {
-            '$schema': 'https://schemas.opendatacube.org/dataset',
+            "type": "Feature",
+            "stac_version": "1.0.0-beta.2",
             'id': str(self.uuid),
-            'product': dict(name=product.name,
-                            href=product.href),
-            'location': self.metadata_path('absolute', ext='yaml'),
-
-            'crs': str(geobox.crs),
-            'grids': {'default': dict(shape=list(geobox.shape),
-                                      transform=list(geobox.transform))},
-
-            'measurements': measurements,
+            "bbox": [bbox.left, bbox.bottom, bbox.right, bbox.top],
+            "geometry": geobox_wgs84.json,
             'properties': properties,
-            'lineage': dict(inputs=inputs),
+            'assets': assets,
+            'links': links
         }

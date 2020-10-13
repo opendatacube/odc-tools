@@ -1,10 +1,9 @@
 """
 Sentinel-2 Geomedian
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import xarray as xr
 
-from datacube.model import GridSpec
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import enum_to_bool, int_geomedian, keep_good_only
@@ -40,7 +39,8 @@ def gm_product(location: Optional[str] = None,
     properties = {
         'odc:file_format': 'GeoTIFF',
         'odc:producer': 'ga.gov.au',
-        'odc:product_family': 'statistics'  # TODO: ???
+        'odc:product_family': 'statistics',  # TODO: ???
+        'platform': "sentinel-2"
     }
 
     return OutputProduct(name=name,
@@ -71,27 +71,37 @@ def _gm_native_transform(xx: xr.Dataset) -> xr.Dataset:
     return xx
 
 
-def gm_input_data(task: Task, resampling: str, chunk: int = 1600) -> xr.Dataset:
+def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]] = 1600) -> xr.Dataset:
     """
     .valid  Bool
     .clear  Bool
     """
+    if isinstance(chunk, int):
+        chunk = (chunk, chunk)
+
     xx = load_with_native_transform(task.datasets,
                                     ['SCL', *task.product.measurements],
                                     task.geobox,
                                     _gm_native_transform,
                                     groupby='solar_day',
                                     resampling=resampling,
-                                    chunks={'x': chunk, 'y': chunk})
+                                    chunks={'y': chunk[0],
+                                            'x': chunk[1]})
     return xx
 
 
-def gm_reduce(xx: xr.Dataset, num_threads=4) -> xr.Dataset:
+def gm_reduce(xx: xr.Dataset,
+              num_threads: int = 4,
+              wk_rows: int = 64,
+              as_array: bool = False) -> Union[xr.Dataset, xr.DataArray]:
     """
     """
+    scale = 1/10_000
     return int_geomedian(xx,
-                         scale=1/10_000,
-                         wk_rows=16*4,
+                         scale=scale,
+                         offset=-1*scale,
+                         wk_rows=wk_rows,
+                         as_array=as_array,
                          eps=1e-4,
                          num_threads=num_threads,
                          maxiters=1_000)

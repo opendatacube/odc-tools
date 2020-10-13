@@ -24,8 +24,11 @@ setup(
         'xarray',
         'numpy',
         'toolz',
+        'hdstats',
         'odc-index',
         'datacube',
+        'scikit-image',
+        'dask_image'
     ],
 
     packages=['odc.algo'],
