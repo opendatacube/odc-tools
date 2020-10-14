@@ -1,5 +1,7 @@
 from setuptools import setup
 
+TEST_REQUIREMENTS = ['pytest', 'deepdiff']
+
 setup(
     name='odc_apps_dc_tools',
 
@@ -16,7 +18,7 @@ setup(
     license='Apache License 2.0',
 
     python_requires='>=3.5',
-    tests_require=['pytest'],
+    tests_require=TEST_REQUIREMENTS,
 
     install_requires=[
         "click",
@@ -24,6 +26,10 @@ setup(
         'odc_index',
         'odc_io',
     ],
+
+    extras_require={
+        'tests': TEST_REQUIREMENTS
+    },
 
     entry_points={
         'console_scripts': [
