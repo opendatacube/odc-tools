@@ -11,7 +11,7 @@ setup(
     maintainer='Open Data Cube',
     maintainer_email='',
 
-    description='CLI utils for working datacube index',
+    description='CLI utils for working with a datacube index',
     long_description='',
     license='Apache License 2.0',
 
@@ -29,6 +29,10 @@ setup(
         'console_scripts': [
             'dc-index-from-tar = odc.apps.dc_tools.index_from_tar:cli',
             'dc-index-export-md = odc.apps.dc_tools.export_md:cli',
+            's3-to-dc = odc.apps.dc_tools.s3_to_dc:cli',
+            'thredds-to-dc = odc.apps.dc_tools.thredds_to_dc:cli',
+            'sqs-to-dc = odc.apps.dc_tools.sqs_to_dc:cli',
+            'stac-to-dc = odc.apps.dc_tools.stac_api_to_dc:cli'
         ]
     },
 
