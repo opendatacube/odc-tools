@@ -2,11 +2,12 @@
 Various I/O adaptors
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import json
 from urllib.parse import urlparse
 from dask.delayed import Delayed
 from pathlib import Path
+import xarray as xr
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -96,8 +97,8 @@ class S3COGSink:
             raise ValueError(f"Don't know how to save to '{url}'")
 
     def _ds_to_cog(self,
-                   ds: Dataset,
-                   paths: Dict[str, str]):
+                   ds: xr.Dataset,
+                   paths: Dict[str, str]) -> List[Delayed]:
         out = []
         for band, dv in ds.data_vars.items():
             url = paths.get(band, None)
@@ -108,6 +109,10 @@ class S3COGSink:
                                         url,
                                         ContentType='image/tiff'))
         return out
+
+    def write_cog(self, da: xr.DataArray, url: str) -> Delayed:
+        cog_bytes = to_cog(da, **self._cog_opts)
+        return self._write_blob(cog_bytes, url, ContentType='image/tiff')
 
     def exists(self, task: Task) -> bool:
         uri = self.uri(task)
