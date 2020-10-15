@@ -2,7 +2,7 @@
 Various I/O adaptors
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 import json
 from urllib.parse import urlparse
 from dask.delayed import Delayed
@@ -41,7 +41,7 @@ def dump_json(meta: Dict[str, Any]) -> str:
 
 class S3COGSink:
     def __init__(self,
-                 creds: Optional[ReadOnlyCredentials] = None,
+                 creds: Union[ReadOnlyCredentials, str, None] = None,
                  cog_opts: Optional[Dict[str, Any]] = None,
                  public: bool = False):
 
@@ -61,6 +61,8 @@ class S3COGSink:
     def _get_creds(self) -> ReadOnlyCredentials:
         if self._creds is None:
             self._creds = load_creds()
+        if isinstance(self._creds, str):
+            self._creds = load_creds(self._creds)
         return self._creds
 
     def verify_s3_credentials(self, test_uri: Optional[str] = None) -> bool:
