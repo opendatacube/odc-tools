@@ -11,6 +11,7 @@ import boto3
 import click
 import pandas as pd
 import requests
+from utils import get_messages
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes, documents
@@ -28,26 +29,6 @@ class SQStoDCException(Exception):
     """
 
     pass
-
-
-def get_messages(queue, limit):
-    count = 0
-
-    while True:
-        messages = queue.receive_messages(
-            VisibilityTimeout=60,
-            MaxNumberOfMessages=1,
-            WaitTimeSeconds=10,
-            MessageAttributeNames=["All"],
-        )
-
-        if len(messages) == 0 or (limit and count >= limit):
-            break
-        else:
-            for message in messages:
-                count += 1
-                yield message
-
 
 def extract_metadata_from_message(message):
     try:
