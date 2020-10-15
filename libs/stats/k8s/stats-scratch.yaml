@@ -20,11 +20,6 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: nodetype
-                operator: In
-                values:
-                - spot
-            - matchExpressions:
               - key: nodegroup
                 operator: In
                 values:
