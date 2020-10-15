@@ -25,6 +25,7 @@ setup(
         'datacube',
         'odc_index',
         'odc_io',
+        'odc_aio'
     ],
 
     extras_require={
