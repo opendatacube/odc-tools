@@ -123,7 +123,7 @@ class S3COGSink:
             uri = self.uri(task)
         _u = urlparse(uri)
         if _u.scheme == 's3':
-            s3 = s3_client(creds=self._creds, cache=True)
+            s3 = s3_client(creds=self._get_creds(), cache=True)
             meta = s3_head_object(uri, s3=s3)
             return meta is not None
         elif _u.scheme == 'file':
