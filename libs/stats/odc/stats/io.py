@@ -116,8 +116,11 @@ class S3COGSink:
         cog_bytes = to_cog(da, **self._cog_opts)
         return self._write_blob(cog_bytes, url, ContentType='image/tiff')
 
-    def exists(self, task: Task) -> bool:
-        uri = self.uri(task)
+    def exists(self, task: Union[Task, str]) -> bool:
+        if isinstance(task, str):
+            uri = task
+        else:
+            uri = self.uri(task)
         _u = urlparse(uri)
         if _u.scheme == 's3':
             s3 = s3_client(creds=self._creds, cache=True)
