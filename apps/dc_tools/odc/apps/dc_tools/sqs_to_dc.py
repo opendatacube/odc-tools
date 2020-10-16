@@ -11,7 +11,7 @@ import boto3
 import click
 import pandas as pd
 import requests
-from utils import get_messages
+from odc.aws.queues import get_messages
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes, documents

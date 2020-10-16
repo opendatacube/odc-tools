@@ -18,6 +18,7 @@ setup(
     tests_require=['pytest'],
     install_requires=[
         'botocore',
+        'boto3'
     ],
 
     packages=['odc.aws'],
