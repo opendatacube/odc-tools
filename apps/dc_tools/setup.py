@@ -26,7 +26,7 @@ setup(
         'odc_index',
         'odc_io',
         'odc_aws',
-        'odc-aio'
+        'odc_aio'
     ],
 
     extras_require={
