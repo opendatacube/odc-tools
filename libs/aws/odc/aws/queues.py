@@ -9,6 +9,7 @@ def publish_message(queue, msg):
     resp = queue.send_message(
         QueueUrl=queue.url,
         MessageBody=msg
+    )
 
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200, "Failed to publish the message"
 
