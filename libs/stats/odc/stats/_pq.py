@@ -4,7 +4,6 @@ Sentinel 2 pixel quality stats
 from typing import Optional
 import xarray as xr
 
-from datacube.model import GridSpec
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import enum_to_bool
