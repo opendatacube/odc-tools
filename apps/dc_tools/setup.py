@@ -25,8 +25,12 @@ setup(
         'datacube',
         'odc_index',
         'odc_io',
+<<<<<<< HEAD
         'odc_aws',
         'odc_aio'
+=======
+        'odc_aws'
+>>>>>>> Removed odc_aio dependency from dc_tools.
     ],
 
     extras_require={
