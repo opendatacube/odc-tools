@@ -14,6 +14,7 @@ import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes, documents
+from odc.aws.queue import get_messages
 from odc.index.stac import stac_transform
 from toolz import dicttoolz
 from yaml import load
@@ -26,28 +27,7 @@ class SQStoDCException(Exception):
     """
     Exception to raise for error during SQS to DC indexing/archiving
     """
-
     pass
-
-
-def get_messages(queue, limit):
-    count = 0
-
-    while True:
-        messages = queue.receive_messages(
-            VisibilityTimeout=60,
-            MaxNumberOfMessages=1,
-            WaitTimeSeconds=10,
-            MessageAttributeNames=["All"],
-        )
-
-        if len(messages) == 0 or (limit and count >= limit):
-            break
-        else:
-            for message in messages:
-                count += 1
-                yield message
-
 
 def extract_metadata_from_message(message):
     try:
