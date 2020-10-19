@@ -1,52 +1,38 @@
-
-from odc.aws.queues import get_messages, get_queue
-
-from ._cli_run_pq import run_pq
 from pathlib import Path
-import subprocess
-import sys
+import os
 import click
-from ._cli_common import main
 
-def get_messages(queue, limit):
-    count = 0
-    while True:
-        messages = queue.receive_messages(
-            VisibilityTimeout=60,
-            MaxNumberOfMessages=1,
-            WaitTimeSeconds=10,
-            MessageAttributeNames=["All"],
-        )
+from odc.aws.queues import get_messages, get_queue, publish_message
+from ._cli_run_pq import run_pq
+from ._cli_common import main, parse_all_tasks
+from .tasks import TaskReader
 
-        if len(messages) == 0 or (limit and count >= limit):
-            break
-        else:
-            for message in messages:
-                count += 1
-                yield message.body
-
-def process_queue(queue):
-    for msg in get_messages(queue, 2):
-        print(msg)
-
-@main.command('run_command')
+@main.command('run-from-queue')
 @click.option('--command', type=str)
 @click.option('--db', type=str)
 @click.option('--queue', type=str)
-# @click.option('location', type=str)
+@click.option('--location', type=str)
 
-def run_command(command, db, queue):
-    import sys
+
+def run_from_queue(command, db, queue, location):
+    def get_tasks(cache_file):
+        rdr = TaskReader(cache_file)
+        tasks = rdr.all_tiles
+        print(f"Found {len(tasks):,d} tasks in the file")
+        return tasks
+
     queue = get_queue(queue)
-    messages = get_messages(queue, 1)
-
-    counter = 0
-    path = 's3://africa-migration-test/tmp'
-    for msg in messages:
-        # cmd = f"odc-stats {command} --location {path} {db} {msg}"
-        if command == 'run_pq' and counter < 5:
-            # subprocess.run(cmd, shell=True)
-            run_pq(db, msg, True, True, 0, True, False, path)
-            counter += 1
-        else:
-            raise Exception('Support for {command} has not been implemented.')
+    messages = get_messages(queue, 5)
+    if command == 'run-pq':
+        for msg in messages:
+            tidx = msg.body
+            cmd = f"odc-stats run-pq --location {location} {db} {tidx} --verbose"
+            os.system(cmd)
+    elif command == 'publish-messages':
+        tasks = get_tasks(db)
+        for ta in tasks:
+            task = (ta[0], str(ta[1]), str(ta[2]))
+            task = ','.join(task)
+            publish_message(queue, task)
+    else:
+        raise Exception('Support for {command} has not been implemented.')
