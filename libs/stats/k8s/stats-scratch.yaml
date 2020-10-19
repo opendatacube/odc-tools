@@ -26,7 +26,7 @@ spec:
                 - memory-optimised-r5-8xl
       containers:
       - name: sandbox
-        image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/statistician:0.0.10-25-gba266b9
+        image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/statistician:0.0.10-26-ge5642c6
         imagePullPolicy: IfNotPresent
 
         resources:
@@ -84,6 +84,10 @@ spec:
                 [ -f /build.info ] && cat /build.info
 
                 aws s3 cp "${TASK_DB_S3}" tasks.db
+
+                (git clone https://github.com/opendatacube/odc-tools.git -b stats \
+                 && cd odc-tools \
+                 && ./scripts/dev-install.sh)
 
                 while true ; do
                    for i in {1..10}; do
