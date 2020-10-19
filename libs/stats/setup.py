@@ -23,7 +23,7 @@ setup(
         'odc_dscache',
         'odc_algo',
         'dataclasses',
-        'tqdm'
+        'odc_ows'
     ],
 
     packages=['odc.stats'],
