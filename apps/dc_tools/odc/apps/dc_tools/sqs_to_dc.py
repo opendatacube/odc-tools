@@ -11,10 +11,10 @@ import boto3
 import click
 import pandas as pd
 import requests
-from odc.aws.queues import get_messages
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes, documents
+from odc.aws.queue import get_messages
 from odc.index.stac import stac_transform
 from toolz import dicttoolz
 from yaml import load
@@ -27,7 +27,6 @@ class SQStoDCException(Exception):
     """
     Exception to raise for error during SQS to DC indexing/archiving
     """
-
     pass
 
 def extract_metadata_from_message(message):
