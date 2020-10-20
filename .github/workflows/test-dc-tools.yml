@@ -1,0 +1,23 @@
+name : Run integration tests on dc_tools
+
+on:
+  push:
+
+jobs:
+  test-dc-tools:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Run Dockerized Tests
+      timeout-minutes: 20
+      shell: bash
+      run: |
+        cd tests
+        docker-compose build
+        docker-compose up -d
+        docker-compose exec -T tools-tester run_tests.sh
