@@ -15,7 +15,6 @@ RUN mkdir -p /conf
 COPY ./tests/requirements.txt /conf/
 RUN env-build-tool new /conf/requirements.txt ${py_env_path} /wheels
 
-
 # Install the tools
 ADD ./ /code
 WORKDIR /code
@@ -36,18 +35,6 @@ RUN /env/bin/pip install --extra-index-url https://packages.dea.ga.gov.au/ \
     --editable libs/thredds \
     --editable libs/ui
 
-FROM opendatacube/geobase:runner
-
-# Copy the environment over
-COPY --from=env_builder /env /env
-
-ENV PATH="/env/bin:${PATH}"
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-
-# Copy the live code in
-ADD ./ /code
-WORKDIR /code
-
 # Copy in the test runner script
 COPY ./tests/run_tests.sh /usr/local/bin/run_tests.sh
+ENV PATH="/env/bin:${PATH}"

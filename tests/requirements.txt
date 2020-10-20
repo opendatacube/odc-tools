@@ -3,8 +3,8 @@ setuptools
 datacube[performance,s3]==1.8.3
 aiobotocore[boto3,awscli]==1.1.1
 aiohttp==3.6.2
-pandas==1.0.5
-digitalearthau
+pandas==1.1.2
+xarray==0.16.1
 thredds-crawler
 wget
 requests
