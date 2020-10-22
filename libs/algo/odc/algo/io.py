@@ -57,9 +57,13 @@ def _load_with_native_transform_1(sources: xr.DataArray,
                                   groupby: Optional[str] = None,
                                   fuser: Optional[Callable[[xr.Dataset], xr.Dataset]] = None,
                                   resampling: str = 'nearest',
-                                  chunks: Optional[Dict[str, int]] = None) -> xr.Dataset:
+                                  chunks: Optional[Dict[str, int]] = None,
+                                  load_chunks: Optional[Dict[str, int]] = None) -> xr.Dataset:
     if basis is None:
         basis = bands[0]
+
+    if load_chunks is None:
+        load_chunks = chunks
 
     ds, = sources.data[0]
     load_geobox = compute_native_load_geobox(geobox, ds, basis)
@@ -67,7 +71,7 @@ def _load_with_native_transform_1(sources: xr.DataArray,
     xx = Datacube.load_data(sources,
                             load_geobox,
                             mm,
-                            dask_chunks=chunks)
+                            dask_chunks=load_chunks)
     xx = native_transform(xx)
 
     if groupby is not None:
@@ -92,6 +96,7 @@ def load_with_native_transform(dss: List[Dataset],
                                fuser: Optional[Callable[[xr.Dataset], xr.Dataset]] = None,
                                resampling: str = 'nearest',
                                chunks: Optional[Dict[str, int]] = None,
+                               load_chunks: Optional[Dict[str, int]] = None,
                                **kw) -> xr.Dataset:
     """
     Load a bunch of datasets with native pixel transform.
@@ -106,6 +111,8 @@ def load_with_native_transform(dss: List[Dataset],
     :param resampling: Any resampling mode supported by GDAL as a string:
                        nearest, bilinear, average, mode, cubic, etc...
     :param chunks: If set use Dask, must be in dictionary form ``{'x': 4000, 'y': 4000}``
+    :param load_chunks: Defaults to ``chunks`` but can be different if supplied
+                        (different chunking for native read vs reproject)
     :param kw: Used to support old names ``dask_chunks`` and ``group_by``
 
     1. Partition datasets by native Projection
@@ -135,7 +142,8 @@ def load_with_native_transform(dss: List[Dataset],
                                         resampling=resampling,
                                         groupby=groupby,
                                         fuser=fuser,
-                                        chunks=chunks)
+                                        chunks=chunks,
+                                        load_chunks=load_chunks)
           for srcs in _split_by_grid(sources)]
 
     if len(xx) == 1:

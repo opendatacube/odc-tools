@@ -102,7 +102,8 @@ def dask_reproject(src: da.Array,
     assert dims2 == ()
     deps = [src]
 
-    gbt = GeoboxTiles(dst_geobox, chunks)
+    tile_shape = (yx_chunks[0][0], yx_chunks[1][0])
+    gbt = GeoboxTiles(dst_geobox, tile_shape)
     xy_chunks_with_data = list(gbt.tiles(src_geobox.extent))
 
     name = randomize(name)
