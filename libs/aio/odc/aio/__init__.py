@@ -305,6 +305,7 @@ class S3Fetcher(object):
                  addressing_style='path',
                  aws_unsigned=None):
 
+        self._closed = True
         if region_name is None:
             region_name = auto_find_region()
 
@@ -324,7 +325,6 @@ class S3Fetcher(object):
         self._s3 = None
         self._s3_ctx = None
         self._session = None
-        self._closed = False
 
         async def setup(s3_cfg):
             session = aiobotocore.get_session()
@@ -335,6 +335,7 @@ class S3Fetcher(object):
             return (session, s3, s3_ctx)
 
         session, s3, s3_ctx = self._async.submit(setup, s3_cfg).result()
+        self._closed = False
         self._session = session
         self._s3 = s3
         self._s3_ctx = s3_ctx
