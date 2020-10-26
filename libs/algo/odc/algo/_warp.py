@@ -179,7 +179,10 @@ def xr_reproject_array(src: xr.DataArray,
     dst_dims = src_dims[:axis] + geobox.dims + src_dims[axis+2:]
 
     coords = geobox.xr_coords(with_crs=True)
-    for dim in src_dims:
+
+    # copy non-spatial coords from src to dst
+    src_non_spatial_dims = src_dims[:axis] + src_dims[axis+2:]
+    for dim in src_non_spatial_dims:
         if dim not in coords:
             coords[dim] = src.coords[dim]
 
