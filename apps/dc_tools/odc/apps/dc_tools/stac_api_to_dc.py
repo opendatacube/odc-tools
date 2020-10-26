@@ -151,7 +151,7 @@ def stac_api_to_odc(
     return index_update_datasets(dc, datasets, update, allow_unsafe)
 
 
-@click.command("sqs-to-dc")
+@click.command("stac-to-dc")
 @click.option(
     "--limit",
     default=None,
