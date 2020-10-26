@@ -1,8 +1,9 @@
 """Test thredds downloader code
 """
+import pytest
 from odc.thredds import thredds_find_glob, download_yamls
 
-
+@pytest.mark.xfail
 def test_thredds_crawl():
     """Crawl a sample Thredds URL, this will fail if NCI loses this data
     or Thredds is down
@@ -14,6 +15,7 @@ def test_thredds_crawl():
     assert urls
     assert len(urls) == 490
 
+@pytest.mark.xfail
 def test_download_yaml():
     """Test pass/fail arms of YAML download from Thredds
     """
