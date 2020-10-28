@@ -169,8 +169,9 @@ def do_indexing(
                     updates = {tuple(): changes.allow_any}
                 dc.index.datasets.update(ds, updates_allowed=updates)
             else:
-                if dc.index.datasets.get(metadata.get("id")):
-                    raise SQStoDCException("Dataset already exists, not indexing")
+                if dc.index.datasets.has(metadata.get("id")):
+                    logging.warning("Dataset already exists, not indexing")
+                    return
                 dc.index.datasets.add(ds)
         else:
             raise SQStoDCException(
