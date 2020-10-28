@@ -34,10 +34,12 @@ def get_messages(queue, limit: bool = None, visibility_timeout: int = 60, messag
             WaitTimeSeconds=10,
             MessageAttributeNames=message_attributes,
         )
-
         if len(messages) == 0 or (limit and count >= limit):
             break
         else:
             for message in messages:
                 count += 1
+                if ',' in message.body:
+                    msg = message.body.split(',')
+                    message = (msg[0], int(msg[1]), int(msg[2]))
                 yield message

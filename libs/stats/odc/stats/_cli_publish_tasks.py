@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import click
 
-from odc.aws.queues import get_messages, get_queue, publish_message
+from odc.aws.queue import get_queue, publish_message
 from ._cli_run_pq import run_pq
 from ._cli_common import main, parse_all_tasks
 from .tasks import TaskReader
