@@ -2,7 +2,7 @@
 Generic dask helpers
 """
 
-from typing import Tuple, Union, cast
+from typing import Tuple, Union, cast, Iterator, List, Any
 from random import randint
 from bisect import bisect_right, bisect_left
 import numpy as np
@@ -10,6 +10,8 @@ import xarray as xr
 from dask.distributed import wait as dask_wait
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
+import functools
+import toolz
 from toolz import partition_all
 from ._tools import ROI, roi_shape, slice_in_out
 
@@ -92,6 +94,15 @@ def randomize(prefix: str) -> str:
     return '{}-{:08x}'.format(prefix, randint(0, 0xFFFFFFFF))
 
 
+def list_reshape(x: List[Any], shape: Tuple[int, ...]) -> List[Any]:
+    """
+    similar to numpy version of x.reshape(shape), but only works on flat list on input.
+    """
+    for n in shape[1:][::-1]:
+        x = list(map(list, toolz.partition(n, x)))
+    return x
+
+
 def unpack_chunksize(chunk: int, N: int) -> Tuple[int, ...]:
     """
     Compute chunk sizes
@@ -106,6 +117,23 @@ def unpack_chunksize(chunk: int, N: int) -> Tuple[int, ...]:
         return tuple(chunk for _ in range(nb))
 
     return tuple(chunk for _ in range(nb)) + (last_chunk,)
+
+
+def _roi_from_chunks(chunks: Tuple[int, ...]) -> Iterator[slice]:
+    off = 0
+    for v in chunks:
+        off_next = off + v
+        yield slice(off, off_next)
+        off = off_next
+
+
+def _get_all_chunks(xx: da.Array, flat: bool = True) -> List[Any]:
+    shape_in_chunks = tuple(map(len, xx.chunks))
+    name = xx.name
+    chunks = [(name, *idx) for idx in np.ndindex(shape_in_chunks)]
+    if flat:
+        return chunks
+    return list_reshape(chunks, shape_in_chunks)
 
 
 def empty_maker(fill_value, dtype, dsk, name='empty'):
@@ -329,3 +357,85 @@ def crop_2d_dense(xx: da.Array, yx_roi: Tuple[slice, slice], name: str = 'crop_2
                     chunks=chunks,
                     dtype=xx.dtype,
                     shape=shape)
+
+
+def _reshape_yxbt_impl(blocks, crop_yx=None):
+    """
+    input axis order : (band, time,) (blocks: y, x)
+    output axis order: y, x, band, time
+    """
+    def squeeze_to_yx(x):
+        idx = tuple(0 for _ in x.shape[:-2])
+        return x[idx]
+
+    assert len(blocks) > 0
+    nb = len(blocks)
+    nt = len(blocks[0])
+    b = squeeze_to_yx(blocks[0][0])
+
+    if crop_yx:
+        b = b[crop_yx]
+    ny, nx = b.shape
+
+    dst = np.empty((ny, nx, nb, nt), dtype=b.dtype)
+    for (it, ib) in np.ndindex((nt, nb)):
+        b = squeeze_to_yx(blocks[ib][it])
+        if crop_yx is not None:
+            b = b[crop_yx]
+
+        assert b.shape == (ny, nx)
+        dst[:, :, ib, it] = b
+
+    return dst
+
+
+def reshape_yxbt(xx: xr.DataArray,
+                 name='reshape_yxbt',
+                 ychunk=-1) -> xr.DataArray:
+    """
+    xx: band, time, y, x
+
+    Expect chunks to be
+      - 1 element sized for first 2 dimension
+      - Full sized for Y/X dimensions
+    """
+    name0 = name
+    name = randomize(name)
+
+    _b, _t, _y, _x = xx.data.chunks
+    assert set(_t) == {1}
+    assert set(_b) == {1}
+    # TODO: process y/x chunks right
+    assert len(_y) == 1
+    assert len(_x) == 1
+
+    shape_in_chunks = tuple(map(len, xx.data.chunks))
+    nb, nt, ny, nx = xx.shape
+
+    shape = (ny, nx, nb, nt)
+    dtype = xx.dtype
+    dims = xx.dims[-2:] + xx.dims[:2]
+
+    blocks = _get_all_chunks(xx.data, flat=True)
+    blocks = list_reshape(blocks, shape_in_chunks[:2])
+    y_chunks = unpack_chunksize(ychunk, ny)
+    chunks = (y_chunks, *shape[1:])
+
+    dsk = {}
+    for iy, y_roi in enumerate(_roi_from_chunks(y_chunks)):
+        crop_yx = (y_roi, slice(None))
+        dsk[(name, iy, 0, 0, 0)] = (functools.partial(_reshape_yxbt_impl, crop_yx=crop_yx), blocks)
+
+    dsk = HighLevelGraph.from_collections(name, dsk,
+                                          dependencies=(xx.data,))
+    data = da.Array(dsk,
+                    name,
+                    chunks=chunks,
+                    dtype=dtype,
+                    shape=shape)
+
+    return xr.DataArray(data=data,
+                        dims=dims,
+                        coords=xx.coords,
+                        name=name0,
+                        attrs=xx.attrs)
