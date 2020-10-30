@@ -127,6 +127,41 @@ def _roi_from_chunks(chunks: Tuple[int, ...]) -> Iterator[slice]:
         off = off_next
 
 
+def _get_chunks_asarray(xx: da.Array) -> np.ndarray:
+    """
+    Returns 2 ndarrays of equivalent shapes
+
+    - First one contains dask tasks: (name: str, idx0:int, idx1:int)
+    - Second one contains sizes of blocks (Tuple[int,...])
+    """
+    shape_in_chunks = tuple(map(len, xx.chunks))
+    name = xx.name
+
+    chunks = np.ndarray(shape_in_chunks, dtype='object')
+    shapes = np.ndarray(shape_in_chunks, dtype='object')
+    for idx in np.ndindex(shape_in_chunks):
+        chunks[idx] = (name, *idx)
+        shapes[idx] = tuple(xx.chunks[k][i] for k, i in enumerate(idx))
+    return chunks, shapes
+
+
+def _get_chunks_for_all_bands(xx: xr.Dataset):
+    """
+    Equivalent to _get_chunks_asarray(xx.to_array('band').data)
+    """
+    blocks = []
+    shapes = []
+
+    for dv in xx.data_vars.values():
+        b, s = _get_chunks_asarray(dv.data)
+        blocks.append(b)
+        shapes.append(s)
+
+    blocks = np.stack(blocks)
+    shapes = np.stack(shapes)
+    return blocks, shapes
+
+
 def _get_all_chunks(xx: da.Array, flat: bool = True) -> List[Any]:
     shape_in_chunks = tuple(map(len, xx.chunks))
     name = xx.name
@@ -389,37 +424,37 @@ def _reshape_yxbt_impl(blocks, crop_yx=None):
     return dst
 
 
-def reshape_yxbt(xx: xr.DataArray,
+def reshape_yxbt(xx: xr.Dataset,
                  name='reshape_yxbt',
                  ychunk=-1) -> xr.DataArray:
     """
-    xx: band, time, y, x
+    xx: (time, y, x) across several bands
 
     Expect chunks to be
-      - 1 element sized for first 2 dimension
+      - 1 element sized for 1st dimension
       - Full sized for Y/X dimensions
     """
     name0 = name
     name = randomize(name)
 
-    _b, _t, _y, _x = xx.data.chunks
-    assert set(_t) == {1}
-    assert set(_b) == {1}
-    # TODO: process y/x chunks right
-    assert len(_y) == 1
-    assert len(_x) == 1
+    blocks, shapes = _get_chunks_for_all_bands(xx)
+    shape_in_chunks = blocks.shape
+    assert shape_in_chunks[-2:] == (1, 1)
+    b0, *_ = xx.data_vars.values()
 
-    shape_in_chunks = tuple(map(len, xx.data.chunks))
-    nb, nt, ny, nx = xx.shape
+    nb = len(xx.data_vars.values())
+    nt, ny, nx = b0.shape
 
     shape = (ny, nx, nb, nt)
-    dtype = xx.dtype
-    dims = xx.dims[-2:] + xx.dims[:2]
+    dtype = b0.dtype
+    dims = b0.dims[1:] + ('band', b0.dims[0])
 
-    blocks = _get_all_chunks(xx.data, flat=True)
-    blocks = list_reshape(blocks, shape_in_chunks[:2])
     y_chunks = unpack_chunksize(ychunk, ny)
-    chunks = (y_chunks, *shape[1:])
+    chunks = (y_chunks, *[unpack_chunksize(-1, s)
+                          for s in shape[1:]])
+
+    deps = [dv.data for dv in xx.data_vars.values()]
+    blocks = blocks[:, :, 0, 0].tolist()
 
     dsk = {}
     for iy, y_roi in enumerate(_roi_from_chunks(y_chunks)):
@@ -427,7 +462,7 @@ def reshape_yxbt(xx: xr.DataArray,
         dsk[(name, iy, 0, 0, 0)] = (functools.partial(_reshape_yxbt_impl, crop_yx=crop_yx), blocks)
 
     dsk = HighLevelGraph.from_collections(name, dsk,
-                                          dependencies=(xx.data,))
+                                          dependencies=deps)
     data = da.Array(dsk,
                     name,
                     chunks=chunks,
