@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
 
 import pandas as pd
-from datacube.model import Dataset, GridSpec
+from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
 from odc.index import odc_uuid
@@ -245,7 +245,7 @@ class Task:
         region_code = product.region_code(self.tile_index)
         inputs = list(map(str, self._lineage()))
 
-        properties = deepcopy(product.properties)
+        properties: Dict[str, Any] = deepcopy(product.properties)
 
         properties.update(self.time_range.to_stac())
         properties['odc:processing_datetime'] = format_datetime(processing_dt, timespec='seconds')
@@ -263,8 +263,7 @@ class Task:
                 ],
                 'href': path,
                 'proj:shape': geobox.shape,
-                'proj:transform': geobox.transform
-                }
+                'proj:transform': geobox.transform}
             for band, path in self.paths(ext=ext).items()
         }
 

@@ -2,11 +2,12 @@
 Various I/O adaptors
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 import json
 from urllib.parse import urlparse
 from dask.delayed import Delayed
 from pathlib import Path
+import xarray as xr
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -40,7 +41,7 @@ def dump_json(meta: Dict[str, Any]) -> str:
 
 class S3COGSink:
     def __init__(self,
-                 creds: Optional[ReadOnlyCredentials] = None,
+                 creds: Union[ReadOnlyCredentials, str, None] = None,
                  cog_opts: Optional[Dict[str, Any]] = None,
                  public: bool = False):
 
@@ -60,6 +61,8 @@ class S3COGSink:
     def _get_creds(self) -> ReadOnlyCredentials:
         if self._creds is None:
             self._creds = load_creds()
+        if isinstance(self._creds, str):
+            self._creds = load_creds(self._creds)
         return self._creds
 
     def verify_s3_credentials(self, test_uri: Optional[str] = None) -> bool:
@@ -96,8 +99,8 @@ class S3COGSink:
             raise ValueError(f"Don't know how to save to '{url}'")
 
     def _ds_to_cog(self,
-                   ds: Dataset,
-                   paths: Dict[str, str]):
+                   ds: xr.Dataset,
+                   paths: Dict[str, str]) -> List[Delayed]:
         out = []
         for band, dv in ds.data_vars.items():
             url = paths.get(band, None)
@@ -109,11 +112,18 @@ class S3COGSink:
                                         ContentType='image/tiff'))
         return out
 
-    def exists(self, task: Task) -> bool:
-        uri = self.uri(task)
+    def write_cog(self, da: xr.DataArray, url: str) -> Delayed:
+        cog_bytes = to_cog(da, **self._cog_opts)
+        return self._write_blob(cog_bytes, url, ContentType='image/tiff')
+
+    def exists(self, task: Union[Task, str]) -> bool:
+        if isinstance(task, str):
+            uri = task
+        else:
+            uri = self.uri(task)
         _u = urlparse(uri)
         if _u.scheme == 's3':
-            s3 = s3_client(creds=self._creds, cache=True)
+            s3 = s3_client(creds=self._get_creds(), cache=True)
             meta = s3_head_object(uri, s3=s3)
             return meta is not None
         elif _u.scheme == 'file':

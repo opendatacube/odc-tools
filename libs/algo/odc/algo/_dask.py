@@ -97,7 +97,7 @@ def unpack_chunksize(chunk: int, N: int) -> Tuple[int, ...]:
     Compute chunk sizes
     Example: 4, 11 -> (4, 4, 3)
     """
-    if chunk >= N:
+    if chunk >= N or chunk < 0:
         return (N,)
 
     nb = N//chunk

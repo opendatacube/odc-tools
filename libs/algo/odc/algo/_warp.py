@@ -102,7 +102,8 @@ def dask_reproject(src: da.Array,
     assert dims2 == ()
     deps = [src]
 
-    gbt = GeoboxTiles(dst_geobox, chunks)
+    tile_shape = (yx_chunks[0][0], yx_chunks[1][0])
+    gbt = GeoboxTiles(dst_geobox, tile_shape)
     xy_chunks_with_data = list(gbt.tiles(src_geobox.extent))
 
     name = randomize(name)
@@ -178,7 +179,10 @@ def xr_reproject_array(src: xr.DataArray,
     dst_dims = src_dims[:axis] + geobox.dims + src_dims[axis+2:]
 
     coords = geobox.xr_coords(with_crs=True)
-    for dim in src_dims:
+
+    # copy non-spatial coords from src to dst
+    src_non_spatial_dims = src_dims[:axis] + src_dims[axis+2:]
+    for dim in src_non_spatial_dims:
         if dim not in coords:
             coords[dim] = src.coords[dim]
 

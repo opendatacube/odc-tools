@@ -1,7 +1,7 @@
 """
 Sentinel-2 Geomedian
 """
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Dict
 import xarray as xr
 
 from odc.stats.model import Task
@@ -71,22 +71,28 @@ def _gm_native_transform(xx: xr.Dataset) -> xr.Dataset:
     return xx
 
 
-def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]] = 1600) -> xr.Dataset:
+def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]] = 1600,
+                  basis: Optional[str] = None,
+                  load_chunks: Optional[Dict[str, int]] = None) -> xr.Dataset:
     """
     .valid  Bool
     .clear  Bool
     """
     if isinstance(chunk, int):
         chunk = (chunk, chunk)
+    if basis is None:
+        basis = task.product.measurements[0]
 
     xx = load_with_native_transform(task.datasets,
-                                    ['SCL', *task.product.measurements],
+                                    [*task.product.measurements, 'SCL'],
                                     task.geobox,
                                     _gm_native_transform,
                                     groupby='solar_day',
+                                    basis=basis,
                                     resampling=resampling,
                                     chunks={'y': chunk[0],
-                                            'x': chunk[1]})
+                                            'x': chunk[1]},
+                                    load_chunks=load_chunks)
     return xx
 
 
