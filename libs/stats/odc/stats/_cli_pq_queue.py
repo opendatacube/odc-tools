@@ -83,7 +83,7 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
                                     verbose=verbose)
         if not dryrun and verbose:
             results = tqdm(results, total=len(tasks))
-
+        print("***************")
         for p in results:
             if verbose and not dryrun:
                 print(p)
@@ -115,7 +115,7 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
         print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
 
     for tsk in tasks:
-        start_streaming([tsk], process_tasks)
+        start_streaming([tsk], product)
 
     # _tasks = rdr.stream(tasks, product)
 
