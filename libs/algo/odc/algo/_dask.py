@@ -127,6 +127,29 @@ def _roi_from_chunks(chunks: Tuple[int, ...]) -> Iterator[slice]:
         off = off_next
 
 
+def _split_chunks(chunks: Tuple[int, ...], max_chunk: int) -> Iterator[Tuple[int, int, slice]]:
+    """
+    For every input chunk split it into smaller chunks.
+    Return a list of tuples describing output chunks and their relation to input chunks.
+
+    Output: [(dst_idx: int, src_idx: int, src_roi: slice]
+
+    Note that every output chunk has only one chunk on input,
+    so chunking might be irregular on output. This is by design, to avoid
+    creating cross chunk dependencies.
+    """
+    dst_idx = 0
+    for src_idx, src_sz in enumerate(chunks):
+        off = 0
+        while off < src_sz:
+            sz = src_sz - off
+            if max_chunk > 0:
+                sz = min(sz, max_chunk)
+            yield (dst_idx, src_idx, slice(off, off+sz))
+            dst_idx += 1
+            off += sz
+
+
 def _get_chunks_asarray(xx: da.Array) -> np.ndarray:
     """
     Returns 2 ndarrays of equivalent shapes
@@ -394,7 +417,7 @@ def crop_2d_dense(xx: da.Array, yx_roi: Tuple[slice, slice], name: str = 'crop_2
                     shape=shape)
 
 
-def _reshape_yxbt_impl(blocks, crop_yx=None):
+def _reshape_yxbt_impl(blocks, crop_yx=None, dtype=None):
     """
     input axis order : (band, time,) (blocks: y, x)
     output axis order: y, x, band, time
@@ -408,11 +431,14 @@ def _reshape_yxbt_impl(blocks, crop_yx=None):
     nt = len(blocks[0])
     b = squeeze_to_yx(blocks[0][0])
 
+    if dtype is None:
+        dtype = b.dtype
+
     if crop_yx:
         b = b[crop_yx]
     ny, nx = b.shape
 
-    dst = np.empty((ny, nx, nb, nt), dtype=b.dtype)
+    dst = np.empty((ny, nx, nb, nt), dtype=dtype)
     for (it, ib) in np.ndindex((nt, nb)):
         b = squeeze_to_yx(blocks[ib][it])
         if crop_yx is not None:
@@ -425,41 +451,46 @@ def _reshape_yxbt_impl(blocks, crop_yx=None):
 
 
 def reshape_yxbt(xx: xr.Dataset,
-                 name='reshape_yxbt',
-                 ychunk=-1) -> xr.DataArray:
+                 name: str = 'reshape_yxbt',
+                 yx_chunks: Union[int, Tuple[int, int]] = -1) -> xr.DataArray:
     """
     xx: (time, y, x) across several bands
 
     Expect chunks to be
       - 1 element sized for 1st dimension
-      - Full sized for Y/X dimensions
     """
+    if isinstance(yx_chunks, int):
+        yx_chunks = (yx_chunks, yx_chunks)
+
     name0 = name
     name = randomize(name)
 
-    blocks, shapes = _get_chunks_for_all_bands(xx)
-    shape_in_chunks = blocks.shape
-    assert shape_in_chunks[-2:] == (1, 1)
+    blocks, _ = _get_chunks_for_all_bands(xx)
     b0, *_ = xx.data_vars.values()
 
     nb = len(xx.data_vars.values())
     nt, ny, nx = b0.shape
 
+    deps = [dv.data for dv in xx.data_vars.values()]
     shape = (ny, nx, nb, nt)
     dtype = b0.dtype
     dims = b0.dims[1:] + ('band', b0.dims[0])
 
-    y_chunks = unpack_chunksize(ychunk, ny)
-    chunks = (y_chunks, *[unpack_chunksize(-1, s)
-                          for s in shape[1:]])
+    maxy, maxx = yx_chunks
+    ychunks, xchunks = b0.data.chunks[1:3]
+    _yy = list(_split_chunks(ychunks, maxy))
+    _xx = list(_split_chunks(xchunks, maxx))
+    ychunks = tuple(roi.stop - roi.start for _, _, roi in _yy)
+    xchunks = tuple(roi.stop - roi.start for _, _, roi in _xx)
 
-    deps = [dv.data for dv in xx.data_vars.values()]
-    blocks = blocks[:, :, 0, 0].tolist()
+    chunks = [ychunks, xchunks, (nb,), (nt,)]
 
     dsk = {}
-    for iy, y_roi in enumerate(_roi_from_chunks(y_chunks)):
-        crop_yx = (y_roi, slice(None))
-        dsk[(name, iy, 0, 0, 0)] = (functools.partial(_reshape_yxbt_impl, crop_yx=crop_yx), blocks)
+    for iy, iy_src, y_roi in _yy:
+        for ix, ix_src, x_roi in _xx:
+            crop_yx = (y_roi, x_roi)
+            _blocks = blocks[:, :, iy_src, ix_src].tolist()
+            dsk[(name, iy, ix, 0, 0)] = (functools.partial(_reshape_yxbt_impl, crop_yx=crop_yx), _blocks)
 
     dsk = HighLevelGraph.from_collections(name, dsk,
                                           dependencies=deps)
