@@ -27,15 +27,17 @@ class SQStoDCException(Exception):
     """
     Exception to raise for error during SQS to DC indexing/archiving
     """
+
     pass
+
 
 def extract_metadata_from_message(message):
     try:
         body = json.loads(message.body)
         metadata = json.loads(body["Message"])
-    except KeyError as ke:
+    except (KeyError, json.JSONDecodeError) as e:
         raise SQStoDCException(
-            f"Failed to load metadata from the SQS message due to Key Error - {ke}"
+            f"Failed to load metadata from the SQS message due to Key Error - {e}"
         )
 
     if metadata:
