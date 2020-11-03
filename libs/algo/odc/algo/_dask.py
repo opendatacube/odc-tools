@@ -2,7 +2,7 @@
 Generic dask helpers
 """
 
-from typing import Tuple, Union, cast, Iterator, List, Any
+from typing import Tuple, Union, cast, Iterator, List, Any, Dict, Hashable
 from random import randint
 from bisect import bisect_right, bisect_left
 import numpy as np
@@ -500,8 +500,11 @@ def reshape_yxbt(xx: xr.Dataset,
                     dtype=dtype,
                     shape=shape)
 
+    coords: Dict[Hashable, Any] = {k: c for k, c in xx.coords.items()}
+    coords['band'] = list(xx.data_vars)
+
     return xr.DataArray(data=data,
                         dims=dims,
-                        coords=xx.coords,
+                        coords=coords,
                         name=name0,
                         attrs=xx.attrs)
