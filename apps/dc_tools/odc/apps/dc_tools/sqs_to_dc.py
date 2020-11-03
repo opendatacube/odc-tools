@@ -37,7 +37,7 @@ def extract_metadata_from_message(message):
         metadata = json.loads(body["Message"])
     except (KeyError, json.JSONDecodeError) as e:
         raise SQStoDCException(
-            f"Failed to load metadata from the SQS message due to Key Error - {e}"
+            f"Failed to load metadata from the SQS message due to error: {e}"
         )
 
     if metadata:
