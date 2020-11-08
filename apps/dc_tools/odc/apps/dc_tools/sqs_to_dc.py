@@ -127,7 +127,7 @@ def get_metadata_from_s3_record(message: dict, record_path: tuple) -> Tuple[dict
 
 
 def get_s3_url(bucket_name, obj_key):
-    return "http://{bucket_name}.s3.amazonaws.com/{obj_key}".format(
+    return "s3://{bucket_name}/{obj_key}".format(
         bucket_name=bucket_name, obj_key=obj_key
     )
 
