@@ -16,7 +16,6 @@ from odc.index.stac import stac_transform
 from odc.apps.dc_tools.sqs_to_dc import (
     get_metadata_uri,
     get_metadata_from_s3_record,
-    get_s3_url,
 )
 
 
