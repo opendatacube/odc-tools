@@ -40,10 +40,6 @@ def test_get_metadata_s3_object(sentinel_2_nrt_message, sentinel_2_nrt_record_pa
     )
 
     assert type(data) is dict
-    assert uri == get_s3_url(
-        bucket_name="dea-public-data",
-        obj_key="L2/sentinel-2-nrt/S2MSIARD/2020-08-21/S2B_OPER_MSI_ARD_TL_VGS1_20200821T014801_A018060_T54HVH_N02.09/ARD-METADATA.yaml",
-    )
 
 
 def test_get_metadata_uri(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
