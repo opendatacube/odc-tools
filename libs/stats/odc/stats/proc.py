@@ -36,19 +36,7 @@ def drain(futures: Set[Future],
 
     return done, rr.not_done
 
-
-def _with_lookahead1(it: Iterable[Any]) -> Iterator[Any]:
-    NOT_SET = object()
-    prev = NOT_SET
-    for x in it:
-        if prev is not NOT_SET:
-            yield prev
-        prev = x
-    if prev is not NOT_SET:
-        yield prev
-
-
-def process_tasks(tasks: Iterable[Task],
+def process_tasks(task: Task,
                   proc: TaskProc,
                   client: Client,
                   sink: S3COGSink,
@@ -56,49 +44,46 @@ def process_tasks(tasks: Iterable[Task],
                   chunked_persist: int = 0,
                   verbose: bool = True) -> Iterator[str]:
 
-    def prep_stage(tasks: Iterable[Task],
+    def prep_stage(task: Task,
                    proc: TaskProc) -> Iterator[Tuple[Union[xr.Dataset, xr.DataArray, None], Task, str]]:
-        for task in tasks:
-            path = sink.uri(task)
-            if check_exists:
-                if sink.exists(task):
-                    yield (None, task, path)
-                    continue
+        path = sink.uri(task)
+        if check_exists:
+            if sink.exists(task):
+                return (None, task, path)
 
-            ds = proc(task)
-            yield (ds, task, path)
+        ds = proc(task)
+        return (ds, task, path)
 
     in_flight_cogs: Set[Future] = set()
-    for ds, task, path in _with_lookahead1(prep_stage(tasks, proc)):
-        if ds is None:
-            if verbose:
-                print(f"..skipping: {path} (exists already)")
-            yield path
-            continue
+    ds, task, path = prep_stage(task, proc)
+    if ds is None:
+        if verbose:
+            print(f"..skipping: {path} (exists already)")
+        return path
 
-        if chunked_persist > 0:
-            assert isinstance(ds, xr.DataArray)
-            ds = chunked_persist_da(ds, chunked_persist, client)
-        else:
-            ds = client.persist(ds, fifo_timeout='1ms')
+    if chunked_persist > 0:
+        assert isinstance(ds, xr.DataArray)
+        ds = chunked_persist_da(ds, chunked_persist, client)
+    else:
+        ds = client.persist(ds, fifo_timeout='1ms')
 
-        if len(in_flight_cogs):
-            done, in_flight_cogs = drain(in_flight_cogs, 1.0)
-            for r in done:
-                yield r
+    if len(in_flight_cogs):
+        done, in_flight_cogs = drain(in_flight_cogs, 1.0)
+        for r in done:
+            yield r
 
-        if isinstance(ds, xr.DataArray):
-            attrs = ds.attrs.copy()
-            ds = ds.to_dataset(dim='band')
-            for dv in ds.data_vars.values():
-                dv.attrs.update(attrs)
+    if isinstance(ds, xr.DataArray):
+        attrs = ds.attrs.copy()
+        ds = ds.to_dataset(dim='band')
+        for dv in ds.data_vars.values():
+            dv.attrs.update(attrs)
 
-        cog = client.compute(sink.dump(task, ds),
-                             fifo_timeout='1ms')
-        rr = dask_wait(ds)
-        assert len(rr.not_done) == 0
-        del ds, rr
-        in_flight_cogs.add(cog)
+    cog = client.compute(sink.dump(task, ds),
+                            fifo_timeout='1ms')
+    rr = dask_wait(ds)
+    assert len(rr.not_done) == 0
+    del ds, rr
+    in_flight_cogs.add(cog)
 
     done, _ = drain(in_flight_cogs)
     for r in done:

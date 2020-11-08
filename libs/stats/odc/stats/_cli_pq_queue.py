@@ -61,8 +61,8 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
         ds = pq_reduce(ds_in)
         return ds
 
-    def start_streaming(tasks, product):
-        _tasks = rdr.stream(tasks, product)
+    def start_streaming(task, product):
+        _task = rdr.stream(task, product)
         client = None
         if not dryrun:
             if verbose:
@@ -78,12 +78,12 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
             if verbose:
                 print(client)
 
-            results = process_tasks(_tasks, pq_proc, client, sink,
+            results = process_tasks(_task, pq_proc, client, sink,
                                     check_exists=not overwrite,
                                     verbose=verbose)
         if not dryrun and verbose:
-            results = tqdm(results, total=len(tasks))
-        print("***************")
+            results = tqdm(results, total=1)
+
         for p in results:
             if verbose and not dryrun:
                 print(p)
@@ -94,10 +94,8 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
         if client is not None:
             client.close()
 
-
-
     queue = get_queue(queue)
-    tasks = [x for x in get_messages(queue, 5)]
+    tasks = [x for x in get_messages(queue, 2)]
 
     if verbose:
         print(f"Read {len(tasks):,d} tasks from queue.")
@@ -115,37 +113,4 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
         print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
 
     for tsk in tasks:
-        start_streaming([tsk], product)
-
-    # _tasks = rdr.stream(tasks, product)
-
-    # client = None
-    # if not dryrun:
-    #     if verbose:
-    #         print("Starting local Dask cluster")
-
-    #     client = start_local_dask(threads_per_worker=threads,
-    #                               mem_safety_margin='1G')
-
-    #     # TODO: aws_unsigned is not always desirable
-    #     configure_s3_access(aws_unsigned=True,
-    #                         cloud_defaults=True,
-    #                         client=client)
-    #     if verbose:
-    #         print(client)
-
-    #     results = process_tasks(_tasks, pq_proc, client, sink,
-    #                             check_exists=not overwrite,
-    #                             verbose=verbose)
-    # if not dryrun and verbose:
-    #     results = tqdm(results, total=len(tasks))
-
-    # for p in results:
-    #     if verbose and not dryrun:
-    #         print(p)
-
-    # if verbose:
-    #     print("Exiting")
-
-    # if client is not None:
-    #     client.close()
+        start_streaming(tsk, product)

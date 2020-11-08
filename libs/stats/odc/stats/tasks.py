@@ -290,8 +290,8 @@ class TaskReader:
                     datasets=dss)
 
     def stream(self,
-               tiles: Iterable[TileIdx_txy],
+               tile: TileIdx_txy,
                product: Optional[OutputProduct] = None) -> Iterator[Task]:
         product = self._resolve_product(product)
-        for tidx in tiles:
-            yield self.load_task(tidx, product)
+        return self.load_task(tile, product)
+
