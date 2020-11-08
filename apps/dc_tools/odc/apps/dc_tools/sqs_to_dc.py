@@ -117,20 +117,13 @@ def get_metadata_from_s3_record(message: dict, record_path: tuple) -> Tuple[dict
                             ResponseCacheControl="no-cache"
                         )
                         data = load(obj["Body"].read())
-                        uri = get_s3_url(bucket_name, key)
+                        uri = f"s3://{bucket_name}/{key}"
                     except Exception as e:
                         raise SQStoDCException(
                             f"Exception thrown when trying to load s3 object: '{e}'\n"
                         )
 
     return data, uri
-
-
-def get_s3_url(bucket_name, obj_key):
-    return "s3://{bucket_name}/{obj_key}".format(
-        bucket_name=bucket_name, obj_key=obj_key
-    )
-
 
 def get_uri(metadata, rel_value):
     uri = None
