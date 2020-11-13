@@ -76,6 +76,29 @@ class DataSink:
         return self.view(key)
 
 
+class _YXBTSink:
+    def __init__(self, cache_key: str, band: Union[int, Tuple[slice, slice, slice, slice]]):
+        if isinstance(band, int):
+            band = np.s_[:, :, band, :]
+
+        self._k = cache_key
+        self._roi = band
+
+    @property
+    def data(self):
+        xx = Cache.get(self._k)
+        if xx is None:
+            return None
+        return xx[self._roi]
+
+    def __setitem__(self, key, item):
+        assert len(key) == 3
+        assert item.ndim == 3
+
+        it, iy, ix = key
+        self.data[iy, ix, it] = item.transpose([1, 2, 0])
+
+
 def store_to_mem(xx: da.Array,
                  client: Client,
                  out: Optional[np.ndarray] = None) -> np.ndarray:
@@ -87,10 +110,28 @@ def store_to_mem(xx: da.Array,
         sink = DataSink.wrap(out)
 
     try:
-        da.store(xx, sink, lock=False, compute=True)
+        fut = da.store(xx, sink, lock=False, compute=False)
+        fut = client.compute(fut)
+        fut.result()
         return sink.data
     finally:
         sink.unlink()
+
+
+def yxbt_sink(bands: Tuple[da.Array, ...], client) -> np.ndarray:
+    b = bands[0]
+    dtype = b.dtype
+    nt, ny, nx = b.shape
+    nb = len(bands)
+    out_key = Cache.new((ny, nx, nb, nt), dtype)
+    sinks = [_YXBTSink(out_key, idx) for idx in range(nb)]
+    try:
+        fut = da.store(bands, sinks, lock=False, compute=False)
+        fut = client.compute(fut)
+        fut.result()
+        return Cache.get(out_key)
+    finally:
+        Cache.pop(out_key)
 
 
 def test_cache():
