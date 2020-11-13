@@ -157,7 +157,7 @@ def _get_chunks_asarray(xx: da.Array) -> np.ndarray:
     - First one contains dask tasks: (name: str, idx0:int, idx1:int)
     - Second one contains sizes of blocks (Tuple[int,...])
     """
-    shape_in_chunks = tuple(map(len, xx.chunks))
+    shape_in_chunks = xx.numblocks
     name = xx.name
 
     chunks = np.ndarray(shape_in_chunks, dtype='object')
@@ -186,7 +186,7 @@ def _get_chunks_for_all_bands(xx: xr.Dataset):
 
 
 def _get_all_chunks(xx: da.Array, flat: bool = True) -> List[Any]:
-    shape_in_chunks = tuple(map(len, xx.chunks))
+    shape_in_chunks = xx.numblocks
     name = xx.name
     chunks = [(name, *idx) for idx in np.ndindex(shape_in_chunks)]
     if flat:
@@ -276,7 +276,7 @@ def _extract_as_one_block(axis, crop, shape_in_blocks, *blocks):
     return out[crop]
 
 
-def _chunk_getter(xx):
+def _chunk_getter(xx: da.Array):
     """
     _chunk_getter(xx)(np.s_[:3, 2:4]) -> (
     (xx.name, 0, 2),
@@ -284,7 +284,7 @@ def _chunk_getter(xx):
     (xx.name, 1, 2),
     ...)
     """
-    shape_in_chunks = tuple(map(len, xx.chunks))
+    shape_in_chunks = xx.numblocks
     name = xx.name
     xx = np.asarray([{'v': tuple(idx)} for idx in np.ndindex(shape_in_chunks)]).reshape(shape_in_chunks)
 
