@@ -6,7 +6,7 @@ import xarray as xr
 
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import enum_to_bool, int_geomedian, keep_good_only
+from odc.algo import enum_to_bool, int_geomedian, keep_good_only, cloud_buffer
 from .model import OutputProduct
 
 
@@ -52,7 +52,8 @@ def gm_product(location: Optional[str] = None,
                          href=f'https://collections.digitalearth.africa/product/{name}')
 
 
-def _gm_native_transform(xx: xr.Dataset) -> xr.Dataset:
+def _gm_native_transform(xx: xr.Dataset,
+                         buffer_clouds: Optional[Tuple[int, int]] = None) -> xr.Dataset:
     """
     config:
     bad_pixel_classes
@@ -65,6 +66,11 @@ def _gm_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
     # TODO: fancier computation of clear_pix with padding for cloud
     clear_pix = enum_to_bool(xx.SCL, bad_pixel_classes+cloud_classes, invert=True)
+    if buffer_clouds is not None:
+        radius, dilation_radius = buffer_clouds
+        clear_pix = cloud_buffer(clear_pix,
+                                 radius=radius,
+                                 dilation_radius=dilation_radius)
 
     xx = keep_good_only(xx[bands], clear_pix)
 
@@ -73,7 +79,8 @@ def _gm_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
 def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]] = 1600,
                   basis: Optional[str] = None,
-                  load_chunks: Optional[Dict[str, int]] = None) -> xr.Dataset:
+                  load_chunks: Optional[Dict[str, int]] = None,
+                  buffer_clouds: Optional[Tuple[int, int]] = (6, 2)) -> xr.Dataset:
     """
     .valid  Bool
     .clear  Bool
@@ -86,7 +93,7 @@ def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]
     xx = load_with_native_transform(task.datasets,
                                     [*task.product.measurements, 'SCL'],
                                     task.geobox,
-                                    _gm_native_transform,
+                                    lambda xx: _gm_native_transform(xx, buffer_clouds=buffer_clouds),
                                     groupby='solar_day',
                                     basis=basis,
                                     resampling=resampling,
