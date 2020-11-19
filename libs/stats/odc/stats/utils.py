@@ -128,3 +128,33 @@ def season_binner(rules: Dict[int, str]) -> Callable[[datetime], str]:
         return f'{y}-{season}'
 
     return label
+
+
+def dedup_s2_datasets(dss):
+    """
+    De-duplicate Sentinel 2 datasets. Datasets that share same timestamp and
+    region code are considered to be duplicates.
+
+    - Sort Datasets by ``(time, region code, label)``
+    - Find groups of dataset that share common ``(time, region_code)``
+    - Out of duplicate groups pick one with the most recent timestamp in the label (processing time)
+
+    Above, ``label`` is something like this:
+    ``S2B_MSIL2A_20190507T093039_N0212_R136_T32NPF_20190507T122231``
+
+    The two timestamps are "capture time" and "processing time".
+
+    :returns: Two list of Datasets, first one contains "freshest" datasets and
+              has no duplicates, and the second one contains less fresh duplicates.
+    """
+    dss = sorted(dss, key=lambda ds: (ds.center_time,
+                                      ds.metadata.region_code,
+                                      ds.metadata_doc['label']))
+    out = []
+    skipped = []
+
+    for chunk in toolz.partitionby(lambda ds: (ds.center_time,
+                                               ds.metadata.region_code), dss):
+        out.append(chunk[-1])
+        skipped.extend(chunk[:-1])
+    return out, skipped
