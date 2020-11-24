@@ -30,6 +30,7 @@ from ._dask import (
     chunked_persist_ds,
     chunked_persist_da,
     randomize,
+    reshape_yxbt,
 )
 
 from ._memsink import (
@@ -66,6 +67,7 @@ __all__ = (
     "int_geomedian",
     "int_geomedian_np",
     "reshape_for_geomedian",
+    "reshape_yxbt",
     "chunked_persist",
     "chunked_persist_da",
     "chunked_persist_ds",

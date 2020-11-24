@@ -10,6 +10,7 @@ import xarray as xr
 from dask.distributed import wait as dask_wait
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
+from dask import is_dask_collection
 import functools
 import toolz
 from toolz import partition_all
@@ -454,13 +455,36 @@ def reshape_yxbt(xx: xr.Dataset,
                  name: str = 'reshape_yxbt',
                  yx_chunks: Union[int, Tuple[int, int]] = -1) -> xr.DataArray:
     """
-    xx: (time, y, x) across several bands
+    Reshape Dask-backed ``xr.Dataset[Time,Y,X]`` into
+    ``xr.DataArray[Y,X,Band,Time]``. On the output DataArray there is
+    exactly one chunk along both Time and Band dimensions.
 
-    Expect chunks to be
-      - 1 element sized for 1st dimension
+    :param xx: Dataset with 3 dimensional bands, dimension order (time, y, x)
+
+    :param name: Dask name of the output operation
+
+    :param yx_chunks: If supplied subdivide YX chunks of input into smaller
+                      sections, note that this can only make yx chunks smaller
+                      not bigger. Every output chunk depends on one input chunk
+                      only, so output chunks might not be regular, for example
+                      if input chunk sizes are 10, and yx_chunks=3, you'll get
+                      chunks sized 3,3,3,1,3,3,3,1... (example only, never use chunks
+                      that small)
+
+    .. note:
+
+       Chunks along first dimension ought to be of size 1 exactly (default for
+       time dimension when using dc.load).
     """
     if isinstance(yx_chunks, int):
         yx_chunks = (yx_chunks, yx_chunks)
+
+    if not is_dask_collection(xx):
+        raise ValueError("Currently this code works only on Dask inputs")
+
+    if not all(dv.data.numblocks[0] == dv.data.shape[0]
+           for dv in xx.data_vars.values()):
+        raise ValueError("All input bands should have chunk=1 for the first dimension")
 
     name0 = name
     name = randomize(name)
