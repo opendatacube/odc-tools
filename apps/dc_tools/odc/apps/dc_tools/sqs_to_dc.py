@@ -122,6 +122,9 @@ def get_metadata_from_s3_record(message: dict, record_path: tuple) -> Tuple[dict
                         raise SQStoDCException(
                             f"Exception thrown when trying to load s3 object: '{e}'\n"
                         )
+                else:
+                    # drop the message as it will not be processed
+                    message.delete()
 
     return data, uri
 
