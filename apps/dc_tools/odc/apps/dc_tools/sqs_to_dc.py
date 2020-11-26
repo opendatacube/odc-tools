@@ -46,7 +46,7 @@ def extract_metadata_from_message(message):
         raise SQStoDCException(f"Failed to load metadata from the SQS message")
 
 
-def handle_json_metadata(metadata, transform, odc_metadata_link):
+def handle_json_message(metadata, transform, odc_metadata_link):
     odc_yaml_uri = None
     uri = None
 
@@ -222,9 +222,7 @@ def queue_to_odc(
         except FileNotFoundError as e:
             logging.error(f"Could not find region_code file with error: {e}")
         if len(region_codes) == 0:
-            logging.warning(
-                f"No items found in the region_code list at URI: {region_code_list_uri}"
-            )
+            raise SQStoDCException(f"Region code list is empty, please check the list at: {region_code_list_uri}")
 
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
@@ -242,7 +240,7 @@ def queue_to_odc(
                 if not record_path:
                     # Extract metadata and URI from a STAC or similar
                     # json structure for indexing
-                    metadata, uri = handle_json_metadata(
+                    metadata, uri = handle_json_message(
                         metadata, transform, odc_metadata_link
                     )
                 else:
