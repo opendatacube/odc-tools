@@ -46,7 +46,7 @@ def extract_metadata_from_message(message):
         raise SQStoDCException(f"Failed to load metadata from the SQS message")
 
 
-def get_metadata_uri(metadata, transform, odc_metadata_link):
+def handle_json_metadata(metadata, transform, odc_metadata_link):
     odc_yaml_uri = None
     uri = None
 
@@ -85,12 +85,14 @@ def get_metadata_uri(metadata, transform, odc_metadata_link):
     return metadata, uri
 
 
-def get_metadata_from_s3_record(message: dict, record_path: tuple) -> Tuple[dict, str]:
+def handle_bucket_notification_message(
+    message: dict, record_path: tuple
+) -> Tuple[dict, str]:
     """[summary]
 
     Args:
         message (dict): [description]
-        record_path (tuple): [PATH for filtering s3 key path]
+        record_path (tuple): [PATH for selectingthe s3 key path from the JSON message document]
 
     Raises:
         SQStoDCException: [Catch s3 ]
@@ -105,28 +107,42 @@ def get_metadata_from_s3_record(message: dict, record_path: tuple) -> Tuple[dict
         for record in message.get("Records"):
             bucket_name = dicttoolz.get_in(["s3", "bucket", "name"], record)
             key = dicttoolz.get_in(["s3", "object", "key"], record)
-            if bucket_name and key:
-                if (
-                    record_path is None
-                    or len(record_path) == 0
-                    or any([PurePath(key).match(p) for p in record_path])
-                ):
-                    try:
-                        s3 = boto3.resource("s3")
-                        obj = s3.Object(bucket_name, key).get(
-                            ResponseCacheControl="no-cache"
-                        )
-                        data = load(obj["Body"].read())
-                        uri = f"s3://{bucket_name}/{key}"
-                    except Exception as e:
-                        raise SQStoDCException(
-                            f"Exception thrown when trying to load s3 object: '{e}'\n"
-                        )
-                else:
-                    # drop the message as it will not be processed
-                    message.delete()
+
+            # Check for bucket name and key, and fail if there isn't one
+            if not (bucket_name and key):
+                # Not deleting this message, as it's non-conforming. Check this logic
+                raise SQStoDCException(
+                    "No bucket name or key in message, are you sure this is a bucket notification?"
+                )
+
+            # If you specific a list of record paths, and there's no
+            # match in them for the key, then we skip this one forever
+            if record_path is not None and not any(
+                [PurePath(key).match(p) for p in record_path]
+            ):
+                message.delete()
+                raise SQStoDCException(
+                    f"Key: {key} not in specified list of record_paths, ignoring it."
+                )
+
+            # We have enough information to proceed, get the key and extract
+            # the contents...
+            try:
+                s3 = boto3.resource("s3")
+                obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
+                data = load(obj["Body"].read())
+                uri = f"s3://{bucket_name}/{key}"
+            except Exception as e:
+                raise SQStoDCException(
+                    f"Exception thrown when trying to load s3 object: '{e}'\n"
+                )
+    else:
+        raise SQStoDCException(
+            f"Attempted to get metadata from record when no record key exists in message."
+        )
 
     return data, uri
+
 
 def get_uri(metadata, rel_value):
     uri = None
@@ -138,14 +154,16 @@ def get_uri(metadata, rel_value):
 
 
 def do_archiving(metadata, dc: Datacube):
-    ids = [uuid.UUID(metadata.get("id"))]
-    if ids:
-        dc.index.datasets.archive(ids)
+    dataset_id = uuid.UUID(metadata.get("id"))
+    if dataset_id:
+        dc.index.datasets.archive([dataset_id])
     else:
-        raise SQStoDCException("Archive skipped as failed to get ID")
+        raise SQStoDCException(
+            f"Archive skipped as failed to dataset with ID: {dataset_id}"
+        )
 
 
-def do_indexing(
+def do_index_update_dataset(
     metadata: dict,
     uri,
     dc: Datacube,
@@ -203,10 +221,10 @@ def queue_to_odc(
             region_codes = set(pd.read_csv(region_code_list_uri).values.ravel())
         except FileNotFoundError as e:
             logging.error(f"Could not find region_code file with error: {e}")
-        assert (
-            len(region_codes) > 0
-        ), f"No items found in the region_code list at URI: {region_code_list_uri}"
-        logging.info(f"Loaded a list of {len(region_codes)} region_codes ")
+        if len(region_codes) == 0:
+            logging.warning(
+                f"No items found in the region_code list at URI: {region_code_list_uri}"
+            )
 
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
@@ -222,12 +240,17 @@ def queue_to_odc(
                 do_archiving(metadata, dc)
             else:
                 if not record_path:
-                    # Extract metadata and URI for indexing
-                    metadata, uri = get_metadata_uri(
+                    # Extract metadata and URI from a STAC or similar
+                    # json structure for indexing
+                    metadata, uri = handle_json_metadata(
                         metadata, transform, odc_metadata_link
                     )
                 else:
-                    metadata, uri = get_metadata_from_s3_record(metadata, record_path)
+                    # Extract metadata from an S3 bucket notification
+                    # or similar for indexing
+                    metadata, uri = handle_bucket_notification_message(
+                        metadata, record_path
+                    )
 
                 # If we have a region_code filter, do it here
                 if region_code_list_uri:
@@ -243,7 +266,7 @@ def queue_to_odc(
                         )
 
             # Index the dataset
-            do_indexing(metadata, uri, dc, doc2ds, update, allow_unsafe)
+            do_index_update_dataset(metadata, uri, dc, doc2ds, update, allow_unsafe)
             ds_success += 1
             # Success, so delete the message.
             message.delete()
