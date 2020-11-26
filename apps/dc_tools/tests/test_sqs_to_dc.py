@@ -14,8 +14,8 @@ from deepdiff import DeepDiff
 from datetime import date
 from odc.index.stac import stac_transform
 from odc.apps.dc_tools.sqs_to_dc import (
-    get_metadata_uri,
-    get_metadata_from_s3_record,
+    handle_json_message,
+    handle_bucket_notification_message,
 )
 
 
@@ -34,7 +34,7 @@ deep_diff = partial(
     date.today() > date(2020, 11, 10), reason="dataset has been rotated out"
 )
 def test_get_metadata_s3_object(sentinel_2_nrt_message, sentinel_2_nrt_record_path):
-    data, uri = get_metadata_from_s3_record(
+    data, uri = handle_bucket_notification_message(
         sentinel_2_nrt_message, sentinel_2_nrt_record_path
     )
 
@@ -42,7 +42,7 @@ def test_get_metadata_s3_object(sentinel_2_nrt_message, sentinel_2_nrt_record_pa
 
 
 def test_get_metadata_uri(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
-    actual_doc, uri = get_metadata_uri(
+    actual_doc, uri = handle_json_message(
         ga_ls8c_ard_3_message, None, "STAC-LINKS-REL:odc_yaml"
     )
 
@@ -72,7 +72,7 @@ def test_get_metadata_uri(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
 
 
 def test_odc_metadata_link(ga_ls8c_ard_3_message):
-    actual_doc, uri = get_metadata_uri(
+    actual_doc, uri = handle_json_message(
         ga_ls8c_ard_3_message, None, "STAC-LINKS-REL:odc_yaml"
     )
     assert (
