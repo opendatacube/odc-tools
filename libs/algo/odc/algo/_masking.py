@@ -8,8 +8,9 @@ import numpy as np
 import xarray as xr
 import dask
 import dask.array as da
+from dask.highlevelgraph import HighLevelGraph
 import numexpr as ne
-from ._dask import randomize
+from ._dask import randomize, _get_chunks_asarray
 
 
 def default_nodata(dtype):
@@ -468,17 +469,87 @@ def _first_valid_np(*aa: np.ndarray, nodata: Union[float, int, None] = None) -> 
     return out
 
 
-def _choose_with_custom_op(x: xr.DataArray, op) -> xr.DataArray:
+def _fuse_min_np(*aa: np.ndarray) -> np.ndarray:
+    """
+    Element wise min (propagates NaN values)
+    """
+    out = aa[0].copy()
+    for a in aa[1:]:
+        out = np.minimum(out, a, out=out)
+    return out
+
+
+def _fuse_max_np(*aa: np.ndarray) -> np.ndarray:
+    """
+    Element wise max (propagates NaN values)
+    """
+    out = aa[0].copy()
+    for a in aa[1:]:
+        out = np.maximum(out, a, out=out)
+    return out
+
+
+def _fuse_and_np(*aa: np.ndarray) -> np.ndarray:
+    """
+    Element wise bit and
+    """
+    assert len(aa) > 0
+    out = aa[0].copy()
+    for a in aa[1:]:
+        out &= a
+    return out
+
+
+def _fuse_or_np(*aa: np.ndarray) -> np.ndarray:
+    """
+    Element wise bit or
+    """
+    assert len(aa) > 0
+    out = aa[0].copy()
+    for a in aa[1:]:
+        out |= a
+    return out
+
+
+def _da_fuse_with_custom_op(xx: da.Array, op, name="fuse") -> da.Array:
+    """
+    Out[0, y, x] = op(In[0:1, y, x], In[1:2, y, x], In[2:3, y, x]...)
+
+    """
+    can_do_flat = all([ch == 1 for ch in xx.chunks[0]])
+    if not can_do_flat:
+        slices = [xx.data[i:i+1] for i in range(xx.shape[0])]
+        return da.map_blocks(op, *slices, name=name)
+
+    chunks, shapes = _get_chunks_asarray(xx)
+    dsk = {}
+    name = randomize(name)
+    for idx in np.ndindex(chunks.shape[1:]):
+        blocks = chunks[(slice(None), *idx)].ravel()
+        dsk[(name, 0, *idx)] = (op, *blocks)
+
+    dsk = HighLevelGraph.from_collections(name, dsk, dependencies=[xx])
+    shape = (1, *xx.shape[1:])
+    chunks = ((1,), *xx.chunks[1:])
+
+    return da.Array(dsk, name,
+                    shape=shape,
+                    dtype=xx.dtype,
+                    chunks=chunks)
+
+
+def _fuse_with_custom_op(x: xr.DataArray, op,
+                         name="fuse") -> xr.DataArray:
     """
     Out[0, y, x] = op(In[0:1, y, x], In[1:2, y, x], In[2:3, y, x]...)
 
     Expects data in _,y,x order. Works on Dask inputs too.
     """
-    slices = [x.data[i:i+1]
-              for i in range(x.shape[0])]
-    if dask.is_dask_collection(x):
-        data = da.map_blocks(op, *slices)
+    if dask.is_dask_collection(x.data):
+        data = _da_fuse_with_custom_op(x.data, op, name=name)
     else:
+        slices = [x.data[i:i+1]
+                  for i in range(x.shape[0])]
         data = op(*slices)
 
     coords = {k: v for k, v in x.coords.items()}
@@ -491,6 +562,43 @@ def _choose_with_custom_op(x: xr.DataArray, op) -> xr.DataArray:
                         name=x.name)
 
 
+def _xr_fuse(xx, op, name):
+    if isinstance(xx, xr.Dataset):
+        return xx.map(partial(_xr_fuse, op=op, name=name))
+    if xx.shape[0] <= 1:
+        return xx
+
+    return _fuse_with_custom_op(xx, op, name=name)
+
+
+def _or_fuser(xx):
+    """
+    meant to be called by `xx.groupby(..).map(_or_fuser)`
+    """
+    return _xr_fuse(xx, _fuse_or_np, "fuse_or")
+
+
+def _and_fuser(xx):
+    """
+    meant to be called by `xx.groupby(..).map(_and_fuser)`
+    """
+    return _xr_fuse(xx, _fuse_and_np, "fuse_and")
+
+
+def _min_fuser(xx):
+    """
+    meant to be called by `xx.groupby(..).map(_min_fuser)`
+    """
+    return _xr_fuse(xx, _fuse_min_np, "fuse_min")
+
+
+def _max_fuser(xx):
+    """
+    meant to be called by `xx.groupby(..).map(_max_fuser)`
+    """
+    return _xr_fuse(xx, _fuse_max_np, "fuse_max")
+
+
 def choose_first_valid(x: xr.DataArray, nodata=None) -> xr.DataArray:
     """
     ``Out[0, y, x] = In[i, y, x]`` where ``i`` is index of the first slice
@@ -501,4 +609,15 @@ def choose_first_valid(x: xr.DataArray, nodata=None) -> xr.DataArray:
     if nodata is None:
         nodata = x.attrs.get('nodata', None)
 
-    return _choose_with_custom_op(x, partial(_first_valid_np, nodata=nodata))
+    return _fuse_with_custom_op(x, partial(_first_valid_np, nodata=nodata), name="choose_first_valid")
+
+
+def _nodata_fuser(xx, **kw):
+    """
+    meant to be called by `xx.groupby(..).map(_nodata_fuser)`
+    """
+    if isinstance(xx, xr.Dataset):
+        return xx.map(choose_first_valid, **kw)
+    if xx.shape[0] <= 1:
+        return xx
+    return choose_first_valid(xx, **kw)
