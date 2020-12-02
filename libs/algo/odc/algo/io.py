@@ -1,6 +1,5 @@
 from typing import Optional, List, Iterable, Union, Dict, Tuple, Callable
 import xarray as xr
-import numpy as np
 
 from odc.index import group_by_nothing, solar_offset
 from odc.algo import enum_to_bool, xr_reproject
@@ -8,7 +7,7 @@ from datacube import Datacube
 from datacube.model import Dataset
 from datacube.utils.geometry import GeoBox
 from datacube.testutils.io import native_geobox
-from ._masking import choose_first_valid, _choose_with_custom_op
+from ._masking import _max_fuser, _nodata_fuser
 
 
 def compute_native_load_geobox(dst_geobox: GeoBox,
@@ -36,17 +35,6 @@ def _split_by_grid(xx: xr.DataArray) -> List[xr.DataArray]:
 
     return [extract(ii)
             for ii in xx.groupby(xx.grid).groups.values()]
-
-
-def _nodata_fuser(xx, **kw):
-    """
-    meant to be called by `xx.groupby(..).map(_nodata_fuser)`
-    """
-    if isinstance(xx, xr.Dataset):
-        return xx.map(choose_first_valid, **kw)
-    if xx.shape[0] <= 1:
-        return xx
-    return choose_first_valid(xx, **kw)
 
 
 def _load_with_native_transform_1(sources: xr.DataArray,
@@ -156,50 +144,6 @@ def load_with_native_transform(dss: List[Dataset],
     # TODO: probably want to replace spec MultiIndex with just `time` component
 
     return xx
-
-
-def _choose_min(*aa: np.ndarray) -> np.ndarray:
-    """
-    Element wise min (propagates NaN values)
-    """
-    out = aa[0].copy()
-    for a in aa[1:]:
-        out = np.minimum(out, a, out=out)
-    return out
-
-
-def _min_fuser(xx):
-    """
-    meant to be called by `xx.groupby(..).map(_min_fuser)`
-    """
-    if isinstance(xx, xr.Dataset):
-        return xx.map(_min_fuser)
-    if xx.shape[0] <= 1:
-        return xx
-
-    return _choose_with_custom_op(xx, _choose_min)
-
-
-def _choose_max(*aa: np.ndarray) -> np.ndarray:
-    """
-    Element wise max (propagates NaN values)
-    """
-    out = aa[0].copy()
-    for a in aa[1:]:
-        out = np.maximum(out, a, out=out)
-    return out
-
-
-def _max_fuser(xx):
-    """
-    meant to be called by `xx.groupby(..).map(_max_fuser)`
-    """
-    if isinstance(xx, xr.Dataset):
-        return xx.map(_max_fuser)
-    if xx.shape[0] <= 1:
-        return xx
-
-    return _choose_with_custom_op(xx, _choose_max)
 
 
 def load_enum_mask(dss: List[Dataset],
