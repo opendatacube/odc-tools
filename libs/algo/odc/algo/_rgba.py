@@ -127,3 +127,39 @@ def to_rgba(ds: xr.Dataset,
                         dims=dims,
                         attrs=attrs)
     return rgba
+
+
+def colorize(x: xr.DataArray,
+             cmap: np.ndarray,
+             attrs=None) -> xr.DataArray:
+    """
+    Map categorical values from x to RGBA according to cmap lookup table
+
+    :param x: Input xarray data array (can be Dask)
+    :param cmap: Lookup table cmap[x] -> RGB(A)
+    :param attrs: xarray attributes table, if not supplied input attributes are copied across
+    """
+    assert cmap.ndim == 2
+    assert cmap.shape[1] in (3, 4)
+
+    if attrs is None:
+        attrs = x.attrs
+
+    dims = x.dims+('band',)
+    coords = dict(x.coords.items())
+    coords['band'] = ['r', 'g', 'b', 'a']
+
+    if dask.is_dask_collection(x.data):
+        data = da.map_blocks(lambda x: cmap[x],
+                             x.data,
+                             dtype=cmap.dtype,
+                             new_axis=[x.data.ndim],
+                             chunks=x.chunks+(cmap.shape[1],),
+                             name=randomize("colorize"))
+    else:
+        data = cmap[x.data]
+
+    return xr.DataArray(data=data,
+                        dims=dims,
+                        coords=coords,
+                        attrs=attrs)
