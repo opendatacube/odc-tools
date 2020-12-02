@@ -152,6 +152,12 @@ def cli(
 
     # Consume generator and fetch YAML's
     dc = Datacube()
+    odc_products = dc.list_products().name.values
+
+    assert set(candidate_products).issubset(
+        set(odc_products)
+    ), f"{candidate_products} is not a subset of {odc_products}"
+
     added, failed = dump_to_odc(
         fetcher(s3_url_stream),
         dc,
