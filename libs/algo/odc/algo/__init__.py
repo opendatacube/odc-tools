@@ -43,6 +43,7 @@ from ._rgba import (
     is_rgb,
     to_rgba,
     to_rgba_np,
+    colorize,
 )
 
 from ._warp import (
@@ -78,5 +79,6 @@ __all__ = (
     "is_rgb",
     "to_rgba",
     "to_rgba_np",
+    "colorize",
     "xr_reproject",
 )
