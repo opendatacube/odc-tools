@@ -29,7 +29,7 @@ def mk_cbk_ui(width='100%'):
         pbar.value = n
 
         lbl_right.value = "{:d} of {:d}".format(n, ntotal)
-        lbl_left.value = "FPS: {:.1f}".format(n/elapsed)
+        lbl_left.value = "FPS: {:.1f} ({:0.1f} s remaining)".format(n/elapsed, elapsed/n * (ntotal - n))
 
     return ui, cbk
 
