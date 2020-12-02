@@ -356,18 +356,28 @@ def enum_to_bool(mask: xr.DataArray,
 
         classes = classes + _get_enum_values(categories_s, flags, flag=flag_name)
 
-    bmask = xr.apply_ufunc(_enum_to_mask_numexpr,
-                           mask,
-                           kwargs=dict(classes=classes,
-                                       invert=invert,
-                                       value_false=value_false,
-                                       value_true=value_true,
-                                       dtype=dtype),
-                           keep_attrs=True,
-                           dask='parallelized',
-                           output_dtypes=[dtype])
-    bmask.attrs.pop('flags_definition', None)
-    bmask.attrs.pop('nodata', None)
+    op = partial(_enum_to_mask_numexpr,
+                 classes=classes,
+                 invert=invert,
+                 value_false=value_false,
+                 value_true=value_true,
+                 dtype=dtype)
+
+    if dask.is_dask_collection(mask.data):
+        data = da.map_blocks(op, mask.data,
+                             name=randomize("enum_to_bool"),
+                             dtype=dtype)
+    else:
+        data = op(mask)
+
+    attrs = dict(mask.attrs)
+    attrs.pop('flags_definition', None)
+    attrs.pop('nodata', None)
+
+    bmask = xr.DataArray(data=data,
+                         dims=mask.dims,
+                         coords=mask.coords,
+                         attrs=attrs)
 
     return bmask
 
