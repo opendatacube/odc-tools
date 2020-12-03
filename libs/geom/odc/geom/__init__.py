@@ -2,14 +2,16 @@
 
 """
 
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 from affine import Affine
 import math
 from datacube.utils.geometry import (
     decompose_rws,
     split_translation,
     GeoBox,
-    CRS)
+    CRS,
+    SomeCRS)
+from datacube.utils.geometry._base import _norm_crs_or_error
 
 F4 = Tuple[float, float, float, float]
 F6 = Tuple[float, float, float, float, float, float]
@@ -157,3 +159,47 @@ def normalised_grid(geobox: GeoBox) -> BoundlessPixelPlane:
     """
     return BoundlessPixelPlane(geobox.crs,
                                _norm_grid(geobox.affine))
+
+
+def gbox_reproject(geobox: GeoBox,
+                   crs: SomeCRS,
+                   resolution: Optional[Tuple[int, int]] = None,
+                   pad: int = 0,
+                   pad_wh: Union[int, Tuple[int, int]] = 16) -> GeoBox:
+    """
+    Compute GeoBox in a given projection that fully encloses footprint of the source GeoBox.
+
+    :param geobox: Source GeoBox
+
+    :param crs: CRS of the output GeoBox
+
+    :param resolution: Desired output resolution (defaults to source
+                       resolution, if source and destination projections share
+                       common units)
+
+    :param pad: Padding in pixels of output GeoBox
+
+    :param pad_wh: Expand output GeoBox some more such that (W%pad_wh) == 0 and (H%pad_wh) == 0
+    """
+    from datacube.utils.geometry import gbox
+
+    crs = _norm_crs_or_error(crs)
+
+    if resolution is None:
+        if geobox.crs.units == crs.units:
+            resolution = geobox.resolution
+        else:
+            raise NotImplementedError(
+                "Source and destination projections have different units: have to supply desired output resolution"
+            )
+
+    out = GeoBox.from_geopolygon(geobox.extent, resolution, crs)
+    if pad > 0:
+        out = gbox.pad(out, pad)
+    if pad_wh:
+        if isinstance(pad_wh, int):
+            pad_wh = max(1, pad_wh)
+            pad_wh = (pad_wh, pad_wh)
+        out = gbox.pad_wh(out, *pad_wh)
+
+    return out
