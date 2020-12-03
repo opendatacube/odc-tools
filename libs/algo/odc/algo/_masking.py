@@ -334,7 +334,8 @@ def enum_to_bool(mask: xr.DataArray,
                  flag_name: str = '',
                  value_true: int = 1,
                  value_false: int = 0,
-                 dtype: Union[str, np.dtype] = 'bool') -> xr.DataArray:
+                 dtype: Union[str, np.dtype] = 'bool',
+                 name: str = "enum_to_bool") -> xr.DataArray:
     """
     This method works for fmask and other "enumerated" masks
 
@@ -366,7 +367,7 @@ def enum_to_bool(mask: xr.DataArray,
 
     if dask.is_dask_collection(mask.data):
         data = da.map_blocks(op, mask.data,
-                             name=randomize("enum_to_bool"),
+                             name=randomize(name),
                              dtype=dtype)
     else:
         data = op(mask)
