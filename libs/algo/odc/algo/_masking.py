@@ -287,6 +287,57 @@ def _enum_to_mask_numexpr(mask: np.ndarray,
     return out
 
 
+def xr_apply_morph_op(xx: xr.DataArray,
+                      operation: str,
+                      radius: int = 1,
+                      **kw) -> xr.DataArray:
+    """
+    Apply morphological operation to Dask based xarray Array
+
+    :param kw: passed on to the underlying operation
+      border_value
+
+    """
+    from skimage.morphology import disk
+    import dask_image.ndmorph
+
+    ops = {
+        "dilation": dask_image.ndmorph.binary_dilation,
+        "erosion": dask_image.ndmorph.binary_erosion,
+        "opening": dask_image.ndmorph.binary_opening,
+        "closing": dask_image.ndmorph.binary_closing,
+    }
+    assert dask.is_dask_collection(xx.data)
+    assert operation in ops
+
+    kernel = disk(radius)
+    while kernel.ndim < xx.ndim:
+        kernel = kernel[np.newaxis]
+
+    data = ops[operation](xx.data, kernel, **kw)
+
+    return xr.DataArray(data=data,
+                        coords=xx.coords,
+                        dims=xx.dims,
+                        attrs=xx.attrs)
+
+
+def binary_erosion(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
+    return xr_apply_morph_op(xx, "erosion", radius, **kw)
+
+
+def binary_dilation(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
+    return xr_apply_morph_op(xx, "dilation", radius, **kw)
+
+
+def binary_opening(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
+    return xr_apply_morph_op(xx, "opening", radius, **kw)
+
+
+def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
+    return xr_apply_morph_op(xx, "closing", radius, **kw)
+
+
 def cloud_buffer(mask: xr.DataArray,
                  radius: int,
                  dilation_radius: int = None) -> xr.DataArray:
