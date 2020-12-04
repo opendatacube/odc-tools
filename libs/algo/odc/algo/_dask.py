@@ -195,6 +195,13 @@ def _get_all_chunks(xx: da.Array, flat: bool = True) -> List[Any]:
     return list_reshape(chunks, shape_in_chunks)
 
 
+def is_single_chunk_xy(x: da.Array):
+    """
+    True if last 2 dimensions are 1x1 sized in blocks
+    """
+    return x.numblocks[-2:] == (1, 1)
+
+
 def empty_maker(fill_value, dtype, dsk, name='empty'):
     cache = {}
 
