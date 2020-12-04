@@ -490,7 +490,7 @@ def reshape_yxbt(xx: xr.Dataset,
         raise ValueError("Currently this code works only on Dask inputs")
 
     if not all(dv.data.numblocks[0] == dv.data.shape[0]
-           for dv in xx.data_vars.values()):
+               for dv in xx.data_vars.values()):
         raise ValueError("All input bands should have chunk=1 for the first dimension")
 
     name0 = name
