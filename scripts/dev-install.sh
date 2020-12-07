@@ -15,8 +15,8 @@ install_all_in_edit_mode () {
     # do double install
     #  1. without deps -- install odc-* but none of their dependents
     #  2. with deps -- now that all `odc-*` are here, reinstall getting all other deps
-    pip install --no-deps -r "${reqs}"
-    pip install -r "${reqs}"
+    python3 -m pip install --no-deps -r "${reqs}"
+    python3 -m pip install -r "${reqs}"
 
     rm "${reqs}"
 }

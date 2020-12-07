@@ -22,10 +22,16 @@ def default_nodata(dtype):
     return dtype.type(0)
 
 
-def keep_good_np(xx, where, nodata):
-    yy = np.full_like(xx, nodata)
-    np.copyto(yy, xx, where=where)
-    return yy
+def keep_good_np(xx, where, nodata, out=None):
+    if out is None:
+        out = np.full_like(xx, nodata)
+    else:
+        assert out.shape == xx.shape
+        assert out.dtype == xx.dtype
+        assert out is not xx
+        out[:] = nodata
+    np.copyto(out, xx, where=where)
+    return out
 
 
 def keep_good_only(x, where,
@@ -76,11 +82,14 @@ def keep_good_only(x, where,
                         name=x.name)
 
 
-def from_float_np(x, dtype, nodata, scale=1, offset=0, where=None):
+def from_float_np(x, dtype, nodata, scale=1, offset=0, where=None, out=None):
     scale = np.float32(scale)
     offset = np.float32(offset)
 
-    out = np.empty_like(x, dtype=dtype)
+    if out is None:
+        out = np.empty_like(x, dtype=dtype)
+    else:
+        assert out.shape == x.shape
 
     params = dict(x=x,
                   nodata=nodata,
@@ -104,7 +113,7 @@ def from_float_np(x, dtype, nodata, scale=1, offset=0, where=None):
     return out
 
 
-def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32'):
+def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32', out=None):
     float_type = np.dtype(dtype).type
 
     _nan = float_type(np.nan)
@@ -116,7 +125,10 @@ def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32'):
                   offset=offset,
                   x=x,
                   nodata=nodata)
-    out = np.empty_like(x, dtype=dtype)
+    if out is None:
+        out = np.empty_like(x, dtype=dtype)
+    else:
+        assert out.shape == x.shape
 
     if nodata is None:
         return ne.evaluate('x*scale + offset',
@@ -135,8 +147,8 @@ def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32'):
                            local_dict=params)
 
 
-def to_f32_np(x, nodata=None, scale=1, offset=0):
-    return to_float_np(x, nodata=nodata, scale=scale, offset=offset, dtype='float32')
+def to_f32_np(x, nodata=None, scale=1, offset=0, out=None):
+    return to_float_np(x, nodata=nodata, scale=scale, offset=offset, dtype='float32', out=out)
 
 
 def to_float(x, scale=1, offset=0, dtype='float32'):
