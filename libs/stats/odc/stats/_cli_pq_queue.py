@@ -1,5 +1,7 @@
 import sys
 import click
+import logging
+
 from ._cli_common import main, parse_all_tasks
 
 from odc.aws.queue import get_messages, get_queue, publish_message
@@ -56,49 +58,31 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
     if verbose:
         print(repr(rdr))
 
+    def get_task_from_message(message):
+        if ',' in message.body:
+            msg = message.body.split(',')
+            message = (msg[0], int(msg[1]), int(msg[2]))
+            return message
+
     def pq_proc(task):
         ds_in = pq_input_data(task, resampling=resampling)
         ds = pq_reduce(ds_in)
         return ds
 
-    def start_streaming(task, product):
+    def start_streaming(task, product, client):
         _task = rdr.stream(task, product)
-        client = None
-        if not dryrun:
-            if verbose:
-                print("Starting local Dask cluster")
 
-            client = start_local_dask(threads_per_worker=threads,
-                                      mem_safety_margin='1G')
-
-            # TODO: aws_unsigned is not always desirable
-            configure_s3_access(aws_unsigned=True,
-                                cloud_defaults=True,
-                                client=client)
-            if verbose:
-                print(client)
-
-            results = process_tasks(_task, pq_proc, client, sink,
-                                    check_exists=not overwrite,
-                                    verbose=verbose)
-        if not dryrun and verbose:
-            results = tqdm(results, total=1)
-
-        for p in results:
-            if verbose and not dryrun:
-                print(p)
-
+        # TODO: aws_unsigned is not always desirable
+        configure_s3_access(aws_unsigned=True,
+                            cloud_defaults=True,
+                            client=client)
         if verbose:
-            print("Exiting")
+            print(client)
 
-        if client is not None:
-            client.close()
-
-    queue = get_queue(queue)
-    tasks = [x for x in get_messages(queue, 2)]
-
-    if verbose:
-        print(f"Read {len(tasks):,d} tasks from queue.")
+        results = process_tasks(_task, pq_proc, client, sink,
+                                check_exists=not overwrite,
+                                verbose=verbose)
+        return(results)
 
     sink = S3COGSink(cog_opts=COG_OPTS,
                      public=public)
@@ -112,5 +96,38 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
         creds_rw = sink._creds
         print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
 
-    for tsk in tasks:
-        start_streaming(tsk, product)
+    queue = get_queue(queue)
+
+    successes = 0
+    errors = 0
+    limit = 3
+
+    client = None
+    if not dryrun:
+        if verbose:
+            print("Starting local Dask cluster")
+
+        client = start_local_dask(threads_per_worker=threads,
+                                    mem_safety_margin='1G')
+        for message in get_messages(queue, limit):
+            try:
+                task = get_task_from_message(message)
+                results = start_streaming(task, product, client)
+                for p in results:
+                   logging.info('{p} completed')
+                   message.delete()
+            except Exception as e:
+                errors += 1
+                logging.error(
+                    f"Failed to run {task} on dataset with error {e}"
+                )
+
+    if errors > 0:
+        logging.error(f"There were {errors} tasks that failed to execute.")
+        sys.exit(errors)
+    if limit and (errors + successes) < limit:
+        logging.warning(
+            f"There were {errors} tasks out of {limit} failed "
+        )
+    if client is not None:
+        client.close()
