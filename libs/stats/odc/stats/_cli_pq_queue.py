@@ -69,7 +69,7 @@ def run_pq_queue(
         ds = pq_reduce(ds_in)
         return ds
 
-    def start_streaming(task, product, client):
+    def start_streaming(task, product, client, sink):
         _task = rdr.stream(task, product)
 
         # TODO: aws_unsigned is not always desirable
@@ -106,7 +106,8 @@ def run_pq_queue(
         for message in get_messages(queue, limit):
             try:
                 task = get_task_from_message(message)
-                results = start_streaming(task, product, client)
+                results = start_streaming(task, product, client, sink)
+
                 for p in results:
                     logging.info(f"{message} completed")
                     message.delete()

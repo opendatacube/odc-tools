@@ -56,38 +56,35 @@ def process_tasks(
                 return (None, task, path)
 
         ds = proc(task)
-        return (ds, task, path)
+        yield (ds, task, path)
 
     in_flight_cogs: Set[Future] = set()
-    ds, task, path = prep_stage(task, proc)
-    if ds is None:
-        if verbose:
-            print(f"..skipping: {path} (exists already)")
-        return path
 
-    if chunked_persist > 0:
-        assert isinstance(ds, xr.DataArray)
-        ds = chunked_persist_da(ds, chunked_persist, client)
-    else:
-        ds = client.persist(ds, fifo_timeout="1ms")
+    for ds, task, path in prep_stage(task, proc):
+        if ds is None:
+            if verbose:
+                print(f"..skipping: {path} (exists already)")
+            return path
 
-    if len(in_flight_cogs):
-        done, in_flight_cogs = drain(in_flight_cogs, 1.0)
-        for r in done:
-            yield r
+        if chunked_persist > 0:
+            assert isinstance(ds, xr.DataArray)
+            ds = chunked_persist_da(ds, chunked_persist, client)
+        else:
+            ds = client.persist(ds, fifo_timeout="1ms")
 
-    if isinstance(ds, xr.DataArray):
-        attrs = ds.attrs.copy()
-        ds = ds.to_dataset(dim="band")
-        for dv in ds.data_vars.values():
-            dv.attrs.update(attrs)
+        if isinstance(ds, xr.DataArray):
+            attrs = ds.attrs.copy()
+            ds = ds.to_dataset(dim="band")
+            for dv in ds.data_vars.values():
+                dv.attrs.update(attrs)
 
-    cog = client.compute(sink.dump(task, ds), fifo_timeout="1ms")
-    rr = dask_wait(ds)
-    assert len(rr.not_done) == 0
-    del ds, rr
-    in_flight_cogs.add(cog)
+        cog = client.compute(sink.dump(task, ds), fifo_timeout="1ms")
+        rr = dask_wait(ds)
 
-    done, _ = drain(in_flight_cogs)
-    for r in done:
-        yield r
+        assert len(rr.not_done) == 0
+        del ds, rr
+        in_flight_cogs.add(cog)
+        done, _ = drain(in_flight_cogs)
+
+        print(done[0])
+        return done
