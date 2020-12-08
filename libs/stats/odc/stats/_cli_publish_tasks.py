@@ -7,13 +7,17 @@ from ._cli_run_pq import run_pq
 from ._cli_common import main, parse_all_tasks
 from .tasks import TaskReader
 
-@main.command('publish_tasks')
-@click.argument('db', type=str)
-@click.argument('queue', type=str)
 
+@main.command("publish-tasks")
+@click.argument("db", type=str)
+@click.argument("queue", type=str)
 def publish_to_queue(db, queue):
+    def approximate_num_messages(queue):
+        return int(queue.attributes.get("ApproximateNumberOfMessages"))
+
     def get_tasks(cache_file):
         rdr = TaskReader(cache_file)
+        print(rdr)
         tasks = rdr.all_tiles
         print(f"Found {len(tasks):,d} tasks in the file")
         return tasks
@@ -22,6 +26,8 @@ def publish_to_queue(db, queue):
     tasks = get_tasks(db)
     for ta in tasks:
         task = (ta[0], str(ta[1]), str(ta[2]))
-        task = ','.join(task)
+        task = ",".join(task)
+        # ToDo: add a check that ensures a message has been delivered
         publish_message(queue, task)
 
+    assert approximate_num_messages(queue) == len(tasks)

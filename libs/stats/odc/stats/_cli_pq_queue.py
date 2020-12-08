@@ -6,15 +6,18 @@ from ._cli_common import main, parse_all_tasks
 
 from odc.aws.queue import get_messages, get_queue, publish_message
 
-@main.command('run-pq-queue')
-@click.option('--verbose', '-v', is_flag=True, help='Be verbose')
-@click.option('--overwrite', is_flag=True, help='Do not check if output already exists')
-@click.option('--location', type=str)
-@click.option('--threads', type=int, help='Number of worker threads', default=0)
-@click.argument('cache_file', type=str, nargs=1)
-@click.argument('queue', type=str, nargs=1)
 
-def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
+@main.command("run-pq-queue")
+@click.option("--verbose", "-v", is_flag=True, help="Be verbose")
+@click.option("--overwrite", is_flag=True, help="Do not check if output already exists")
+@click.option("--output-location", type=str)
+@click.option("--limit", type=int)
+@click.option("--threads", type=int, help="Number of worker threads", default=0)
+@click.argument("cache_file", type=str, nargs=1)
+@click.argument("queue", type=str, nargs=1)
+def run_pq_queue(
+    cache_file, queue, verbose, limit, threads, overwrite, output_location
+):
     dryrun = False
     public = False
     """
@@ -45,22 +48,19 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
     from datacube.utils.rio import configure_s3_access
 
     # config
-    resampling = 'nearest'
-    COG_OPTS = dict(compress='deflate',
-                    predict=2,
-                    zlevel=6,
-                    blocksize=800)
+    resampling = "nearest"
+    COG_OPTS = dict(compress="deflate", predict=2, zlevel=6, blocksize=800)
     # ..
 
     rdr = TaskReader(cache_file)
-    product = pq_product(location=location)
+    product = pq_product(location=output_location)
 
     if verbose:
         print(repr(rdr))
 
     def get_task_from_message(message):
-        if ',' in message.body:
-            msg = message.body.split(',')
+        if "," in message.body:
+            msg = message.body.split(",")
             message = (msg[0], int(msg[1]), int(msg[2]))
             return message
 
@@ -73,61 +73,52 @@ def run_pq_queue(cache_file, queue, verbose, threads, overwrite, location):
         _task = rdr.stream(task, product)
 
         # TODO: aws_unsigned is not always desirable
-        configure_s3_access(aws_unsigned=True,
-                            cloud_defaults=True,
-                            client=client)
+        configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
         if verbose:
             print(client)
 
-        results = process_tasks(_task, pq_proc, client, sink,
-                                check_exists=not overwrite,
-                                verbose=verbose)
-        return(results)
+        results = process_tasks(
+            _task, pq_proc, client, sink, check_exists=not overwrite, verbose=verbose
+        )
+        yield results
 
-    sink = S3COGSink(cog_opts=COG_OPTS,
-                     public=public)
-
-    if product.location.startswith('s3:'):
+    sink = S3COGSink(cog_opts=COG_OPTS, public=public)
+    if product.location.startswith("s3:"):
         if not sink.verify_s3_credentials():
             print("Failed to load S3 credentials")
             sys.exit(2)
 
     if verbose and sink._creds:
         creds_rw = sink._creds
-        print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
+        print(f"creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}")
 
     queue = get_queue(queue)
 
     successes = 0
     errors = 0
-    limit = 3
 
     client = None
     if not dryrun:
         if verbose:
             print("Starting local Dask cluster")
 
-        client = start_local_dask(threads_per_worker=threads,
-                                    mem_safety_margin='1G')
+        client = start_local_dask(threads_per_worker=threads, mem_safety_margin="1G")
         for message in get_messages(queue, limit):
             try:
                 task = get_task_from_message(message)
                 results = start_streaming(task, product, client)
                 for p in results:
-                   logging.info('{p} completed')
-                   message.delete()
+                    logging.info(f"{message} completed")
+                    message.delete()
+                    successes += 1
             except Exception as e:
                 errors += 1
-                logging.error(
-                    f"Failed to run {task} on dataset with error {e}"
-                )
+                logging.error(f"Failed to run {task} on dataset with error {e}")
 
     if errors > 0:
         logging.error(f"There were {errors} tasks that failed to execute.")
         sys.exit(errors)
     if limit and (errors + successes) < limit:
-        logging.warning(
-            f"There were {errors} tasks out of {limit} failed "
-        )
+        logging.warning(f"There were {errors} tasks out of {limit} failed ")
     if client is not None:
         client.close()
