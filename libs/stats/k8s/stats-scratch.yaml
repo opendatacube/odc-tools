@@ -5,6 +5,9 @@ metadata:
   namespace: processing
   labels:
     app.kubernetes.io/name: stats-scratch
+  annotations:
+    fluxcd.io/ignore: "true"
+    fluxcd.io/automated: "false"
 spec:
   selector:
     matchLabels:
@@ -15,46 +18,44 @@ spec:
       labels:
         app: stats-scratch
     spec:
+      tolerations:
+        - key: "hub.jupyter.org/dedicated"
+          operator: "Equal"
+          value: "worker"
+          effect: "NoSchedule"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            # - matchExpressions:
-            #   - key: nodetype
-            #     operator: In
-            #     values:
-            #     - spot
             - matchExpressions:
+              - key: nodetype
+                operator: In
+                values:
+                - spot
               - key: nodegroup
                 operator: In
                 values:
-                - memory-optimised-r5-8xl
-                # - compute-optimised-m5-16xl
+                - sandbox        
+
       volumes:
-        - name: stats-persist-volume
+        - name: volume-home
           persistentVolumeClaim:
-            claimName: stats-persist-volume
+            claimName: claim-ebs-kirill
 
       containers:
       - name: sandbox
         image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/geoscienceaustralia/sandbox:latest
         imagePullPolicy: IfNotPresent
 
-        resources:
-            requests:
-              # memory: 233Gi
-              # cpu: 63000m
-
-              memory: 233Gi
-              cpu: 31000m
-
-              # memory: 4Gi
-              # cpu: 2
-
         volumeMounts:
-          - name: stats-persist-volume
+          - name: volume-home
             mountPath: /home/jovyan
 
+        resources:
+            requests:
+              ## r5.4xl
+              cpu: 15100m
+              memory: 119Gi
         env:
             - name: DB_HOSTNAME
               value: db-reader
@@ -95,22 +96,7 @@ spec:
         args:
             - '-c'
             - |
-                ## odc_libs=$(pip list | awk '/^odc-/{print $1}')
-                ## pip install -U \
-                ##   --no-deps \
-                ##   --extra-index-url="https://packages.dea.ga.gov.au" \
-                ##   'datacube[performance,s3]>=1.8.3.dev' \
-                ##   ${odc_libs}
-
                 [ -f /build.info ] && cat /build.info
-
-                ## aws s3 cp "${TASK_DB_S3}" tasks.db
-                (cd odc-tools && ./scripts/dev-install.sh) || true
-                #pip install "https://packages.dea.ga.gov.au/hdstats/hdstats-0.1.7.post4.tar.gz"
-
-                ## (git clone https://github.com/opendatacube/odc-tools.git -b stats \
-                ## && cd odc-tools \
-                ## && ./scripts/dev-install.sh)
 
                 while true ; do
                    for i in {1..10}; do
