@@ -34,13 +34,16 @@ info:
 	$(k8) get "deployments/$(id)"
 	$(k8) get pods -l "app=$(id)"
 
+describe:
+	$(k8) describe pods -l "app=$(id)"
+
 echo-pod:
 	@echo "$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')"
 
 exec-lab:
 	$(k8) exec -ti "$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')" -- jupyter-lab --port=$(labport) --ip=0.0.0.0 --no-browser
 fwd-lab:
-	$(k8) port-forward "$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')" $(labport):$(labport)
+	$(k8) port-forward "pod/$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')" $(labport):$(labport)
 
 exec:
 	$(k8) exec -ti "$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')" -- bash
