@@ -37,7 +37,7 @@ def drain(
     return done, rr.not_done
 
 
-def process_tasks(
+def process_task(
     task: Task,
     proc: TaskProc,
     client: Client,
@@ -60,7 +60,7 @@ def process_tasks(
     in_flight_cogs: Set[Future] = set()
 
     ds, task, path = prep_stage(task, proc)
-    # for ds, task, path in prep_stage(task, proc):
+
     if ds is None:
         if verbose:
             print(f"..skipping: {path} (exists already)")
@@ -83,7 +83,6 @@ def process_tasks(
 
     assert len(rr.not_done) == 0
     del ds, rr
-    # in_flight_cogs.add(cog)
     done, _ = drain(cog)
 
     print(done)

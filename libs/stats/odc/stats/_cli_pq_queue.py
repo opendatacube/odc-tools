@@ -18,7 +18,6 @@ from odc.aws.queue import get_messages, get_queue, publish_message
 def run_pq_queue(
     cache_file, queue, verbose, limit, threads, overwrite, output_location
 ):
-    dryrun = False
     public = False
     """
     Run Pixel Quality stats
@@ -42,7 +41,7 @@ def run_pq_queue(
     from functools import partial
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
-    from .proc import process_tasks
+    from .proc import process_task
     from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
@@ -52,6 +51,8 @@ def run_pq_queue(
     COG_OPTS = dict(compress="deflate", predict=2, zlevel=6, blocksize=800)
     # ..
 
+    # TODO: Handle cache file from LOCAL or S3, maybe using
+    # https://github.com/opendatacube/datacube-alchemist/blob/main/datacube_alchemist/worker.py#L44
     rdr = TaskReader(cache_file)
     product = pq_product(location=output_location)
 
@@ -69,19 +70,6 @@ def run_pq_queue(
         ds = pq_reduce(ds_in)
         return ds
 
-    def start_streaming(task, product, client, sink):
-        _task = rdr.stream(task, product)
-
-        # TODO: aws_unsigned is not always desirable
-        configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
-        if verbose:
-            print(client)
-
-        result = process_tasks(
-            _task, pq_proc, client, sink, check_exists=not overwrite, verbose=verbose
-        )
-        return result
-
     sink = S3COGSink(cog_opts=COG_OPTS, public=public)
     if product.location.startswith("s3:"):
         if not sink.verify_s3_credentials():
@@ -98,22 +86,35 @@ def run_pq_queue(
     errors = 0
 
     client = None
-    if not dryrun:
-        if verbose:
-            print("Starting local Dask cluster")
 
-        client = start_local_dask(threads_per_worker=threads, mem_safety_margin="1G")
-        for message in get_messages(queue, limit):
-            try:
-                task = get_task_from_message(message)
-                result = start_streaming(task, product, client, sink)
-                if result:
-                    logging.info(f"{message} completed")
-                    message.delete()
-                    successes += 1
-            except Exception as e:
-                errors += 1
-                logging.error(f"Failed to run {task} on dataset with error {e}")
+    if verbose:
+        print("Starting local Dask cluster")
+
+    client = start_local_dask(threads_per_worker=threads, mem_safety_margin="1G")
+    for message in get_messages(queue, limit):
+        try:
+            task_def = get_task_from_message(message)
+            _task = rdr.load_tile(task_def, product)
+            configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
+            if verbose:
+                print(client)
+
+            result = process_task(
+                _task,
+                pq_proc,
+                client,
+                sink,
+                check_exists=not overwrite,
+                verbose=verbose,
+            )
+
+            if result:
+                logging.info(f"{message} completed")
+                message.delete()
+                successes += 1
+        except Exception as e:
+            errors += 1
+            logging.error(f"Failed to run {task} on dataset with error {e}")
 
     if errors > 0:
         logging.error(f"There were {errors} tasks that failed to execute.")
@@ -122,3 +123,4 @@ def run_pq_queue(
         logging.warning(f"There were {errors} tasks out of {limit} failed ")
     if client is not None:
         client.close()
+    rdr._delete_local_cache()
