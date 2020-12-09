@@ -13,16 +13,16 @@ TaskProc = Callable[[Task], Union[xr.Dataset, xr.DataArray]]
 
 
 def drain(
-    futures: Set[Future], timeout: Optional[float] = None
+    future: Future, timeout: Optional[float] = None
 ) -> Tuple[List[str], Set[Future]]:
     return_when = "FIRST_COMPLETED"
     if timeout is None:
         return_when = "ALL_COMPLETED"
 
     try:
-        rr = dask_wait(futures, timeout=timeout, return_when=return_when)
+        rr = dask_wait(future, timeout=timeout, return_when=return_when)
     except dask.distributed.TimeoutError:
-        return [], futures
+        return None, future
 
     for f in rr.done:
         try:
@@ -83,8 +83,8 @@ def process_tasks(
 
     assert len(rr.not_done) == 0
     del ds, rr
-    in_flight_cogs.add(cog)
-    done, _ = drain(in_flight_cogs)
+    # in_flight_cogs.add(cog)
+    done, _ = drain(cog)
 
     print(done)
     return done

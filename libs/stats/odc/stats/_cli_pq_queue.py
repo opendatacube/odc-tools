@@ -77,10 +77,10 @@ def run_pq_queue(
         if verbose:
             print(client)
 
-        results = process_tasks(
+        result = process_tasks(
             _task, pq_proc, client, sink, check_exists=not overwrite, verbose=verbose
         )
-        yield results
+        return result
 
     sink = S3COGSink(cog_opts=COG_OPTS, public=public)
     if product.location.startswith("s3:"):
@@ -106,9 +106,8 @@ def run_pq_queue(
         for message in get_messages(queue, limit):
             try:
                 task = get_task_from_message(message)
-                results = start_streaming(task, product, client, sink)
-
-                for p in results:
+                result = start_streaming(task, product, client, sink)
+                if result:
                     logging.info(f"{message} completed")
                     message.delete()
                     successes += 1
