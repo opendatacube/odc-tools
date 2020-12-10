@@ -19,7 +19,7 @@ setup(
         "odc_algo",
         "dataclasses",
         "tqdm",
-        "odc-aws",
+        "odc_aws",
     ],
     packages=["odc.stats"],
     zip_safe=False,
