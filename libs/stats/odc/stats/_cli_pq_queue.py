@@ -41,7 +41,7 @@ def run_pq_queue(
     from functools import partial
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
-    from .proc import process_task
+    from .proc import process_tasks
     from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
@@ -91,15 +91,16 @@ def run_pq_queue(
         print("Starting local Dask cluster")
 
     client = start_local_dask(threads_per_worker=threads, mem_safety_margin="1G")
+
     for message in get_messages(queue, limit):
         try:
             task_def = get_task_from_message(message)
-            _task = rdr.load_tile(task_def, product)
+            _task = rdr.stream([task_def], product)
             configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
             if verbose:
                 print(client)
 
-            result = process_task(
+            results = process_tasks(
                 _task,
                 pq_proc,
                 client,
@@ -107,14 +108,13 @@ def run_pq_queue(
                 check_exists=not overwrite,
                 verbose=verbose,
             )
-
-            if result:
+            for p in results:
                 logging.info(f"{message} completed")
                 message.delete()
                 successes += 1
         except Exception as e:
             errors += 1
-            logging.error(f"Failed to run {task} on dataset with error {e}")
+            logging.error(f"Failed to run {_task} on dataset with error {e}")
 
     if errors > 0:
         logging.error(f"There were {errors} tasks that failed to execute.")

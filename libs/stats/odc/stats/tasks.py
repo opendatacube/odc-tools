@@ -2,12 +2,12 @@ from typing import Optional, Tuple, Union, Callable, Any, Dict, List, Iterable, 
 from types import SimpleNamespace
 from collections import namedtuple
 from datetime import datetime
-from pathlib import Path
 import pickle
 import json
 import os
 import boto3
 import botocore
+from pathlib import Path
 from tqdm.auto import tqdm
 
 from odc.dscache import DatasetCache
@@ -268,7 +268,7 @@ class TaskReader:
     ):
         self.cache_path = None
         if isinstance(cache, str):
-            if "s3" in cache:
+            if "s3://" in cache:
                 self.cache_path = download_from_s3(cache)
                 cache = self.cache_path
             cache = DatasetCache.open_ro(cache)
@@ -326,8 +326,9 @@ class TaskReader:
             datasets=dss,
         )
 
-    def load_tile(
-        self, tile: TileIdx_txy, product: Optional[OutputProduct] = None
+    def stream(
+        self, tiles: Iterable[TileIdx_txy], product: Optional[OutputProduct] = None
     ) -> Iterator[Task]:
         product = self._resolve_product(product)
-        return self.load_task(tile, product)
+        for tidx in tiles:
+            yield self.load_task(tidx, product)

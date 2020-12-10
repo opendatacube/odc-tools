@@ -13,22 +13,23 @@ TaskProc = Callable[[Task], Union[xr.Dataset, xr.DataArray]]
 
 
 def drain(
-    future: Future, timeout: Optional[float] = None
+    futures: Set[Future], timeout: Optional[float] = None
 ) -> Tuple[List[str], Set[Future]]:
     return_when = "FIRST_COMPLETED"
     if timeout is None:
         return_when = "ALL_COMPLETED"
 
     try:
-        rr = dask_wait(future, timeout=timeout, return_when=return_when)
+        rr = dask_wait(futures, timeout=timeout, return_when=return_when)
     except dask.distributed.TimeoutError:
-        return None, future
+        return [], futures
 
+    done: List[str] = []
     for f in rr.done:
         try:
             path, ok = f.result()
             if ok:
-                done = path
+                done.append(path)
             else:
                 print(f"Failed to write: {path}")
         except Exception as e:
@@ -37,8 +38,19 @@ def drain(
     return done, rr.not_done
 
 
-def process_task(
-    task: Task,
+def _with_lookahead1(it: Iterable[Any]) -> Iterator[Any]:
+    NOT_SET = object()
+    prev = NOT_SET
+    for x in it:
+        if prev is not NOT_SET:
+            yield prev
+        prev = x
+    if prev is not NOT_SET:
+        yield prev
+
+
+def process_tasks(
+    tasks: Iterable[Task],
     proc: TaskProc,
     client: Client,
     sink: S3COGSink,
@@ -47,43 +59,50 @@ def process_task(
     verbose: bool = True,
 ) -> Iterator[str]:
     def prep_stage(
-        task: Task, proc: TaskProc
+        tasks: Iterable[Task], proc: TaskProc
     ) -> Iterator[Tuple[Union[xr.Dataset, xr.DataArray, None], Task, str]]:
-        path = sink.uri(task)
-        if check_exists:
-            if sink.exists(task):
-                return (None, task, path)
+        for task in tasks:
+            path = sink.uri(task)
+            if check_exists:
+                if sink.exists(task):
+                    yield (None, task, path)
+                    continue
 
-        ds = proc(task)
-        return (ds, task, path)
+            ds = proc(task)
+            yield (ds, task, path)
 
     in_flight_cogs: Set[Future] = set()
+    for ds, task, path in _with_lookahead1(prep_stage(tasks, proc)):
+        if ds is None:
+            if verbose:
+                print(f"..skipping: {path} (exists already)")
+            yield path
+            continue
 
-    ds, task, path = prep_stage(task, proc)
+        if chunked_persist > 0:
+            assert isinstance(ds, xr.DataArray)
+            ds = chunked_persist_da(ds, chunked_persist, client)
+        else:
+            ds = client.persist(ds, fifo_timeout="1ms")
 
-    if ds is None:
-        if verbose:
-            print(f"..skipping: {path} (exists already)")
-        return path
+        if len(in_flight_cogs):
+            done, in_flight_cogs = drain(in_flight_cogs, 1.0)
+            for r in done:
+                yield r
 
-    if chunked_persist > 0:
-        assert isinstance(ds, xr.DataArray)
-        ds = chunked_persist_da(ds, chunked_persist, client)
-    else:
-        ds = client.persist(ds, fifo_timeout="1ms")
+        if isinstance(ds, xr.DataArray):
+            attrs = ds.attrs.copy()
+            ds = ds.to_dataset(dim="band")
+            for dv in ds.data_vars.values():
+                dv.attrs.update(attrs)
 
-    if isinstance(ds, xr.DataArray):
-        attrs = ds.attrs.copy()
-        ds = ds.to_dataset(dim="band")
-        for dv in ds.data_vars.values():
-            dv.attrs.update(attrs)
+        cog = client.compute(sink.dump(task, ds), fifo_timeout="1ms")
+        rr = dask_wait(ds)
+        assert len(rr.not_done) == 0
+        del ds, rr
+        in_flight_cogs.add(cog)
 
-    cog = client.compute(sink.dump(task, ds), fifo_timeout="1ms")
-    rr = dask_wait(ds)
-
-    assert len(rr.not_done) == 0
-    del ds, rr
-    done, _ = drain(cog)
-
-    print(done)
-    return done
+    done, _ = drain(in_flight_cogs)
+    for r in done:
+        print(r)
+        yield r
