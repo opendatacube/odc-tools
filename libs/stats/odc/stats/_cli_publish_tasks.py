@@ -12,9 +12,6 @@ from .tasks import TaskReader
 @click.argument("db", type=str)
 @click.argument("queue", type=str)
 def publish_to_queue(db, queue):
-    def approximate_num_messages(queue):
-        return int(queue.attributes.get("ApproximateNumberOfMessages"))
-
     def get_tasks(cache_file):
         rdr = TaskReader(cache_file)
         print(rdr)
@@ -29,5 +26,3 @@ def publish_to_queue(db, queue):
         task = ",".join(task)
         # ToDo: add a check that ensures a message has been delivered
         publish_message(queue, task)
-
-    assert approximate_num_messages(queue) == len(tasks)
