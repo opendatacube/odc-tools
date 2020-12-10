@@ -12,11 +12,12 @@ Future = Any
 TaskProc = Callable[[Task], Union[xr.Dataset, xr.DataArray]]
 
 
-def drain(futures: Set[Future],
-          timeout: Optional[float] = None) -> Tuple[List[str], Set[Future]]:
-    return_when = 'FIRST_COMPLETED'
+def drain(
+    futures: Set[Future], timeout: Optional[float] = None
+) -> Tuple[List[str], Set[Future]]:
+    return_when = "FIRST_COMPLETED"
     if timeout is None:
-        return_when = 'ALL_COMPLETED'
+        return_when = "ALL_COMPLETED"
 
     try:
         rr = dask_wait(futures, timeout=timeout, return_when=return_when)
@@ -48,16 +49,18 @@ def _with_lookahead1(it: Iterable[Any]) -> Iterator[Any]:
         yield prev
 
 
-def process_tasks(tasks: Iterable[Task],
-                  proc: TaskProc,
-                  client: Client,
-                  sink: S3COGSink,
-                  check_exists: bool = True,
-                  chunked_persist: int = 0,
-                  verbose: bool = True) -> Iterator[str]:
-
-    def prep_stage(tasks: Iterable[Task],
-                   proc: TaskProc) -> Iterator[Tuple[Union[xr.Dataset, xr.DataArray, None], Task, str]]:
+def process_tasks(
+    tasks: Iterable[Task],
+    proc: TaskProc,
+    client: Client,
+    sink: S3COGSink,
+    check_exists: bool = True,
+    chunked_persist: int = 0,
+    verbose: bool = True,
+) -> Iterator[str]:
+    def prep_stage(
+        tasks: Iterable[Task], proc: TaskProc
+    ) -> Iterator[Tuple[Union[xr.Dataset, xr.DataArray, None], Task, str]]:
         for task in tasks:
             path = sink.uri(task)
             if check_exists:
@@ -80,7 +83,7 @@ def process_tasks(tasks: Iterable[Task],
             assert isinstance(ds, xr.DataArray)
             ds = chunked_persist_da(ds, chunked_persist, client)
         else:
-            ds = client.persist(ds, fifo_timeout='1ms')
+            ds = client.persist(ds, fifo_timeout="1ms")
 
         if len(in_flight_cogs):
             done, in_flight_cogs = drain(in_flight_cogs, 1.0)
@@ -89,12 +92,11 @@ def process_tasks(tasks: Iterable[Task],
 
         if isinstance(ds, xr.DataArray):
             attrs = ds.attrs.copy()
-            ds = ds.to_dataset(dim='band')
+            ds = ds.to_dataset(dim="band")
             for dv in ds.data_vars.values():
                 dv.attrs.update(attrs)
 
-        cog = client.compute(sink.dump(task, ds),
-                             fifo_timeout='1ms')
+        cog = client.compute(sink.dump(task, ds), fifo_timeout="1ms")
         rr = dask_wait(ds)
         assert len(rr.not_done) == 0
         del ds, rr
@@ -102,4 +104,5 @@ def process_tasks(tasks: Iterable[Task],
 
     done, _ = drain(in_flight_cogs)
     for r in done:
+        print(r)
         yield r
