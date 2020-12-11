@@ -22,6 +22,7 @@ setup(
         'odc_index',
         'odc_dscache',
         'odc_algo',
+        'odc_aws',
         'dataclasses',
         'tqdm'
     ],
