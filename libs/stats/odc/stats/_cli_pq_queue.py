@@ -95,15 +95,15 @@ def run_pq_queue(
         print("Starting local Dask cluster")
 
     client = start_local_dask(threads_per_worker=threads, mem_safety_margin="1G")
+    configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
+
+    if verbose:
+        print(client)
 
     for message in get_messages(queue, limit):
         try:
             task_def = get_task_from_message(message)
             _task = rdr.stream([task_def], product)
-            configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
-            if verbose:
-                print(client)
-
             results = process_tasks(
                 _task,
                 pq_proc,
