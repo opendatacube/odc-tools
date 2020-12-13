@@ -21,6 +21,7 @@ from odc.index import chopped_dss, bin_dataset_stream, dataset_count, all_datase
 from odc.dscache.tools import dictionary_from_product_list
 from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
+from odc.aws import cache_s3_object
 
 from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
 from ._gjson import gs_bounds, compute_grid_info, gjson_from_tasks
@@ -60,22 +61,6 @@ def sanitize_query(query):
         return v
 
     return transform_object_tree(sanitize, query)
-
-
-def download_from_s3(cache):
-    s3 = boto3.resource("s3")
-    path_parts = cache.replace("s3://", "").split("/")
-    bucket = path_parts.pop(0)
-    key = "/".join(path_parts)
-    try:
-        filename = Path(key).name
-        s3.Bucket(bucket).download_file(key, Path(key).name)
-        return filename
-    except botocore.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "404":
-            print("The object does not exist.")
-        else:
-            raise
 
 
 class SaveTasks:
@@ -266,11 +251,11 @@ class TaskReader:
     def __init__(
         self, cache: Union[str, DatasetCache], product: Optional[OutputProduct] = None
     ):
-        self.cache_path = None
+        self._cache_path = None
         if isinstance(cache, str):
-            if "s3://" in cache:
-                self.cache_path = download_from_s3(cache)
-                cache = self.cache_path
+            if cache.startswith("s3"):
+                self._cache_path = cache_s3_object(cache)
+                cache = self._cache_path
             cache = DatasetCache.open_ro(cache)
 
         # TODO: verify this things are set in the file
@@ -285,9 +270,8 @@ class TaskReader:
         self._gridspec = gridspec
         self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid))
 
-    def _delete_local_cache(self):
-        if self.cache_path:
-            os.remove(self.cache_path)
+    def __del__(self):
+        os.unlink(self._cache_path)
 
     def __repr__(self) -> str:
         grid, path, n = self._grid, str(self._dscache.path), len(self._all_tiles)

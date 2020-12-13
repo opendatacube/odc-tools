@@ -127,4 +127,4 @@ def run_pq_queue(
         logging.warning(f"There were {errors} tasks out of {limit} failed ")
     if client is not None:
         client.close()
-    rdr._delete_local_cache()
+

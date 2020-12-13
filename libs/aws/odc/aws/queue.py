@@ -21,10 +21,21 @@ def publish_message(queue, message: str, message_attributes: Mapping[str, Any] =
         MessageAttributes=message_attributes
     )
 
+def publish_messages(queue, messages):
+    """
+    Publish messages to a queue resource.
+    """
+    queue.send_messages(Entries=messages)
 
 def get_messages(queue, limit: bool = None, visibility_timeout: int = 60, message_attributes: Iterable[str] = ["All"]):
     """
     Get messages from a queue resource.
+    :queue: queue URL
+    :param limit: the maximum number of messages to return from the queue
+    :param visibility_timeout: A period of time in seconds during which Amazon SQS prevents other consumers
+                               from receiving and processing the message
+    :message_attributes: Message attributes
+    :return: message
     """
     count = 0
     while True:
