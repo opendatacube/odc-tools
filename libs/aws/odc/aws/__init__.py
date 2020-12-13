@@ -331,6 +331,36 @@ def cache_s3_object(url,
     s3.Bucket(bucket).download_file(key, temp_path)
     return temp_path
 
+def s3_download(url: str,
+                destination: Optional[str] = None,
+                s3: MaybeS3 = None,
+                range: Optional[ByteRange] = None,  # pylint: disable=redefined-builtin
+                read_chunk_size: int = 10*(1 << 20),  # 10Mb
+                **kwargs) -> str:
+    """
+    Download file from S3 to local storage
+
+    :param url: Source object
+    :param destination: Output file name (defaults to object name in current directory)
+    :param s3: pre-configured s3 client, see make_s3_client()
+    :param range: Byte range to read (first_byte, one_past_last_byte), default is whole object
+    :param read_chunk_size: How many bytes to read at a time (default 10Mb)
+    :param kwargs: are passed on to ``s3.get_object(..)``
+
+    :returns: destination file path as a string
+    """
+    if destination is None:
+        bucket, key = s3_url_parse(url)
+        destination = key.split("/")[-1]
+
+    src = s3_open(url, s3=s3, range=range, **kwargs)
+    with open(destination, "wb") as dst:
+        for chunk in src.iter_chunks(read_chunk_size):
+            dst.write(chunk)
+
+    return destination
+
+
 def s3_head_object(url: str,
                    s3: MaybeS3 = None,
                    **kwargs) -> Optional[Dict[str, Any]]:
