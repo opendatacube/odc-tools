@@ -1,18 +1,18 @@
+# pre-install misc dependencies for faster docker rebuilds
 --extra-index-url https://packages.dea.ga.gov.au/
-setuptools
 datacube[performance,s3]==1.8.3
-aiobotocore[boto3,awscli]==1.1.1
-aiohttp==3.6.2
-pandas==1.1.2
-xarray==0.16.1
+hdstats
+lmdb
+zstandard
+thredds-crawler
+dataclasses
+aiobotocore[awscli,boto3]
 thredds-crawler
 wget
 requests
-odc-aws
-odc-aio
-odc-thredds
-odc-apps-cloud
-odc-index
+deepdiff
+dask-image
+scikit-image
 # Pinned for Alex to index STAC
 sat-search==0.3.0
 pytest

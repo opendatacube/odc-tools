@@ -1,4 +1,0 @@
-libyaml-dev
-postgresql
-git
-build-essential

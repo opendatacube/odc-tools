@@ -13,11 +13,17 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Run Dockerized Tests
+    - name: Build test docker
       timeout-minutes: 20
       shell: bash
       run: |
         cd tests
         docker-compose build
+
+    - name: Run Dockerized Tests
+      timeout-minutes: 20
+      shell: bash
+      run: |
+        cd tests
         docker-compose up -d
         docker-compose exec -T tools-tester run_tests.sh
