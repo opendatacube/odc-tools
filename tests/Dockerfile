@@ -18,22 +18,9 @@ RUN env-build-tool new /conf/requirements.txt ${py_env_path} /wheels
 # Install the tools
 ADD ./ /code
 WORKDIR /code
-# TODO: work out why this needs `--editable`
-RUN /env/bin/pip install --extra-index-url https://packages.dea.ga.gov.au/ \
-    --editable apps/dc_tools[tests] \
-    --editable apps/cloud \
-    --editable apps/dnsup \
-    --editable libs/algo \
-    --editable libs/aio \
-    --editable libs/aws \
-    --editable libs/dscache \
-    --editable libs/geom \
-    --editable libs/index \
-    --editable libs/io \
-    --editable libs/ppt \
-    --editable libs/stats \
-    --editable libs/thredds \
-    --editable libs/ui
+
+# This installs things twice because of circular dependencies
+RUN /code/scripts/dev-install.sh
 
 # Copy in the test runner script
 COPY ./tests/run_tests.sh /usr/local/bin/run_tests.sh
