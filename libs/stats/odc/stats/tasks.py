@@ -21,7 +21,7 @@ from odc.index import chopped_dss, bin_dataset_stream, dataset_count, all_datase
 from odc.dscache.tools import dictionary_from_product_list
 from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
-from odc.aws import cache_s3_object
+from odc.aws import s3_download
 
 from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
 from ._gjson import gs_bounds, compute_grid_info, gjson_from_tasks
@@ -254,7 +254,7 @@ class TaskReader:
         self._cache_path = None
         if isinstance(cache, str):
             if cache.startswith("s3"):
-                self._cache_path = cache_s3_object(cache)
+                self._cache_path = s3_download(cache)
                 cache = self._cache_path
             cache = DatasetCache.open_ro(cache)
 

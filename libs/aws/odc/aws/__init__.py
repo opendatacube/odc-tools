@@ -2,7 +2,6 @@
 Helper methods for working with AWS
 """
 import os
-import boto3
 import botocore
 import botocore.session
 from botocore.credentials import Credentials, ReadOnlyCredentials
@@ -315,21 +314,6 @@ def s3_open(url: str,
     bucket, key = s3_url_parse(url)
     oo = s3.get_object(Bucket=bucket, Key=key, **kwargs)
     return oo['Body']
-
-def cache_s3_object(url,
-                    profile: Optional[str] = None,
-                    creds: Optional[ReadOnlyCredentials] = None,
-                    region_name: Optional[str] = None):
-
-    session = mk_boto_session(profile=profile,
-                              creds=creds,
-                              region_name=region_name)
-    session = boto3.session.Session(botocore_session=session)
-    s3 = session.resource('s3')
-    bucket, key = s3_url_parse(url)
-    _, temp_path = mkstemp(suffix='.db')
-    s3.Bucket(bucket).download_file(key, temp_path)
-    return temp_path
 
 def s3_download(url: str,
                 destination: Optional[str] = None,
