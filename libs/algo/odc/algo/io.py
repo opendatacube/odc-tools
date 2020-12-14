@@ -5,7 +5,7 @@ from odc.index import group_by_nothing, solar_offset
 from odc.algo import enum_to_bool, xr_reproject
 from datacube import Datacube
 from datacube.model import Dataset
-from datacube.utils.geometry import GeoBox
+from datacube.utils.geometry import GeoBox, gbox
 from datacube.testutils.io import native_geobox
 from ._masking import _max_fuser, _nodata_fuser
 
@@ -46,7 +46,8 @@ def _load_with_native_transform_1(sources: xr.DataArray,
                                   fuser: Optional[Callable[[xr.Dataset], xr.Dataset]] = None,
                                   resampling: str = 'nearest',
                                   chunks: Optional[Dict[str, int]] = None,
-                                  load_chunks: Optional[Dict[str, int]] = None) -> xr.Dataset:
+                                  load_chunks: Optional[Dict[str, int]] = None,
+                                  pad: Optional[int] = None) -> xr.Dataset:
     if basis is None:
         basis = bands[0]
 
@@ -55,6 +56,9 @@ def _load_with_native_transform_1(sources: xr.DataArray,
 
     ds, = sources.data[0]
     load_geobox = compute_native_load_geobox(geobox, ds, basis)
+    if pad is not None:
+        load_geobox = gbox.pad(load_geobox, pad)
+
     mm = ds.type.lookup_measurements(bands)
     xx = Datacube.load_data(sources,
                             load_geobox,
@@ -85,6 +89,7 @@ def load_with_native_transform(dss: List[Dataset],
                                resampling: str = 'nearest',
                                chunks: Optional[Dict[str, int]] = None,
                                load_chunks: Optional[Dict[str, int]] = None,
+                               pad: Optional[int] = None,
                                **kw) -> xr.Dataset:
     """
     Load a bunch of datasets with native pixel transform.
@@ -99,8 +104,15 @@ def load_with_native_transform(dss: List[Dataset],
     :param resampling: Any resampling mode supported by GDAL as a string:
                        nearest, bilinear, average, mode, cubic, etc...
     :param chunks: If set use Dask, must be in dictionary form ``{'x': 4000, 'y': 4000}``
+
     :param load_chunks: Defaults to ``chunks`` but can be different if supplied
                         (different chunking for native read vs reproject)
+
+    :param pad: Optional padding in native pixels, if set will load extra
+                pixels beyond of what is needed to reproject to final
+                destination. This is useful when you plan to apply convolution
+                filter or morphological operators on input data.
+
     :param kw: Used to support old names ``dask_chunks`` and ``group_by``
 
     1. Partition datasets by native Projection
@@ -111,7 +123,6 @@ def load_with_native_transform(dss: List[Dataset],
        - Reproject to final geobox
     3. Stack output of (2)
     4. [Optional] fuse rasters that happened on the same day/time
-
     """
     if fuser is None:
         fuser = _nodata_fuser
@@ -131,7 +142,8 @@ def load_with_native_transform(dss: List[Dataset],
                                         groupby=groupby,
                                         fuser=fuser,
                                         chunks=chunks,
-                                        load_chunks=load_chunks)
+                                        load_chunks=load_chunks,
+                                        pad=pad)
           for srcs in _split_by_grid(sources)]
 
     if len(xx) == 1:
