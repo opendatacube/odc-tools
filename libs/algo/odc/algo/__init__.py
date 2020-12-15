@@ -16,6 +16,8 @@ from ._masking import (
     cloud_buffer,
     gap_fill,
     choose_first_valid,
+    mask_cleanup,
+    mask_cleanup_np,
 )
 
 from ._geomedian import (
@@ -62,6 +64,8 @@ __all__ = (
     "fmask_to_bool",
     "enum_to_bool",
     "cloud_buffer",
+    "mask_cleanup",
+    "mask_cleanup_np",
     "gap_fill",
     "choose_first_valid",
     "xr_geomedian",
