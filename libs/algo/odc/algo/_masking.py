@@ -287,6 +287,14 @@ def _enum_to_mask_numexpr(mask: np.ndarray,
     return out
 
 
+def _disk(r: int, ndim: int = 2) -> np.ndarray:
+    from skimage.morphology import disk
+    kernel = disk(r)
+    while kernel.ndim < ndim:
+        kernel = kernel[np.newaxis]
+    return kernel
+
+
 def xr_apply_morph_op(xx: xr.DataArray,
                       operation: str,
                       radius: int = 1,
@@ -298,7 +306,6 @@ def xr_apply_morph_op(xx: xr.DataArray,
       border_value
 
     """
-    from skimage.morphology import disk
     import dask_image.ndmorph
 
     ops = {
@@ -310,10 +317,7 @@ def xr_apply_morph_op(xx: xr.DataArray,
     assert dask.is_dask_collection(xx.data)
     assert operation in ops
 
-    kernel = disk(radius)
-    while kernel.ndim < xx.ndim:
-        kernel = kernel[np.newaxis]
-
+    kernel = _disk(radius, xx.ndim)
     data = ops[operation](xx.data, kernel, **kw)
 
     return xr.DataArray(data=data,
@@ -336,6 +340,53 @@ def binary_opening(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
 
 def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
     return xr_apply_morph_op(xx, "closing", radius, **kw)
+
+
+def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray:
+    """
+    Given binary mask and (r1, r2) apply erosion with r1 followed by dilation with r1+r2
+
+    :param mask: Binary image to process
+    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    """
+    import skimage.morphology as morph
+    assert mask.dtype == 'bool'
+
+    r1, r2 = r
+    if r1 == 0 and r2 == 0:
+        return mask
+
+    if r1 > 0:
+        mask = morph.binary_erosion(mask, _disk(r1, mask.ndim))
+
+    return morph.binary_dilation(mask, _disk(r2+r1, mask.ndim))
+
+
+def _compute_overlap_depth(r: Tuple[int, int],
+                           ndim: int) -> Tuple[int, ...]:
+    r = max(r)
+    return (0,)*(ndim-2)+(r, r)
+
+
+def mask_cleanup(mask: xr.DataArray, r: Tuple[int, int] = (2, 5)) -> xr.DataArray:
+    """
+    Given binary mask and (r1, r2) apply erosion with r1 followed by dilation with r1+r2.
+
+    :param mask: Binary image to process
+    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    """
+
+    data = mask.data
+    if dask.is_dask_collection(data):
+        depth = _compute_overlap_depth(r, data.ndim)
+        data = data.map_overlap(mask_cleanup_np, depth, boundary='none')
+    else:
+        data = mask_cleanup_np(data, r)
+
+    return xr.DataArray(data,
+                        attrs=mask.attrs,
+                        coords=mask.coords,
+                        dims=mask.dims)
 
 
 def cloud_buffer(mask: xr.DataArray,
