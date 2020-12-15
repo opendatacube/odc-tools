@@ -149,6 +149,7 @@ class OutputProduct:
     properties: Dict[str, str]
     measurements: Tuple[str, ...]
     href: str = ''
+    cfg: Any = None
 
     def __post_init__(self):
         if self.href == '':
@@ -161,7 +162,7 @@ class OutputProduct:
         return f"x{tidx[0]:+0{n}d}{sep}y{tidx[1]:+0{n}d}"
 
     @staticmethod
-    def dummy(measurements: Tuple[str,...] = ('red', 'green', 'blue')) -> 'OutputProduct':
+    def dummy(measurements: Tuple[str, ...] = ('red', 'green', 'blue')) -> 'OutputProduct':
         version = '0.0.0'
         name = 'dummy'
         short_name = 'dmy'
