@@ -34,7 +34,7 @@ def publish_to_queue(db, queue, limit):
             }
         messages.append(message)
         counter += 1
-        print(counter)
+
         if counter % 10 == 0:
             publish_messages(queue, messages)
             messages = []
