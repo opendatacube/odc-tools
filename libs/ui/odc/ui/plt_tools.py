@@ -2,6 +2,12 @@
 Various data visualisation helper methods
 """
 from matplotlib import pyplot as plt
+from ._cmaps import scl_colormap
+
+__all__ = (
+    "scl_colormap",
+    "compare_masks",
+)
 
 
 def compare_masks(a, b,
