@@ -344,7 +344,7 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
 
 def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray:
     """
-    Given binary mask and (r1, r2) apply erosion with r1 followed by dilation with r1+r2
+    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
 
     :param mask: Binary image to process
     :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
@@ -357,9 +357,12 @@ def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray
         return mask
 
     if r1 > 0:
-        mask = morph.binary_erosion(mask, _disk(r1, mask.ndim))
+        mask = morph.binary_opening(mask, _disk(r1, mask.ndim))
 
-    return morph.binary_dilation(mask, _disk(r2+r1, mask.ndim))
+    if r2 > 0:
+        mask = morph.binary_dilation(mask, _disk(r2, mask.ndim))
+
+    return mask
 
 
 def _compute_overlap_depth(r: Tuple[int, int],
@@ -370,7 +373,11 @@ def _compute_overlap_depth(r: Tuple[int, int],
 
 def mask_cleanup(mask: xr.DataArray, r: Tuple[int, int] = (2, 5)) -> xr.DataArray:
     """
-    Given binary mask and (r1, r2) apply erosion with r1 followed by dilation with r1+r2.
+    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
+
+    This is bit-equivalent to ``mask |> opening(r1) |> dilation(r2)``, but
+    could be faster when using Dask, as we fuse those operations into single
+    Dask task.
 
     :param mask: Binary image to process
     :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
