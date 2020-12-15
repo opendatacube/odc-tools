@@ -11,12 +11,11 @@ from odc.aws.queue import get_messages, get_queue, publish_message
 @click.option("--verbose", "-v", is_flag=True, help="Be verbose")
 @click.option("--overwrite", is_flag=True, help="Do not check if output already exists")
 @click.option("--output-location", type=str)
-@click.option("--limit", type=int)
 @click.option("--threads", type=int, help="Number of worker threads", default=0)
 @click.argument("cache_file", type=str, nargs=1)
 @click.argument("queue", type=str, nargs=1)
 def run_pq_queue(
-    cache_file, queue, verbose, limit, threads, overwrite, output_location
+    cache_file, queue, verbose, threads, overwrite, output_location
 ):
     public = False
     """
@@ -35,10 +34,9 @@ def run_pq_queue(
        1::10 -- every tenth but skip first one 1, 11, 21 ..
         :100 -- first 100 tasks
 
-    If no limit is provided all tasks in the queue will be processed.
     E.g:
         odc-stats run-pq-queue  s3://deafrica-stats-processing/orchestration_test/s2_l2a_2020--P1Y.db  deafrica-prod-eks-stats-geomedian \
-                  --limit 2 --output-location s3://deafrica-stats-processing/orchestration_test/output/
+                  --output-location s3://deafrica-stats-processing/orchestration_test/output/
     """
 
     from tqdm.auto import tqdm
@@ -100,7 +98,7 @@ def run_pq_queue(
     if verbose:
         print(client)
 
-    for message in get_messages(queue, limit):
+    for message in get_messages(queue):
         try:
             task_def = get_task_from_message(message)
             _task = rdr.stream([task_def], product)
@@ -123,8 +121,7 @@ def run_pq_queue(
     if errors > 0:
         logging.error(f"There were {errors} tasks that failed to execute.")
         sys.exit(errors)
-    if limit and (errors + successes) < limit:
-        logging.warning(f"There were {errors} tasks out of {limit} failed ")
+
     if client is not None:
         client.close()
 
