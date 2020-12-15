@@ -11,7 +11,8 @@ from .tasks import TaskReader
 @main.command("publish-tasks")
 @click.argument("db", type=str)
 @click.argument("queue", type=str)
-def publish_to_queue(db, queue):
+@click.option("--limit", type=int, default=None)
+def publish_to_queue(db, queue, limit):
     def get_tasks(cache_file):
         rdr = TaskReader(cache_file)
         tasks = rdr.all_tiles
@@ -23,7 +24,8 @@ def publish_to_queue(db, queue):
 
     messages = []
     counter = 0
-    for ta in tasks:
+
+    for ta in tasks[:limit]:
         task = (ta[0], str(ta[1]), str(ta[2]))
         task = ",".join(task)
         message = {
@@ -32,8 +34,9 @@ def publish_to_queue(db, queue):
             }
         messages.append(message)
         counter += 1
-        # ToDo: add a check that ensures a message has been delivered
+        print(counter)
         if counter % 10 == 0:
             publish_messages(queue, messages)
             messages = []
-    publish_messages(queue, messages)
+    if messages:
+        publish_messages(queue, messages)
