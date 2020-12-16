@@ -2,7 +2,7 @@
 
 """
 
-from typing import Dict, Tuple, Any, Iterable, Union
+from typing import Dict, Tuple, Any, Iterable, Union, Optional
 from functools import partial
 import numpy as np
 import xarray as xr
@@ -371,7 +371,9 @@ def _compute_overlap_depth(r: Tuple[int, int],
     return (0,)*(ndim-2)+(r, r)
 
 
-def mask_cleanup(mask: xr.DataArray, r: Tuple[int, int] = (2, 5)) -> xr.DataArray:
+def mask_cleanup(mask: xr.DataArray,
+                 r: Tuple[int, int] = (2, 5),
+                 name: Optional[str] = None) -> xr.DataArray:
     """
     Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
 
@@ -381,12 +383,19 @@ def mask_cleanup(mask: xr.DataArray, r: Tuple[int, int] = (2, 5)) -> xr.DataArra
 
     :param mask: Binary image to process
     :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    :param name: Used when building Dask graphs
     """
 
     data = mask.data
     if dask.is_dask_collection(data):
+        if name is None:
+            name = f"mask_cleanup_{r[0]}_{r[1]}"
+
         depth = _compute_overlap_depth(r, data.ndim)
-        data = data.map_overlap(mask_cleanup_np, depth, boundary='none')
+        data = data.map_overlap(partial(mask_cleanup_np, r=r),
+                                depth,
+                                boundary='none',
+                                name=randomize(name))
     else:
         data = mask_cleanup_np(data, r)
 
