@@ -271,7 +271,8 @@ class TaskReader:
         self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid))
 
     def __del__(self):
-        os.unlink(self._cache_path)
+        if self._cache_path is not None:
+            os.unlink(self._cache_path)
 
     def __repr__(self) -> str:
         grid, path, n = self._grid, str(self._dscache.path), len(self._all_tiles)
