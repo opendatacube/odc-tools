@@ -17,6 +17,13 @@ cloud_classes = ('cloud shadows',
                  'cloud high probability',
                  'thin cirrus')
 
+# Filters are a list of (r1: int, r2: int) tuples, where
+#
+#  ``r1=N`` - Shrink away clouds smaller than N pixels radius (0 -- do not shrink)
+#  ``r2=N`` - For clouds that remain after shrinking add that much padding in pixels
+#
+# For each entry in the list an extra ``.clear_{r1}_{r2}`` band will be added to the output in addition to
+# ``.total`` and ``.clear`` bands that are always computed.
 default_filters = [(2, 5),
                    (0, 5)]
 
