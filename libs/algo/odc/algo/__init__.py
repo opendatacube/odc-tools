@@ -18,6 +18,10 @@ from ._masking import (
     choose_first_valid,
     mask_cleanup,
     mask_cleanup_np,
+    binary_opening,
+    binary_closing,
+    binary_dilation,
+    binary_erosion,
 )
 
 from ._geomedian import (
@@ -66,6 +70,10 @@ __all__ = (
     "cloud_buffer",
     "mask_cleanup",
     "mask_cleanup_np",
+    "binary_opening",
+    "binary_closing",
+    "binary_dilation",
+    "binary_erosion",
     "gap_fill",
     "choose_first_valid",
     "xr_geomedian",
