@@ -51,7 +51,11 @@ def run_pq_queue(
 
     # config
     resampling = "nearest"
-    COG_OPTS = dict(compress="deflate", predict=2, zlevel=6, blocksize=800)
+    COG_OPTS = dict(compress="deflate",
+                    predict=2,
+                    zlevel=6,
+                    ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
+                    blocksize=800)
     # ..
 
     # TODO: Handle cache file from LOCAL or S3, maybe using
