@@ -11,13 +11,14 @@ from odc.aws.queue import get_messages, get_queue, publish_message
 @click.option("--verbose", "-v", is_flag=True, help="Be verbose")
 @click.option("--overwrite", is_flag=True, help="Do not check if output already exists")
 @click.option("--output-location", type=str)
+@click.option('--public/--no-public', is_flag=True, default=False,
+              help='Mark outputs for public access (default: no)')
 @click.option("--threads", type=int, help="Number of worker threads", default=0)
 @click.argument("cache_file", type=str, nargs=1)
 @click.argument("queue", type=str, nargs=1)
 def run_pq_queue(
-    cache_file, queue, verbose, threads, overwrite, output_location
+        cache_file, queue, verbose, threads, overwrite, public, output_location
 ):
-    public = False
     """
     Run Pixel Quality stats on tasks provided in a SQS queue
 
