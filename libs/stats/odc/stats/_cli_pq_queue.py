@@ -2,9 +2,9 @@ import sys
 import click
 import logging
 
-from ._cli_common import main, parse_all_tasks
+from ._cli_common import main
 
-from odc.aws.queue import get_messages, get_queue, publish_message
+from odc.aws.queue import get_messages, get_queue
 
 
 @main.command("run-pq-queue")
@@ -36,12 +36,11 @@ def run_pq_queue(
         :100 -- first 100 tasks
 
     E.g:
-        odc-stats run-pq-queue  s3://deafrica-stats-processing/orchestration_test/s2_l2a_2020--P1Y.db  deafrica-prod-eks-stats-geomedian \
-                  --output-location s3://deafrica-stats-processing/orchestration_test/output/
+        odc-stats run-pq-queue s3://deafrica-stats-processing/orchestration_test/s2_l2a_2020--P1Y.db\
+              deafrica-prod-eks-stats-geomedian \
+              --output-location s3://deafrica-stats-processing/orchestration_test/output/
     """
 
-    from tqdm.auto import tqdm
-    from functools import partial
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
     from .proc import process_tasks
@@ -58,8 +57,6 @@ def run_pq_queue(
                     blocksize=800)
     # ..
 
-    # TODO: Handle cache file from LOCAL or S3, maybe using
-    # https://github.com/opendatacube/datacube-alchemist/blob/main/datacube_alchemist/worker.py#L44
     rdr = TaskReader(cache_file)
     product = pq_product(location=output_location)
 
@@ -129,4 +126,3 @@ def run_pq_queue(
 
     if client is not None:
         client.close()
-
