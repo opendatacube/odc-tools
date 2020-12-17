@@ -44,7 +44,7 @@ spec:
 
       containers:
       - name: sandbox
-        image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/geoscienceaustralia/sandbox:latest
+        image: 565417506782.dkr.ecr.us-west-2.amazonaws.com/geoscienceaustralia/sandbox:sudo-latest
         imagePullPolicy: IfNotPresent
 
         volumeMounts:

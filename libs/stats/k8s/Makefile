@@ -48,6 +48,10 @@ fwd-lab:
 exec:
 	$(k8) exec -ti "$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')" -- bash
 
+tmux:
+	$(k8) exec -ti "$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')" -- env SHELL=fish TERM=$$TERM tmux
+
+
 logs:
 	$(k8) logs -f "$$($(k8) get pods -l app=$(id) | awk 'FNR==2 {print $$1}')"
 
