@@ -35,10 +35,12 @@ def run_pq_queue(
        1::10 -- every tenth but skip first one 1, 11, 21 ..
         :100 -- first 100 tasks
 
+    \b
     E.g:
-        odc-stats run-pq-queue s3://deafrica-stats-processing/orchestration_test/s2_l2a_2020--P1Y.db\
-              deafrica-prod-eks-stats-geomedian \
+        odc-stats run-pq-queue s3://deafrica-stats-processing/orchestration_test/s2_l2a_2020--P1Y.db \\
+              deafrica-prod-eks-stats-geomedian \\
               --output-location s3://deafrica-stats-processing/orchestration_test/output/
+
     """
 
     from .io import S3COGSink
