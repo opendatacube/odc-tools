@@ -5,9 +5,6 @@ from datetime import datetime
 import pickle
 import json
 import os
-import boto3
-import botocore
-from pathlib import Path
 from tqdm.auto import tqdm
 
 from odc.dscache import DatasetCache
