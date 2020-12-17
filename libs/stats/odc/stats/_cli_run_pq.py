@@ -35,6 +35,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     """
     from tqdm.auto import tqdm
     from functools import partial
+    import psutil
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
     from .proc import process_tasks
@@ -48,7 +49,11 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
                     predict=2,
                     zlevel=6,
                     blocksize=800)
+    ncpus = psutil.cpu_count()
     # ..
+
+    if threads <= 0:
+        threads = ncpus
 
     rdr = TaskReader(cache_file)
     product = pq_product(location=location)
