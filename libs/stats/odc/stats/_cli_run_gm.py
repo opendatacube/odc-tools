@@ -17,7 +17,7 @@ from ._cli_common import main, parse_all_tasks
 @click.argument('tasks', type=str, nargs=-1)
 def run_gm(cache_file, tasks, dryrun, verbose, threads, x_chunks, y_chunks, overwrite, public, location):
     """
-    Run Pixel Quality stats
+    Run Geomedian
 
     Task could be one of the 3 things
 
@@ -47,8 +47,8 @@ def run_gm(cache_file, tasks, dryrun, verbose, threads, x_chunks, y_chunks, over
 
     dask.config.set({'distributed.worker.memory.target': False})
     dask.config.set({'distributed.worker.memory.spill': False})
-    dask.config.set({'distributed.worker.memory.pause': False})
-    dask.config.set({'distributed.worker.memory.terminate': False})
+    dask.config.set({'distributed.worker.memory.pause': 0.93})
+    dask.config.set({'distributed.worker.memory.terminate': 0.95})
 
     # config
     resampling = 'bilinear'
