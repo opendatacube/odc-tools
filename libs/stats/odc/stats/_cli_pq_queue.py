@@ -22,19 +22,6 @@ def run_pq_queue(
     """
     Run Pixel Quality stats on tasks provided in a SQS queue
 
-    Task could be one of the 3 things
-
-    \b
-    1. Comma-separated triplet: period,x,y or 'x[+-]<int>/y[+-]<int>/period
-       2019--P1Y,+003,-004
-       2019--P1Y/3/-4          `/` is also accepted
-       x+003/y-004/2019--P1Y   is accepted as well
-    2. A zero based index
-    3. A slice following python convention <start>:<stop>[:<step]
-        ::10 -- every tenth task: 0,10,20,..
-       1::10 -- every tenth but skip first one 1, 11, 21 ..
-        :100 -- first 100 tasks
-
     \b
     E.g:
         odc-stats run-pq-queue s3://deafrica-stats-processing/orchestration_test/s2_l2a_2020--P1Y.db \\
