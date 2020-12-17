@@ -1,5 +1,7 @@
 import boto3
-from typing import Mapping, Any, Iterable
+import itertools
+from typing import Mapping, Any, Iterable, Optional
+
 
 def get_queue(queue_name: str):
     """
@@ -21,34 +23,49 @@ def publish_message(queue, message: str, message_attributes: Mapping[str, Any] =
         MessageAttributes=message_attributes
     )
 
+
 def publish_messages(queue, messages):
     """
     Publish messages to a queue resource.
     """
     queue.send_messages(Entries=messages)
 
-def get_messages(queue, limit: bool = None, visibility_timeout: int = 60, message_attributes: Iterable[str] = ["All"]):
+
+def _sqs_message_stream(queue, **kw):
+    while True:
+        messages = queue.receive_messages(**kw)
+        if len(messages) == 0:
+            return
+
+        for msg in messages:
+            yield msg
+
+
+def get_messages(queue,
+                 limit: Optional[int] = None,
+                 visibility_timeout: int = 60,
+                 message_attributes: Iterable[str] = ["All"],
+                 max_wait: int = 10,
+                 **kw):
     """
-    Get messages from a queue resource.
+    Get messages from SQS queue resource. Returns a lazy sequence of message objects.
+
     :queue: queue URL
-    :param limit: the maximum number of messages to return from the queue
+    :param limit: the maximum number of messages to return from the queue (default to all)
     :param visibility_timeout: A period of time in seconds during which Amazon SQS prevents other consumers
                                from receiving and processing the message
-    :message_attributes: Message attributes
-    :return: message
-    """
-    count = 0
-    while True:
-        messages = queue.receive_messages(
-            VisibilityTimeout=visibility_timeout,
-            MaxNumberOfMessages=1,
-            WaitTimeSeconds=10,
-            MessageAttributeNames=message_attributes,
-        )
+    :message_attributes: Select what attributes to include in the messages, default All
+    :max_wait: Longest to wait in seconds before assuming queue is empty (default: 10)
+    :**kw: Any other arguments are passed to ``.receive_messages()`` boto3 call
 
-        if len(messages) == 0 or (limit and count >= limit):
-            break
-        else:
-            for message in messages:
-                count += 1
-                yield message
+    :return: Iterator of sqs messages
+    """
+    messages = _sqs_message_stream(queue, VisibilityTimeout=visibility_timeout,
+                                   MaxNumberOfMessages=1,
+                                   WaitTimeSeconds=max_wait,
+                                   MessageAttributeNames=message_attributes,
+                                   **kw)
+    if limit is None or limit == 0:
+        return messages
+
+    return itertools.islice(messages, limit)
