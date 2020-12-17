@@ -6,6 +6,7 @@ from ._cli_common import main, parse_all_tasks
 @main.command('run-pq')
 @click.option('--verbose', '-v', is_flag=True, help='Be verbose')
 @click.option('--threads', type=int, help='Number of worker threads', default=0)
+@click.option('--memory-limit', type=str, help='Limit memory used by Dask cluster', default='')
 @click.option('--dryrun', is_flag=True, help='Do not run computation just print what work will be done')
 @click.option('--overwrite', is_flag=True, help='Do not check if output already exists')
 @click.option('--public/--no-public', is_flag=True, default=False,
@@ -13,7 +14,7 @@ from ._cli_common import main, parse_all_tasks
 @click.option('--location', type=str, help='Output location prefix as a uri: s3://bucket/path/')
 @click.argument('cache_file', type=str, nargs=1)
 @click.argument('tasks', type=str, nargs=-1)
-def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, location):
+def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite, public, location):
     """
     Run Pixel Quality stats
 
@@ -111,13 +112,19 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, overwrite, public, locat
 
     _tasks = rdr.stream(tasks, product)
 
+    dask_args = dict(threads_per_worker=threads,
+                     processes=False)
+    if memory_limit != "":
+        dask_args["memory_limit"] = memory_limit
+    else:
+        dask_args["mem_safety_margin"] = "1G"
+
     client = None
     if not dryrun:
         if verbose:
             print("Starting local Dask cluster")
 
-        client = start_local_dask(threads_per_worker=threads,
-                                  mem_safety_margin='1G')
+        client = start_local_dask(**dask_args)
 
         # TODO: aws_unsigned is not always desirable
         configure_s3_access(aws_unsigned=True,
