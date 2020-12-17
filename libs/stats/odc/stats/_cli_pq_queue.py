@@ -1,10 +1,7 @@
 import sys
 import click
 import logging
-
 from ._cli_common import main
-
-from odc.aws.queue import get_messages, get_queue
 
 
 @main.command("run-pq-queue")
@@ -36,6 +33,7 @@ def run_pq_queue(
     from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
+    from odc.aws.queue import get_messages, get_queue
 
     # config
     resampling = "nearest"
