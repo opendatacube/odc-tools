@@ -292,9 +292,10 @@ class TaskReader:
             ds for ds in self._dscache.stream_grid_tile(tile_index, self._grid)
         )
 
-    def load_task(
-        self, tile_index: TileIdx_txy, product: Optional[OutputProduct] = None
-    ) -> Task:
+    def load_task(self,
+                  tile_index: TileIdx_txy,
+                  product: Optional[OutputProduct] = None,
+                  source: Any = None) -> Task:
         product = self._resolve_product(product)
 
         dss = self.datasets(tile_index)
@@ -306,7 +307,7 @@ class TaskReader:
             geobox=self._gridspec.tile_geobox(tidx_xy),
             time_range=DateTimeRange(tile_index[0]),
             datasets=dss,
-        )
+            source=source)
 
     def stream(
         self, tiles: Iterable[TileIdx_txy], product: Optional[OutputProduct] = None
