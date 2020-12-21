@@ -1,10 +1,13 @@
 from typing import Tuple, List
 import click
 
-TileIdx = Tuple[str, int, int]
+TileIdx_txy = Tuple[str, int, int]
 
 
-def parse_task(s: str) -> TileIdx:
+def parse_task(s: str) -> TileIdx_txy:
+    """
+    Intentional copy of tasks.parse_task only for CLI parsing
+    """
     from odc.io.text import split_and_check
     sep = '/' if '/' in s else ','
     t, x, y = split_and_check(s, sep, 3)
@@ -13,7 +16,7 @@ def parse_task(s: str) -> TileIdx:
     return (t, int(x.lstrip('x')), int(y.lstrip('y')))
 
 
-def parse_all_tasks(inputs: List[str], all_possible_tasks: List[TileIdx]) -> List[TileIdx]:
+def parse_all_tasks(inputs: List[str], all_possible_tasks: List[TileIdx_txy]) -> List[TileIdx_txy]:
     """
     Select a subset of all possible tasks given user input on cli.
 
@@ -28,7 +31,7 @@ def parse_all_tasks(inputs: List[str], all_possible_tasks: List[TileIdx]) -> Lis
        x+10/y-3/2019--P1Y
     """
     from odc.io.text import parse_slice
-    out: List[TileIdx] = []
+    out: List[TileIdx_txy] = []
     full_set = set(all_possible_tasks)
 
     for s in inputs:

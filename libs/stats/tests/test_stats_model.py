@@ -1,6 +1,7 @@
 import pytest
 from odc.stats.model import DateTimeRange
-from odc.stats._cli_common import parse_task, parse_all_tasks
+from odc.stats._cli_common import parse_task as cli_parse_task, parse_all_tasks
+from odc.stats.tasks import parse_task, render_task
 from datetime import datetime, timedelta
 
 
@@ -50,6 +51,17 @@ def test_parse_task():
     assert parse_task("2017--P1Y,+3,+004") == ('2017--P1Y', 3, 4)
     assert parse_task("2017--P1Y,x+3,y+004") == ('2017--P1Y', 3, 4)
     assert parse_task("x+003/y-004/2018--P3Y") == ('2018--P3Y', 3, -4)
+
+
+@pytest.mark.parametrize("tidx", [
+    ("2017--P1Y", +3, +4),
+    ("2018--P1Y", -3, +4),
+    ("2019--P1Y", -3, -4),
+    ("2013--P1Y", +3, -4),
+])
+def test_parse_render_task(tidx):
+    assert parse_task(render_task(tidx)) == tidx
+    assert cli_parse_task(render_task(tidx)) == tidx
 
 
 def test_parse_all_tasks():

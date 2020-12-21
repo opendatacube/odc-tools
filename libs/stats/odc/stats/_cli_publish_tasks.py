@@ -38,7 +38,7 @@ def publish_to_queue(db, queue, verbose, dryrun, bunch_size, tasks):
     If no tasks are supplied all tasks will be published the queue.
     """
     from odc.aws.queue import get_queue, publish_messages
-    from .tasks import TaskReader
+    from .tasks import TaskReader, render_task
     import toolz
 
     rdr = TaskReader(db)
@@ -58,9 +58,10 @@ def publish_to_queue(db, queue, verbose, dryrun, bunch_size, tasks):
         sys.exit(0)
 
     queue = get_queue(queue)
+    # TODO: switch to JSON for SQS message body
     messages = (dict(Id=str(idx),
-                     MessageBody=f'{period},{ix},{iy}')
-                for idx, (period, ix, iy) in enumerate(tasks))
+                     MessageBody=render_task(tidx))
+                for idx, tidx in enumerate(tasks))
 
     for bunch in toolz.partition_all(bunch_size, messages):
         publish_messages(queue, bunch)
