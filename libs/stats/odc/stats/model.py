@@ -295,3 +295,15 @@ class Task:
             'assets': assets,
             'links': links
         }
+
+
+@dataclass
+class TaskResult:
+    task: Task
+    result_location: str = ""
+    skipped: bool = False
+    error: Optional[str] = None
+    meta: Any = field(init=True, repr=False, default=None)
+
+    def __bool__(self):
+        return self.error is None
