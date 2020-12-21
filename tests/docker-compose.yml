@@ -25,4 +25,6 @@ services:
       - STAC_API_URL=https://earth-search.aws.element84.com/v0/
     depends_on:
       - postgres
+    volumes:
+      - ../:/code
     command: tail -f /dev/null
