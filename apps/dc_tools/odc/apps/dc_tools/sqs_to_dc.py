@@ -123,8 +123,8 @@ def handle_bucket_notification_message(
                 [PurePath(key).match(p) for p in record_path]
             ):
                 message.delete()
-                raise SQStoDCException(
-                    f"Key: {key} not in specified list of record_paths, ignoring it."
+                logging.warning(
+                    f"Key: {key} not in specified list of record_paths, delete message from the queue."
                 )
 
             # We have enough information to proceed, get the key and extract
