@@ -98,14 +98,30 @@ def run_pq_queue(
     tasks = rdr.stream_from_sqs(queue, visibility_timeout=max_processing_time)
 
     results = process_tasks(tasks, pq_proc, client, sink, check_exists=not overwrite, verbose=True)
-    count = 0
-    for task in results:
-        count = count + 1
-        _log.info(f"Finished task #{count:,d}: {task.location} {task.uuid}")
-        # TODO: verify we are not late
-        task.source.delete()
+    total = 0
+    finished = 0
+    skipped = 0
+    errored = 0
+    for result in results:
+        total += 1
+        task = result.task
+        if result:
+            if result.skipped:
+                skipped += 1
+                _log.info(f"Skipped task #{total:,d}: {task.location} {task.uuid}")
+            else:
+                finished += 1
+                _log.info(f"Finished task #{total:,d}: {task.location} {task.uuid}")
 
-    _log.info(f"Completed processing, total: {count:,d}")
+            if task.source:
+                _log.info(f"Notifying completion to SQS {task.source}")
+                # TODO: verify we are not late
+                task.source.delete()
+        else:
+            errored += 1
+            _log.error(f"Failed task #{total:,d}: {task.location} {task.uuid}")
+
+    _log.info(f"Completed processing {total:,d} tasks, OK:{finished:,d}, S:{skipped:,d}, E:{errored:,d}")
     _log.info(f"Terminating Dask {client}")
     if client is not None:
         client.close()

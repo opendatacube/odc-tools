@@ -1,10 +1,11 @@
+import logging
 from typing import Iterable, Iterator, Callable, Optional, List, Set, Any, Tuple, Union, Dict
 import dask
 import dask.distributed
 from dask.distributed import Client, wait as dask_wait
 import xarray as xr
 
-from .model import Task
+from .model import Task, TaskResult
 from .io import S3COGSink
 from odc.algo import chunked_persist_da
 
@@ -15,9 +16,9 @@ TaskProc = Callable[[Task], Union[xr.Dataset, xr.DataArray]]
 
 def _drain(
     futures: Set[Future],
-    task_cache: Dict[int, Task],
+    task_cache: Dict[str, Task],
     timeout: Optional[float] = None,
-) -> Tuple[List[Task], Set[Future]]:
+) -> Tuple[List[TaskResult], Set[Future]]:
     return_when = "FIRST_COMPLETED"
     if timeout is None:
         return_when = "ALL_COMPLETED"
@@ -27,18 +28,22 @@ def _drain(
     except dask.distributed.TimeoutError:
         return [], futures
 
-    done: List[Task] = []
-    for f in rr.done:
-        try:
-            task_key, (path, ok) = f.result()
-            if ok:
-                task = task_cache.pop(task_key)
-                done.append(task)
-            else:
-                print(f"Failed to write: {path}")
-        except Exception as e:
-            print(e)
+    def safe_extract(f, task_cache) -> TaskResult:
+        assert f.key in task_cache
 
+        task = task_cache.pop(f.key)
+        try:
+            path, ok = f.result()
+            if ok:
+                return TaskResult(task, path)
+            else:
+                logging.error(f"Failed to write: {path}")
+                return TaskResult(task, path, error="Failed to write: {path}")
+        except Exception as e:
+            logging.error(f"Error during processing of {task.location}: {e}")
+            return TaskResult(task, error=str(e))
+
+    done = [safe_extract(f, task_cache) for f in rr.done]
     return done, rr.not_done
 
 
@@ -61,7 +66,7 @@ def process_tasks(
     check_exists: bool = True,
     chunked_persist: int = 0,
     verbose: bool = True,
-) -> Iterator[Task]:
+) -> Iterator[TaskResult]:
     def prep_stage(
         tasks: Iterable[Task], proc: TaskProc
     ) -> Iterator[Tuple[Union[xr.Dataset, xr.DataArray, None], Task, str]]:
@@ -75,23 +80,17 @@ def process_tasks(
             ds = proc(task)
             yield (ds, task, path)
 
-    _task_cache: Dict[int, Task] = {}
-    # Future: Tuple[int, Tuple[str, bool]]
-    # (task_key, (path_of_yaml, ok))
+    # future.key -> Task that generated that future
+    _task_cache: Dict[str, Task] = {}
+    # Future: Tuple[str, bool],  (path_of_yaml, ok))
     _in_flight: Set[Future] = set()
-
-    dask_tuple = dask.delayed(lambda *x: tuple(x),
-                              pure=True)
 
     for ds, task, path in _with_lookahead1(prep_stage(tasks, proc)):
         if ds is None:
             if verbose:
                 print(f"..skipping: {path} (exists already)")
-            yield task
+            yield TaskResult(task, path, skipped=True)
             continue
-
-        task_key = id(task)
-        _task_cache[task_key] = task
 
         if chunked_persist > 0:
             assert isinstance(ds, xr.DataArray)
@@ -101,8 +100,8 @@ def process_tasks(
 
         if len(_in_flight):
             done, _in_flight = _drain(_in_flight, _task_cache, 1.0)
-            for task in done:
-                yield task
+            for task_result in done:
+                yield task_result
 
         if isinstance(ds, xr.DataArray):
             attrs = ds.attrs.copy()
@@ -110,13 +109,15 @@ def process_tasks(
             for dv in ds.data_vars.values():
                 dv.attrs.update(attrs)
 
-        cog = client.compute(dask_tuple(task_key, sink.dump(task, ds)),
+        cog = client.compute(sink.dump(task, ds),
                              fifo_timeout="1ms")
+        _task_cache[cog.key] = task
+
         rr = dask_wait(ds)
         assert len(rr.not_done) == 0
         del ds, rr
         _in_flight.add(cog)
 
     done, _ = _drain(_in_flight, _task_cache)
-    for task in done:
-        yield task
+    for task_result in done:
+        yield task_result
