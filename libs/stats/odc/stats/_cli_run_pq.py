@@ -36,10 +36,11 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     from tqdm.auto import tqdm
     from functools import partial
     import psutil
+    import xarray as xr
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
     from .proc import process_tasks
-    from .tasks import TaskReader
+    from .tasks import TaskReader, Task
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
 
@@ -63,12 +64,12 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     if verbose:
         print(repr(rdr))
 
-    def pq_proc(task):
+    def pq_proc(task: Task) -> xr.Dataset:
         ds_in = pq_input_data(task, resampling=resampling)
         ds = pq_reduce(ds_in)
         return ds
 
-    def dry_run_proc(task, sink, check_s3=False):
+    def dry_run_proc(task: Task, sink: S3COGSink, check_s3: bool = False) -> Task:
         uri = sink.uri(task)
         exists = None
         if check_s3:
@@ -89,7 +90,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
         task_id = f"{task.short_time}/{task.tile_index[0]:+05d}/{task.tile_index[1]:+05d}"
         print(f"{task_id} days={ndays:03} ds={nds:04} {uri}{flag}")
 
-        return uri
+        return task
 
     if len(tasks) == 0:
         tasks = rdr.all_tiles
@@ -150,9 +151,9 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     if not dryrun and verbose:
         results = tqdm(results, total=len(tasks))
 
-    for p in results:
+    for task in results:
         if verbose and not dryrun:
-            print(p)
+            print(task.location)
 
     if verbose:
         print("Exiting")
