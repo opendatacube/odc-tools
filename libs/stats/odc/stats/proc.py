@@ -1,4 +1,5 @@
-from typing import Iterable, Iterator, Callable, Optional, List, Set, Any, Tuple, Union
+from typing import Iterable, Iterator, Callable, Optional, List, Set, Any, Tuple, Union, Dict
+import dask
 import dask.distributed
 from dask.distributed import Client, wait as dask_wait
 import xarray as xr
@@ -12,9 +13,11 @@ Future = Any
 TaskProc = Callable[[Task], Union[xr.Dataset, xr.DataArray]]
 
 
-def drain(
-    futures: Set[Future], timeout: Optional[float] = None
-) -> Tuple[List[str], Set[Future]]:
+def _drain(
+    futures: Set[Future],
+    task_cache: Dict[int, Task],
+    timeout: Optional[float] = None,
+) -> Tuple[List[Task], Set[Future]]:
     return_when = "FIRST_COMPLETED"
     if timeout is None:
         return_when = "ALL_COMPLETED"
@@ -24,12 +27,13 @@ def drain(
     except dask.distributed.TimeoutError:
         return [], futures
 
-    done: List[str] = []
+    done: List[Task] = []
     for f in rr.done:
         try:
-            path, ok = f.result()
+            task_key, (path, ok) = f.result()
             if ok:
-                done.append(path)
+                task = task_cache.pop(task_key)
+                done.append(task)
             else:
                 print(f"Failed to write: {path}")
         except Exception as e:
@@ -57,7 +61,7 @@ def process_tasks(
     check_exists: bool = True,
     chunked_persist: int = 0,
     verbose: bool = True,
-) -> Iterator[str]:
+) -> Iterator[Task]:
     def prep_stage(
         tasks: Iterable[Task], proc: TaskProc
     ) -> Iterator[Tuple[Union[xr.Dataset, xr.DataArray, None], Task, str]]:
@@ -71,13 +75,23 @@ def process_tasks(
             ds = proc(task)
             yield (ds, task, path)
 
-    in_flight_cogs: Set[Future] = set()
+    _task_cache: Dict[int, Task] = {}
+    # Future: Tuple[int, Tuple[str, bool]]
+    # (task_key, (path_of_yaml, ok))
+    _in_flight: Set[Future] = set()
+
+    dask_tuple = dask.delayed(lambda *x: tuple(x),
+                              pure=True)
+
     for ds, task, path in _with_lookahead1(prep_stage(tasks, proc)):
         if ds is None:
             if verbose:
                 print(f"..skipping: {path} (exists already)")
-            yield path
+            yield task
             continue
+
+        task_key = id(task)
+        _task_cache[task_key] = task
 
         if chunked_persist > 0:
             assert isinstance(ds, xr.DataArray)
@@ -85,10 +99,10 @@ def process_tasks(
         else:
             ds = client.persist(ds, fifo_timeout="1ms")
 
-        if len(in_flight_cogs):
-            done, in_flight_cogs = drain(in_flight_cogs, 1.0)
-            for r in done:
-                yield r
+        if len(_in_flight):
+            done, _in_flight = _drain(_in_flight, _task_cache, 1.0)
+            for task in done:
+                yield task
 
         if isinstance(ds, xr.DataArray):
             attrs = ds.attrs.copy()
@@ -96,13 +110,13 @@ def process_tasks(
             for dv in ds.data_vars.values():
                 dv.attrs.update(attrs)
 
-        cog = client.compute(sink.dump(task, ds), fifo_timeout="1ms")
+        cog = client.compute(dask_tuple(task_key, sink.dump(task, ds)),
+                             fifo_timeout="1ms")
         rr = dask_wait(ds)
         assert len(rr.not_done) == 0
         del ds, rr
-        in_flight_cogs.add(cog)
+        _in_flight.add(cog)
 
-    done, _ = drain(in_flight_cogs)
-    for r in done:
-        print(r)
-        yield r
+    done, _ = _drain(_in_flight, _task_cache)
+    for task in done:
+        yield task
