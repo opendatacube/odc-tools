@@ -18,6 +18,7 @@ from odc.index import chopped_dss, bin_dataset_stream, dataset_count, all_datase
 from odc.dscache.tools import dictionary_from_product_list
 from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
+from odc.io.text import split_and_check
 from odc.aws import s3_download
 
 from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
@@ -58,6 +59,19 @@ def sanitize_query(query):
         return v
 
     return transform_object_tree(sanitize, query)
+
+
+def render_task(tidx: TileIdx_txy) -> str:
+    period, xi, yi = tidx
+    return f'{period}/{xi:+04d}/{yi:+04d}'
+
+
+def parse_task(s: str) -> TileIdx_txy:
+    sep = '/' if '/' in s else ','
+    t, x, y = split_and_check(s, sep, 3)
+    if t.startswith('x'):
+        t, x, y = y, t, x
+    return (t, int(x.lstrip('x')), int(y.lstrip('y')))
 
 
 class SaveTasks:
@@ -292,10 +306,12 @@ class TaskReader:
             ds for ds in self._dscache.stream_grid_tile(tile_index, self._grid)
         )
 
-    def load_task(self,
-                  tile_index: TileIdx_txy,
-                  product: Optional[OutputProduct] = None,
-                  source: Any = None) -> Task:
+    def load_task(
+        self,
+        tile_index: TileIdx_txy,
+        product: Optional[OutputProduct] = None,
+        source: Any = None
+    ) -> Task:
         product = self._resolve_product(product)
 
         dss = self.datasets(tile_index)
@@ -315,3 +331,21 @@ class TaskReader:
         product = self._resolve_product(product)
         for tidx in tiles:
             yield self.load_task(tidx, product)
+
+    def stream_from_sqs(
+        self,
+        sqs_queue,
+        product: Optional[OutputProduct] = None,
+        visibility_timeout: int = 3600,
+        **kw
+    ) -> Iterator[Task]:
+        from odc.aws.queue import get_messages, get_queue
+        product = self._resolve_product(product)
+
+        if isinstance(sqs_queue, str):
+            sqs_queue = get_queue(sqs_queue)
+
+        for msg in get_messages(sqs_queue, visibility_timeout=visibility_timeout, **kw):
+            # TODO: switch to JSON for SQS message body
+            tidx = parse_task(msg.body)
+            yield self.load_task(tidx, product, source=msg)
