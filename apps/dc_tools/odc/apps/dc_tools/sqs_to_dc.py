@@ -86,7 +86,7 @@ def handle_json_message(metadata, transform, odc_metadata_link):
 
 
 def handle_bucket_notification_message(
-    message: dict, record_path: tuple
+    message, metadata: dict, record_path: tuple
 ) -> Tuple[dict, str]:
     """[summary]
 
@@ -103,8 +103,8 @@ def handle_bucket_notification_message(
     data = None
     uri = None
 
-    if message.get("Records"):
-        for record in message.get("Records"):
+    if metadata.get("Records"):
+        for record in metadata.get("Records"):
             bucket_name = dicttoolz.get_in(["s3", "bucket", "name"], record)
             key = dicttoolz.get_in(["s3", "object", "key"], record)
 
@@ -247,7 +247,7 @@ def queue_to_odc(
                     # Extract metadata from an S3 bucket notification
                     # or similar for indexing
                     metadata, uri = handle_bucket_notification_message(
-                        metadata, record_path
+                        message, metadata, record_path
                     )
 
                 # If we have a region_code filter, do it here
