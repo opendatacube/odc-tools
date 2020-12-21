@@ -175,6 +175,9 @@ def cli(
 
     print(f"Added {added} Datasets, Failed {failed} Datasets")
 
+    if failed > 0:
+        sys.exit(failed)
+
 
 if __name__ == "__main__":
     cli()

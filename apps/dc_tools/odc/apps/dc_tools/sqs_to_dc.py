@@ -3,6 +3,7 @@
 """
 import json
 import logging
+import sys
 import uuid
 from pathlib import PurePath
 from typing import Tuple
@@ -403,6 +404,9 @@ def cli(
         result_msg += f"Added {success} Dataset(s), "
     result_msg += f"Failed {failed} Dataset(s)"
     print(result_msg)
+
+    if failed > 0:
+        sys.exit(failed)
 
 
 if __name__ == "__main__":
