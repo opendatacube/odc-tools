@@ -1,11 +1,9 @@
 import sys
 import click
-import logging
-from ._cli_common import main
+from ._cli_common import main, setup_logging
 
 
 @main.command("run-pq-queue")
-@click.option("--verbose", "-v", is_flag=True, help="Be verbose")
 @click.option("--overwrite", is_flag=True, help="Do not check if output already exists")
 @click.option("--output-location", type=str)
 @click.option('--public/--no-public', is_flag=True, default=False,
@@ -16,7 +14,6 @@ from ._cli_common import main
 @click.argument("cache_file", type=str, nargs=1)
 @click.argument("queue", type=str, nargs=1)
 def run_pq_queue(
-    verbose,
     overwrite,
     output_location,
     public,
@@ -36,6 +33,7 @@ def run_pq_queue(
               --output-location s3://deafrica-stats-processing/orchestration_test/output/
 
     """
+    import logging
     import psutil
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
@@ -58,17 +56,13 @@ def run_pq_queue(
     if threads <= 0:
         threads = ncpus
 
-    rdr = TaskReader(cache_file)
+    setup_logging()
+    _log = logging.getLogger(__name__)
+
     product = pq_product(location=output_location)
+    rdr = TaskReader(cache_file, product)
 
-    if verbose:
-        print(repr(rdr))
-
-    def get_task_from_message(message):
-        if "," in message.body:
-            msg = message.body.split(",")
-            message = (msg[0], int(msg[1]), int(msg[2]))
-            return message
+    _log.info(f"DB file: {repr(rdr)}")
 
     def pq_proc(task):
         ds_in = pq_input_data(task, resampling=resampling)
@@ -78,17 +72,14 @@ def run_pq_queue(
     sink = S3COGSink(cog_opts=COG_OPTS, public=public)
     if product.location.startswith("s3:"):
         if not sink.verify_s3_credentials():
-            print("Failed to load S3 credentials")
+            _log.error("Failed to load S3 credentials")
             sys.exit(2)
 
-    if verbose and sink._creds:
+    if sink._creds:
         creds_rw = sink._creds
-        print(f"creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}")
+        _log.info(f"creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}")
 
-    client = None
-
-    if verbose:
-        print("Starting local Dask cluster")
+    _log.info("Starting local Dask cluster")
 
     dask_args = dict(threads_per_worker=threads,
                      processes=False)
@@ -98,19 +89,25 @@ def run_pq_queue(
         dask_args["mem_safety_margin"] = "1G"
 
     client = start_local_dask(**dask_args)
+    configure_s3_access(aws_unsigned=True, cloud_defaults=True)
     configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
 
-    if verbose:
-        print(client)
+    _log.info(f"Dask: {client}")
 
-    tasks = rdr.stream_from_sqs(queue, product, visibility_timeout=max_processing_time)
+    _log.info(f"Starting processing from SQS: <{queue}>, visibility_timeout: {max_processing_time}")
+    tasks = rdr.stream_from_sqs(queue, visibility_timeout=max_processing_time)
 
-    results = process_tasks(tasks, pq_proc, client, sink, check_exists=not overwrite, verbose=verbose)
+    results = process_tasks(tasks, pq_proc, client, sink, check_exists=not overwrite, verbose=True)
+    count = 0
     for task in results:
-        if verbose:
-            logging.info(f"Finished task: {task.location}")
+        count = count + 1
+        _log.info(f"Finished task #{count:,d}: {task.location} {task.uuid}")
         # TODO: verify we are not late
         task.source.delete()
 
+    _log.info(f"Completed processing, total: {count:,d}")
+    _log.info(f"Terminating Dask {client}")
     if client is not None:
         client.close()
+        del client
+    _log.info("Finished")
