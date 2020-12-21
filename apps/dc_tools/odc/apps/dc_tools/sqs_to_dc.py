@@ -124,7 +124,7 @@ def handle_bucket_notification_message(
             ):
                 message.delete()
                 logging.warning(
-                    f"Key: {key} not in specified list of record_paths, delete message from the queue."
+                    f"Key: {key} not in specified list of record_paths, deleting message from the queue."
                 )
 
             # We have enough information to proceed, get the key and extract
