@@ -56,6 +56,23 @@ def parse_all_tasks(inputs: List[str], all_possible_tasks: List[TileIdx_txy]) ->
     return out
 
 
+def setup_logging(level: int = -1):
+    """
+    Setup logging to print to stdout with default logging level being INFO.
+    """
+    import logging
+    import sys
+
+    if level < 0:
+        level = logging.INFO
+
+    logging.basicConfig(
+        level=level,
+        format="[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s",
+        stream=sys.stdout
+    )
+
+
 @click.group(help="Stats command line interface")
 def main():
     pass
