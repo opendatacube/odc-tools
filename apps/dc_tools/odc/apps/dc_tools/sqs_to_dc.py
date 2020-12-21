@@ -91,7 +91,8 @@ def handle_bucket_notification_message(
     """[summary]
 
     Args:
-        message (dict): [description]
+        message (Message resource)
+        metadata (dict): [description]
         record_path (tuple): [PATH for selectingthe s3 key path from the JSON message document]
 
     Raises:
