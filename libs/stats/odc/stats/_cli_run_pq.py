@@ -40,7 +40,8 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     from .io import S3COGSink
     from ._pq import pq_input_data, pq_reduce, pq_product
     from .proc import process_tasks
-    from .tasks import TaskReader, Task
+    from .model import TaskResult, Task
+    from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
     from datacube.utils.rio import configure_s3_access
 
@@ -58,8 +59,8 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     if threads <= 0:
         threads = ncpus
 
-    rdr = TaskReader(cache_file)
     product = pq_product(location=location)
+    rdr = TaskReader(cache_file, product)
 
     if verbose:
         print(repr(rdr))
@@ -69,7 +70,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
         ds = pq_reduce(ds_in)
         return ds
 
-    def dry_run_proc(task: Task, sink: S3COGSink, check_s3: bool = False) -> Task:
+    def dry_run_proc(task: Task, sink: S3COGSink, check_s3: bool = False) -> TaskResult:
         uri = sink.uri(task)
         exists = None
         if check_s3:
@@ -77,6 +78,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
 
         nds = len(task.datasets)
         ndays = len(set(ds.center_time.date() for ds in task.datasets))
+        skipped = False
 
         if overwrite:
             flag = {None: '',
@@ -86,11 +88,12 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
             flag = {None: '',
                     True: ' (skip)',
                     False: ' (new)'}[exists]
+            skipped = exists
 
         task_id = f"{task.short_time}/{task.tile_index[0]:+05d}/{task.tile_index[1]:+05d}"
         print(f"{task_id} days={ndays:03} ds={nds:04} {uri}{flag}")
 
-        return task
+        return TaskResult(task, uri, skipped=skipped)
 
     if len(tasks) == 0:
         tasks = rdr.all_tiles
@@ -118,7 +121,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
         creds_rw = sink._creds
         print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
 
-    _tasks = rdr.stream(tasks, product)
+    _tasks = rdr.stream(tasks)
 
     dask_args = dict(threads_per_worker=threads,
                      processes=False)
@@ -151,7 +154,8 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     if not dryrun and verbose:
         results = tqdm(results, total=len(tasks))
 
-    for task in results:
+    for result in results:
+        task = result.task
         if verbose and not dryrun:
             print(task.location)
 
