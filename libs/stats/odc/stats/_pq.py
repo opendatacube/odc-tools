@@ -32,7 +32,7 @@ def pq_product(location: Optional[str] = None,
                filters: Optional[List[Tuple[int, int]]] = None) -> OutputProduct:
     name = 'ga_s2_clear_pixel_count'
     short_name = 'ga_s2_cpc'
-    version = '0.0.0'
+    version = '0.0.1'
 
     if filters is None:
         filters = default_filters
