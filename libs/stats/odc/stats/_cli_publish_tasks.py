@@ -12,12 +12,14 @@ def do_dry_run(tasks):
 @main.command("publish-tasks")
 @click.argument("db", type=str)
 @click.argument("queue", type=str)
-@click.option('--verbose', '-v', is_flag=True, help='Be verbose')
-@click.option('--dryrun', is_flag=True,
-              help='Do not publish just print what would be submitted')
-@click.option('--bunch-size', type=int, default=10,
-              help="Number of messages to submit in one go")
-@click.argument('tasks', type=str, nargs=-1)
+@click.option("--verbose", "-v", is_flag=True, help="Be verbose")
+@click.option(
+    "--dryrun", is_flag=True, help="Do not publish just print what would be submitted"
+)
+@click.option(
+    "--bunch-size", type=int, default=10, help="Number of messages to submit in one go"
+)
+@click.argument("tasks", type=str, nargs=-1)
 def publish_to_queue(db, queue, verbose, dryrun, bunch_size, tasks):
     """
     Publish tasks to SQS.
@@ -59,9 +61,10 @@ def publish_to_queue(db, queue, verbose, dryrun, bunch_size, tasks):
 
     queue = get_queue(queue)
     # TODO: switch to JSON for SQS message body
-    messages = (dict(Id=str(idx),
-                     MessageBody=render_task(tidx))
-                for idx, tidx in enumerate(tasks))
+    messages = (
+        dict(Id=str(idx), MessageBody=render_task(tidx))
+        for idx, tidx in enumerate(tasks)
+    )
 
     for bunch in toolz.partition_all(bunch_size, messages):
         publish_messages(queue, bunch)

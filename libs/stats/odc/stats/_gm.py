@@ -10,50 +10,54 @@ from odc.algo import enum_to_bool, int_geomedian, keep_good_only, cloud_buffer
 from .model import OutputProduct
 
 
-bad_pixel_classes = (0, 'saturated or defective')
-cloud_classes = ('cloud shadows',
-                 'cloud medium probability',
-                 'cloud high probability',
-                 'thin cirrus')
+bad_pixel_classes = (0, "saturated or defective")
+cloud_classes = (
+    "cloud shadows",
+    "cloud medium probability",
+    "cloud high probability",
+    "thin cirrus",
+)
 
 
-def gm_product(location: Optional[str] = None,
-               bands: Optional[Tuple[str, ...]] = None) -> OutputProduct:
-    name = 'ga_s2_gm'
-    short_name = 'ga_s2_gm'
-    version = '0.0.0'
+def gm_product(
+    location: Optional[str] = None, bands: Optional[Tuple[str, ...]] = None
+) -> OutputProduct:
+    name = "ga_s2_gm"
+    short_name = "ga_s2_gm"
+    version = "0.0.0"
 
     if bands is None:
-        bands = ('B02', 'B03', 'B04',
-                 'B05', 'B06', 'B07', 'B08', 'B8A',
-                 'B11', 'B12')
+        bands = ("B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12")
 
     if location is None:
-        bucket = 'deafrica-stats-processing'
-        location = f's3://{bucket}/{name}/v{version}'
+        bucket = "deafrica-stats-processing"
+        location = f"s3://{bucket}/{name}/v{version}"
     else:
-        location = location.rstrip('/')
+        location = location.rstrip("/")
 
     measurements = tuple(bands)
 
     properties = {
-        'odc:file_format': 'GeoTIFF',
-        'odc:producer': 'ga.gov.au',
-        'odc:product_family': 'statistics',  # TODO: ???
-        'platform': "sentinel-2"
+        "odc:file_format": "GeoTIFF",
+        "odc:producer": "ga.gov.au",
+        "odc:product_family": "statistics",  # TODO: ???
+        "platform": "sentinel-2",
     }
 
-    return OutputProduct(name=name,
-                         version=version,
-                         short_name=short_name,
-                         location=location,
-                         properties=properties,
-                         measurements=measurements,
-                         href=f'https://collections.digitalearth.africa/product/{name}')
+    return OutputProduct(
+        name=name,
+        version=version,
+        short_name=short_name,
+        location=location,
+        properties=properties,
+        measurements=measurements,
+        href=f"https://collections.digitalearth.africa/product/{name}",
+    )
 
 
-def _gm_native_transform(xx: xr.Dataset,
-                         buffer_clouds: Optional[Tuple[int, int]] = None) -> xr.Dataset:
+def _gm_native_transform(
+    xx: xr.Dataset, buffer_clouds: Optional[Tuple[int, int]] = None
+) -> xr.Dataset:
     """
     config:
     bad_pixel_classes
@@ -62,25 +66,29 @@ def _gm_native_transform(xx: xr.Dataset,
 
     # data bands are everything but SCL
     bands = list(xx.data_vars)
-    bands.remove('SCL')
+    bands.remove("SCL")
 
     # TODO: fancier computation of clear_pix with padding for cloud
-    clear_pix = enum_to_bool(xx.SCL, bad_pixel_classes+cloud_classes, invert=True)
+    clear_pix = enum_to_bool(xx.SCL, bad_pixel_classes + cloud_classes, invert=True)
     if buffer_clouds is not None:
         radius, dilation_radius = buffer_clouds
-        clear_pix = cloud_buffer(clear_pix,
-                                 radius=radius,
-                                 dilation_radius=dilation_radius)
+        clear_pix = cloud_buffer(
+            clear_pix, radius=radius, dilation_radius=dilation_radius
+        )
 
     xx = keep_good_only(xx[bands], clear_pix)
 
     return xx
 
 
-def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]] = 1600,
-                  basis: Optional[str] = None,
-                  load_chunks: Optional[Dict[str, int]] = None,
-                  buffer_clouds: Optional[Tuple[int, int]] = (6, 2)) -> xr.Dataset:
+def gm_input_data(
+    task: Task,
+    resampling: str,
+    chunk: Union[int, Tuple[int, int]] = 1600,
+    basis: Optional[str] = None,
+    load_chunks: Optional[Dict[str, int]] = None,
+    buffer_clouds: Optional[Tuple[int, int]] = (6, 2),
+) -> xr.Dataset:
     """
     .valid  Bool
     .clear  Bool
@@ -90,31 +98,32 @@ def gm_input_data(task: Task, resampling: str, chunk: Union[int, Tuple[int, int]
     if basis is None:
         basis = task.product.measurements[0]
 
-    xx = load_with_native_transform(task.datasets,
-                                    [*task.product.measurements, 'SCL'],
-                                    task.geobox,
-                                    lambda xx: _gm_native_transform(xx, buffer_clouds=buffer_clouds),
-                                    groupby='solar_day',
-                                    basis=basis,
-                                    resampling=resampling,
-                                    chunks={'y': chunk[0],
-                                            'x': chunk[1]},
-                                    load_chunks=load_chunks)
+    xx = load_with_native_transform(
+        task.datasets,
+        [*task.product.measurements, "SCL"],
+        task.geobox,
+        lambda xx: _gm_native_transform(xx, buffer_clouds=buffer_clouds),
+        groupby="solar_day",
+        basis=basis,
+        resampling=resampling,
+        chunks={"y": chunk[0], "x": chunk[1]},
+        load_chunks=load_chunks,
+    )
     return xx
 
 
-def gm_reduce(xx: xr.Dataset,
-              num_threads: int = 4,
-              wk_rows: int = 64,
-              as_array: bool = False) -> Union[xr.Dataset, xr.DataArray]:
-    """
-    """
-    scale = 1/10_000
-    return int_geomedian(xx,
-                         scale=scale,
-                         offset=-1*scale,
-                         wk_rows=wk_rows,
-                         as_array=as_array,
-                         eps=1e-4,
-                         num_threads=num_threads,
-                         maxiters=1_000)
+def gm_reduce(
+    xx: xr.Dataset, num_threads: int = 4, wk_rows: int = 64, as_array: bool = False
+) -> Union[xr.Dataset, xr.DataArray]:
+    """"""
+    scale = 1 / 10_000
+    return int_geomedian(
+        xx,
+        scale=scale,
+        offset=-1 * scale,
+        wk_rows=wk_rows,
+        as_array=as_array,
+        eps=1e-4,
+        num_threads=num_threads,
+        maxiters=1_000,
+    )
