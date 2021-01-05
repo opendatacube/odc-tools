@@ -9,14 +9,17 @@ def parse_task(s: str) -> TileIdx_txy:
     Intentional copy of tasks.parse_task only for CLI parsing
     """
     from odc.io.text import split_and_check
-    sep = '/' if '/' in s else ','
+
+    sep = "/" if "/" in s else ","
     t, x, y = split_and_check(s, sep, 3)
-    if t.startswith('x'):
+    if t.startswith("x"):
         t, x, y = y, t, x
-    return (t, int(x.lstrip('x')), int(y.lstrip('y')))
+    return (t, int(x.lstrip("x")), int(y.lstrip("y")))
 
 
-def parse_all_tasks(inputs: List[str], all_possible_tasks: List[TileIdx_txy]) -> List[TileIdx_txy]:
+def parse_all_tasks(
+    inputs: List[str], all_possible_tasks: List[TileIdx_txy]
+) -> List[TileIdx_txy]:
     """
     Select a subset of all possible tasks given user input on cli.
 
@@ -31,16 +34,17 @@ def parse_all_tasks(inputs: List[str], all_possible_tasks: List[TileIdx_txy]) ->
        x+10/y-3/2019--P1Y
     """
     from odc.io.text import parse_slice
+
     out: List[TileIdx_txy] = []
     full_set = set(all_possible_tasks)
 
     for s in inputs:
-        if ',' in s or '/' in s:
+        if "," in s or "/" in s:
             task = parse_task(s)
             if task not in full_set:
                 raise ValueError(f"No task matches '{s}'")
             out.append(task)
-        elif ':' in s:
+        elif ":" in s:
             ii = parse_slice(s)
             out.extend(all_possible_tasks[ii])
         else:
@@ -69,7 +73,7 @@ def setup_logging(level: int = -1):
     logging.basicConfig(
         level=level,
         format="[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s",
-        stream=sys.stdout
+        stream=sys.stdout,
     )
 
 

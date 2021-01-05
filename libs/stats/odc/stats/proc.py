@@ -1,5 +1,16 @@
 import logging
-from typing import Iterable, Iterator, Callable, Optional, List, Set, Any, Tuple, Union, Dict
+from typing import (
+    Iterable,
+    Iterator,
+    Callable,
+    Optional,
+    List,
+    Set,
+    Any,
+    Tuple,
+    Union,
+    Dict,
+)
 import dask
 import dask.distributed
 from dask.distributed import Client, wait as dask_wait
@@ -109,8 +120,7 @@ def process_tasks(
             for dv in ds.data_vars.values():
                 dv.attrs.update(attrs)
 
-        cog = client.compute(sink.dump(task, ds),
-                             fifo_timeout="1ms")
+        cog = client.compute(sink.dump(task, ds), fifo_timeout="1ms")
         _task_cache[cog.key] = task
 
         rr = dask_wait(ds)

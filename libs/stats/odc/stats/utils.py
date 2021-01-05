@@ -4,12 +4,13 @@ from collections import namedtuple
 from datetime import datetime
 from .model import DateTimeRange
 
-CompressedDataset = namedtuple("CompressedDataset", ['id', 'time'])
+CompressedDataset = namedtuple("CompressedDataset", ["id", "time"])
 Cell = Any
 
 
-def _bin_generic(dss: List[CompressedDataset],
-                 bins: List[DateTimeRange]) -> Dict[str, List[CompressedDataset]]:
+def _bin_generic(
+    dss: List[CompressedDataset], bins: List[DateTimeRange]
+) -> Dict[str, List[CompressedDataset]]:
     """
     Dumb O(NM) implementation, N number of dataset, M number of bins.
 
@@ -24,8 +25,9 @@ def _bin_generic(dss: List[CompressedDataset],
     return out
 
 
-def bin_generic(cells: Dict[Tuple[int, int], Cell],
-                bins: List[DateTimeRange]) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
+def bin_generic(
+    cells: Dict[Tuple[int, int], Cell], bins: List[DateTimeRange]
+) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
     tasks: Dict[Tuple[str, int, int], List[CompressedDataset]] = {}
     for tidx, cell in cells.items():
         _bins = _bin_generic(cell.dss, bins)
@@ -35,9 +37,9 @@ def bin_generic(cells: Dict[Tuple[int, int], Cell],
     return tasks
 
 
-def bin_seasonal(cells: Dict[Tuple[int, int], Cell],
-                 months: int,
-                 anchor: int) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
+def bin_seasonal(
+    cells: Dict[Tuple[int, int], Cell], months: int, anchor: int
+) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
     binner = season_binner(mk_season_rules(months, anchor))
 
     tasks = {}
@@ -46,22 +48,23 @@ def bin_seasonal(cells: Dict[Tuple[int, int], Cell],
         grouped = toolz.groupby(lambda ds: binner(ds.time), cell.dss)
 
         for temporal_k, dss in grouped.items():
-            if temporal_k != '':
+            if temporal_k != "":
                 tasks[(temporal_k,) + tidx] = dss
 
     return tasks
 
 
-def bin_full_history(cells: Dict[Tuple[int, int], Cell],
-                     start: datetime,
-                     end: datetime) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
+def bin_full_history(
+    cells: Dict[Tuple[int, int], Cell], start: datetime, end: datetime
+) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
     duration = end.year - start.year + 1
     temporal_key = (f"{start.year}--P{duration}Y",)
-    return {temporal_key + k: cell.dss
-            for k, cell in cells.items()}
+    return {temporal_key + k: cell.dss for k, cell in cells.items()}
 
 
-def bin_annual(cells: Dict[Tuple[int, int], Cell]) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
+def bin_annual(
+    cells: Dict[Tuple[int, int], Cell]
+) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
     """
     Annual binning
     :param cells: (x,y) -> Cell(dss: List[CompressedDataset], geobox: GeoBox, idx: Tuple[int, int])
@@ -88,15 +91,15 @@ def mk_season_rules(months: int, anchor: int) -> Dict[int, str]:
     assert 1 <= anchor <= 12
 
     rules: Dict[int, str] = {}
-    for i in range(12//months):
-        start_month = anchor + i*months
+    for i in range(12 // months):
+        start_month = anchor + i * months
         if start_month > 12:
             start_month -= 12
 
         for m in range(start_month, start_month + months):
             if m > 12:
                 m = m - 12
-            rules[m] = f'{start_month:02d}--P{months:d}M'
+            rules[m] = f"{start_month:02d}--P{months:d}M"
 
     return rules
 
@@ -112,20 +115,20 @@ def season_binner(rules: Dict[int, str]) -> Callable[[datetime], str]:
     """
     _rules: Dict[int, Tuple[str, int]] = {}
 
-    for month in range(1, 12+1):
-        season = rules.get(month, '')
-        if season == '':
-            _rules[month] = ('', 0)
+    for month in range(1, 12 + 1):
+        season = rules.get(month, "")
+        if season == "":
+            _rules[month] = ("", 0)
         else:
-            start_month = int(season.split('--')[0])
+            start_month = int(season.split("--")[0])
             _rules[month] = (season, 0 if start_month <= month else -1)
 
     def label(dt: datetime) -> str:
         season, yoffset = _rules[dt.month]
-        if season == '':
-            return ''
+        if season == "":
+            return ""
         y = dt.year + yoffset
-        return f'{y}-{season}'
+        return f"{y}-{season}"
 
     return label
 
@@ -147,14 +150,20 @@ def dedup_s2_datasets(dss):
     :returns: Two list of Datasets, first one contains "freshest" datasets and
               has no duplicates, and the second one contains less fresh duplicates.
     """
-    dss = sorted(dss, key=lambda ds: (ds.center_time,
-                                      ds.metadata.region_code,
-                                      ds.metadata_doc['label']))
+    dss = sorted(
+        dss,
+        key=lambda ds: (
+            ds.center_time,
+            ds.metadata.region_code,
+            ds.metadata_doc["label"],
+        ),
+    )
     out = []
     skipped = []
 
-    for chunk in toolz.partitionby(lambda ds: (ds.center_time,
-                                               ds.metadata.region_code), dss):
+    for chunk in toolz.partitionby(
+        lambda ds: (ds.center_time, ds.metadata.region_code), dss
+    ):
         out.append(chunk[-1])
         skipped.extend(chunk[:-1])
     return out, skipped

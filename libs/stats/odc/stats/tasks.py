@@ -63,15 +63,15 @@ def sanitize_query(query):
 
 def render_task(tidx: TileIdx_txy) -> str:
     period, xi, yi = tidx
-    return f'{period}/{xi:+04d}/{yi:+04d}'
+    return f"{period}/{xi:+04d}/{yi:+04d}"
 
 
 def parse_task(s: str) -> TileIdx_txy:
-    sep = '/' if '/' in s else ','
+    sep = "/" if "/" in s else ","
     t, x, y = split_and_check(s, sep, 3)
-    if t.startswith('x'):
+    if t.startswith("x"):
         t, x, y = y, t, x
-    return (t, int(x.lstrip('x')), int(y.lstrip('y')))
+    return (t, int(x.lstrip("x")), int(y.lstrip("y")))
 
 
 class SaveTasks:
@@ -310,7 +310,7 @@ class TaskReader:
         self,
         tile_index: TileIdx_txy,
         product: Optional[OutputProduct] = None,
-        source: Any = None
+        source: Any = None,
     ) -> Task:
         product = self._resolve_product(product)
 
@@ -323,7 +323,8 @@ class TaskReader:
             geobox=self._gridspec.tile_geobox(tidx_xy),
             time_range=DateTimeRange(tile_index[0]),
             datasets=dss,
-            source=source)
+            source=source,
+        )
 
     def stream(
         self, tiles: Iterable[TileIdx_txy], product: Optional[OutputProduct] = None
@@ -337,9 +338,10 @@ class TaskReader:
         sqs_queue,
         product: Optional[OutputProduct] = None,
         visibility_timeout: int = 3600,
-        **kw
+        **kw,
     ) -> Iterator[Task]:
         from odc.aws.queue import get_messages, get_queue
+
         product = self._resolve_product(product)
 
         if isinstance(sqs_queue, str):

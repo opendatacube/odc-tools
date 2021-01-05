@@ -3,18 +3,40 @@ import click
 from ._cli_common import main, parse_all_tasks
 
 
-@main.command('run-pq')
-@click.option('--verbose', '-v', is_flag=True, help='Be verbose')
-@click.option('--threads', type=int, help='Number of worker threads', default=0)
-@click.option('--memory-limit', type=str, help='Limit memory used by Dask cluster', default='')
-@click.option('--dryrun', is_flag=True, help='Do not run computation just print what work will be done')
-@click.option('--overwrite', is_flag=True, help='Do not check if output already exists')
-@click.option('--public/--no-public', is_flag=True, default=False,
-              help='Mark outputs for public access (default: no)')
-@click.option('--location', type=str, help='Output location prefix as a uri: s3://bucket/path/')
-@click.argument('cache_file', type=str, nargs=1)
-@click.argument('tasks', type=str, nargs=-1)
-def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite, public, location):
+@main.command("run-pq")
+@click.option("--verbose", "-v", is_flag=True, help="Be verbose")
+@click.option("--threads", type=int, help="Number of worker threads", default=0)
+@click.option(
+    "--memory-limit", type=str, help="Limit memory used by Dask cluster", default=""
+)
+@click.option(
+    "--dryrun",
+    is_flag=True,
+    help="Do not run computation just print what work will be done",
+)
+@click.option("--overwrite", is_flag=True, help="Do not check if output already exists")
+@click.option(
+    "--public/--no-public",
+    is_flag=True,
+    default=False,
+    help="Mark outputs for public access (default: no)",
+)
+@click.option(
+    "--location", type=str, help="Output location prefix as a uri: s3://bucket/path/"
+)
+@click.argument("cache_file", type=str, nargs=1)
+@click.argument("tasks", type=str, nargs=-1)
+def run_pq(
+    cache_file,
+    tasks,
+    dryrun,
+    verbose,
+    threads,
+    memory_limit,
+    overwrite,
+    public,
+    location,
+):
     """
     Run Pixel Quality stats
 
@@ -46,13 +68,15 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     from datacube.utils.rio import configure_s3_access
 
     # config
-    resampling = 'nearest'
-    COG_OPTS = dict(compress='deflate',
-                    predict=2,
-                    zlevel=6,
-                    blocksize=800,
-                    ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
-                    overview_resampling='average')
+    resampling = "nearest"
+    COG_OPTS = dict(
+        compress="deflate",
+        predict=2,
+        zlevel=6,
+        blocksize=800,
+        ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
+        overview_resampling="average",
+    )
     ncpus = psutil.cpu_count()
     # ..
 
@@ -81,16 +105,14 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
         skipped = False
 
         if overwrite:
-            flag = {None: '',
-                    True: ' (recompute)',
-                    False: ' (new)'}[exists]
+            flag = {None: "", True: " (recompute)", False: " (new)"}[exists]
         else:
-            flag = {None: '',
-                    True: ' (skip)',
-                    False: ' (new)'}[exists]
+            flag = {None: "", True: " (skip)", False: " (new)"}[exists]
             skipped = exists is True
 
-        task_id = f"{task.short_time}/{task.tile_index[0]:+05d}/{task.tile_index[1]:+05d}"
+        task_id = (
+            f"{task.short_time}/{task.tile_index[0]:+05d}/{task.tile_index[1]:+05d}"
+        )
         print(f"{task_id} days={ndays:03} ds={nds:04} {uri}{flag}")
 
         return TaskResult(task, uri, skipped=skipped)
@@ -109,22 +131,20 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
     if verbose:
         print(f"Will process {len(tasks):,d} tasks")
 
-    sink = S3COGSink(cog_opts=COG_OPTS,
-                     public=public)
+    sink = S3COGSink(cog_opts=COG_OPTS, public=public)
 
-    if product.location.startswith('s3:'):
+    if product.location.startswith("s3:"):
         if not sink.verify_s3_credentials():
             print("Failed to load S3 credentials")
             sys.exit(2)
 
     if verbose and sink._creds:
         creds_rw = sink._creds
-        print(f'creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}')
+        print(f"creds: ..{creds_rw.access_key[-5:]} ..{creds_rw.secret_key[-5:]}")
 
     _tasks = rdr.stream(tasks)
 
-    dask_args = dict(threads_per_worker=threads,
-                     processes=False)
+    dask_args = dict(threads_per_worker=threads, processes=False)
     if memory_limit != "":
         dask_args["memory_limit"] = memory_limit
     else:
@@ -138,19 +158,16 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
         client = start_local_dask(**dask_args)
 
         # TODO: aws_unsigned is not always desirable
-        configure_s3_access(aws_unsigned=True,
-                            cloud_defaults=True,
-                            client=client)
+        configure_s3_access(aws_unsigned=True, cloud_defaults=True, client=client)
         if verbose:
             print(client)
 
     if dryrun:
-        results = map(partial(dry_run_proc, sink=sink, check_s3=not overwrite),
-                      _tasks)
+        results = map(partial(dry_run_proc, sink=sink, check_s3=not overwrite), _tasks)
     else:
-        results = process_tasks(_tasks, pq_proc, client, sink,
-                                check_exists=not overwrite,
-                                verbose=verbose)
+        results = process_tasks(
+            _tasks, pq_proc, client, sink, check_exists=not overwrite, verbose=verbose
+        )
     if not dryrun and verbose:
         results = tqdm(results, total=len(tasks))
 

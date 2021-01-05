@@ -6,11 +6,19 @@ from ._cli_common import main, setup_logging
 @main.command("run-pq-queue")
 @click.option("--overwrite", is_flag=True, help="Do not check if output already exists")
 @click.option("--output-location", type=str)
-@click.option('--public/--no-public', is_flag=True, default=False,
-              help='Mark outputs for public access (default: no)')
+@click.option(
+    "--public/--no-public",
+    is_flag=True,
+    default=False,
+    help="Mark outputs for public access (default: no)",
+)
 @click.option("--threads", type=int, help="Number of worker threads", default=0)
-@click.option('--memory-limit', type=str, help='Limit memory used by Dask cluster', default='')
-@click.option('--max-processing-time', type=int, help='Max seconds per task', default=3600)
+@click.option(
+    "--memory-limit", type=str, help="Limit memory used by Dask cluster", default=""
+)
+@click.option(
+    "--max-processing-time", type=int, help="Max seconds per task", default=3600
+)
 @click.argument("cache_file", type=str, nargs=1)
 @click.argument("queue", type=str, nargs=1)
 def run_pq_queue(
@@ -44,12 +52,14 @@ def run_pq_queue(
 
     # config
     resampling = "nearest"
-    COG_OPTS = dict(compress="deflate",
-                    predict=2,
-                    zlevel=9,
-                    blocksize=800,
-                    ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
-                    overview_resampling='average')
+    COG_OPTS = dict(
+        compress="deflate",
+        predict=2,
+        zlevel=9,
+        blocksize=800,
+        ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
+        overview_resampling="average",
+    )
     ncpus = psutil.cpu_count()
     # ..
 
@@ -81,8 +91,7 @@ def run_pq_queue(
 
     _log.info("Starting local Dask cluster")
 
-    dask_args = dict(threads_per_worker=threads,
-                     processes=False)
+    dask_args = dict(threads_per_worker=threads, processes=False)
     if memory_limit != "":
         dask_args["memory_limit"] = memory_limit
     else:
@@ -94,10 +103,14 @@ def run_pq_queue(
 
     _log.info(f"Dask: {client}")
 
-    _log.info(f"Starting processing from SQS: <{queue}>, visibility_timeout: {max_processing_time}")
+    _log.info(
+        f"Starting processing from SQS: <{queue}>, visibility_timeout: {max_processing_time}"
+    )
     tasks = rdr.stream_from_sqs(queue, visibility_timeout=max_processing_time)
 
-    results = process_tasks(tasks, pq_proc, client, sink, check_exists=not overwrite, verbose=True)
+    results = process_tasks(
+        tasks, pq_proc, client, sink, check_exists=not overwrite, verbose=True
+    )
     total = 0
     finished = 0
     skipped = 0
@@ -121,7 +134,9 @@ def run_pq_queue(
             errored += 1
             _log.error(f"Failed task #{total:,d}: {task.location} {task.uuid}")
 
-    _log.info(f"Completed processing {total:,d} tasks, OK:{finished:,d}, S:{skipped:,d}, E:{errored:,d}")
+    _log.info(
+        f"Completed processing {total:,d} tasks, OK:{finished:,d}, S:{skipped:,d}, E:{errored:,d}"
+    )
     _log.info(f"Terminating Dask {client}")
     if client is not None:
         client.close()
