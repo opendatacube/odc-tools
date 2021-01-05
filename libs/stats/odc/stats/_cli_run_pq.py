@@ -88,7 +88,7 @@ def run_pq(cache_file, tasks, dryrun, verbose, threads, memory_limit, overwrite,
             flag = {None: '',
                     True: ' (skip)',
                     False: ' (new)'}[exists]
-            skipped = exists
+            skipped = exists is True
 
         task_id = f"{task.short_time}/{task.tile_index[0]:+05d}/{task.tile_index[1]:+05d}"
         print(f"{task_id} days={ndays:03} ds={nds:04} {uri}{flag}")
