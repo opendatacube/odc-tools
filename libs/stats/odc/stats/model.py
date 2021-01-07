@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 import math
+import psutil
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
-
+from toolz import dicttoolz
 import pystac
-
+import xarray as xr
 import pandas as pd
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
@@ -332,3 +333,44 @@ class TaskResult:
 
     def __bool__(self):
         return self.error is None
+
+
+@dataclass
+class TaskRunnerConfig:
+    @staticmethod
+    def default_cog_settings():
+        return dict(
+            compress="deflate",
+            predict=2,
+            zlevel=9,
+            blocksize=800,
+            ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
+            overview_resampling="average",
+        )
+
+    # Input
+    filedb: str
+    aws_unsigned: bool = True
+
+    # Plugin
+    plugin: str = ""
+    plugin_config: Dict[str, Any] = field(init=True, repr=False, default_factory=dict)
+
+    # Dask config
+    threads: int = -1
+    memory_limit: str = ""
+
+    # S3/Output config
+    output_location: str = ""
+    s3_public: bool = False
+    cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
+    overwrite: bool = False
+
+    # SQS config when applicable
+    max_processing_time: int = 60 * 60
+
+    def __post_init__(self):
+        self.cog_opts = dicttoolz.merge(self.default_cog_settings(), self.cog_opts)
+
+        if self.threads <= 0:
+            self.threads = psutil.cpu_count()
