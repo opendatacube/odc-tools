@@ -15,60 +15,66 @@ from datacube.utils import spatial_dims
 NodataType = Union[int, float]
 
 
-def _reproject_block_impl(src: np.ndarray,
-                          src_geobox: GeoBox,
-                          dst_geobox: GeoBox,
-                          resampling: str = 'nearest',
-                          src_nodata: Optional[NodataType] = None,
-                          dst_nodata: Optional[NodataType] = None,
-                          axis: int = 0) -> np.ndarray:
-    dst_shape = src.shape[:axis] + dst_geobox.shape + src.shape[axis+2:]
+def _reproject_block_impl(
+    src: np.ndarray,
+    src_geobox: GeoBox,
+    dst_geobox: GeoBox,
+    resampling: str = "nearest",
+    src_nodata: Optional[NodataType] = None,
+    dst_nodata: Optional[NodataType] = None,
+    axis: int = 0,
+) -> np.ndarray:
+    dst_shape = src.shape[:axis] + dst_geobox.shape + src.shape[axis + 2 :]
     dst = np.empty(dst_shape, dtype=src.dtype)
 
     if dst.ndim == 2 or (dst.ndim == 3 and axis == 1):
-        rio_reproject(src,
-                      dst,
-                      src_geobox,
-                      dst_geobox,
-                      resampling,
-                      src_nodata,
-                      dst_nodata)
+        rio_reproject(
+            src, dst, src_geobox, dst_geobox, resampling, src_nodata, dst_nodata
+        )
     else:
         for prefix in np.ndindex(src.shape[:axis]):
-            rio_reproject(src[prefix],
-                          dst[prefix],
-                          src_geobox,
-                          dst_geobox,
-                          resampling,
-                          src_nodata,
-                          dst_nodata)
+            rio_reproject(
+                src[prefix],
+                dst[prefix],
+                src_geobox,
+                dst_geobox,
+                resampling,
+                src_nodata,
+                dst_nodata,
+            )
     return dst
 
 
-def _reproject_block_bool_impl(src: np.ndarray,
-                               src_geobox: GeoBox,
-                               dst_geobox: GeoBox,
-                               resampling: str = 'nearest',
-                               src_nodata: Optional[NodataType] = None,
-                               dst_nodata: Optional[NodataType] = None,
-                               axis: int = 0) -> np.ndarray:
-    assert src.dtype == 'bool'
+def _reproject_block_bool_impl(
+    src: np.ndarray,
+    src_geobox: GeoBox,
+    dst_geobox: GeoBox,
+    resampling: str = "nearest",
+    src_nodata: Optional[NodataType] = None,
+    dst_nodata: Optional[NodataType] = None,
+    axis: int = 0,
+) -> np.ndarray:
+    assert src.dtype == "bool"
     assert src_nodata is None
     assert dst_nodata is None
-    src = src.astype('uint8') << 7  # False:0, True:128
-    dst = _reproject_block_impl(src, src_geobox, dst_geobox, resampling=resampling, axis=axis)
+    src = src.astype("uint8") << 7  # False:0, True:128
+    dst = _reproject_block_impl(
+        src, src_geobox, dst_geobox, resampling=resampling, axis=axis
+    )
     return dst > 64
 
 
-def dask_reproject(src: da.Array,
-                   src_geobox: GeoBox,
-                   dst_geobox: GeoBox,
-                   resampling: str = "nearest",
-                   chunks: Optional[Tuple[int, int]] = None,
-                   src_nodata: Optional[NodataType] = None,
-                   dst_nodata: Optional[NodataType] = None,
-                   axis: int = 0,
-                   name: str = "reproject") -> da.Array:
+def dask_reproject(
+    src: da.Array,
+    src_geobox: GeoBox,
+    dst_geobox: GeoBox,
+    resampling: str = "nearest",
+    chunks: Optional[Tuple[int, int]] = None,
+    src_nodata: Optional[NodataType] = None,
+    dst_nodata: Optional[NodataType] = None,
+    axis: int = 0,
+    name: str = "reproject",
+) -> da.Array:
     """
     Reproject to GeoBox as dask operation
 
@@ -83,22 +89,21 @@ def dask_reproject(src: da.Array,
     :param name      : Dask graph name, "reproject" is the default
     """
     if chunks is None:
-        chunks = src.chunksize[axis:axis+2]
+        chunks = src.chunksize[axis : axis + 2]
 
     if dst_nodata is None:
         dst_nodata = src_nodata
 
-    assert src.shape[axis:axis+2] == src_geobox.shape
+    assert src.shape[axis : axis + 2] == src_geobox.shape
     yx_shape = dst_geobox.shape
-    yx_chunks = tuple(unpack_chunksize(ch, n)
-                      for ch, n in zip(chunks, yx_shape))
+    yx_chunks = tuple(unpack_chunksize(ch, n) for ch, n in zip(chunks, yx_shape))
 
-    dst_chunks = src.chunks[:axis] + yx_chunks + src.chunks[axis+2:]
-    dst_shape = src.shape[:axis] + yx_shape + src.shape[axis+2:]
+    dst_chunks = src.chunks[:axis] + yx_chunks + src.chunks[axis + 2 :]
+    dst_shape = src.shape[:axis] + yx_shape + src.shape[axis + 2 :]
 
     #  tuple(*dims1, y, x, *dims2) -- complete shape in blocks
     dims1 = tuple(map(len, dst_chunks[:axis]))
-    dims2 = tuple(map(len, dst_chunks[axis+2:]))
+    dims2 = tuple(map(len, dst_chunks[axis + 2 :]))
     assert dims2 == ()
     deps = [src]
 
@@ -109,7 +114,9 @@ def dask_reproject(src: da.Array,
     name = randomize(name)
     dsk: Dict[Any, Any] = {}
 
-    block_impl = _reproject_block_bool_impl if src.dtype == 'bool' else _reproject_block_impl
+    block_impl = (
+        _reproject_block_bool_impl if src.dtype == "bool" else _reproject_block_impl
+    )
 
     for idx in xy_chunks_with_data:
         _dst_geobox = gbt[idx]
@@ -121,14 +128,16 @@ def dask_reproject(src: da.Array,
 
         for ii1 in np.ndindex(dims1):
             # TODO: band dims
-            dsk[(name, *ii1, *idx)] = (block_impl,
-                                       (_src.name, *ii1, 0, 0),
-                                       _src_geobox,
-                                       _dst_geobox,
-                                       resampling,
-                                       src_nodata,
-                                       dst_nodata,
-                                       axis)
+            dsk[(name, *ii1, *idx)] = (
+                block_impl,
+                (_src.name, *ii1, 0, 0),
+                _src_geobox,
+                _dst_geobox,
+                resampling,
+                src_nodata,
+                dst_nodata,
+                axis,
+            )
 
     fill_value = 0 if dst_nodata is None else dst_nodata
     shape_in_blocks = tuple(map(len, dst_chunks))
@@ -144,18 +153,16 @@ def dask_reproject(src: da.Array,
 
     dsk = HighLevelGraph.from_collections(name, dsk, dependencies=deps)
 
-    return da.Array(dsk,
-                    name,
-                    chunks=dst_chunks,
-                    dtype=src.dtype,
-                    shape=dst_shape)
+    return da.Array(dsk, name, chunks=dst_chunks, dtype=src.dtype, shape=dst_shape)
 
 
-def xr_reproject_array(src: xr.DataArray,
-                       geobox: GeoBox,
-                       resampling: str = "nearest",
-                       chunks: Optional[Tuple[int, int]] = None,
-                       dst_nodata: Optional[NodataType] = None) -> xr.DataArray:
+def xr_reproject_array(
+    src: xr.DataArray,
+    geobox: GeoBox,
+    resampling: str = "nearest",
+    chunks: Optional[Tuple[int, int]] = None,
+    dst_nodata: Optional[NodataType] = None,
+) -> xr.DataArray:
     """
     Reproject DataArray to a given GeoBox
 
@@ -165,7 +172,7 @@ def xr_reproject_array(src: xr.DataArray,
     :param chunks    : In Y,X dimensions only, default is to use input chunk size
     :param dst_nodata: nodata marker for dst image (default is to use src.nodata)
     """
-    src_nodata = getattr(src, 'nodata', None)
+    src_nodata = getattr(src, "nodata", None)
     if dst_nodata is None:
         dst_nodata = src_nodata
 
@@ -176,50 +183,52 @@ def xr_reproject_array(src: xr.DataArray,
     axis = tuple(src.dims).index(yx_dims[0])
 
     src_dims = tuple(src.dims)
-    dst_dims = src_dims[:axis] + geobox.dims + src_dims[axis+2:]
+    dst_dims = src_dims[:axis] + geobox.dims + src_dims[axis + 2 :]
 
     coords = geobox.xr_coords(with_crs=True)
 
     # copy non-spatial coords from src to dst
-    src_non_spatial_dims = src_dims[:axis] + src_dims[axis+2:]
+    src_non_spatial_dims = src_dims[:axis] + src_dims[axis + 2 :]
     for dim in src_non_spatial_dims:
         if dim not in coords:
             coords[dim] = src.coords[dim]
 
     attrs = {}
     if dst_nodata is not None:
-        attrs['nodata'] = dst_nodata
+        attrs["nodata"] = dst_nodata
 
     if is_dask_collection(src):
-        data = dask_reproject(src.data,
-                              src_geobox,
-                              geobox,
-                              resampling=resampling,
-                              chunks=chunks,
-                              src_nodata=src_nodata,
-                              dst_nodata=dst_nodata,
-                              axis=axis)
+        data = dask_reproject(
+            src.data,
+            src_geobox,
+            geobox,
+            resampling=resampling,
+            chunks=chunks,
+            src_nodata=src_nodata,
+            dst_nodata=dst_nodata,
+            axis=axis,
+        )
     else:
-        data = _reproject_block_impl(src.data,
-                                     src_geobox,
-                                     geobox,
-                                     resampling=resampling,
-                                     src_nodata=src_nodata,
-                                     dst_nodata=dst_nodata,
-                                     axis=axis)
+        data = _reproject_block_impl(
+            src.data,
+            src_geobox,
+            geobox,
+            resampling=resampling,
+            src_nodata=src_nodata,
+            dst_nodata=dst_nodata,
+            axis=axis,
+        )
 
-    return xr.DataArray(data,
-                        name=src.name,
-                        coords=coords,
-                        dims=dst_dims,
-                        attrs=attrs)
+    return xr.DataArray(data, name=src.name, coords=coords, dims=dst_dims, attrs=attrs)
 
 
-def xr_reproject(src: Union[xr.DataArray, xr.Dataset],
-                 geobox: GeoBox,
-                 resampling: str = "nearest",
-                 chunks: Optional[Tuple[int, int]] = None,
-                 dst_nodata: Optional[NodataType] = None) -> Union[xr.DataArray, xr.Dataset]:
+def xr_reproject(
+    src: Union[xr.DataArray, xr.Dataset],
+    geobox: GeoBox,
+    resampling: str = "nearest",
+    chunks: Optional[Tuple[int, int]] = None,
+    dst_nodata: Optional[NodataType] = None,
+) -> Union[xr.DataArray, xr.Dataset]:
     """
     Reproject DataArray to a given GeoBox
 
@@ -231,14 +240,13 @@ def xr_reproject(src: Union[xr.DataArray, xr.Dataset],
     """
 
     if isinstance(src, xr.DataArray):
-        return xr_reproject_array(src, geobox,
-                                  resampling=resampling,
-                                  chunks=chunks,
-                                  dst_nodata=dst_nodata)
+        return xr_reproject_array(
+            src, geobox, resampling=resampling, chunks=chunks, dst_nodata=dst_nodata
+        )
 
-    bands = {name: xr_reproject_array(band,
-                                      geobox,
-                                      resampling=resampling,
-                                      chunks=chunks) for name, band in src.data_vars.items()}
+    bands = {
+        name: xr_reproject_array(band, geobox, resampling=resampling, chunks=chunks)
+        for name, band in src.data_vars.items()
+    }
 
     return xr.Dataset(data_vars=bands)

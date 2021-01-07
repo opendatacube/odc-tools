@@ -12,11 +12,11 @@ from ._jsoncache import (
 )
 
 __all__ = (
-    'create_cache',
-    'open_ro',
-    'open_rw',
-    'db_exists',
-    'TileIdx',
-    'DatasetCache',
-    'JsonBlobCache',
+    "create_cache",
+    "open_ro",
+    "open_rw",
+    "db_exists",
+    "TileIdx",
+    "DatasetCache",
+    "JsonBlobCache",
 )

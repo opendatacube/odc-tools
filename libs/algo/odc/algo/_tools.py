@@ -12,11 +12,13 @@ def slice_in_out(s: slice, n: int) -> Tuple[int, int]:
 
     start = fill_if_none(s.start, 0)
     stop = fill_if_none(s.stop, n)
-    start, stop = [x if x >= 0 else n+x for x in (start, stop)]
+    start, stop = [x if x >= 0 else n + x for x in (start, stop)]
     return (start, stop)
 
 
-def roi_shape(roi: ROI, shape: Optional[Union[int, Tuple[int, ...]]] = None) -> Tuple[int, ...]:
+def roi_shape(
+    roi: ROI, shape: Optional[Union[int, Tuple[int, ...]]] = None
+) -> Tuple[int, ...]:
     if isinstance(shape, int):
         shape = (shape,)
 
@@ -27,6 +29,6 @@ def roi_shape(roi: ROI, shape: Optional[Union[int, Tuple[int, ...]]] = None) -> 
         # Assume slices are normalised
         return tuple(s.stop - (s.start or 0) for s in roi)
 
-    return tuple(_out - _in
-                 for _in, _out in (slice_in_out(s, n)
-                                   for s, n in zip(roi, shape)))
+    return tuple(
+        _out - _in for _in, _out in (slice_in_out(s, n) for s, n in zip(roi, shape))
+    )

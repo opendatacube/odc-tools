@@ -2,9 +2,7 @@
 """
 
 
-def dss_to_geojson(dss, bbox=False,
-                   simplify=True,
-                   tolerance=0.001):
+def dss_to_geojson(dss, bbox=False, simplify=True, tolerance=0.001):
     from datacube.testutils.geom import epsg4326
     from datacube.utils.geometry import bbox_union
 
@@ -31,38 +29,42 @@ def gridspec_to_geojson(gs, xx, yy, styles):
 
     def to_geojson(gs, tidx):
         bbox = gs.tile_geobox(tidx)
-        return dict(geometry=bbox.geographic_extent.__geo_interface__,
-                    type="Feature",
-                    properties=dict(title='{:+d},{:+d}'.format(*tidx),
-                                    **styles))
+        return dict(
+            geometry=bbox.geographic_extent.__geo_interface__,
+            type="Feature",
+            properties=dict(title="{:+d},{:+d}".format(*tidx), **styles),
+        )
 
-    tiles = itertools.product(range(*xx),
-                              range(*yy))
+    tiles = itertools.product(range(*xx), range(*yy))
 
-    return {'type': 'FeatureCollection',
-            'features': [to_geojson(gs, tidx)
-                         for tidx in tiles]}
+    return {
+        "type": "FeatureCollection",
+        "features": [to_geojson(gs, tidx) for tidx in tiles],
+    }
 
 
 def zoom_from_bbox(bbox):
-    """ Estimate zoom level for a given bounding box region
+    """Estimate zoom level for a given bounding box region
 
-        Bounding box is assumed to be in lat/lon.
+    Bounding box is assumed to be in lat/lon.
     """
     import math
-    x = max(360/(bbox.right - bbox.left),
-            180/(bbox.top - bbox.bottom))
+
+    x = max(360 / (bbox.right - bbox.left), 180 / (bbox.top - bbox.bottom))
     return math.floor(math.log2(x))
 
 
-def show_datasets(dss, mode='leaflet',
-                  dst=None,
-                  layer_name='Datasets',
-                  style={},
-                  simplify=True,
-                  tolerance=0.001,  # ~100m at equator
-                  **kw):
-    """ Display dataset footprints on a Leaflet map.
+def show_datasets(
+    dss,
+    mode="leaflet",
+    dst=None,
+    layer_name="Datasets",
+    style={},
+    simplify=True,
+    tolerance=0.001,  # ~100m at equator
+    **kw
+):
+    """Display dataset footprints on a Leaflet map.
 
     :param mode:       leaflet|geojson, geojson only works in JupyterLab, leave it as default
     :param dst:        leaflet map to "show" datasets on, default -- create new one
@@ -77,30 +79,31 @@ def show_datasets(dss, mode='leaflet',
 
     **kw: Arguments to pass to leaflet.Map(..) constructor
     """
-    if mode not in ('leaflet', 'geojson'):
-        raise ValueError('Invalid value for mode, expected: leaflet|geojson')
+    if mode not in ("leaflet", "geojson"):
+        raise ValueError("Invalid value for mode, expected: leaflet|geojson")
 
-    polygons, bbox = dss_to_geojson(dss, bbox=True,
-                                    simplify=simplify,
-                                    tolerance=tolerance)
+    polygons, bbox = dss_to_geojson(
+        dss, bbox=True, simplify=simplify, tolerance=tolerance
+    )
 
-    if mode == 'geojson':
+    if mode == "geojson":
         from IPython.display import GeoJSON
+
         return GeoJSON(polygons)
-    if mode == 'leaflet':
+    if mode == "leaflet":
         from ipyleaflet import Map, GeoJSON, FullScreenControl, LayersControl
 
         if dst is None:
-            center = kw.pop('center', None)
-            zoom = kw.pop('zoom', None)
+            center = kw.pop("center", None)
+            zoom = kw.pop("zoom", None)
 
             if center is None:
-                center = (bbox.bottom + bbox.top)*0.5, (bbox.right + bbox.left)*0.5
+                center = (bbox.bottom + bbox.top) * 0.5, (bbox.right + bbox.left) * 0.5
             if zoom is None:
                 zoom = zoom_from_bbox(bbox)
 
-            height = kw.pop('height', '600px')
-            width = kw.pop('width', None)
+            height = kw.pop("height", "600px")
+            width = kw.pop("width", None)
 
             m = Map(center=center, zoom=zoom, **kw)
             m.layout.height = height
@@ -110,11 +113,12 @@ def show_datasets(dss, mode='leaflet',
         else:
             m = dst
 
-        gg = GeoJSON(data={'type': 'FeatureCollection',
-                           'features': polygons},
-                     style=style,
-                     hover_style={'color': 'tomato'},
-                     name=layer_name)
+        gg = GeoJSON(
+            data={"type": "FeatureCollection", "features": polygons},
+            style=style,
+            hover_style={"color": "tomato"},
+            name=layer_name,
+        )
         m.add_layer(gg)
         if dst is None:
             return m
@@ -122,31 +126,27 @@ def show_datasets(dss, mode='leaflet',
             return gg
 
 
-def mk_map_region_selector(map=None, height='600px', **kwargs):
+def mk_map_region_selector(map=None, height="600px", **kwargs):
     from ipyleaflet import Map, WidgetControl, FullScreenControl, DrawControl
     from ipywidgets.widgets import Layout, Button, HTML
     from types import SimpleNamespace
 
-    state = SimpleNamespace(selection=None,
-                            bounds=None,
-                            done=False)
+    state = SimpleNamespace(selection=None, bounds=None, done=False)
 
-    btn_done = Button(description='done',
-                      layout=Layout(width='5em'))
-    btn_done.style.button_color = 'green'
+    btn_done = Button(description="done", layout=Layout(width="5em"))
+    btn_done.style.button_color = "green"
     btn_done.disabled = True
 
-    html_info = HTML(layout=Layout(flex='1 0 20em',
-                                   width='20em',
-                                   height='3em'))
+    html_info = HTML(layout=Layout(flex="1 0 20em", width="20em", height="3em"))
 
     def update_info(txt):
-        html_info.value = '<pre style="color:grey">' + txt + '</pre>'
+        html_info.value = '<pre style="color:grey">' + txt + "</pre>"
 
     def render_bounds(bounds):
         (lat1, lon1), (lat2, lon2) = bounds
-        txt = 'lat: [{:.{n}f}, {:.{n}f}]\nlon: [{:.{n}f}, {:.{n}f}]'.format(
-            lat1, lat2, lon1, lon2, n=4)
+        txt = "lat: [{:.{n}f}, {:.{n}f}]\nlon: [{:.{n}f}, {:.{n}f}]".format(
+            lat1, lat2, lon1, lon2, n=4
+        )
         update_info(txt)
 
     if map is None:
@@ -158,8 +158,8 @@ def mk_map_region_selector(map=None, height='600px', **kwargs):
         render_bounds(m.bounds)
 
     widgets = [
-        WidgetControl(widget=btn_done, position='topright'),
-        WidgetControl(widget=html_info, position='bottomleft'),
+        WidgetControl(widget=btn_done, position="topright"),
+        WidgetControl(widget=html_info, position="bottomleft"),
     ]
     for w in widgets:
         m.add_control(w)
@@ -170,11 +170,8 @@ def mk_map_region_selector(map=None, height='600px', **kwargs):
     draw.polyline = {}
     draw.circlemarker = {}
 
-    shape_opts = {"fillColor": "#fca45d",
-                  "color": "#000000",
-                  "fillOpacity": 0.1}
-    draw.rectangle = {"shapeOptions": shape_opts,
-                      "metric": ["km", "m"]}
+    shape_opts = {"fillColor": "#fca45d", "color": "#000000", "fillOpacity": 0.1}
+    draw.rectangle = {"shapeOptions": shape_opts, "metric": ["km", "m"]}
     poly_opts = {"shapeOptions": dict(**shape_opts)}
     poly_opts["shapeOptions"]["original"] = dict(**shape_opts)
     poly_opts["shapeOptions"]["editing"] = dict(**shape_opts)
@@ -193,31 +190,30 @@ def mk_map_region_selector(map=None, height='600px', **kwargs):
             m.remove_control(w)
 
     def bounds_handler(event):
-        bounds = event['new']
+        bounds = event["new"]
         render_bounds(bounds)
         (lat1, lon1), (lat2, lon2) = bounds
-        state.bounds = dict(lat=(lat1, lat2),
-                            lon=(lon1, lon2))
+        state.bounds = dict(lat=(lat1, lat2), lon=(lon1, lon2))
 
     def on_draw(event):
-        v = event['new']
-        action = event['name']
-        if action == 'last_draw':
-            state.selection = v['geometry']
-        elif action == 'last_action' and v == 'deleted':
+        v = event["new"]
+        action = event["name"]
+        if action == "last_draw":
+            state.selection = v["geometry"]
+        elif action == "last_action" and v == "deleted":
             state.selection = None
 
         btn_done.disabled = state.selection is None
 
     draw.observe(on_draw)
-    m.observe(bounds_handler, ('bounds',))
+    m.observe(bounds_handler, ("bounds",))
     btn_done.on_click(on_done)
 
     return m, state
 
 
 def select_on_a_map(map=None, **kwargs):
-    """ Display a map and block execution until user selects a region of interest.
+    """Display a map and block execution until user selects a region of interest.
 
     Returns selected region as datacube Geometry class.
 

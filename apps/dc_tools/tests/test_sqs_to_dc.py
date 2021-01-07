@@ -29,6 +29,7 @@ deep_diff = partial(
     DeepDiff, significant_digits=6, ignore_type_in_groups=[(tuple, list)]
 )
 
+
 @pytest.mark.skip(reason="Test is failing due to requiring credentials")
 @pytest.mark.skipif(
     date.today() > date(2020, 11, 10), reason="dataset has been rotated out"

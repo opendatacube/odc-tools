@@ -14,11 +14,11 @@ from ._dask import randomize, _get_chunks_asarray
 
 
 def default_nodata(dtype):
-    """ Default `nodata` for a given dtype
-        - nan for float{*}
-        - 0   for any other type
+    """Default `nodata` for a given dtype
+    - nan for float{*}
+    - 0   for any other type
     """
-    if dtype.kind == 'f':
+    if dtype.kind == "f":
         return dtype.type(np.nan)
     return dtype.type(0)
 
@@ -35,10 +35,8 @@ def keep_good_np(xx, where, nodata, out=None):
     return out
 
 
-def keep_good_only(x, where,
-                   inplace=False,
-                   nodata=None):
-    """ Return a copy of x, but with some pixels replaced with `nodata`.
+def keep_good_only(x, where, inplace=False, nodata=None):
+    """Return a copy of x, but with some pixels replaced with `nodata`.
 
     This function can work on dask arrays, in which case output will be a dask array as well.
 
@@ -54,12 +52,13 @@ def keep_good_only(x, where,
      - x[idx]  if where[idx] == True
     """
     if isinstance(x, xr.Dataset):
-        return x.apply(lambda x: keep_good_only(x, where, inplace=inplace),
-                       keep_attrs=True)
+        return x.apply(
+            lambda x: keep_good_only(x, where, inplace=inplace), keep_attrs=True
+        )
 
     assert x.shape == where.shape
     if nodata is None:
-        nodata = getattr(x, 'nodata', 0)
+        nodata = getattr(x, "nodata", 0)
 
     if inplace:
         if dask.is_dask_collection(x):
@@ -69,18 +68,18 @@ def keep_good_only(x, where,
         return x
 
     if dask.is_dask_collection(x):
-        data = da.map_blocks(keep_good_np,
-                             x.data, where.data, nodata,
-                             name=randomize('keep_good'),
-                             dtype=x.dtype)
+        data = da.map_blocks(
+            keep_good_np,
+            x.data,
+            where.data,
+            nodata,
+            name=randomize("keep_good"),
+            dtype=x.dtype,
+        )
     else:
         data = keep_good_np(x.data, where.data, nodata)
 
-    return xr.DataArray(data,
-                        dims=x.dims,
-                        coords=x.coords,
-                        attrs=x.attrs,
-                        name=x.name)
+    return xr.DataArray(data, dims=x.dims, coords=x.coords, attrs=x.attrs, name=x.name)
 
 
 def from_float_np(x, dtype, nodata, scale=1, offset=0, where=None, out=None):
@@ -92,123 +91,112 @@ def from_float_np(x, dtype, nodata, scale=1, offset=0, where=None, out=None):
     else:
         assert out.shape == x.shape
 
-    params = dict(x=x,
-                  nodata=nodata,
-                  scale=scale,
-                  offset=offset)
+    params = dict(x=x, nodata=nodata, scale=scale, offset=offset)
 
     # `x == x` is equivalent to `~np.isnan(x)`
 
     if where is not None:
         assert x.shape == where.shape
-        params['m'] = where
-        expr = 'where((x == x)&m, x*scale + offset, nodata)'
+        params["m"] = where
+        expr = "where((x == x)&m, x*scale + offset, nodata)"
     else:
-        expr = 'where(x == x, x*scale + offset, nodata)'
+        expr = "where(x == x, x*scale + offset, nodata)"
 
-    ne.evaluate(expr,
-                local_dict=params,
-                out=out,
-                casting='unsafe')
+    ne.evaluate(expr, local_dict=params, out=out, casting="unsafe")
 
     return out
 
 
-def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32', out=None):
+def to_float_np(x, nodata=None, scale=1, offset=0, dtype="float32", out=None):
     float_type = np.dtype(dtype).type
 
     _nan = float_type(np.nan)
     scale = float_type(scale)
     offset = float_type(offset)
 
-    params = dict(_nan=_nan,
-                  scale=scale,
-                  offset=offset,
-                  x=x,
-                  nodata=nodata)
+    params = dict(_nan=_nan, scale=scale, offset=offset, x=x, nodata=nodata)
     if out is None:
         out = np.empty_like(x, dtype=dtype)
     else:
         assert out.shape == x.shape
 
     if nodata is None:
-        return ne.evaluate('x*scale + offset',
-                           out=out,
-                           casting='unsafe',
-                           local_dict=params)
+        return ne.evaluate(
+            "x*scale + offset", out=out, casting="unsafe", local_dict=params
+        )
     elif scale == 1 and offset == 0:
-        return ne.evaluate('where(x == nodata, _nan, x)',
-                           out=out,
-                           casting='unsafe',
-                           local_dict=params)
+        return ne.evaluate(
+            "where(x == nodata, _nan, x)", out=out, casting="unsafe", local_dict=params
+        )
     else:
-        return ne.evaluate('where(x == nodata, _nan, x*scale + offset)',
-                           out=out,
-                           casting='unsafe',
-                           local_dict=params)
+        return ne.evaluate(
+            "where(x == nodata, _nan, x*scale + offset)",
+            out=out,
+            casting="unsafe",
+            local_dict=params,
+        )
 
 
 def to_f32_np(x, nodata=None, scale=1, offset=0, out=None):
-    return to_float_np(x, nodata=nodata, scale=scale, offset=offset, dtype='float32', out=out)
+    return to_float_np(
+        x, nodata=nodata, scale=scale, offset=offset, dtype="float32", out=out
+    )
 
 
-def to_float(x, scale=1, offset=0, dtype='float32'):
+def to_float(x, scale=1, offset=0, dtype="float32"):
     if isinstance(x, xr.Dataset):
-        return x.apply(to_float,
-                       scale=scale,
-                       offset=offset,
-                       dtype=dtype,
-                       keep_attrs=True)
+        return x.apply(
+            to_float, scale=scale, offset=offset, dtype=dtype, keep_attrs=True
+        )
 
     attrs = x.attrs.copy()
-    nodata = attrs.pop('nodata', None)
+    nodata = attrs.pop("nodata", None)
 
     if dask.is_dask_collection(x.data):
-        data = da.map_blocks(to_float_np,
-                             x.data, nodata, scale, offset, dtype,
-                             dtype=dtype,
-                             name=randomize('to_float'))
+        data = da.map_blocks(
+            to_float_np,
+            x.data,
+            nodata,
+            scale,
+            offset,
+            dtype,
+            dtype=dtype,
+            name=randomize("to_float"),
+        )
     else:
-        data = to_float_np(x.data,
-                           nodata=nodata,
-                           scale=scale,
-                           offset=offset,
-                           dtype=dtype)
+        data = to_float_np(
+            x.data, nodata=nodata, scale=scale, offset=offset, dtype=dtype
+        )
 
-    return xr.DataArray(data,
-                        dims=x.dims,
-                        coords=x.coords,
-                        name=x.name,
-                        attrs=attrs)
+    return xr.DataArray(data, dims=x.dims, coords=x.coords, name=x.name, attrs=attrs)
 
 
 def to_f32(x, scale=1, offset=0):
-    return to_float(x, scale=scale, offset=offset, dtype='float32')
+    return to_float(x, scale=scale, offset=offset, dtype="float32")
 
 
 def from_float(x, dtype, nodata, scale=1, offset=0):
     if isinstance(x, xr.Dataset):
-        return x.apply(from_float, keep_attrs=True,
-                       args=(dtype, nodata, scale, offset))
+        return x.apply(from_float, keep_attrs=True, args=(dtype, nodata, scale, offset))
 
     attrs = x.attrs.copy()
-    attrs['nodata'] = nodata
+    attrs["nodata"] = nodata
 
     if dask.is_dask_collection(x.data):
-        data = da.map_blocks(from_float_np,
-                             x.data, dtype, nodata,
-                             scale=scale, offset=offset,
-                             dtype=dtype,
-                             name=randomize('from_float'))
+        data = da.map_blocks(
+            from_float_np,
+            x.data,
+            dtype,
+            nodata,
+            scale=scale,
+            offset=offset,
+            dtype=dtype,
+            name=randomize("from_float"),
+        )
     else:
-        data = from_float_np(x.data, dtype, nodata,
-                             scale=scale, offset=offset)
+        data = from_float_np(x.data, dtype, nodata, scale=scale, offset=offset)
 
-    return xr.DataArray(data,
-                        dims=x.dims,
-                        coords=x.coords,
-                        name=x.name,
-                        attrs=attrs)
+    return xr.DataArray(data, dims=x.dims, coords=x.coords, name=x.name, attrs=attrs)
 
 
 def _impl_to_bool(x, m):
@@ -221,14 +209,13 @@ def _impl_to_bool_inverted(x, m):
 
 def _flags_invert(flags: Dict[str, Any]) -> Dict[str, Any]:
     _out = dict(**flags)
-    _out['values'] = {n: int(v)
-                      for v, n in flags['values'].items()}
+    _out["values"] = {n: int(v) for v, n in flags["values"].items()}
     return _out
 
 
-def _get_enum_values(names: Iterable[str],
-                     flags_definition: Dict[str, Dict[str, Any]],
-                     flag: str = '') -> Tuple[int, ...]:
+def _get_enum_values(
+    names: Iterable[str], flags_definition: Dict[str, Dict[str, Any]], flag: str = ""
+) -> Tuple[int, ...]:
     """
     Lookup enum values in flags definition library
 
@@ -236,14 +223,14 @@ def _get_enum_values(names: Iterable[str],
     :param flags_definition: Flags definition dictionary as used by Datacube
     :param flag: Name of the enum (for example "fmask", auto-guessed if omitted)
     """
-    if flag != '':
+    if flag != "":
         flags_definition = {flag: flags_definition[flag]}
 
     names = list(names)
     names_set = set(names)
     unmatched = set()
     for ff in flags_definition.values():
-        values = _flags_invert(ff)['values']
+        values = _flags_invert(ff)["values"]
         unmatched = names_set - set(values.keys())
         if len(unmatched) == 0:
             return tuple(values[n] for n in names)
@@ -255,50 +242,49 @@ def _get_enum_values(names: Iterable[str],
         raise ValueError(f"Not all enumeration names were found: {unmatched_human}")
 
 
-def _mk_ne_isin_condition(values: Tuple[int, ...],
-                          var_name: str = 'a',
-                          invert: bool = False) -> str:
+def _mk_ne_isin_condition(
+    values: Tuple[int, ...], var_name: str = "a", invert: bool = False
+) -> str:
     """
     Produce numexpr expression equivalent to numpys `.isin`
 
      - ((a==v1)|(a==v2)|..|a==vn)   when invert=False
      - ((a!=v1)&(a!=v2)&..&a!=vn)   when invert=True
     """
-    op1, op2 = ('!=', '&') if invert else ('==', '|')
-    parts = [f'({var_name}{op1}{val})' for val in values]
-    return f'({op2.join(parts)})'
+    op1, op2 = ("!=", "&") if invert else ("==", "|")
+    parts = [f"({var_name}{op1}{val})" for val in values]
+    return f"({op2.join(parts)})"
 
 
-def _enum_to_mask_numexpr(mask: np.ndarray,
-                          classes: Tuple[int, ...],
-                          invert: bool = False,
-                          value_true: int = 1,
-                          value_false: int = 0,
-                          dtype: Union[str, np.dtype] = 'bool') -> np.ndarray:
-    cond = _mk_ne_isin_condition(classes, 'm', invert=invert)
+def _enum_to_mask_numexpr(
+    mask: np.ndarray,
+    classes: Tuple[int, ...],
+    invert: bool = False,
+    value_true: int = 1,
+    value_false: int = 0,
+    dtype: Union[str, np.dtype] = "bool",
+) -> np.ndarray:
+    cond = _mk_ne_isin_condition(classes, "m", invert=invert)
     expr = f"where({cond}, {value_true}, {value_false})"
     out = np.empty_like(mask, dtype=dtype)
 
-    ne.evaluate(expr,
-                local_dict=dict(m=mask),
-                out=out,
-                casting='unsafe')
+    ne.evaluate(expr, local_dict=dict(m=mask), out=out, casting="unsafe")
 
     return out
 
 
 def _disk(r: int, ndim: int = 2) -> np.ndarray:
     from skimage.morphology import disk
+
     kernel = disk(r)
     while kernel.ndim < ndim:
         kernel = kernel[np.newaxis]
     return kernel
 
 
-def xr_apply_morph_op(xx: xr.DataArray,
-                      operation: str,
-                      radius: int = 1,
-                      **kw) -> xr.DataArray:
+def xr_apply_morph_op(
+    xx: xr.DataArray, operation: str, radius: int = 1, **kw
+) -> xr.DataArray:
     """
     Apply morphological operation to Dask based xarray Array
 
@@ -320,10 +306,7 @@ def xr_apply_morph_op(xx: xr.DataArray,
     kernel = _disk(radius, xx.ndim)
     data = ops[operation](xx.data, kernel, **kw)
 
-    return xr.DataArray(data=data,
-                        coords=xx.coords,
-                        dims=xx.dims,
-                        attrs=xx.attrs)
+    return xr.DataArray(data=data, coords=xx.coords, dims=xx.dims, attrs=xx.attrs)
 
 
 def binary_erosion(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
@@ -350,7 +333,8 @@ def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray
     :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
     """
     import skimage.morphology as morph
-    assert mask.dtype == 'bool'
+
+    assert mask.dtype == "bool"
 
     r1, r2 = r
     if r1 == 0 and r2 == 0:
@@ -365,15 +349,14 @@ def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray
     return mask
 
 
-def _compute_overlap_depth(r: Tuple[int, int],
-                           ndim: int) -> Tuple[int, ...]:
+def _compute_overlap_depth(r: Tuple[int, int], ndim: int) -> Tuple[int, ...]:
     r = max(r)
-    return (0,)*(ndim-2)+(r, r)
+    return (0,) * (ndim - 2) + (r, r)
 
 
-def mask_cleanup(mask: xr.DataArray,
-                 r: Tuple[int, int] = (2, 5),
-                 name: Optional[str] = None) -> xr.DataArray:
+def mask_cleanup(
+    mask: xr.DataArray, r: Tuple[int, int] = (2, 5), name: Optional[str] = None
+) -> xr.DataArray:
     """
     Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
 
@@ -392,36 +375,32 @@ def mask_cleanup(mask: xr.DataArray,
             name = f"mask_cleanup_{r[0]}_{r[1]}"
 
         depth = _compute_overlap_depth(r, data.ndim)
-        data = data.map_overlap(partial(mask_cleanup_np, r=r),
-                                depth,
-                                boundary='none',
-                                name=randomize(name))
+        data = data.map_overlap(
+            partial(mask_cleanup_np, r=r), depth, boundary="none", name=randomize(name)
+        )
     else:
         data = mask_cleanup_np(data, r)
 
-    return xr.DataArray(data,
-                        attrs=mask.attrs,
-                        coords=mask.coords,
-                        dims=mask.dims)
+    return xr.DataArray(data, attrs=mask.attrs, coords=mask.coords, dims=mask.dims)
 
 
-def cloud_buffer(mask: xr.DataArray,
-                 radius: int,
-                 dilation_radius: int = None) -> xr.DataArray:
+def cloud_buffer(
+    mask: xr.DataArray, radius: int, dilation_radius: int = None
+) -> xr.DataArray:
 
-    """ This method accepts cloud masks and applies morphological functions to improve cloud masking
-        The buffer is formed by applying dilation(dilation_radius) followed by erosion(radius + dilation_radius) if
-        dilation_radius is specified otherwise just erosion(radius)
-        The sequential application of these functions will improve false cloud detection for sandy beaches
+    """This method accepts cloud masks and applies morphological functions to improve cloud masking
+    The buffer is formed by applying dilation(dilation_radius) followed by erosion(radius + dilation_radius) if
+    dilation_radius is specified otherwise just erosion(radius)
+    The sequential application of these functions will improve false cloud detection for sandy beaches
 
-        :param mask: A mask which has cloud classes (cloud shadows, cloud medium probability,
-                    cloud high probability, thin cirrus) set to False
-        :param radius: kernel radius
-        :param dilation_radius: kernel Radius
+    :param mask: A mask which has cloud classes (cloud shadows, cloud medium probability,
+                cloud high probability, thin cirrus) set to False
+    :param radius: kernel radius
+    :param dilation_radius: kernel Radius
 
-        example:
-        clouds_not = enum_to_bool(xx.scl, cloud_classes, invert=True)
-        cloud_buffer(clouds_not, radius, dilation_radius)
+    example:
+    clouds_not = enum_to_bool(xx.scl, cloud_classes, invert=True)
+    cloud_buffer(clouds_not, radius, dilation_radius)
     """
     from skimage.morphology import disk
     from dask_image.ndmorph import binary_erosion, binary_dilation
@@ -437,23 +416,31 @@ def cloud_buffer(mask: xr.DataArray,
         erosion_kernel = disk(erosion_radius)
 
     if dilation_radius is None:
-        return xr.DataArray(data=binary_erosion(mask.data, erosion_kernel, border_value=True),
-                            coords=mask.coords)
+        return xr.DataArray(
+            data=binary_erosion(mask.data, erosion_kernel, border_value=True),
+            coords=mask.coords,
+        )
     else:
-        return xr.DataArray(data=binary_erosion(binary_dilation(mask.data, dilation_kernel,
-                                                border_value=True),
-                            erosion_kernel, border_value=True),
-                            coords=mask.coords)
+        return xr.DataArray(
+            data=binary_erosion(
+                binary_dilation(mask.data, dilation_kernel, border_value=True),
+                erosion_kernel,
+                border_value=True,
+            ),
+            coords=mask.coords,
+        )
 
 
-def enum_to_bool(mask: xr.DataArray,
-                 categories: Iterable[Union[str, int]],
-                 invert: bool = False,
-                 flag_name: str = '',
-                 value_true: int = 1,
-                 value_false: int = 0,
-                 dtype: Union[str, np.dtype] = 'bool',
-                 name: str = "enum_to_bool") -> xr.DataArray:
+def enum_to_bool(
+    mask: xr.DataArray,
+    categories: Iterable[Union[str, int]],
+    invert: bool = False,
+    flag_name: str = "",
+    value_true: int = 1,
+    value_false: int = 0,
+    dtype: Union[str, np.dtype] = "bool",
+    name: str = "enum_to_bool",
+) -> xr.DataArray:
     """
     This method works for fmask and other "enumerated" masks
 
@@ -470,42 +457,42 @@ def enum_to_bool(mask: xr.DataArray,
     classes = tuple(c for c in categories if isinstance(c, int))
 
     if len(categories_s) > 0:
-        flags = getattr(mask, 'flags_definition', None)
+        flags = getattr(mask, "flags_definition", None)
         if flags is None:
-            raise ValueError('Missing flags_definition attribute')
+            raise ValueError("Missing flags_definition attribute")
 
         classes = classes + _get_enum_values(categories_s, flags, flag=flag_name)
 
-    op = partial(_enum_to_mask_numexpr,
-                 classes=classes,
-                 invert=invert,
-                 value_false=value_false,
-                 value_true=value_true,
-                 dtype=dtype)
+    op = partial(
+        _enum_to_mask_numexpr,
+        classes=classes,
+        invert=invert,
+        value_false=value_false,
+        value_true=value_true,
+        dtype=dtype,
+    )
 
     if dask.is_dask_collection(mask.data):
-        data = da.map_blocks(op, mask.data,
-                             name=randomize(name),
-                             dtype=dtype)
+        data = da.map_blocks(op, mask.data, name=randomize(name), dtype=dtype)
     else:
         data = op(mask)
 
     attrs = dict(mask.attrs)
-    attrs.pop('flags_definition', None)
-    attrs.pop('nodata', None)
+    attrs.pop("flags_definition", None)
+    attrs.pop("nodata", None)
 
-    bmask = xr.DataArray(data=data,
-                         dims=mask.dims,
-                         coords=mask.coords,
-                         attrs=attrs)
+    bmask = xr.DataArray(data=data, dims=mask.dims, coords=mask.coords, attrs=attrs)
 
     return bmask
 
 
-def fmask_to_bool(mask: xr.DataArray,
-                  categories: Iterable[str],
-                  invert: bool = False,
-                  flag_name: str = '', **kw) -> xr.DataArray:
+def fmask_to_bool(
+    mask: xr.DataArray,
+    categories: Iterable[str],
+    invert: bool = False,
+    flag_name: str = "",
+    **kw,
+) -> xr.DataArray:
     """
     This method works for fmask and other "enumerated" masks
 
@@ -522,37 +509,29 @@ def fmask_to_bool(mask: xr.DataArray,
 
 
 def _gap_fill_np(a, fallback, nodata):
-    params = dict(a=a,
-                  b=fallback,
-                  nodata=a.dtype.type(nodata))
+    params = dict(a=a, b=fallback, nodata=a.dtype.type(nodata))
 
     out = np.empty_like(a)
 
     if np.isnan(nodata):
         # a==a equivalent to `not isnan(a)`
-        expr = 'where(a==a, a, b)'
+        expr = "where(a==a, a, b)"
     else:
-        expr = 'where(a!=nodata, a, b)'
+        expr = "where(a!=nodata, a, b)"
 
-    return ne.evaluate(expr,
-                       local_dict=params,
-                       out=out,
-                       casting='unsafe')
+    return ne.evaluate(expr, local_dict=params, out=out, casting="unsafe")
 
 
-def gap_fill(x: xr.DataArray,
-             fallback: xr.DataArray,
-             nodata=None,
-             attrs=None):
-    """ Fill missing values in `x` with values from `fallback`.
+def gap_fill(x: xr.DataArray, fallback: xr.DataArray, nodata=None, attrs=None):
+    """Fill missing values in `x` with values from `fallback`.
 
-        x,fallback are expected to be xarray.DataArray with identical shape and dtype.
+    x,fallback are expected to be xarray.DataArray with identical shape and dtype.
 
-            out[pix] = x[pix] if x[pix] != x.nodata else fallback[pix]
+        out[pix] = x[pix] if x[pix] != x.nodata else fallback[pix]
     """
 
     if nodata is None:
-        nodata = getattr(x, 'nodata', None)
+        nodata = getattr(x, "nodata", None)
 
     if nodata is None:
         nodata = default_nodata(x.dtype)
@@ -563,21 +542,23 @@ def gap_fill(x: xr.DataArray,
         attrs = x.attrs.copy()
 
     if dask.is_dask_collection(x):
-        data = da.map_blocks(_gap_fill_np,
-                             x.data, fallback.data, nodata,
-                             name=randomize('gap_fill'),
-                             dtype=x.dtype)
+        data = da.map_blocks(
+            _gap_fill_np,
+            x.data,
+            fallback.data,
+            nodata,
+            name=randomize("gap_fill"),
+            dtype=x.dtype,
+        )
     else:
         data = _gap_fill_np(x.data, fallback.data, nodata)
 
-    return xr.DataArray(data,
-                        attrs=attrs,
-                        dims=x.dims,
-                        coords=x.coords,
-                        name=x.name)
+    return xr.DataArray(data, attrs=attrs, dims=x.dims, coords=x.coords, name=x.name)
 
 
-def _first_valid_np(*aa: np.ndarray, nodata: Union[float, int, None] = None) -> np.ndarray:
+def _first_valid_np(
+    *aa: np.ndarray, nodata: Union[float, int, None] = None
+) -> np.ndarray:
     out = aa[0].copy()
     if nodata is None:
         nodata = default_nodata(out.dtype)
@@ -637,7 +618,7 @@ def _da_fuse_with_custom_op(xx: da.Array, op, name="fuse") -> da.Array:
     """
     can_do_flat = all([ch == 1 for ch in xx.chunks[0]])
     if not can_do_flat:
-        slices = [xx.data[i:i+1] for i in range(xx.shape[0])]
+        slices = [xx.data[i : i + 1] for i in range(xx.shape[0])]
         return da.map_blocks(op, *slices, name=name)
 
     chunks, shapes = _get_chunks_asarray(xx)
@@ -651,14 +632,10 @@ def _da_fuse_with_custom_op(xx: da.Array, op, name="fuse") -> da.Array:
     shape = (1, *xx.shape[1:])
     chunks = ((1,), *xx.chunks[1:])
 
-    return da.Array(dsk, name,
-                    shape=shape,
-                    dtype=xx.dtype,
-                    chunks=chunks)
+    return da.Array(dsk, name, shape=shape, dtype=xx.dtype, chunks=chunks)
 
 
-def _fuse_with_custom_op(x: xr.DataArray, op,
-                         name="fuse") -> xr.DataArray:
+def _fuse_with_custom_op(x: xr.DataArray, op, name="fuse") -> xr.DataArray:
     """
     Out[0, y, x] = op(In[0:1, y, x], In[1:2, y, x], In[2:3, y, x]...)
 
@@ -667,18 +644,13 @@ def _fuse_with_custom_op(x: xr.DataArray, op,
     if dask.is_dask_collection(x.data):
         data = _da_fuse_with_custom_op(x.data, op, name=name)
     else:
-        slices = [x.data[i:i+1]
-                  for i in range(x.shape[0])]
+        slices = [x.data[i : i + 1] for i in range(x.shape[0])]
         data = op(*slices)
 
     coords = {k: v for k, v in x.coords.items()}
     coords[x.dims[0]] = x.coords[x.dims[0]][0:1]
 
-    return xr.DataArray(data,
-                        attrs=x.attrs,
-                        dims=x.dims,
-                        coords=coords,
-                        name=x.name)
+    return xr.DataArray(data, attrs=x.attrs, dims=x.dims, coords=coords, name=x.name)
 
 
 def _xr_fuse(xx, op, name):
@@ -726,9 +698,11 @@ def choose_first_valid(x: xr.DataArray, nodata=None) -> xr.DataArray:
     Expects data in ``_, y, x`` order. Works on Dask inputs too.
     """
     if nodata is None:
-        nodata = x.attrs.get('nodata', None)
+        nodata = x.attrs.get("nodata", None)
 
-    return _fuse_with_custom_op(x, partial(_first_valid_np, nodata=nodata), name="choose_first_valid")
+    return _fuse_with_custom_op(
+        x, partial(_first_valid_np, nodata=nodata), name="choose_first_valid"
+    )
 
 
 def _nodata_fuser(xx, **kw):

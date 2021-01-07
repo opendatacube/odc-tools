@@ -7,14 +7,19 @@ import asyncio
 from types import SimpleNamespace
 from typing import Optional, Iterator, Any
 
-from odc.aws import auto_find_region, s3_url_parse, s3_fmt_range, _aws_unsigned_check_env
+from odc.aws import (
+    auto_find_region,
+    s3_url_parse,
+    s3_fmt_range,
+    _aws_unsigned_check_env,
+)
 from odc.aws._find import norm_predicate, s3_file_info, parse_query
 from odc.ppt import EOS_MARKER, future_results
 from odc.ppt.async_thread import AsyncThread
 
 
 async def s3_fetch_object(url, s3, range=None, **kw):
-    """ returns object with
+    """returns object with
 
      On success:
         .url = url
@@ -33,22 +38,24 @@ async def s3_fetch_object(url, s3, range=None, **kw):
     from botocore.exceptions import ClientError, BotoCoreError
 
     def result(data=None, last_modified=None, error=None):
-        return SimpleNamespace(url=url, data=data, error=error, last_modified=last_modified, range=range)
+        return SimpleNamespace(
+            url=url, data=data, error=error, last_modified=last_modified, range=range
+        )
 
     bucket, key = s3_url_parse(url)
     extra_args = dict(**kw)
 
     if range is not None:
         try:
-            extra_args['Range'] = s3_fmt_range(range)
+            extra_args["Range"] = s3_fmt_range(range)
         except Exception:
-            return result(error='Bad range passed in: ' + str(range))
+            return result(error="Bad range passed in: " + str(range))
 
     try:
         obj = await s3.get_object(Bucket=bucket, Key=key, **extra_args)
-        stream = obj.get('Body', None)
+        stream = obj.get("Body", None)
         if stream is None:
-            return result(error='Missing Body in response')
+            return result(error="Missing Body in response")
         async with stream:
             data = await stream.read()
     except (ClientError, BotoCoreError) as e:
@@ -56,32 +63,32 @@ async def s3_fetch_object(url, s3, range=None, **kw):
     except Exception as e:
         return result(error="Some Error: " + str(e))
 
-    last_modified = obj.get('LastModified', None)
+    last_modified = obj.get("LastModified", None)
     return result(data=data, last_modified=last_modified)
 
 
 async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None, **kw):
-    """ List all objects under certain path
+    """List all objects under certain path
 
-        each s3 object is represented by a SimpleNamespace with attributes:
-        - url
-        - size
-        - last_modified
-        - etag
+    each s3 object is represented by a SimpleNamespace with attributes:
+    - url
+    - size
+    - last_modified
+    - etag
     """
     pred = norm_predicate(pred=pred, glob=glob)
 
     bucket, prefix = s3_url_parse(url)
 
-    if len(prefix) > 0 and not prefix.endswith('/'):
-        prefix = prefix + '/'
+    if len(prefix) > 0 and not prefix.endswith("/"):
+        prefix = prefix + "/"
 
-    pp = s3.get_paginator('list_objects_v2')
+    pp = s3.get_paginator("list_objects_v2")
 
     n_total, n = 0, 0
 
     async for o in pp.paginate(Bucket=bucket, Prefix=prefix, **kw):
-        for f in o.get('Contents', []):
+        for f in o.get("Contents", []):
             n_total += 1
             f = s3_file_info(f, bucket)
             if pred is None or pred(f):
@@ -92,13 +99,13 @@ async def _s3_find_via_cbk(url, cbk, s3, pred=None, glob=None, **kw):
 
 
 async def s3_find(url, s3, pred=None, glob=None, **kw):
-    """ List all objects under certain path
+    """List all objects under certain path
 
-        each s3 object is represented by a SimpleNamespace with attributes:
-        - url
-        - size
-        - last_modified
-        - etag
+    each s3 object is represented by a SimpleNamespace with attributes:
+    - url
+    - size
+    - last_modified
+    - etag
     """
     _files = []
 
@@ -111,20 +118,22 @@ async def s3_find(url, s3, pred=None, glob=None, **kw):
 
 
 async def s3_head_object(url, s3, **kw):
-    """ Run head_object return Result or Error
+    """Run head_object return Result or Error
 
-        (Result, None) -- on success
-        (None, error) -- on failure
+    (Result, None) -- on success
+    (None, error) -- on failure
 
     """
     from botocore.exceptions import ClientError, BotoCoreError
 
     def unpack(url, rr):
-        return SimpleNamespace(url=url,
-                               size=rr.get('ContentLength', 0),
-                               etag=rr.get('ETag', ''),
-                               last_modified=rr.get('LastModified'),
-                               expiration=rr.get('Expiration'))
+        return SimpleNamespace(
+            url=url,
+            size=rr.get("ContentLength", 0),
+            etag=rr.get("ETag", ""),
+            last_modified=rr.get("LastModified"),
+            expiration=rr.get("Expiration"),
+        )
 
     bucket, key = s3_url_parse(url)
     try:
@@ -136,34 +145,34 @@ async def s3_head_object(url, s3, **kw):
 
 
 async def s3_dir(url, s3, pred=None, glob=None, **kw):
-    """ List s3 "directory" without descending into sub directories.
+    """List s3 "directory" without descending into sub directories.
 
-        pred: predicate for file objects file_info -> True|False
-        glob: glob pattern for files only
+    pred: predicate for file objects file_info -> True|False
+    glob: glob pattern for files only
 
-        Returns: (dirs, files)
+    Returns: (dirs, files)
 
-        where
-          dirs -- list of subdirectories in `s3://bucket/path/` format
+    where
+      dirs -- list of subdirectories in `s3://bucket/path/` format
 
-          files -- list of objects with attributes: url, size, last_modified, etag
+      files -- list of objects with attributes: url, size, last_modified, etag
     """
     bucket, prefix = s3_url_parse(url)
     pred = norm_predicate(pred=pred, glob=glob)
 
-    if len(prefix) > 0 and not prefix.endswith('/'):
-        prefix = prefix + '/'
+    if len(prefix) > 0 and not prefix.endswith("/"):
+        prefix = prefix + "/"
 
-    pp = s3.get_paginator('list_objects_v2')
+    pp = s3.get_paginator("list_objects_v2")
 
     _dirs = []
     _files = []
 
-    async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter='/', **kw):
-        for d in o.get('CommonPrefixes', []):
-            d = d.get('Prefix')
-            _dirs.append('s3://{}/{}'.format(bucket, d))
-        for f in o.get('Contents', []):
+    async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter="/", **kw):
+        for d in o.get("CommonPrefixes", []):
+            d = d.get("Prefix")
+            _dirs.append("s3://{}/{}".format(bucket, d))
+        for f in o.get("Contents", []):
             f = s3_file_info(f, bucket)
             if pred is None or pred(f):
                 _files.append(f)
@@ -202,27 +211,27 @@ async def s3_dir_dir(url, depth, dst_q, s3, pred=None, **kw):
     root, but not including bucket name. Sub-directory is only traversed
     further if predicate returns True.
     """
-    if not url.endswith('/'):
-        url = url + '/'
+    if not url.endswith("/"):
+        url = url + "/"
 
     if depth == 0:
         await dst_q.put(url)
         return
 
-    pp = s3.get_paginator('list_objects_v2')
+    pp = s3.get_paginator("list_objects_v2")
 
     async def step(bucket, prefix, depth, work_q, dst_q):
 
-        async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter='/', **kw):
-            for d in o.get('CommonPrefixes', []):
-                d = d.get('Prefix')
+        async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter="/", **kw):
+            for d in o.get("CommonPrefixes", []):
+                d = d.get("Prefix")
                 if pred is not None and not pred(d):
                     continue
 
                 if depth > 1:
-                    await work_q.put((d, depth-1))
+                    await work_q.put((d, depth - 1))
                 else:
-                    d = 's3://{}/{}'.format(bucket, d)
+                    d = "s3://{}/{}".format(bucket, d)
                     await dst_q.put(d)
 
     bucket, prefix = s3_url_parse(url)
@@ -234,17 +243,14 @@ async def s3_dir_dir(url, depth, dst_q, s3, pred=None, **kw):
         await step(bucket, _dir, depth, work_q, dst_q)
 
 
-async def s3_walker(url, nconcurrent, s3,
-                    guide=None,
-                    pred=None,
-                    glob=None,
-                    **kw):
+async def s3_walker(url, nconcurrent, s3, guide=None, pred=None, glob=None, **kw):
     """
 
     guide(url, depth, base) -> 'dir'|'skip'|'deep'
     """
+
     def default_guide(url, depth, base):
-        return 'dir'
+        return "dir"
 
     if guide is None:
         guide = default_guide
@@ -265,22 +271,24 @@ async def s3_walker(url, nconcurrent, s3,
         n_active += 1
 
         _files = []
-        if action == 'dir':
+        if action == "dir":
             _dirs, _files = await s3_dir(url, s3=s3, pred=pred, glob=glob, **kw)
 
             for d in _dirs:
                 action = guide(d, depth=depth, base=url)
 
-                if action != 'skip':
-                    if action not in ('dir', 'deep'):
-                        raise ValueError('Expect skip|dir|deep got: %s' % action)
+                if action != "skip":
+                    if action not in ("dir", "deep"):
+                        raise ValueError("Expect skip|dir|deep got: %s" % action)
 
                     work_q.put_nowait((d, depth, action))
 
-        elif action == 'deep':
+        elif action == "deep":
             _files = await s3_find(url, s3=s3, pred=pred, glob=glob)
         else:
-            raise RuntimeError('Expected action to be one of deep|dir but found %s' % action)
+            raise RuntimeError(
+                "Expected action to be one of deep|dir but found %s" % action
+            )
 
         n_active -= 1
 
@@ -293,17 +301,19 @@ async def s3_walker(url, nconcurrent, s3,
 
         return _files
 
-    work_q.put_nowait((url, 0, 'dir'))
+    work_q.put_nowait((url, 0, "dir"))
 
     return step
 
 
 class S3Fetcher(object):
-    def __init__(self,
-                 nconcurrent=24,
-                 region_name=None,
-                 addressing_style='path',
-                 aws_unsigned=None):
+    def __init__(
+        self,
+        nconcurrent=24,
+        region_name=None,
+        addressing_style="path",
+        aws_unsigned=None,
+    ):
 
         self._closed = True
         if region_name is None:
@@ -314,11 +324,13 @@ class S3Fetcher(object):
             aws_unsigned = _aws_unsigned_check_env()
 
         if aws_unsigned:
-            opts['signature_version'] = botocore.UNSIGNED
+            opts["signature_version"] = botocore.UNSIGNED
 
-        s3_cfg = AioConfig(max_pool_connections=nconcurrent,
-                           **opts,
-                           s3=dict(addressing_style=addressing_style))
+        s3_cfg = AioConfig(
+            max_pool_connections=nconcurrent,
+            **opts,
+            s3=dict(addressing_style=addressing_style),
+        )
 
         self._nconcurrent = nconcurrent
         self._async = AsyncThread()
@@ -328,9 +340,7 @@ class S3Fetcher(object):
 
         async def setup(s3_cfg):
             session = aiobotocore.get_session()
-            s3_ctx = session.create_client('s3',
-                                           region_name=region_name,
-                                           config=s3_cfg)
+            s3_ctx = session.create_client("s3", region_name=region_name, config=s3_cfg)
             s3 = await s3_ctx.__aenter__()
             return (session, s3, s3_ctx)
 
@@ -353,14 +363,15 @@ class S3Fetcher(object):
         self.close()
 
     def list_dir(self, url, **kw):
-        """ Returns a future object
-        """
+        """Returns a future object"""
+
         async def action(url, s3, **kw):
             return await s3_dir(url, s3=s3, **kw)
+
         return self._async.submit(action, url, self._s3, **kw)
 
     def find_all(self, url, pred=None, glob=None, **kw):
-        """ List all objects under certain path
+        """List all objects under certain path
 
         Returns a future object that resolves to a list of s3 object metadata
 
@@ -379,7 +390,7 @@ class S3Fetcher(object):
         return self._async.submit(action, url, self._s3, **kw)
 
     def find(self, url, pred=None, glob=None, **kw):
-        """ List all objects under certain path
+        """List all objects under certain path
 
         Returns an iterator of s3 object metadata
 
@@ -442,8 +453,7 @@ class S3Fetcher(object):
         return self._async.submit(s3_head_object, url, s3=self._s3, **kw)
 
     def fetch(self, url, range=None, **kw):
-        """ Returns a future object
-        """
+        """Returns a future object"""
         return self._async.submit(s3_fetch_object, url, s3=self._s3, range=range, **kw)
 
     def __call__(self, urls, **kw):
@@ -480,17 +490,18 @@ class S3Fetcher(object):
 
                 yield self._async.submit(s3_fetch_object, url, s3=s3, range=range, **kw)
 
-        for rr, ee in future_results(generate_requests(urls, self._s3, **kw), self._nconcurrent*2):
+        for rr, ee in future_results(
+            generate_requests(urls, self._s3, **kw), self._nconcurrent * 2
+        ):
             if ee is not None:
-                assert(not "s3_fetch_object should not raise exceptions, but did")
+                assert not "s3_fetch_object should not raise exceptions, but did"
             else:
                 yield rr
 
 
-def s3_find_glob(glob_pattern: str,
-                 skip_check: bool = False,
-                 s3: Optional[S3Fetcher] = None,
-                 **kw) -> Iterator[Any]:
+def s3_find_glob(
+    glob_pattern: str, skip_check: bool = False, s3: Optional[S3Fetcher] = None, **kw
+) -> Iterator[Any]:
     """
     Build generator from supplied S3 URI glob pattern
 
@@ -516,10 +527,10 @@ def s3_find_glob(glob_pattern: str,
         stream = s3.dir_dir(qq.base, qq.depth, **kw)
 
         if skip_check:
-            yield from (SimpleNamespace(url=d+fname) for d in stream)
+            yield from (SimpleNamespace(url=d + fname) for d in stream)
             return
 
-        stream = (s3.head_object(d+fname, **kw) for d in stream)
+        stream = (s3.head_object(d + fname, **kw) for d in stream)
 
         for (f, _), _ in future_results(stream, 32):
             if f is not None:
@@ -542,7 +553,7 @@ def s3_find_glob(glob_pattern: str,
         if qq.glob:
             stream = s3.find(qq.base, glob=qq.glob, **kw)
         elif qq.file:
-            postfix = '/'+qq.file
+            postfix = "/" + qq.file
             stream = s3.find(qq.base, pred=lambda o: o.url.endswith(postfix), **kw)
     else:
         # fixed depth query

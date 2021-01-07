@@ -10,7 +10,7 @@ class RateEstimator(object):
 
     def _compute(self):
         dt = self.t_last - self.t0
-        fps = 0 if self.n == 0 else self.n/dt
+        fps = 0 if self.n == 0 else self.n / dt
         return SimpleNamespace(elapsed=dt, n=self.n, fps=fps)
 
     def stats(self):

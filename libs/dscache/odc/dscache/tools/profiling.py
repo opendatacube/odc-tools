@@ -3,14 +3,16 @@ import timeit
 
 
 def _rr2s(r):
-    return '''
+    return """
 Count: {r.count:,d}
        {fps:.1f} per second
 Total: {r.total:6.3f} sec
 TTFB : {r.ttfb:6.3f} sec
 .....: {r.uu:032X}
 ..
-'''.format(r=r, fps=r.count/r.total).strip()
+""".format(
+        r=r, fps=r.count / r.total
+    ).strip()
 
 
 def ds_stream_test_func(dss, get_uuid=None):
@@ -32,10 +34,6 @@ def ds_stream_test_func(dss, get_uuid=None):
 
     t_end = timer()
 
-    rr = SimpleNamespace(uu=uu,
-                         count=count,
-                         ttfb=t0-t00,
-                         total=t_end-t00,
-                         text='')
+    rr = SimpleNamespace(uu=uu, count=count, ttfb=t0 - t00, total=t_end - t00, text="")
     rr.text = _rr2s(rr)
     return rr

@@ -6,7 +6,8 @@ from odc.dscache._jsoncache import doc2bytes
 
 def gen_test_docs(n, uuid_offset=0):
     def doc(i):
-        return {'id': str(UUID(int=i+uuid_offset)), 'data': i}
+        return {"id": str(UUID(int=i + uuid_offset)), "data": i}
+
     for i in range(n):
         yield doc(i)
 
@@ -14,16 +15,14 @@ def gen_test_docs(n, uuid_offset=0):
 def test_create(tmpdir):
     docs = list(gen_test_docs(100, 0xABCFF00))
 
-    doc_map = {UUID(doc['id']): doc for doc in docs}
+    doc_map = {UUID(doc["id"]): doc for doc in docs}
 
     zdict = JsonBlobCache.train_dictionary(docs, 1024)
     assert isinstance(zdict, bytes)
     assert len(zdict) == 1024
 
-    path = str(tmpdir/"file.db")
-    db = JsonBlobCache.create(path,
-                              zdict=zdict,
-                              truncate=True)
+    path = str(tmpdir / "file.db")
+    db = JsonBlobCache.create(path, zdict=zdict, truncate=True)
     assert db.path.exists()
     assert db.path.is_file()
     assert str(db.path) == path
@@ -38,10 +37,10 @@ def test_create(tmpdir):
     assert db.count == len(docs)
 
     for doc in docs:
-        doc_ = db.get(doc['id'])
+        doc_ = db.get(doc["id"])
         assert doc_ == doc
 
-        doc_ = db.get(UUID(doc['id']))
+        doc_ = db.get(UUID(doc["id"]))
         assert doc_ == doc
 
     for _id, doc in db.get_all():
@@ -50,6 +49,6 @@ def test_create(tmpdir):
 
 
 def test_doc2bytes_badinputs():
-    for doc in ({}, {'id': []}, ([], {})):
+    for doc in ({}, {"id": []}, ([], {})):
         with pytest.raises(ValueError):
             doc2bytes(doc)

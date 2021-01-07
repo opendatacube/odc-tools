@@ -10,7 +10,8 @@ from datacube.utils.geometry import (
     split_translation,
     GeoBox,
     CRS,
-    SomeCRS)
+    SomeCRS,
+)
 from datacube.utils.geometry._base import _norm_crs_or_error
 
 F4 = Tuple[float, float, float, float]
@@ -39,7 +40,7 @@ class BoundlessPixelPlane:
         elif self._crs != other._crs:
             return False
 
-        return all(abs(a-b) < tol for (a, b) in zip(self._params, other._params))
+        return all(abs(a - b) < tol for (a, b) in zip(self._params, other._params))
 
     def __eq__(self, other):
         return self.same(other)
@@ -49,26 +50,25 @@ class BoundlessPixelPlane:
 
     def __str__(self):
         if self._epsg:
-            crs_str = 'EPSG:{}'.format(self._epsg)
+            crs_str = "EPSG:{}".format(self._epsg)
         else:
             crs_str = str(self._crs)
 
-        p_str = ','.join([str(p) for p in self._params])
+        p_str = ",".join([str(p) for p in self._params])
 
-        return 'BoundlessPixelPlane<{}, {}>'.format(crs_str, p_str)
+        return "BoundlessPixelPlane<{}, {}>".format(crs_str, p_str)
 
 
 def maybe_zero(x: float, tol: float) -> float:
-    """ Turn almost zeros to actual zeros
-    """
+    """Turn almost zeros to actual zeros"""
     if abs(x) < tol:
         return 0
     return x
 
 
 def maybe_int(x: float, tol: float) -> Union[int, float]:
-    """ Turn almost ints to actual ints, pass through other values unmodified
-    """
+    """Turn almost ints to actual ints, pass through other values unmodified"""
+
     def split(x):
         x_part = math.fmod(x, 1.0)
         x_whole = x - x_part
@@ -120,15 +120,13 @@ def _norm_grid(A: Affine, tol=1e-8) -> Union[F4, F6]:
 
     R, W, S = decompose_rws(A)
 
-    (ca, _, tx,
-     _, _, ty, *_) = R
+    (ca, _, tx, _, _, ty, *_) = R
 
     (_, w, *_) = W
 
-    (sx, _, _,
-     _, sy, *_) = S
+    (sx, _, _, _, sy, *_) = S
 
-    is_st = abs(ca-1) < tol and abs(w) < tol
+    is_st = abs(ca - 1) < tol and abs(w) < tol
 
     if is_st:
         # No rotation no shear -- commonest case
@@ -140,32 +138,37 @@ def _norm_grid(A: Affine, tol=1e-8) -> Union[F4, F6]:
 
         # convert from: <Scale pixels to World, then translate>
         # into        : <Translate pixels then scale to World>
-        tx_p, ty_p = tx/sx, ty/sy
+        tx_p, ty_p = tx / sx, ty / sy
 
         # Remove whole pixel translation to normalise grid
         _, (tx_p, ty_p) = split_translation((tx_p, ty_p))
 
-        return (maybe_int(sx, tol), maybe_int(sy, tol),
-                maybe_zero(tx_p, tol), maybe_zero(ty_p, tol))
+        return (
+            maybe_int(sx, tol),
+            maybe_int(sy, tol),
+            maybe_zero(tx_p, tol),
+            maybe_zero(ty_p, tol),
+        )
     else:
-        raise NotImplementedError('TODO: rotated grids')
+        raise NotImplementedError("TODO: rotated grids")
 
 
 def normalised_grid(geobox: GeoBox) -> BoundlessPixelPlane:
     """Compute normalised grid from a given GeoBox.
 
-       Two different GridBoxes that are related through pixel aligned
-       translation will produce the same normalised grid.
+    Two different GridBoxes that are related through pixel aligned
+    translation will produce the same normalised grid.
     """
-    return BoundlessPixelPlane(geobox.crs,
-                               _norm_grid(geobox.affine))
+    return BoundlessPixelPlane(geobox.crs, _norm_grid(geobox.affine))
 
 
-def gbox_reproject(geobox: GeoBox,
-                   crs: SomeCRS,
-                   resolution: Optional[Tuple[int, int]] = None,
-                   pad: int = 0,
-                   pad_wh: Union[int, Tuple[int, int]] = 16) -> GeoBox:
+def gbox_reproject(
+    geobox: GeoBox,
+    crs: SomeCRS,
+    resolution: Optional[Tuple[int, int]] = None,
+    pad: int = 0,
+    pad_wh: Union[int, Tuple[int, int]] = 16,
+) -> GeoBox:
     """
     Compute GeoBox in a given projection that fully encloses footprint of the source GeoBox.
 

@@ -3,16 +3,21 @@ import sys
 from odc.aio import s3_find_glob, S3Fetcher
 
 
-@click.command('s3-find')
-@click.option('--skip-check', is_flag=True,
-              help='Assume file exists when listing exact file rather than wildcard.')
-@click.option('--no-sign-request', is_flag=True,
-              help='Do not sign AWS S3 requests')
-@click.option('--request-payer', is_flag=True,
-              help='Needed when accessing requester pays public buckets')
-@click.argument('uri', type=str, nargs=1)
+@click.command("s3-find")
+@click.option(
+    "--skip-check",
+    is_flag=True,
+    help="Assume file exists when listing exact file rather than wildcard.",
+)
+@click.option("--no-sign-request", is_flag=True, help="Do not sign AWS S3 requests")
+@click.option(
+    "--request-payer",
+    is_flag=True,
+    help="Needed when accessing requester pays public buckets",
+)
+@click.argument("uri", type=str, nargs=1)
 def cli(uri, skip_check, no_sign_request=None, request_payer=False):
-    """ List files on S3 bucket.
+    """List files on S3 bucket.
 
     Example:
 
@@ -40,7 +45,7 @@ def cli(uri, skip_check, no_sign_request=None, request_payer=False):
 
     opts = {}
     if request_payer:
-        opts['RequestPayer'] = 'requester'
+        opts["RequestPayer"] = "requester"
 
     s3 = S3Fetcher(aws_unsigned=no_sign_request)
 
@@ -56,5 +61,5 @@ def cli(uri, skip_check, no_sign_request=None, request_payer=False):
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

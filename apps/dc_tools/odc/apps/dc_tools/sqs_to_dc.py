@@ -224,7 +224,9 @@ def queue_to_odc(
         except FileNotFoundError as e:
             logging.error(f"Could not find region_code file with error: {e}")
         if len(region_codes) == 0:
-            raise SQStoDCException(f"Region code list is empty, please check the list at: {region_code_list_uri}")
+            raise SQStoDCException(
+                f"Region code list is empty, please check the list at: {region_code_list_uri}"
+            )
 
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 

@@ -15,15 +15,18 @@ def dt_step(d: str, step: int = 1) -> str:
     return str(Period(d) + step)
 
 
-class DcViewer():
-
-    def __init__(self, dc, time,
-                 products=None,
-                 zoom=None,
-                 center=None,
-                 height=None,
-                 width=None,
-                 style=None):
+class DcViewer:
+    def __init__(
+        self,
+        dc,
+        time,
+        products=None,
+        zoom=None,
+        center=None,
+        height=None,
+        width=None,
+        style=None,
+    ):
         """
         :param dc:        Datacube object
         :param time:      Initial time as a string
@@ -42,19 +45,15 @@ class DcViewer():
 
         if products is None:
             products = [p.name for p in dc.index.products.get_all()]
-        elif products == 'non-empty':
+        elif products == "non-empty":
             products = list(p.name for p, c in dc.index.datasets.count_by_product())
 
         if style is None:
-            style = dict(fillOpacity=0.1,
-                         weight=1)
+            style = dict(fillOpacity=0.1, weight=1)
 
-        state, gui = self._build_ui(products,
-                                    time,
-                                    zoom=zoom,
-                                    center=center,
-                                    height=height,
-                                    width=width)
+        state, gui = self._build_ui(
+            products, time, zoom=zoom, center=center, height=height, width=width
+        )
         self._state = state
         self._gui = gui
         self._dss_layer = None
@@ -63,84 +62,106 @@ class DcViewer():
         self._last_query_polygon = None
         self._style = style
 
-    def _build_ui(self,
-                  product_names,
-                  time,
-                  zoom=None,
-                  center=None,
-                  height=None,
-                  width=None):
+    def _build_ui(
+        self, product_names, time, zoom=None, center=None, height=None, width=None
+    ):
         from ipywidgets import widgets as w
         import ipyleaflet as L
 
-        pp = {'zoom': zoom or 1}
+        pp = {"zoom": zoom or 1}
 
         if center is not None:
-            pp['center'] = center
+            pp["center"] = center
 
-        m = L.Map(**pp,
-                  scroll_wheel_zoom=True)
+        m = L.Map(**pp, scroll_wheel_zoom=True)
         m.add_control(L.FullScreenControl())
 
-        prod_select = w.Dropdown(options=product_names, layout=w.Layout(
-            flex='0 1 auto',
-            width='10em',
-        ))
+        prod_select = w.Dropdown(
+            options=product_names,
+            layout=w.Layout(
+                flex="0 1 auto",
+                width="10em",
+            ),
+        )
 
-        date_txt = w.Text(value=time, layout=w.Layout(
-            flex='0 1 auto',
-            width='6em',
-        ))
+        date_txt = w.Text(
+            value=time,
+            layout=w.Layout(
+                flex="0 1 auto",
+                width="6em",
+            ),
+        )
 
-        info_lbl = w.Label(value='', layout=w.Layout(
-            flex='1 0 auto',
-            # border='1px solid white',
-        ))
-        btn_bwd = w.Button(icon='step-backward', layout=w.Layout(
-            flex='0 1 auto',
-            width='3em',
-        ))
-        btn_fwd = w.Button(icon='step-forward', layout=w.Layout(
-            flex='0 1 auto',
-            width='3em',
-        ))
-        btn_show = w.Button(description='show', layout=w.Layout(
-            flex='0 1 auto',
-            width='6em',
-        ), style=dict(
-            # button_color='green'
-        ))
+        info_lbl = w.Label(
+            value="",
+            layout=w.Layout(
+                flex="1 0 auto",
+                # border='1px solid white',
+            ),
+        )
+        btn_bwd = w.Button(
+            icon="step-backward",
+            layout=w.Layout(
+                flex="0 1 auto",
+                width="3em",
+            ),
+        )
+        btn_fwd = w.Button(
+            icon="step-forward",
+            layout=w.Layout(
+                flex="0 1 auto",
+                width="3em",
+            ),
+        )
+        btn_show = w.Button(
+            description="show",
+            layout=w.Layout(
+                flex="0 1 auto",
+                width="6em",
+            ),
+            style=dict(
+                # button_color='green'
+            ),
+        )
 
-        ctrls = w.HBox([prod_select, w.Label('Time Period'),
-                        date_txt, btn_bwd, btn_fwd,
-                        info_lbl, btn_show], layout=w.Layout(
-                           # border='1px solid tomato',
-                       ))
+        ctrls = w.HBox(
+            [
+                prod_select,
+                w.Label("Time Period"),
+                date_txt,
+                btn_bwd,
+                btn_fwd,
+                info_lbl,
+                btn_show,
+            ],
+            layout=w.Layout(
+                # border='1px solid tomato',
+            ),
+        )
         # m.add_control(L.WidgetControl(widget=ctrls, position='topright'))
 
-        ui = w.VBox([ctrls, m], layout=w.Layout(
-            width=width,
-            height=height,
-            # border='2px solid plum',
-        ))
+        ui = w.VBox(
+            [ctrls, m],
+            layout=w.Layout(
+                width=width,
+                height=height,
+                # border='2px solid plum',
+            ),
+        )
 
-        state = SimpleNamespace(time=time,
-                                product=product_names[0],
-                                count=0,
-                                bounds=None)
-        ui_state = SimpleNamespace(ui=ui,
-                                   info=info_lbl,
-                                   map=m)
+        state = SimpleNamespace(
+            time=time, product=product_names[0], count=0, bounds=None
+        )
+        ui_state = SimpleNamespace(ui=ui, info=info_lbl, map=m)
 
         def bounds_handler(event):
-            (lat1, lon1), (lat2, lon2) = event['new']
+            (lat1, lon1), (lat2, lon2) = event["new"]
             lon1 = max(lon1, -180)
             lon2 = min(lon2, +180)
             lat1 = max(lat1, -90)
             lat2 = min(lat2, +90)
 
-            state.bounds = dict(lat=(lat1, lat2),
-                                lon=(lon1, lon2))
+            state.bounds = dict(lat=(lat1, lat2), lon=(lon1, lon2))
 
             self.on_bounds(state.bounds)
 
@@ -149,7 +170,7 @@ class DcViewer():
             self.on_date(state.time)
 
         def on_product_change(e):
-            state.product = e['new']
+            state.product = e["new"]
             self.on_product(state.product)
 
         def on_show(b):
@@ -161,8 +182,8 @@ class DcViewer():
             on_date_change(date_txt)
 
         date_txt.on_submit(on_date_change)
-        prod_select.observe(on_product_change, ['value'])
-        m.observe(bounds_handler, ('bounds',))
+        prod_select.observe(on_product_change, ["value"])
+        m.observe(bounds_handler, ("bounds",))
         btn_show.on_click(on_show)
         btn_fwd.on_click(lambda b: time_advance(1))
         btn_bwd.on_click(lambda b: time_advance(-1))
@@ -173,11 +194,10 @@ class DcViewer():
         s = self._state
         spatial_query = s.bounds
 
-        s.count = dataset_count(self._dc.index,
-                                product=s.product,
-                                time=s.time,
-                                **spatial_query)
-        self._gui.info.value = '{:,d} datasets in view'.format(s.count)
+        s.count = dataset_count(
+            self._dc.index, product=s.product, time=s.time, **spatial_query
+        )
+        self._gui.info.value = "{:,d} datasets in view".format(s.count)
 
     def _clear_footprints(self):
         layer = self._dss_layer
@@ -192,9 +212,7 @@ class DcViewer():
         s = self._state
         dc = self._dc
 
-        dss = dc.find_datasets(product=s.product,
-                               time=s.time,
-                               **s.bounds)
+        dss = dc.find_datasets(product=s.product, time=s.time, **s.bounds)
         self._dss = dss
 
         if len(dss) > 0:

@@ -7,12 +7,9 @@ from random import randint
 from dask.distributed import Queue, Client
 
 
-def _bcast_action(q1: Queue,
-                  q2: Queue,
-                  tk: int,
-                  action: Any,
-                  args: List[Any],
-                  kwargs: Dict[str, Any]) -> Any:
+def _bcast_action(
+    q1: Queue, q2: Queue, tk: int, action: Any, args: List[Any], kwargs: Dict[str, Any]
+) -> Any:
     """
 
     :param q1: Will put to ``tk`` into this queue first
@@ -34,11 +31,10 @@ def _bcast_action(q1: Queue,
     return x
 
 
-def pool_broadcast(client: Client,
-                   action: Any,
-                   *args: List[Any],
-                   **kwargs: Dict[str, Any]):
-    """ Call ``action(*args, **kwargs)`` on every worker thread.
+def pool_broadcast(
+    client: Client, action: Any, *args: List[Any], **kwargs: Dict[str, Any]
+):
+    """Call ``action(*args, **kwargs)`` on every worker thread.
 
     This function block until all tasks are complete, expectation is
     that this is called at the very beginning on an empty pool, if called
@@ -61,15 +57,24 @@ def pool_broadcast(client: Client,
     :param kwargs: Named arguments to action
 
     """
-    postfix = '-{:02x}'.format(randint(0, 1 << 64))
+    postfix = "-{:02x}".format(randint(0, 1 << 64))
     total_worker_threads = sum(client.ncores().values())
-    q1 = Queue('q1'+postfix, client=client, maxsize=total_worker_threads)
-    q2 = Queue('q2'+postfix, client=client, maxsize=total_worker_threads)
+    q1 = Queue("q1" + postfix, client=client, maxsize=total_worker_threads)
+    q2 = Queue("q2" + postfix, client=client, maxsize=total_worker_threads)
 
-    ff = [client.submit(_bcast_action, q1, q2, i,
-                        action, args, kwargs,
-                        key='broadcast_action_{:04d}{}'.format(i, postfix))
-          for i in range(total_worker_threads)]
+    ff = [
+        client.submit(
+            _bcast_action,
+            q1,
+            q2,
+            i,
+            action,
+            args,
+            kwargs,
+            key="broadcast_action_{:04d}{}".format(i, postfix),
+        )
+        for i in range(total_worker_threads)
+    ]
 
     tks = set()
     for _ in range(total_worker_threads):
@@ -86,11 +91,8 @@ def pool_broadcast(client: Client,
     return [f.result() for f in ff]
 
 
-def rio_activate(client: Client,
-                 aws=None,
-                 defaults=True,
-                 **kwargs):
-    """ Inject activated rasterio.Env into every worker thread.
+def rio_activate(client: Client, aws=None, defaults=True, **kwargs):
+    """Inject activated rasterio.Env into every worker thread.
 
     This de-activates previously setup environment.
 
@@ -102,15 +104,17 @@ def rio_activate(client: Client,
     :param **kwargs: Passed on to rasterio.Env(..) constructor
     """
     from ._rio import activate_rio_env
-    return pool_broadcast(client, activate_rio_env,
-                          aws=aws, defaults=defaults,
-                          **kwargs)
+
+    return pool_broadcast(
+        client, activate_rio_env, aws=aws, defaults=defaults, **kwargs
+    )
 
 
 def rio_getenv(client, sanitize=True):
-    """ Query currently active rio environment from all worker threads.
+    """Query currently active rio environment from all worker threads.
 
-        :param sanitize: If True replace sensitive Values with 'x'
+    :param sanitize: If True replace sensitive Values with 'x'
     """
     from ._rio import get_rio_env
+
     return pool_broadcast(client, get_rio_env, sanitize=sanitize)

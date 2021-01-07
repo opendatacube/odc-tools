@@ -13,13 +13,13 @@ from .timer import RateEstimator
 
 
 __all__ = (
-    'parse_yaml',
-    'read_stdin_lines',
-    'slurp',
-    'slurp_lines',
-    'parse_mtl',
-    'tar_doc_stream',
-    'default_base_dir',
-    'normalise_path',
-    'RateEstimator',
+    "parse_yaml",
+    "read_stdin_lines",
+    "slurp",
+    "slurp_lines",
+    "parse_mtl",
+    "tar_doc_stream",
+    "default_base_dir",
+    "normalise_path",
+    "RateEstimator",
 )

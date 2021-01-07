@@ -6,7 +6,7 @@ EOS_MARKER = object()
 
 
 def qmap(proc, q, eos_marker=None):
-    """ Converts queue to an iterator.
+    """Converts queue to an iterator.
 
     For every `item` in the `q` that is not `eos_marker`, `yield proc(item)`
     """
@@ -23,7 +23,7 @@ def qmap(proc, q, eos_marker=None):
 
 
 def q2q_map(proc, q_in, q_out, eos_marker=None):
-    """ Like map but input and output are Queue objects.
+    """Like map but input and output are Queue objects.
 
     `eos_marker` - marks end of stream.
     """
@@ -41,19 +41,19 @@ def q2q_map(proc, q_in, q_out, eos_marker=None):
 def future_results(it, max_active):
     """Given a generator of future objects return a generator of result tuples.
 
-        Result Tuple contains:
-         (fut.result(), None) -- if future succeeded
-         (None, fut.exception()) -- if future failed
+    Result Tuple contains:
+     (fut.result(), None) -- if future succeeded
+     (None, fut.exception()) -- if future failed
 
 
-        This is roughly equivalent to:
+    This is roughly equivalent to:
 
-            ((f.result(), f.exception()) for f in it)
+        ((f.result(), f.exception()) for f in it)
 
-        except that there are upto max_active futures that are active at any given
-        time, and also order of result is "as completed". So it's like
-        concurrent.futures.as_completed, but with upper bound on the number of
-        active futures rather than a timeout.
+    except that there are upto max_active futures that are active at any given
+    time, and also order of result is "as completed". So it's like
+    concurrent.futures.as_completed, but with upper bound on the number of
+    active futures rather than a timeout.
     """
     import concurrent.futures as fut
 
@@ -87,7 +87,7 @@ def future_results(it, max_active):
             # blocking wait if active count is reached
             timeout = None if len(active) >= max_active else 0.01
 
-            xx = fut.wait(active, timeout=timeout, return_when='FIRST_COMPLETED')
+            xx = fut.wait(active, timeout=timeout, return_when="FIRST_COMPLETED")
             active = xx.not_done
 
             for f in xx.done:
@@ -106,11 +106,11 @@ def future_results(it, max_active):
 def pool_broadcast(pool, action, *args, **kwargs):
     """Broadcast action across thread pool.
 
-       Will submit action(*args, **kwargs) N times to thread pool, making sure
-       that no thread's action finishes before all other actions have started,
-       hence forcing each incarnation of `action` to run in it's own thread.
+    Will submit action(*args, **kwargs) N times to thread pool, making sure
+    that no thread's action finishes before all other actions have started,
+    hence forcing each incarnation of `action` to run in it's own thread.
 
-       This function waits for all of these to complete and returns a list of results.
+    This function waits for all of these to complete and returns a list of results.
     """
     N = pool._max_workers
 
@@ -118,9 +118,9 @@ def pool_broadcast(pool, action, *args, **kwargs):
     s2 = BoundedSemaphore(N)
 
     def bcast_action():
-        s1.release()                 # tell main thread we started
+        s1.release()  # tell main thread we started
         x = action(*args, **kwargs)
-        s2.acquire()                 # wait for all threads to start
+        s2.acquire()  # wait for all threads to start
         return x
 
     for _ in range(N):
