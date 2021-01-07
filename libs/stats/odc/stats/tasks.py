@@ -263,7 +263,7 @@ class TaskReader:
     ):
         self._cache_path = None
         if isinstance(cache, str):
-            if cache.startswith("s3"):
+            if cache.startswith("s3://"):
                 self._cache_path = s3_download(cache)
                 cache = self._cache_path
             cache = DatasetCache.open_ro(cache)
