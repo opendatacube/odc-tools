@@ -21,3 +21,16 @@ def resolve(name: str) -> PluginFactory:
 
 def register(name: str, plugin_class):
     _plugins[name] = partial(_new, plugin_class)
+
+
+def import_all():
+    import importlib
+
+    # TODO: make that more automatic
+    modules = ["odc.stats._pq", "odc.stats._gm"]
+
+    for mod in modules:
+        try:
+            importlib.import_module(mod)
+        except ModuleNotFoundError:
+            pass
