@@ -12,6 +12,7 @@ from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
 from .model import OutputProduct, StatsPluginInterface
+from . import _plugins
 
 cloud_classes = (
     "cloud shadows",
@@ -156,6 +157,9 @@ def _pq_fuser(
     return xx
 
 
+_plugins.register("pq", StatsPQ)
+
+
 def test_pq_product():
     product = StatsPQ().product()
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
@@ -164,3 +168,18 @@ def test_pq_product():
     product = StatsPQ(filters=[]).product()
     assert product.measurements == ("total", "clear")
     assert product.cfg["filters"] == []
+
+
+def test_plugin():
+    pq = _plugins.resolve("pq")()
+    product = pq.product()
+
+    assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
+    assert product.cfg["filters"] == default_filters
+
+    pq = _plugins.resolve("pq")(filters=[], resampling="cubic")
+    product = pq.product()
+
+    assert product.measurements == ("total", "clear")
+    assert product.cfg["filters"] == []
+    assert product.cfg["resampling"] == "cubic"
