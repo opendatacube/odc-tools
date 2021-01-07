@@ -20,6 +20,7 @@ setup(
         "odc_aws",
         "dataclasses",
         "tqdm",
+        "pystac"
     ],
     packages=["odc.stats"],
     zip_safe=False,

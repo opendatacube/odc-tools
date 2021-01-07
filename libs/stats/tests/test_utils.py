@@ -3,6 +3,7 @@ import pathlib
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from uuid import UUID
+import pystac
 
 from odc.index.stac import stac_transform
 from odc.stats._gm import gm_product
@@ -39,11 +40,8 @@ def test_stac():
     stac_meta = task.render_metadata()
     odc_meta = stac_transform(stac_meta)
 
-    # with open(TEST_DIR / 'meta.json', 'w') as outfile:
-    #     json.dump(task.render_metadata(), outfile, indent=2)
-
-    # with open(TEST_DIR / 'odc-meta.json', 'w') as outfile:
-    #     json.dump(odc_meta, outfile, indent=2)
+    stac_item = pystac.Item.from_dict(stac_meta)
+    stac_item.validate()
 
 
 def test_binning():

@@ -1,9 +1,11 @@
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
+
+import pystac
 
 import pandas as pd
 from datacube.model import Dataset
@@ -88,15 +90,6 @@ class DateTimeRange:
             pad = timedelta(days=pad)
 
         return {"time": (self.start - pad, self.end + pad)}
-
-    def to_stac(self) -> Dict[str, str]:
-        """
-        Return dictionary of values to go into STAC's `properties:` section.
-        """
-        start = format_datetime(self.start)
-        end = format_datetime(self.end)
-
-        return {"datetime": start, "dtr:start_datetime": start, "dtr:end_datetime": end}
 
     @property
     def short(self) -> str:
@@ -256,55 +249,62 @@ class Task:
 
         properties: Dict[str, Any] = deepcopy(product.properties)
 
-        properties.update(self.time_range.to_stac())
+        properties["dtr:start_datetime"] = format_datetime(self.time_range.start)
+        properties["dtr:end_datetime"] = format_datetime(self.time_range.end)
         properties["odc:processing_datetime"] = format_datetime(
             processing_dt, timespec="seconds"
         )
         properties["odc:region_code"] = region_code
         properties["odc:lineage"] = dict(inputs=inputs)
         properties["odc:product"] = product.name
-        properties["proj:epsg"] = geobox.crs.epsg
-
-        assets = {
-            band: {
-                "title": band,
-                "type": "image/tiff; application=geotiff",
-                "roles": ["data"],
-                "href": path,
-                "proj:shape": geobox.shape,
-                "proj:transform": geobox.transform,
-            }
-            for band, path in self.paths(ext=ext).items()
-        }
-
-        links = [
-            {
-                "rel": "self",
-                "type": "application/json",
-                "href": self.metadata_path("absolute", ext="json"),
-            },
-            {
-                "rel": "product_overview",
-                "type": "application/json",
-                "href": product.href,
-            },
-        ]
 
         geobox_wgs84 = geobox.extent.to_crs(
             "epsg:4326", resolution=math.inf, wrapdateline=True
         )
         bbox = geobox_wgs84.boundingbox
 
-        return {
-            "type": "Feature",
-            "stac_version": "1.0.0-beta.2",
-            "id": str(self.uuid),
-            "bbox": [bbox.left, bbox.bottom, bbox.right, bbox.top],
-            "geometry": geobox_wgs84.json,
-            "properties": properties,
-            "assets": assets,
-            "links": links,
-        }
+        item = pystac.Item(
+            id=str(self.uuid),
+            geometry=geobox_wgs84.json,
+            bbox=[bbox.left, bbox.bottom, bbox.right, bbox.top],
+            datetime=self.time_range.start.replace(tzinfo=timezone.utc),
+            properties=properties,
+        )
+
+        # Enable the Projection extension
+        item.ext.enable("projection")
+        item.ext.projection.epsg = geobox.crs.epsg
+
+        # Add all the assets
+        for band, path in self.paths(ext=ext).items():
+            asset = pystac.Asset(
+                href=path,
+                media_type="image/tiff; application=geotiff",
+                roles=["data"],
+                title=band,
+            )
+            item.add_asset(band, asset)
+
+            item.ext.projection.set_transform(geobox.transform, asset=asset)
+            item.ext.projection.set_shape(geobox.shape, asset=asset)
+
+        # Add links
+        item.links.append(
+            pystac.Link(
+                rel="product_overview",
+                media_type="application/json",
+                target=product.href,
+            )
+        )
+        item.links.append(
+            pystac.Link(
+                rel="self",
+                media_type="application/json",
+                target=self.metadata_path("absolute", ext="json"),
+            )
+        )
+
+        return item.to_dict()
 
 
 @dataclass
