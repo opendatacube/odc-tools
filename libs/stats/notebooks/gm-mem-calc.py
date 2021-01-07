@@ -18,11 +18,12 @@ def dump_mem_needs(nx, ny=None, nt=150, nb=10, work_rows=64):
     if ny is None:
         ny = nx
 
-    GB = 1<<30
-    N = nx*ny*nt
-    N_ = work_rows*nx*nt
+    GB = 1 << 30
+    N = nx * ny * nt
+    N_ = work_rows * nx * nt
 
-    print(f"""Input:
+    print(
+        f"""Input:
   {ny}x{nx}x{nb}x{nt}
 Bytes:
   u16      : {N*nb*2/GB:.2f}Gb
@@ -34,14 +35,15 @@ Bytes:
 
   madw     : {N*4/GB:.2f}Gb
   temp.mask: {N*4/GB:.2f}Gb
-...""")
+..."""
+    )
 
 
 # %%
 dump_mem_needs(800, nt=74)
 
 # %%
-for n in range(1, 4+1):
-    dump_mem_needs(n*800)
+for n in range(1, 4 + 1):
+    dump_mem_needs(n * 800)
 
 # %%

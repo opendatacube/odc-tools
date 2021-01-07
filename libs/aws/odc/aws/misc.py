@@ -22,8 +22,8 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
     else:
         managed_credentials = None
 
-    protocol = 'https' if ssl else 'http'
-    auth = S3SigV4Auth(credentials, 's3', region_name)
+    protocol = "https" if ssl else "http"
+    auth = S3SigV4Auth(credentials, "s3", region_name)
 
     def maybe_refresh_credentials():
         nonlocal credentials
@@ -39,15 +39,12 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
         log.debug("Refreshed credentials (s3_get_object_request_maker)")
 
         credentials = creds
-        auth = S3SigV4Auth(credentials, 's3', region_name)
+        auth = S3SigV4Auth(credentials, "s3", region_name)
 
-    def build_request(bucket=None,
-                      key=None,
-                      url=None,
-                      Range=None):
+    def build_request(bucket=None, key=None, url=None, Range=None):
         if key is None and url is None:
             if bucket is None:
-                raise ValueError('Have to supply bucket,key or url')
+                raise ValueError("Have to supply bucket,key or url")
             # assume bucket is url
             url = bucket
 
@@ -55,22 +52,24 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
             bucket, key = s3_url_parse(url)
 
         if isinstance(Range, (tuple, list)):
-            Range = 'bytes={}-{}'.format(Range[0], Range[1]-1)
+            Range = "bytes={}-{}".format(Range[0], Range[1] - 1)
 
         maybe_refresh_credentials()
 
         headers = {}
         if Range is not None:
-            headers['Range'] = Range
+            headers["Range"] = Range
 
-        req = AWSRequest(method='GET',
-                         url='{}://s3.{}.amazonaws.com/{}/{}'.format(protocol, region_name, bucket, key),
-                         headers=headers)
+        req = AWSRequest(
+            method="GET",
+            url="{}://s3.{}.amazonaws.com/{}/{}".format(
+                protocol, region_name, bucket, key
+            ),
+            headers=headers,
+        )
 
         auth.add_auth(req)
 
-        return Request(req.url,
-                       headers=dict(**req.headers),
-                       method='GET')
+        return Request(req.url, headers=dict(**req.headers), method="GET")
 
     return build_request

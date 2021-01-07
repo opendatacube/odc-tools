@@ -9,8 +9,8 @@ from typing import List, Tuple, Optional
 
 
 def thredds_find_glob(
-        base_catalog: str, skips: List[str], select: List[str], workers: int = 8
-    ) -> List[str]:
+    base_catalog: str, skips: List[str], select: List[str], workers: int = 8
+) -> List[str]:
     """Glob YAML's from base Thredds Catalog recursively
     Arguments:
         base_catalog {str} -- Base of the catlog to crawl from
@@ -38,8 +38,8 @@ def thredds_find_glob(
 
 
 def download_yamls(
-        yaml_urls: List[str], workers: int = 8
-    ) -> List[Tuple[Optional[bytes], str, Optional[str]]]:
+    yaml_urls: List[str], workers: int = 8
+) -> List[Tuple[Optional[bytes], str, Optional[str]]]:
     """Download all YAML's in a list of URL's and generate content
     Arguments:
         yaml_urls {list} -- List of URL's to download YAML's from

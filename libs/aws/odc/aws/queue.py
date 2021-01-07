@@ -7,7 +7,7 @@ def get_queue(queue_name: str):
     """
     Return a queue resource by name, e.g., alex-really-secret-queue
     """
-    sqs = boto3.resource('sqs')
+    sqs = boto3.resource("sqs")
     queue = sqs.get_queue_by_name(QueueName=queue_name)
     return queue
 
@@ -18,9 +18,7 @@ def publish_message(queue, message: str, message_attributes: Mapping[str, Any] =
     string.
     """
     queue.send_message(
-        QueueUrl=queue.url,
-        MessageBody=message,
-        MessageAttributes=message_attributes
+        QueueUrl=queue.url, MessageBody=message, MessageAttributes=message_attributes
     )
 
 
@@ -41,12 +39,14 @@ def _sqs_message_stream(queue, **kw):
             yield msg
 
 
-def get_messages(queue,
-                 limit: Optional[int] = None,
-                 visibility_timeout: int = 60,
-                 message_attributes: Iterable[str] = ["All"],
-                 max_wait: int = 10,
-                 **kw):
+def get_messages(
+    queue,
+    limit: Optional[int] = None,
+    visibility_timeout: int = 60,
+    message_attributes: Iterable[str] = ["All"],
+    max_wait: int = 10,
+    **kw
+):
     """
     Get messages from SQS queue resource. Returns a lazy sequence of message objects.
 
@@ -60,11 +60,14 @@ def get_messages(queue,
 
     :return: Iterator of sqs messages
     """
-    messages = _sqs_message_stream(queue, VisibilityTimeout=visibility_timeout,
-                                   MaxNumberOfMessages=1,
-                                   WaitTimeSeconds=max_wait,
-                                   MessageAttributeNames=message_attributes,
-                                   **kw)
+    messages = _sqs_message_stream(
+        queue,
+        VisibilityTimeout=visibility_timeout,
+        MaxNumberOfMessages=1,
+        WaitTimeSeconds=max_wait,
+        MessageAttributeNames=message_attributes,
+        **kw
+    )
     if limit is None or limit == 0:
         return messages
 

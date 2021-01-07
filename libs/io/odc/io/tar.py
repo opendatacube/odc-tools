@@ -7,40 +7,41 @@ import itertools
 
 
 def tar_mode(gzip=None, xz=None, is_pipe=None):
-    """ Return tarfile.open compatible mode from boolean flags
-
-    """
+    """Return tarfile.open compatible mode from boolean flags"""
     if gzip:
-        return ':gz'
+        return ":gz"
     if xz:
-        return ':xz'
+        return ":xz"
     if is_pipe:
-        return '|'
-    return ''
+        return "|"
+    return ""
 
 
 def tar_doc_stream(fname, mode=None, predicate=None):
-    """ Read small documents (whole doc must fit into memory) from tar file.
+    """Read small documents (whole doc must fit into memory) from tar file.
 
-        predicate : entry_info -> Bool
-           return True for those entries that need to be read and False for those that need to be skipped.
+    predicate : entry_info -> Bool
+       return True for those entries that need to be read and False for those that need to be skipped.
 
-           where `entry_info` is a tar entry info dictionary with keys like:
-             name   -- internal path
-             size   -- size in bytes
-             mtime  -- timestamp as and integer
+       where `entry_info` is a tar entry info dictionary with keys like:
+         name   -- internal path
+         size   -- size in bytes
+         mtime  -- timestamp as and integer
 
-        mode: passed on to tarfile.open(..), things like 'r:gz'
+    mode: passed on to tarfile.open(..), things like 'r:gz'
 
 
-        Function returns iterator of tuples (name:str, data:bytes)
+    Function returns iterator of tuples (name:str, data:bytes)
     """
     if predicate:
+
         def should_skip(entry):
             if not entry.isfile():
                 return True
             return not predicate(entry.get_info())
+
     else:
+
         def should_skip(entry):
             return not entry.isfile()
 
@@ -61,7 +62,7 @@ def tar_doc_stream(fname, mode=None, predicate=None):
 
 
 def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
-    """ Add file to tar from RAM (string or bytes) + name
+    """Add file to tar from RAM (string or bytes) + name
 
     :param tar: tar file object opened for writing
     :param fname: path within tar file
@@ -77,7 +78,7 @@ def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
 
     info = tarfile.TarInfo(name=fname)
     if isinstance(content, str):
-        content = content.encode('utf-8')
+        content = content.encode("utf-8")
     info.size = len(content)
     info.mtime = last_modified
     info.mode = mode

@@ -17,11 +17,13 @@ PixelValue = Union[float, int]
 NOTSET = object()
 
 
-def make_pixel_extractor(mode='pixel',
-                         band=1,
-                         src_nodata_fallback=None,
-                         src_nodata_override=None,
-                         dst_nodata=NOTSET):
+def make_pixel_extractor(
+    mode="pixel",
+    band=1,
+    src_nodata_fallback=None,
+    src_nodata_override=None,
+    dst_nodata=NOTSET,
+):
     """Returns function that can extract single pixel from opened rasterio file.
 
     Signature of the returned function is:
@@ -50,9 +52,12 @@ def make_pixel_extractor(mode='pixel',
     default_band = band
 
     if dst_nodata is NOTSET:
+
         def _dst_nodata(src_nodata):
             return src_nodata
+
     else:
+
         def _dst_nodata(src_nodata):
             return dst_nodata
 
@@ -63,15 +68,14 @@ def make_pixel_extractor(mode='pixel',
     def extract_pixel(src, coord, band=default_band):
         ri, ci = coord
 
-        src_nodata = _resolve_nodata(src, band,
-                                     fallback=src_nodata_fallback,
-                                     override=src_nodata_override)
+        src_nodata = _resolve_nodata(
+            src, band, fallback=src_nodata_fallback, override=src_nodata_override
+        )
 
         dst_nodata = _dst_nodata(src_nodata)
 
         if 0 <= ri < src.height and 0 <= ci < src.width:
-            window = ((ri, ri+1),
-                      (ci, ci+1))
+            window = ((ri, ri + 1), (ci, ci + 1))
 
             pix = src.read(band, window=window)
             # TODO: support band being a list of bands
@@ -84,17 +88,17 @@ def make_pixel_extractor(mode='pixel',
 
     def extract_lonlat(src, coord, band=default_band):
         lon, lat = coord
-        x, y = rasterio.warp.transform(rasterio.crs.CRS.from_epsg(4326), src.crs, [lon], [lat])
+        x, y = rasterio.warp.transform(
+            rasterio.crs.CRS.from_epsg(4326), src.crs, [lon], [lat]
+        )
         xy = (x[0], y[0])
         return extract_native(src, xy, band=band)
 
-    extractors = dict(pixel=extract_pixel,
-                      native=extract_native,
-                      lonlat=extract_lonlat)
+    extractors = dict(pixel=extract_pixel, native=extract_native, lonlat=extract_lonlat)
 
     extractor = extractors.get(mode)
     if extractor is None:
-        raise ValueError('Only support mode=<pixel|native|lonlat>')
+        raise ValueError("Only support mode=<pixel|native|lonlat>")
 
     return extractor
 
@@ -117,39 +121,42 @@ def _resolve_nodata(src, band, fallback=None, override=None):
     return nodata
 
 
-def _mode_value(pixel: Optional[RowCol] = None,
-                xy: Optional[XY] = None,
-                lonlat: Optional[LonLat] = None) -> Union[Tuple[str, SomeCoord],
-                                                          Tuple[None, None]]:
+def _mode_value(
+    pixel: Optional[RowCol] = None,
+    xy: Optional[XY] = None,
+    lonlat: Optional[LonLat] = None,
+) -> Union[Tuple[str, SomeCoord], Tuple[None, None]]:
     if pixel is not None:
-        return 'pixel', pixel
+        return "pixel", pixel
 
     if xy is not None:
-        return 'native', xy
+        return "native", xy
 
     if lonlat is not None:
-        return 'lonlat', lonlat
+        return "lonlat", lonlat
 
     return (None, None)
 
 
-def read_pixels(urls: Iterable[str],
-                pixel: Optional[RowCol] = None,
-                xy: Optional[XY] = None,
-                lonlat: Optional[LonLat] = None,
-                band: int = 1,
-                **kwargs) -> List[PixelValue]:
-    """ Read a single pixel at the same location from a bunch of different files.
+def read_pixels(
+    urls: Iterable[str],
+    pixel: Optional[RowCol] = None,
+    xy: Optional[XY] = None,
+    lonlat: Optional[LonLat] = None,
+    band: int = 1,
+    **kwargs
+) -> List[PixelValue]:
+    """Read a single pixel at the same location from a bunch of different files.
 
-        Location can be specified in 3 different ways:
+    Location can be specified in 3 different ways:
 
-          pixel  (row: int, column: int)  -- in pixel coords
-          xy     (X: float, Y: float)     -- in Projected coordinates of the native CRS of the image
-          lonlat (lon: float, lat: float) -- in EPSG:4326
+      pixel  (row: int, column: int)  -- in pixel coords
+      xy     (X: float, Y: float)     -- in Projected coordinates of the native CRS of the image
+      lonlat (lon: float, lat: float) -- in EPSG:4326
     """
     mode, coord = _mode_value(pixel=pixel, xy=xy, lonlat=lonlat)
     if mode is None:
-        raise ValueError('Have to supply one of: xy, lonlat or pixel')
+        raise ValueError("Have to supply one of: xy, lonlat or pixel")
 
     extractor = make_pixel_extractor(mode=mode, band=band, **kwargs)
 

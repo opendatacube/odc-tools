@@ -10,11 +10,9 @@ from odc.index import group_by_nothing
 from .. import DatasetCache
 
 
-def dictionary_from_product_list(dc,
-                                 products,
-                                 samples_per_product=10,
-                                 dict_sz=8 * 1024,
-                                 query=None):
+def dictionary_from_product_list(
+    dc, products, samples_per_product=10, dict_sz=8 * 1024, query=None
+):
 
     """Get a sample of datasets from a bunch of products and train compression
     dictionary.
@@ -46,13 +44,13 @@ def dictionary_from_product_list(dc,
 
 
 def db_connect(cfg=None):
-    """ Create database connection from datacube config.
+    """Create database connection from datacube config.
 
-        cfg:
-          None -- use default datacube config
-          str  -- use config with a given name
+    cfg:
+      None -- use default datacube config
+      str  -- use config with a given name
 
-          LocalConfig -- use loaded config object
+      LocalConfig -- use loaded config object
     """
     from datacube.config import LocalConfig
     import psycopg2
@@ -60,14 +58,15 @@ def db_connect(cfg=None):
     if isinstance(cfg, str) or cfg is None:
         cfg = LocalConfig.find(env=cfg)
 
-    cfg_remap = dict(dbname='db_database',
-                     user='db_username',
-                     password='db_password',
-                     host='db_hostname',
-                     port='db_port')
+    cfg_remap = dict(
+        dbname="db_database",
+        user="db_username",
+        password="db_password",
+        host="db_hostname",
+        port="db_port",
+    )
 
-    pg_cfg = {k: cfg.get(cfg_name, None)
-              for k, cfg_name in cfg_remap.items()}
+    pg_cfg = {k: cfg.get(cfg_name, None) for k, cfg_name in cfg_remap.items()}
 
     return psycopg2.connect(**pg_cfg)
 
@@ -94,15 +93,16 @@ def mk_raw2ds(products):
     """
 
     def raw2ds(ds):
-        product = products.get(ds['product'], None)
+        product = products.get(ds["product"], None)
         if product is None:
-            raise ValueError('Missing product {}'.format(ds['product']))
-        return Dataset(product, ds['metadata'], uris=ds['uris'])
+            raise ValueError("Missing product {}".format(ds["product"]))
+        return Dataset(product, ds["metadata"], uris=ds["uris"])
+
     return raw2ds
 
 
 def raw_dataset_stream(product, db, read_chunk=100, limit=None):
-    """ Given a product name stream all "active" datasets from db that belong to that product.
+    """Given a product name stream all "active" datasets from db that belong to that product.
 
     Datasets are returned in "raw form", basically just a python dictionary with fields:
 
@@ -116,7 +116,7 @@ def raw_dataset_stream(product, db, read_chunk=100, limit=None):
     if isinstance(db, str) or db is None:
         db = db_connect(db)
 
-    query = '''
+    query = """
 select
 jsonb_build_object(
   'product', %(product)s,
@@ -129,9 +129,11 @@ from agdc.dataset
 where archived is null
 and dataset_type_ref = (select id from agdc.dataset_type where name = %(product)s)
 {limit};
-'''.format(limit='LIMIT {:d}'.format(limit) if limit else '')
+""".format(
+        limit="LIMIT {:d}".format(limit) if limit else ""
+    )
 
-    cur = db.cursor(name='c{:04X}'.format(random.randint(0, 0xFFFF)))
+    cur = db.cursor(name="c{:04X}".format(random.randint(0, 0xFFFF)))
     cur.execute(query, dict(product=product))
 
     while True:
@@ -149,18 +151,15 @@ def gs_albers():
     from datacube.model import GridSpec
     import datacube.utils.geometry as geom
 
-    return GridSpec(crs=geom.CRS('EPSG:3577'),
-                    tile_size=(100000.0, 100000.0),
-                    resolution=(-25, 25))
+    return GridSpec(
+        crs=geom.CRS("EPSG:3577"), tile_size=(100000.0, 100000.0), resolution=(-25, 25)
+    )
 
 
 class DcTileExtract(object):
-    """ Construct ``datacube.api.grid_workflow.Tile`` object from dataset cache.
-    """
+    """Construct ``datacube.api.grid_workflow.Tile`` object from dataset cache."""
 
-    def __init__(self, cache,
-                 grid=None,
-                 group_by='time'):
+    def __init__(self, cache, grid=None, group_by="time"):
 
         gs = cache.grids.get(grid, None)
         if gs is None:
@@ -188,10 +187,12 @@ class DcTileExtract(object):
         return Tile(sources, geobox)
 
 
-def grid_tiles_to_geojson(cache: DatasetCache,
-                          grid: str,
-                          style: Optional[Dict[str, Any]] = None,
-                          wrapdateline: bool = False) -> Dict[str, Any]:
+def grid_tiles_to_geojson(
+    cache: DatasetCache,
+    grid: str,
+    style: Optional[Dict[str, Any]] = None,
+    wrapdateline: bool = False,
+) -> Dict[str, Any]:
     """
     Render tiles of a given grid to GeoJSON.
 
@@ -207,23 +208,29 @@ def grid_tiles_to_geojson(cache: DatasetCache,
     """
     if style is None:
         # these are understood by github renderer
-        style = {'fill-opacity': 0,
-                 'stroke-width': 0.5}
+        style = {"fill-opacity": 0, "stroke-width": 0.5}
 
     gs = cache.grids.get(grid, None)
     if gs is None:
         raise ValueError(f"No such grid: {grid}")
 
-    resolution = abs(gs.tile_size[0])/4  # up to 4 points per side
+    resolution = abs(gs.tile_size[0]) / 4  # up to 4 points per side
 
-    features = [dict(type='Feature',
-                     geometry=gs.tile_geobox(tidx).extent.to_crs('epsg:4326',
-                                                                 resolution=resolution,
-                                                                 wrapdateline=wrapdateline).json,
-                     properties={
-                         'title': f"{tidx[0]:+05d},{tidx[1]:+05d}",
-                         'count': cc,
-                         **style}) for tidx, cc in cache.tiles(grid)]
+    features = [
+        dict(
+            type="Feature",
+            geometry=gs.tile_geobox(tidx)
+            .extent.to_crs(
+                "epsg:4326", resolution=resolution, wrapdateline=wrapdateline
+            )
+            .json,
+            properties={
+                "title": f"{tidx[0]:+05d},{tidx[1]:+05d}",
+                "count": cc,
+                **style,
+            },
+        )
+        for tidx, cc in cache.tiles(grid)
+    ]
 
-    return {'type': 'FeatureCollection',
-            'features': features}
+    return {"type": "FeatureCollection", "features": features}

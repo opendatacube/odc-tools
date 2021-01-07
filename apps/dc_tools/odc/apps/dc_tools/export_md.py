@@ -22,8 +22,12 @@ _LOG = logging.getLogger(__name__)
 
 
 @click.group(help=__doc__)
-@click.option('--datacube-config', '-c', help="Pass the configuration file to access the database",
-              type=click.Path(exists=True))
+@click.option(
+    "--datacube-config",
+    "-c",
+    help="Pass the configuration file to access the database",
+    type=click.Path(exists=True),
+)
 @click.pass_context
 def cli(ctx, datacube_config):
     """ Specify datacube index to be used for the given datacube config"""
@@ -31,17 +35,21 @@ def cli(ctx, datacube_config):
 
 
 @cli.command()
-@click.option('--product', required=True, help='Which product?')
-@click.option('--config', required=True, help='The configuration file for transformation')
-@click.option('--output-dir', required=True, help='New metadata yaml file is written to this dir')
-@click.option('--limit', help='maximum number of datasets to process')
+@click.option("--product", required=True, help="Which product?")
+@click.option(
+    "--config", required=True, help="The configuration file for transformation"
+)
+@click.option(
+    "--output-dir", required=True, help="New metadata yaml file is written to this dir"
+)
+@click.option("--limit", help="maximum number of datasets to process")
 @click.pass_obj
 def transform(index, product, config, output_dir, limit):
 
     # Get the product
     dataset_type = index.products.get_by_name(product)
 
-    with open(config, 'r') as config_file:
+    with open(config, "r") as config_file:
         cfg = yaml.load(config_file) or dict()
 
     # Is this a ingested product?
@@ -57,7 +65,9 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
     of metadata such as 'grids' is computed just once.
     """
 
-    dataset_ids = index.datasets.search_returning(limit=limit, field_names=('id',), product=product)
+    dataset_ids = index.datasets.search_returning(
+        limit=limit, field_names=("id",), product=product
+    )
 
     grids_done = False
     for dataset_id in dataset_ids:
@@ -65,15 +75,17 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
         if not dataset.uris:
-            _LOG.warn('Empty uris or No uris (skippins): %s', dataset_id)
+            _LOG.warn("Empty uris or No uris (skippins): %s", dataset_id)
             continue
 
         if not grids_done:
             # setup grids
-            grids = get_grids(dataset, config.get('grids'))
+            grids = get_grids(dataset, config.get("grids"))
 
             # got to try to compute grids until shape is not default [1, 1]
-            grids_done = all([[1, 1] != grid['shape'] for _, grid in grids['grids'].items()])
+            grids_done = all(
+                [[1, 1] != grid["shape"] for _, grid in grids["grids"].items()]
+            )
 
         dataset_sections = (grids,) + _variable_sections_of_metadata(dataset, config)
         _make_and_write_dataset(get_output_file(dataset, output_dir), *dataset_sections)
@@ -85,15 +97,17 @@ def transform_indexed_datasets(index, product, config, output_dir, limit):
     per dataset.
     """
 
-    for dataset_id in index.datasets.search_returning(limit=limit, field_names=('id',), product=product):
+    for dataset_id in index.datasets.search_returning(
+        limit=limit, field_names=("id",), product=product
+    ):
 
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
         if not dataset.uris:
-            _LOG.warn('Empty or No uris (skipping): %s', dataset_id)
+            _LOG.warn("Empty or No uris (skipping): %s", dataset_id)
             continue
 
-        grids = get_grids(dataset, config.get('grids'))
+        grids = get_grids(dataset, config.get("grids"))
 
         dataset_sections = (grids,) + _variable_sections_of_metadata(dataset, config)
         _make_and_write_dataset(get_output_file(dataset, output_dir), *dataset_sections)
@@ -104,7 +118,7 @@ def get_output_file(dataset, output_dir):
     Compute the output metadata file name for the given dataset.
     """
 
-    out_file_name = str(dataset.id) + '-metadata.yaml'
+    out_file_name = str(dataset.id) + "-metadata.yaml"
 
     return output_dir / out_file_name
 
@@ -113,13 +127,20 @@ def _variable_sections_of_metadata(dataset, config):
     """
     Compute variable sections (i.e. those sections that vary per dataset)
     """
-    new_dataset = {'id': str(dataset.id),
-                   'crs': 'EPSG:' + str(dataset.crs.epsg),
-                   'location': [uri for uri in dataset.uris],
-                   'file_format': dataset.metadata_doc.get('format', '')}
+    new_dataset = {
+        "id": str(dataset.id),
+        "crs": "EPSG:" + str(dataset.crs.epsg),
+        "location": [uri for uri in dataset.uris],
+        "file_format": dataset.metadata_doc.get("format", ""),
+    }
 
-    return new_dataset, get_geometry(dataset), get_measurements(dataset, config.get('grids')), \
-           get_properties(dataset), get_lineage(dataset)
+    return (
+        new_dataset,
+        get_geometry(dataset),
+        get_measurements(dataset, config.get("grids")),
+        get_properties(dataset),
+        get_lineage(dataset),
+    )
 
 
 def _make_and_write_dataset(out_file_name, *args):
@@ -131,7 +152,7 @@ def _make_and_write_dataset(out_file_name, *args):
     for arg in args:
         dataset.update(arg)
 
-    with open(out_file_name, 'w') as out_file:
+    with open(out_file_name, "w") as out_file:
         yaml.dump(dataset, out_file, default_flow_style=False)
 
 
@@ -149,9 +170,9 @@ def get_geometry(dataset):
     empty dictionary
     """
 
-    valid_data = dataset._gs.get('valid_data')
+    valid_data = dataset._gs.get("valid_data")
 
-    return {'geometry': valid_data} if valid_data else dict()
+    return {"geometry": valid_data} if valid_data else dict()
 
 
 def get_grids(dataset, band_grids=None):
@@ -178,24 +199,16 @@ def get_grids(dataset, band_grids=None):
         # Assume all measurements belong to default grid
         shape, trans = get_shape_and_transform(dataset, dataset.measurements)
 
-        return {'grids': {
-            'default': {
-                'shape': list(shape),
-                'transform': list(trans)
-            }
-        }}
+        return {"grids": {"default": {"shape": list(shape), "transform": list(trans)}}}
     else:
         grids = dict()
         for grid_name in band_grids:
 
             shape, trans = get_shape_and_transform(dataset, band_grids[grid_name])
 
-            grids[grid_name] = {
-                'shape': list(shape),
-                'transform': list(trans)
-            }
+            grids[grid_name] = {"shape": list(shape), "transform": list(trans)}
 
-        if not band_grids.get('default'):
+        if not band_grids.get("default"):
 
             specified_bands = set()
             for grid in band_grids:
@@ -207,11 +220,8 @@ def get_grids(dataset, band_grids=None):
             if bool(default_bands):
                 shape, trans = get_shape_and_transform(dataset, default_bands)
 
-                grids['default'] = {
-                    'shape': list(shape),
-                    'transform': list(trans)
-                }
-        return {'grids': grids}
+                grids["default"] = {"shape": list(shape), "transform": list(trans)}
+        return {"grids": grids}
 
 
 def get_shape_and_transform(dataset, measurements):
@@ -224,12 +234,12 @@ def get_shape_and_transform(dataset, measurements):
         try:
             geo = native_geobox(dataset, [m])
         except Exception:
-            _LOG.warn('Failed to compute shape and transform %s', m)
+            _LOG.warn("Failed to compute shape and transform %s", m)
             continue
         return geo.shape, geo.transform
 
     # All the bands failed use default shape [1,1]
-    _LOG.warn('All measurements failed to compute shape and transform %s', measurements)
+    _LOG.warn("All measurements failed to compute shape and transform %s", measurements)
     return [1, 1], dataset.transform
 
 
@@ -250,29 +260,32 @@ def get_measurements(dataset, band_grids=None):
       }
     }
     """
-    grids_map = {m: grid for grid in band_grids
-                 for m in band_grids[grid] if grid != 'default'} if band_grids else dict()
+    grids_map = (
+        {m: grid for grid in band_grids for m in band_grids[grid] if grid != "default"}
+        if band_grids
+        else dict()
+    )
 
     measurements = dict()
     for m in dataset.measurements:
 
         if m not in dataset.type.measurements:
-            _LOG.warn('Measurement not in product definition (skipping): %s', m)
+            _LOG.warn("Measurement not in product definition (skipping): %s", m)
             continue
 
         band_info = BandInfo(dataset, m)
-        measurements[m] = {'path': dataset.measurements[m]['path']}
+        measurements[m] = {"path": dataset.measurements[m]["path"]}
 
         if band_info.band and band_info.band != 1:
-            measurements[m]['band'] = band_info.band
+            measurements[m]["band"] = band_info.band
 
         if band_info.layer is not None:
-            measurements[m]['layer'] = band_info.layer
+            measurements[m]["layer"] = band_info.layer
 
         if grids_map.get(m):
-            measurements[m]['grid'] = grids_map[m]
+            measurements[m]["grid"] = grids_map[m]
 
-    return {'measurements': measurements}
+    return {"measurements": measurements}
 
 
 def get_properties(dataset, property_offsets=None):
@@ -288,10 +301,10 @@ def get_properties(dataset, property_offsets=None):
     }
     """
     props = dict()
-    props['datetime'] = dataset.center_time
-    props['odc:processing_datetime'] = dataset.indexed_time
+    props["datetime"] = dataset.center_time
+    props["odc:processing_datetime"] = dataset.indexed_time
 
-    return {'properties': props}
+    return {"properties": props}
 
 
 def get_lineage(dataset):
@@ -309,9 +322,8 @@ def get_lineage(dataset):
     lineage = dict()
     for classifier in dataset.sources:
         lineage[classifier] = str(dataset.sources[classifier].id)
-    return {'lineage': lineage}
+    return {"lineage": lineage}
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
-

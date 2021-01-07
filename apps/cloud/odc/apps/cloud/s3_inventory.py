@@ -19,7 +19,7 @@ def build_predicate(glob=None, regex=None, prefix=None):
     preds = []
 
     if prefix:
-        prefix = prefix.lstrip('/')
+        prefix = prefix.lstrip("/")
         preds.append(match_prefix)
 
     if regex is not None:
@@ -37,20 +37,34 @@ def build_predicate(glob=None, regex=None, prefix=None):
         p1, p2 = preds
         return lambda e: p1(e) and p2(e)
     else:
-        raise ValueError('regex and glob are mutually exclusive')
+        raise ValueError("regex and glob are mutually exclusive")
 
 
-@click.command('s3-inventory-dump')
-@click.option('--inventory', '-i', type=str, help='URL pointing to manifest.json or one level up')
-@click.option('--prefix', type=str, help='Only print entries with Key starting with `prefix`')
-@click.option('--regex', type=str, help='Only print entries matching regex')
-@click.option('--aws-profile', type=str, help='Use non-default aws profile')
-@click.option('--no-sign-request', is_flag=True,
-              help='Do not sign AWS S3 requests')
-@click.option('--request-payer', is_flag=True,
-              help='Needed when accessing requester pays public buckets')
-@click.argument('glob', type=str, default='', nargs=1)
-def cli(inventory, prefix, regex, glob, aws_profile, no_sign_request=None, request_payer=False):
+@click.command("s3-inventory-dump")
+@click.option(
+    "--inventory", "-i", type=str, help="URL pointing to manifest.json or one level up"
+)
+@click.option(
+    "--prefix", type=str, help="Only print entries with Key starting with `prefix`"
+)
+@click.option("--regex", type=str, help="Only print entries matching regex")
+@click.option("--aws-profile", type=str, help="Use non-default aws profile")
+@click.option("--no-sign-request", is_flag=True, help="Do not sign AWS S3 requests")
+@click.option(
+    "--request-payer",
+    is_flag=True,
+    help="Needed when accessing requester pays public buckets",
+)
+@click.argument("glob", type=str, default="", nargs=1)
+def cli(
+    inventory,
+    prefix,
+    regex,
+    glob,
+    aws_profile,
+    no_sign_request=None,
+    request_payer=False,
+):
     """List S3 inventory entries.
 
         prefix can be combined with regex or glob pattern, but supplying both
@@ -63,16 +77,16 @@ def cli(inventory, prefix, regex, glob, aws_profile, no_sign_request=None, reque
     """
 
     def entry_to_url(entry):
-        return 's3://{e.Bucket}/{e.Key}'.format(e=entry)
+        return "s3://{e.Bucket}/{e.Key}".format(e=entry)
 
     opts = {}
     if request_payer:
-        opts['RequestPayer'] = 'requester'
+        opts["RequestPayer"] = "requester"
 
     flush_freq = 100
     s3 = s3_client(profile=aws_profile, aws_unsigned=no_sign_request)
 
-    if glob == '':
+    if glob == "":
         glob = None
 
     if glob is not None and regex is not None:
@@ -81,7 +95,7 @@ def cli(inventory, prefix, regex, glob, aws_profile, no_sign_request=None, reque
 
     if inventory is None:
         # TODO: read from config file
-        inventory = 's3://dea-public-data-inventory/dea-public-data/dea-public-data-csv-inventory/'
+        inventory = "s3://dea-public-data-inventory/dea-public-data/dea-public-data-csv-inventory/"
 
     predicate = build_predicate(glob=glob, regex=regex, prefix=prefix)
 
@@ -92,5 +106,5 @@ def cli(inventory, prefix, regex, glob, aws_profile, no_sign_request=None, reque
             print(to_str(entry), flush=(i % flush_freq) == 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

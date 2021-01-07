@@ -7,19 +7,15 @@ import rasterio.env
 
 _local = threading.local()
 
-SECRET_KEYS = ('AWS_ACCESS_KEY_ID',
-               'AWS_SECRET_ACCESS_KEY',
-               'AWS_SESSION_TOKEN')
+SECRET_KEYS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
 
 
 def _sanitize(opts, keys):
-    return {k: (v if k not in keys
-                else 'xx..xx')
-            for k, v in opts.items()}
+    return {k: (v if k not in keys else "xx..xx") for k, v in opts.items()}
 
 
 def get_rio_env(sanitize=True):
-    """ Get GDAL params configured by rasterio for the current thread.
+    """Get GDAL params configured by rasterio for the current thread.
 
     :param sanitize: If True replace sensitive Values with 'x'
     """
@@ -35,7 +31,7 @@ def get_rio_env(sanitize=True):
 
 
 def activate_rio_env(aws=None, defaults=True, **kwargs):
-    """ Inject activated rasterio.Env into current thread.
+    """Inject activated rasterio.Env into current thread.
 
     This de-activates previously setup environment.
 
@@ -46,7 +42,7 @@ def activate_rio_env(aws=None, defaults=True, **kwargs):
     :param defaults: Supply False to not inject COG defaults
     :param **kwargs: Passed on to rasterio.Env(..) constructor
     """
-    env_old = getattr(_local, 'env', None)
+    env_old = getattr(_local, "env", None)
 
     if env_old is not None:
         env_old.__exit__(None, None, None)
@@ -56,22 +52,21 @@ def activate_rio_env(aws=None, defaults=True, **kwargs):
         session = None
     else:
         aws = {} if aws is None else dict(**aws)
-        region_name = aws.get('region_name', 'auto')
+        region_name = aws.get("region_name", "auto")
 
-        if region_name == 'auto':
+        if region_name == "auto":
             from odc.aws import auto_find_region
+
             try:
-                aws['region_name'] = auto_find_region()
+                aws["region_name"] = auto_find_region()
             except Exception as e:
                 # only treat it as error if it was requested by user
-                if 'region_name' in aws:
+                if "region_name" in aws:
                     raise e
 
         session = AWSSession(**aws)
 
-    opts = dict(
-        GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR'
-    ) if defaults else {}
+    opts = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR") if defaults else {}
 
     opts.update(**kwargs)
 

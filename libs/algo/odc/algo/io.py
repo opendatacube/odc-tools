@@ -10,19 +10,20 @@ from datacube.testutils.io import native_geobox
 from ._masking import _max_fuser, _nodata_fuser
 
 
-def compute_native_load_geobox(dst_geobox: GeoBox,
-                               ds: Dataset,
-                               band: str,
-                               buffer: Optional[float] = None):
+def compute_native_load_geobox(
+    dst_geobox: GeoBox, ds: Dataset, band: str, buffer: Optional[float] = None
+):
 
     native = native_geobox(ds, basis=band)
     if buffer is None:
-        buffer = 10*max(map(abs, native.resolution))
+        buffer = 10 * max(map(abs, native.resolution))
 
-    return GeoBox.from_geopolygon(dst_geobox.extent.to_crs(native.crs).buffer(buffer),
-                                  crs=native.crs,
-                                  resolution=native.resolution,
-                                  align=native.alignment)
+    return GeoBox.from_geopolygon(
+        dst_geobox.extent.to_crs(native.crs).buffer(buffer),
+        crs=native.crs,
+        resolution=native.resolution,
+        align=native.alignment,
+    )
 
 
 def _split_by_grid(xx: xr.DataArray) -> List[xr.DataArray]:
@@ -30,40 +31,38 @@ def _split_by_grid(xx: xr.DataArray) -> List[xr.DataArray]:
         yy = xx[ii]
         crs = xx.grid2crs[xx.grid.data[0]]
         yy.attrs.update(crs=crs)
-        yy.attrs.pop('grid2crs', None)
+        yy.attrs.pop("grid2crs", None)
         return yy
 
-    return [extract(ii)
-            for ii in xx.groupby(xx.grid).groups.values()]
+    return [extract(ii) for ii in xx.groupby(xx.grid).groups.values()]
 
 
-def _load_with_native_transform_1(sources: xr.DataArray,
-                                  bands: Tuple[str, ...],
-                                  geobox: GeoBox,
-                                  native_transform: Callable[[xr.Dataset], xr.Dataset],
-                                  basis: Optional[str] = None,
-                                  groupby: Optional[str] = None,
-                                  fuser: Optional[Callable[[xr.Dataset], xr.Dataset]] = None,
-                                  resampling: str = 'nearest',
-                                  chunks: Optional[Dict[str, int]] = None,
-                                  load_chunks: Optional[Dict[str, int]] = None,
-                                  pad: Optional[int] = None) -> xr.Dataset:
+def _load_with_native_transform_1(
+    sources: xr.DataArray,
+    bands: Tuple[str, ...],
+    geobox: GeoBox,
+    native_transform: Callable[[xr.Dataset], xr.Dataset],
+    basis: Optional[str] = None,
+    groupby: Optional[str] = None,
+    fuser: Optional[Callable[[xr.Dataset], xr.Dataset]] = None,
+    resampling: str = "nearest",
+    chunks: Optional[Dict[str, int]] = None,
+    load_chunks: Optional[Dict[str, int]] = None,
+    pad: Optional[int] = None,
+) -> xr.Dataset:
     if basis is None:
         basis = bands[0]
 
     if load_chunks is None:
         load_chunks = chunks
 
-    ds, = sources.data[0]
+    (ds,) = sources.data[0]
     load_geobox = compute_native_load_geobox(geobox, ds, basis)
     if pad is not None:
         load_geobox = gbox.pad(load_geobox, pad)
 
     mm = ds.type.lookup_measurements(bands)
-    xx = Datacube.load_data(sources,
-                            load_geobox,
-                            mm,
-                            dask_chunks=load_chunks)
+    xx = Datacube.load_data(sources, load_geobox, mm, dask_chunks=load_chunks)
     xx = native_transform(xx)
 
     if groupby is not None:
@@ -73,24 +72,25 @@ def _load_with_native_transform_1(sources: xr.DataArray,
 
     _chunks = None
     if chunks is not None:
-        _chunks = tuple(chunks.get(ax, -1)
-                        for ax in ('y', 'x'))
+        _chunks = tuple(chunks.get(ax, -1) for ax in ("y", "x"))
 
     return xr_reproject(xx, geobox, chunks=_chunks, resampling=resampling)
 
 
-def load_with_native_transform(dss: List[Dataset],
-                               bands: Tuple[str, ...],
-                               geobox: GeoBox,
-                               native_transform: Callable[[xr.Dataset], xr.Dataset],
-                               basis: Optional[str] = None,
-                               groupby: Optional[str] = None,
-                               fuser: Optional[Callable[[xr.Dataset], xr.Dataset]] = None,
-                               resampling: str = 'nearest',
-                               chunks: Optional[Dict[str, int]] = None,
-                               load_chunks: Optional[Dict[str, int]] = None,
-                               pad: Optional[int] = None,
-                               **kw) -> xr.Dataset:
+def load_with_native_transform(
+    dss: List[Dataset],
+    bands: Tuple[str, ...],
+    geobox: GeoBox,
+    native_transform: Callable[[xr.Dataset], xr.Dataset],
+    basis: Optional[str] = None,
+    groupby: Optional[str] = None,
+    fuser: Optional[Callable[[xr.Dataset], xr.Dataset]] = None,
+    resampling: str = "nearest",
+    chunks: Optional[Dict[str, int]] = None,
+    load_chunks: Optional[Dict[str, int]] = None,
+    pad: Optional[int] = None,
+    **kw
+) -> xr.Dataset:
     """
     Load a bunch of datasets with native pixel transform.
 
@@ -128,29 +128,33 @@ def load_with_native_transform(dss: List[Dataset],
         fuser = _nodata_fuser
 
     if groupby is None:
-        groupby = kw.get('group_by', 'idx')
+        groupby = kw.get("group_by", "idx")
     if chunks is None:
-        chunks = kw.get('dask_chunks', None)
+        chunks = kw.get("dask_chunks", None)
 
     sources = group_by_nothing(dss, solar_offset(geobox.extent))
-    xx = [_load_with_native_transform_1(srcs,
-                                        bands,
-                                        geobox,
-                                        native_transform,
-                                        basis=basis,
-                                        resampling=resampling,
-                                        groupby=groupby,
-                                        fuser=fuser,
-                                        chunks=chunks,
-                                        load_chunks=load_chunks,
-                                        pad=pad)
-          for srcs in _split_by_grid(sources)]
+    xx = [
+        _load_with_native_transform_1(
+            srcs,
+            bands,
+            geobox,
+            native_transform,
+            basis=basis,
+            resampling=resampling,
+            groupby=groupby,
+            fuser=fuser,
+            chunks=chunks,
+            load_chunks=load_chunks,
+            pad=pad,
+        )
+        for srcs in _split_by_grid(sources)
+    ]
 
     if len(xx) == 1:
         xx = xx[0]
     else:
         xx = xr.concat(xx, sources.dims[0])
-        if groupby != 'idx':
+        if groupby != "idx":
             xx = xx.groupby(groupby).map(fuser)
 
     # TODO: probably want to replace spec MultiIndex with just `time` component
@@ -158,15 +162,17 @@ def load_with_native_transform(dss: List[Dataset],
     return xx
 
 
-def load_enum_mask(dss: List[Dataset],
-                   band: str,
-                   geobox: GeoBox,
-                   categories: Iterable[Union[str, int]],
-                   invert: bool = False,
-                   resampling: str = 'nearest',
-                   groupby: Optional[str] = None,
-                   chunks: Optional[Dict[str, int]] = None,
-                   **kw) -> xr.DataArray:
+def load_enum_mask(
+    dss: List[Dataset],
+    band: str,
+    geobox: GeoBox,
+    categories: Iterable[Union[str, int]],
+    invert: bool = False,
+    resampling: str = "nearest",
+    groupby: Optional[str] = None,
+    chunks: Optional[Dict[str, int]] = None,
+    **kw
+) -> xr.DataArray:
     """
     Load enumerated mask (like fmask).
 
@@ -179,19 +185,24 @@ def load_enum_mask(dss: List[Dataset],
     """
 
     def native_op(ds):
-        return ds.map(enum_to_bool,
-                      categories=categories,
-                      invert=invert,
-                      dtype='uint8',
-                      value_true=255)
+        return ds.map(
+            enum_to_bool,
+            categories=categories,
+            invert=invert,
+            dtype="uint8",
+            value_true=255,
+        )
 
-    xx = load_with_native_transform(dss, [band],
-                                    geobox,
-                                    native_op,
-                                    basis=band,
-                                    resampling=resampling,
-                                    groupby=groupby,
-                                    chunks=chunks,
-                                    fuser=_max_fuser,
-                                    **kw)
+    xx = load_with_native_transform(
+        dss,
+        [band],
+        geobox,
+        native_op,
+        basis=band,
+        resampling=resampling,
+        groupby=groupby,
+        chunks=chunks,
+        fuser=_max_fuser,
+        **kw
+    )
     return xx[band] > 127

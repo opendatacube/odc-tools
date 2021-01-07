@@ -13,7 +13,7 @@ EOS = object()
 
 
 def qmap(proc, q, eos_marker=None):
-    """ Converts queue to an iterator.
+    """Converts queue to an iterator.
 
     For every `item` in the `q` that is not `eos_marker`, `yield proc(item)`
     """
@@ -29,64 +29,75 @@ def qmap(proc, q, eos_marker=None):
                 q.task_done()
 
 
-@click.command('slurpy')
-@click.option('--env', '-E', type=str, help='Datacube environment name')
-@click.option('-z', 'complevel', type=int, default=6, help='Compression setting for zstandard 1-fast, 9+ good but slow')
-@click.option('--grid', type=str,
-              help=("Grid spec or name 'crs;pixel_resolution;shape_in_pixels',"
-                    "albers_au_25, albers_africa_{10|20|30|60}"),
-              default=None)
-@click.option('--year',
-              type=int,
-              help="Only extract datasets for a given year")
-@click.argument('output', type=str, nargs=1)
-@click.argument('products', type=str, nargs=-1)
+@click.command("slurpy")
+@click.option("--env", "-E", type=str, help="Datacube environment name")
+@click.option(
+    "-z",
+    "complevel",
+    type=int,
+    default=6,
+    help="Compression setting for zstandard 1-fast, 9+ good but slow",
+)
+@click.option(
+    "--grid",
+    type=str,
+    help=(
+        "Grid spec or name 'crs;pixel_resolution;shape_in_pixels',"
+        "albers_au_25, albers_africa_{10|20|30|60}"
+    ),
+    default=None,
+)
+@click.option("--year", type=int, help="Only extract datasets for a given year")
+@click.argument("output", type=str, nargs=1)
+@click.argument("products", type=str, nargs=-1)
 def cli(env, grid, year, output, products, complevel):
-    """ Extract product(s) to an on disk cache.
+    """Extract product(s) to an on disk cache.
 
-        Optionally tile datasets into a grid while extracting (see --grid option)
+    Optionally tile datasets into a grid while extracting (see --grid option)
     """
 
     if len(products) == 0:
-        click.echo('Have to supply at least one product')
+        click.echo("Have to supply at least one product")
         raise click.Abort()
 
     dc = datacube.Datacube(env=env)
-    all_prods = {p.name: p
-                 for p in dc.index.products.get_all()}
+    all_prods = {p.name: p for p in dc.index.products.get_all()}
 
-    if len(products) == 1 and products[0].lower() in (':all:', '*'):
-        click.echo('Will read all products')
+    if len(products) == 1 and products[0].lower() in (":all:", "*"):
+        click.echo("Will read all products")
         products = list(all_prods)
 
     for p in products:
         if p not in all_prods:
-            click.echo('No such product found: %s' % p)
+            click.echo("No such product found: %s" % p)
             raise click.Abort()
 
     query = {}
     if year is not None:
         query.update(time=f"{year}")
 
-    click.echo('Getting dataset counts')
-    counts = {p: dataset_count(dc.index, product=p, **query)
-              for p in products}
+    click.echo("Getting dataset counts")
+    counts = {p: dataset_count(dc.index, product=p, **query) for p in products}
 
     n_total = 0
     for p, c in counts.items():
-        click.echo('..{}: {:8,d}'.format(p, c))
+        click.echo("..{}: {:8,d}".format(p, c))
         n_total += c
 
     if n_total == 0:
         click.echo("No datasets found")
         raise click.Abort()
 
-    click.echo('Training compression dictionary')
-    zdict = dictionary_from_product_list(dc, products, samples_per_product=50, query=query)
-    click.echo('..done')
+    click.echo("Training compression dictionary")
+    zdict = dictionary_from_product_list(
+        dc, products, samples_per_product=50, query=query
+    )
+    click.echo("..done")
 
     # TODO: check for overwrite
-    cache = dscache.create_cache(output, zdict=zdict, complevel=complevel, truncate=True)
+    cache = dscache.create_cache(
+        output, zdict=zdict, complevel=complevel, truncate=True
+    )
 
     raw2ds = mk_raw2ds(all_prods)
 
@@ -117,15 +128,17 @@ def cli(env, grid, year, output, products, complevel):
         cache.add_grid(gs, group_prefix)
         dss = bin_dataset_stream(gs, dss, cells)
 
-    label = 'Processing ({:8,d})'.format(n_total)
+    label = "Processing ({:8,d})".format(n_total)
     with click.progressbar(dss, label=label, length=n_total) as dss:
         for _ in dss:
             pass
 
     if grid is not None:
-        click.echo('Total bins: {:d}'.format(len(cells)))
+        click.echo("Total bins: {:d}".format(len(cells)))
 
-        with click.progressbar(cells.values(), length=len(cells), label='Saving') as groups:
+        with click.progressbar(
+            cells.values(), length=len(cells), label="Saving"
+        ) as groups:
             for group in groups:
                 cache.add_grid_tile(group_prefix, group.idx, group.dss)
 
@@ -133,5 +146,5 @@ def cli(env, grid, year, output, products, complevel):
     cache.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

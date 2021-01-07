@@ -38,12 +38,12 @@ class DataSink:
         self._roi = roi
 
     @staticmethod
-    def new(shape: ShapeLike, dtype: DtypeLike) -> 'DataSink':
+    def new(shape: ShapeLike, dtype: DtypeLike) -> "DataSink":
         k = Cache.new(shape, dtype)
         return DataSink(k)
 
     @staticmethod
-    def wrap(x: np.ndarray) -> 'DataSink':
+    def wrap(x: np.ndarray) -> "DataSink":
         return DataSink(Cache.put(x))
 
     @property
@@ -55,15 +55,14 @@ class DataSink:
             xx = xx[self._roi]
         return xx
 
-    def view(self, roi: ROI) -> 'DataSink':
+    def view(self, roi: ROI) -> "DataSink":
         if self._roi is None:
             return DataSink(self._k, roi)
         else:
             raise NotImplementedError("Nested views are not supported yet")
 
     def unlink(self):
-        """ This will invalidate this object and all views also
-        """
+        """This will invalidate this object and all views also"""
         if self._k != "":
             Cache.pop(self._k)
             self._k = ""
@@ -72,12 +71,14 @@ class DataSink:
     def __setitem__(self, key, item):
         self.data[key] = item
 
-    def __getitem__(self, key: ROI) -> 'DataSink':
+    def __getitem__(self, key: ROI) -> "DataSink":
         return self.view(key)
 
 
 class _YXBTSink:
-    def __init__(self, cache_key: str, band: Union[int, Tuple[slice, slice, slice, slice]]):
+    def __init__(
+        self, cache_key: str, band: Union[int, Tuple[slice, slice, slice, slice]]
+    ):
         if isinstance(band, int):
             band = np.s_[:, :, band, :]
 
@@ -99,10 +100,10 @@ class _YXBTSink:
         self.data[iy, ix, it] = item.transpose([1, 2, 0])
 
 
-def store_to_mem(xx: da.Array,
-                 client: Client,
-                 out: Optional[np.ndarray] = None) -> np.ndarray:
-    assert client.scheduler.address.startswith('inproc://')
+def store_to_mem(
+    xx: da.Array, client: Client, out: Optional[np.ndarray] = None
+) -> np.ndarray:
+    assert client.scheduler.address.startswith("inproc://")
     if out is None:
         sink = DataSink.new(xx.shape, xx.dtype)
     else:
@@ -135,13 +136,13 @@ def yxbt_sink(bands: Tuple[da.Array, ...], client) -> np.ndarray:
 
 
 def test_cache():
-    k = Cache.new((5,), 'uint8')
+    k = Cache.new((5,), "uint8")
     assert isinstance(k, str)
     xx = Cache.get(k)
     assert xx.shape == (5,)
-    assert xx.dtype == 'uint8'
+    assert xx.dtype == "uint8"
     assert Cache.get(k) is xx
-    assert Cache.get('some bad key') is None
+    assert Cache.get("some bad key") is None
     assert Cache.pop(k) is xx
     assert Cache.get(k) is None
 
@@ -149,10 +150,10 @@ def test_cache():
 def test_data_sink():
     import pytest
 
-    ds = DataSink.new((100, 200), 'uint16')
+    ds = DataSink.new((100, 200), "uint16")
     xx = ds.data
     assert xx.shape == (100, 200)
-    assert xx.dtype == 'uint16'
+    assert xx.dtype == "uint16"
     assert ds.data is xx
 
     ds[:] = 0x1020
