@@ -101,6 +101,7 @@ class S3COGSink:
     def _ds_to_cog(self, ds: xr.Dataset, paths: Dict[str, str]) -> List[Delayed]:
         out = []
         for band, dv in ds.data_vars.items():
+            band = str(band)
             url = paths.get(band, None)
             if url is None:
                 raise ValueError(f"No path for band: '{band}'")
