@@ -134,8 +134,7 @@ class SaveTasks:
             temporal_range = DateTimeRange(temporal_range)
 
         cfg: Dict[str, Any] = dict(
-            grid=self._grid,
-            freq=self._frequency,
+            grid=self._grid, freq=self._frequency,
         )
 
         query = dict(product=product)
@@ -296,6 +295,10 @@ class TaskReader:
         if product is None:
             raise ValueError("Product is not supplied and default is not set")
         return product
+
+    @property
+    def product(self) -> OutputProduct:
+        return self._resolve_product(None)
 
     @property
     def all_tiles(self) -> List[TileIdx_txy]:
