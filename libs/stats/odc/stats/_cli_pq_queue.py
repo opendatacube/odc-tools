@@ -44,7 +44,7 @@ def run_pq_queue(
     import logging
     import psutil
     from .io import S3COGSink
-    from ._pq import pq_input_data, pq_reduce, pq_product
+    from ._pq import StatsPQ
     from .proc import process_tasks
     from .tasks import TaskReader
     from datacube.utils.dask import start_local_dask
@@ -69,14 +69,15 @@ def run_pq_queue(
     setup_logging()
     _log = logging.getLogger(__name__)
 
-    product = pq_product(location=output_location)
+    pq = StatsPQ(resampling=resampling)
+    product = pq.product(location=output_location)
     rdr = TaskReader(cache_file, product)
 
     _log.info(f"DB file: {repr(rdr)}")
 
     def pq_proc(task):
-        ds_in = pq_input_data(task, resampling=resampling)
-        ds = pq_reduce(ds_in)
+        ds_in = pq.input_data(task)
+        ds = pq.reduce(ds_in)
         return ds
 
     sink = S3COGSink(cog_opts=COG_OPTS, public=public)

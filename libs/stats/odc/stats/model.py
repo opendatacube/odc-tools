@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -305,6 +306,20 @@ class Task:
         )
 
         return item.to_dict()
+
+
+class StatsPluginInterface(ABC):
+    @abstractmethod
+    def product(self, location: Optional[str] = None, **kw: Any) -> OutputProduct:
+        pass
+
+    @abstractmethod
+    def input_data(self, task: Task) -> xr.Dataset:
+        pass
+
+    @abstractmethod
+    def reduce(self, xx: xr.Dataset) -> xr.Dataset:
+        pass
 
 
 @dataclass

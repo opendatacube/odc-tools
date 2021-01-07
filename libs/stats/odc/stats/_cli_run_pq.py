@@ -60,7 +60,7 @@ def run_pq(
     import psutil
     import xarray as xr
     from .io import S3COGSink
-    from ._pq import pq_input_data, pq_reduce, pq_product
+    from ._pq import StatsPQ
     from .proc import process_tasks
     from .model import TaskResult, Task
     from .tasks import TaskReader
@@ -83,15 +83,16 @@ def run_pq(
     if threads <= 0:
         threads = ncpus
 
-    product = pq_product(location=location)
+    pq = StatsPQ(resampling=resampling)
+    product = pq.product(location=location)
     rdr = TaskReader(cache_file, product)
 
     if verbose:
         print(repr(rdr))
 
     def pq_proc(task: Task) -> xr.Dataset:
-        ds_in = pq_input_data(task, resampling=resampling)
-        ds = pq_reduce(ds_in)
+        ds_in = pq.input_data(task)
+        ds = pq.reduce(ds_in)
         return ds
 
     def dry_run_proc(task: Task, sink: S3COGSink, check_s3: bool = False) -> TaskResult:
