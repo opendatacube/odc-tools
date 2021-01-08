@@ -1,16 +1,20 @@
 """
 Sentinel-2 Geomedian
 """
-from typing import Optional, Tuple, Union, Dict
+from typing import Optional, Tuple
 import xarray as xr
+import dask.array as da
+import functools
 
+import hdstats
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import enum_to_bool, int_geomedian, keep_good_only, cloud_buffer
-from .model import OutputProduct
+from odc.algo import keep_good_only, da_yxbt_sink
+from odc.algo.io import load_enum_filtered
+from .model import OutputProduct, StatsPluginInterface
+from . import _plugins
 
 
-bad_pixel_classes = (0, "saturated or defective")
 cloud_classes = (
     "cloud shadows",
     "cloud medium probability",
@@ -19,111 +23,126 @@ cloud_classes = (
 )
 
 
-def gm_product(
-    location: Optional[str] = None, bands: Optional[Tuple[str, ...]] = None
-) -> OutputProduct:
-    name = "ga_s2_gm"
-    short_name = "ga_s2_gm"
-    version = "0.0.0"
+class StatsGMS2(StatsPluginInterface):
+    def __init__(
+        self,
+        resampling: str = "average",
+        bands: Optional[Tuple[str, ...]] = None,
+        filters: Optional[Tuple[int, int]] = (2, 5),
+        work_chunks: Tuple[int, int] = (100, -1),
+    ):
+        if bands is None:
+            bands = (
+                "B02",
+                "B03",
+                "B04",
+                "B05",
+                "B06",
+                "B07",
+                "B08",
+                "B8A",
+                "B11",
+                "B12",
+            )
 
-    if bands is None:
-        bands = ("B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12")
+        self.resampling = resampling
+        self.bands = bands
+        self.filters = filters
+        self._work_chunks = (*work_chunks, -1, -1)
 
-    if location is None:
-        bucket = "deafrica-stats-processing"
-        location = f"s3://{bucket}/{name}/v{version}"
-    else:
-        location = location.rstrip("/")
+    def product(self, location: Optional[str] = None, **kw) -> OutputProduct:
+        name = "ga_s2_gm"
+        short_name = "ga_s2_gm"
+        version = "0.0.0"
 
-    measurements = tuple(bands)
+        if location is None:
+            bucket = "deafrica-stats-processing"
+            location = f"s3://{bucket}/{name}/v{version}"
+        else:
+            location = location.rstrip("/")
 
-    properties = {
-        "odc:file_format": "GeoTIFF",
-        "odc:producer": "ga.gov.au",
-        "odc:product_family": "statistics",  # TODO: ???
-        "platform": "sentinel-2",
-    }
+        measurements = tuple(self.bands)
 
-    return OutputProduct(
-        name=name,
-        version=version,
-        short_name=short_name,
-        location=location,
-        properties=properties,
-        measurements=measurements,
-        href=f"https://collections.digitalearth.africa/product/{name}",
-    )
+        properties = {
+            "odc:file_format": "GeoTIFF",
+            "odc:producer": "ga.gov.au",
+            "odc:product_family": "statistics",  # TODO: ???
+            "platform": "sentinel-2",
+        }
 
-
-def _gm_native_transform(
-    xx: xr.Dataset, buffer_clouds: Optional[Tuple[int, int]] = None
-) -> xr.Dataset:
-    """
-    config:
-    bad_pixel_classes
-    cloud_classes
-    """
-
-    # data bands are everything but SCL
-    bands = list(xx.data_vars)
-    bands.remove("SCL")
-
-    # TODO: fancier computation of clear_pix with padding for cloud
-    clear_pix = enum_to_bool(xx.SCL, bad_pixel_classes + cloud_classes, invert=True)
-    if buffer_clouds is not None:
-        radius, dilation_radius = buffer_clouds
-        clear_pix = cloud_buffer(
-            clear_pix, radius=radius, dilation_radius=dilation_radius
+        return OutputProduct(
+            name=name,
+            version=version,
+            short_name=short_name,
+            location=location,
+            properties=properties,
+            measurements=measurements,
+            href=f"https://collections.digitalearth.africa/product/{name}",
         )
 
-    xx = keep_good_only(xx[bands], clear_pix)
-
-    return xx
-
-
-def gm_input_data(
-    task: Task,
-    resampling: str,
-    chunk: Union[int, Tuple[int, int]] = 1600,
-    basis: Optional[str] = None,
-    load_chunks: Optional[Dict[str, int]] = None,
-    buffer_clouds: Optional[Tuple[int, int]] = (6, 2),
-) -> xr.Dataset:
-    """
-    .valid  Bool
-    .clear  Bool
-    """
-    if isinstance(chunk, int):
-        chunk = (chunk, chunk)
-    if basis is None:
+    def input_data(self, task: Task) -> xr.Dataset:
         basis = task.product.measurements[0]
+        chunks = {"y": -1, "x": -1}
+        groupby = "solar_day"
+        mask_band = "SCL"
 
-    xx = load_with_native_transform(
-        task.datasets,
-        [*task.product.measurements, "SCL"],
-        task.geobox,
-        lambda xx: _gm_native_transform(xx, buffer_clouds=buffer_clouds),
-        groupby="solar_day",
-        basis=basis,
-        resampling=resampling,
-        chunks={"y": chunk[0], "x": chunk[1]},
-        load_chunks=load_chunks,
-    )
-    return xx
+        erased = load_enum_filtered(
+            task.datasets,
+            mask_band,
+            task.geobox,
+            categories=cloud_classes,
+            filters=self.filters,
+            groupby=groupby,
+            resampling=self.resampling,
+            chunks={},
+        )
+
+        xx = load_with_native_transform(
+            task.datasets,
+            task.product.measurements,
+            task.geobox,
+            lambda xx: xx,
+            groupby=groupby,
+            basis=basis,
+            resampling=self.resampling,
+            chunks=chunks,
+        )
+
+        xx = keep_good_only(xx, ~erased)
+        return xx
+
+    def reduce(self, xx: xr.Dataset) -> xr.Dataset:
+
+        sample_band, *_ = xx.data_vars.values()
+        nodata = sample_band.attrs.get("nodata", 0)
+
+        bands = [dv.data for dv in xx.data_vars.values()]
+        yxbt = da_yxbt_sink(bands, self._work_chunks)
+
+        _gm_u16 = functools.partial(
+            hdstats.nangeomedian_pcm,
+            maxiters=1000,
+            eps=1e-4,
+            nocheck=True,
+            nodata=nodata,
+            num_threads=1,
+        )
+
+        data = da.map_blocks(
+            _gm_u16, yxbt, name="geomedian", dtype="float32", drop_axis=3
+        )
+
+        coords = xx.geobox.xr_coords(with_crs=True)
+        coords["band"] = list(xx.data_vars)
+        gm = xr.DataArray(
+            data=data, coords=coords, dims=("y", "x", "band"), attrs={"nodata": nodata}
+        )
+
+        gm = gm.to_dataset(dim="band")
+        for dv in gm.data_vars.values():
+            dv.attrs.update(gm.attrs)
+
+        return gm
 
 
-def gm_reduce(
-    xx: xr.Dataset, num_threads: int = 4, wk_rows: int = 64, as_array: bool = False
-) -> Union[xr.Dataset, xr.DataArray]:
-    """"""
-    scale = 1 / 10_000
-    return int_geomedian(
-        xx,
-        scale=scale,
-        offset=-1 * scale,
-        wk_rows=wk_rows,
-        as_array=as_array,
-        eps=1e-4,
-        num_threads=num_threads,
-        maxiters=1_000,
-    )
+_plugins.register("gm-s2", StatsGMS2)
