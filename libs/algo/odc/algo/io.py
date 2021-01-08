@@ -206,3 +206,96 @@ def load_enum_mask(
         **kw
     )
     return xx[band] > 127
+
+
+def load_enum_filtered(
+    dss: List[Dataset],
+    band: str,
+    geobox: GeoBox,
+    categories: Iterable[Union[str, int]],
+    filters: Optional[Tuple[int, int]] = None,
+    groupby: Optional[str] = None,
+    resampling: str = "nearest",
+    chunks: Optional[Dict[str, int]] = None,
+    **kw
+) -> xr.DataArray:
+    """
+    Load enumerated mask (like fmask/SCL) with native pixel filtering.
+
+    The idea is to load "cloud" classes while adding some padding, then erase
+    pixels that were classified as cloud in any of the observations on a given
+    day.
+
+    This method converts enum-mask to a boolean image in the native projection
+    of the data and then reprojects boolean image to the final
+    projections/resolution. This allows one to use any resampling strategy,
+    like ``average`` or ``cubic`` and not be limited to a few resampling
+    strategies that support operations on categorical data.
+
+    :param dss: A list of datasets to load
+    :param band: Which measurement band to load
+    :param geobox: GeoBox of the final output
+    :param categories: Enum values or names
+
+    :param filters: Optional Tuple of (r1, r2), here r1 shrinks away small
+                    areas of the mask, and r2 adds padding. Units are in native
+                    pixels of the mask. Use ``0`` to skip filter step.
+    :param groupby: One of 'solar_day'|'time'|'idx'|None
+    :param resampling: Any resampling mode supported by GDAL as a string:
+                       nearest, bilinear, average, mode, cubic, etc...
+    :param chunks: If set use Dask, must be in dictionary form ``{'x': 4000, 'y': 4000}``
+    :param kw: Passed on to ``load_with_native_transform``
+
+
+    1. Load each mask time slice separately in native projection of the file
+    2. Convert enum to Boolean
+    3. Optionally (groupby='solar_day') group observations on the same day using OR for pixel fusing: T,F->T
+    4. Optionally apply ``mask_cleanup`` in native projection (after fusing)
+    4. Reproject to destination GeoBox (any resampling mode is ok)
+    5. Optionally group observations on the same day using OR for pixel fusing T,F->T
+    """
+    from ._masking import mask_cleanup, _or_fuser
+
+    def native_op(xx: xr.Dataset) -> xr.Dataset:
+        _xx = enum_to_bool(xx[band], categories)
+        return xr.Dataset(
+            {band: _xx}, attrs={"native": True},  # <- native flag needed for fuser
+        )
+
+    def fuser(xx: xr.Dataset) -> xr.Dataset:
+        """
+        Fuse with OR, and when fusing in native pixel domain apply mask_cleanup if
+        requested
+        """
+
+        is_native = xx.attrs.get("native", False)
+        xx = xx.map(_or_fuser)
+        xx.attrs.pop("native", None)
+
+        if is_native and filters is not None:
+            _xx = xx[band]
+            assert isinstance(_xx, xr.DataArray)
+            xx[band] = mask_cleanup(_xx, filters)
+
+        return xx
+
+    # unless set by user to some value use largest filter radius for pad value
+    pad = kw.pop("pad", None)
+    if pad is None:
+        if filters is not None:
+            pad = max(*filters)
+
+    xx = load_with_native_transform(
+        dss,
+        (band,),
+        geobox,
+        native_op,
+        fuser=fuser,
+        groupby=groupby,
+        resampling=resampling,
+        chunks=chunks,
+        pad=pad,
+        **kw
+    )[band]
+    assert isinstance(xx, xr.DataArray)
+    return xx
