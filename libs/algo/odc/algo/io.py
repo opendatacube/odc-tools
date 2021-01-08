@@ -1,4 +1,4 @@
-from typing import Optional, List, Iterable, Union, Dict, Tuple, Callable
+from typing import Optional, List, Iterable, Union, Dict, Tuple, Callable, cast
 import xarray as xr
 
 from odc.index import group_by_nothing, solar_offset
@@ -16,7 +16,7 @@ def compute_native_load_geobox(
 
     native = native_geobox(ds, basis=band)
     if buffer is None:
-        buffer = 10 * max(map(abs, native.resolution))
+        buffer = 10 * cast(float, max(map(abs, native.resolution)))
 
     return GeoBox.from_geopolygon(
         dst_geobox.extent.to_crs(native.crs).buffer(buffer),
@@ -133,7 +133,7 @@ def load_with_native_transform(
         chunks = kw.get("dask_chunks", None)
 
     sources = group_by_nothing(dss, solar_offset(geobox.extent))
-    xx = [
+    _xx = [
         _load_with_native_transform_1(
             srcs,
             bands,
@@ -150,10 +150,10 @@ def load_with_native_transform(
         for srcs in _split_by_grid(sources)
     ]
 
-    if len(xx) == 1:
-        xx = xx[0]
+    if len(_xx) == 1:
+        xx = _xx[0]
     else:
-        xx = xr.concat(xx, sources.dims[0])
+        xx = xr.concat(_xx, sources.dims[0])
         if groupby != "idx":
             xx = xx.groupby(groupby).map(fuser)
 
@@ -195,7 +195,7 @@ def load_enum_mask(
 
     xx = load_with_native_transform(
         dss,
-        [band],
+        (band,),
         geobox,
         native_op,
         basis=band,
