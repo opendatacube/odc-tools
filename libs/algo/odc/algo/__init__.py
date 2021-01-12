@@ -40,9 +40,10 @@ from ._dask import (
 )
 
 from ._memsink import (
-    DataSink,
     store_to_mem,
     yxbt_sink,
+    da_yxbt_sink,
+    da_mem_sink,
 )
 
 from ._rgba import (
@@ -87,7 +88,8 @@ __all__ = (
     "randomize",
     "store_to_mem",
     "yxbt_sink",
-    "DataSink",
+    "da_mem_sink",
+    "da_yxbt_sink",
     "is_rgb",
     "to_rgba",
     "to_rgba_np",
