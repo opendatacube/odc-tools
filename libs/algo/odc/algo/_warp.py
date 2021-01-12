@@ -7,7 +7,7 @@ import xarray as xr
 from dask import is_dask_collection
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
-from ._dask import randomize, crop_2d_dense, unpack_chunksize, empty_maker
+from ._dask import randomize, crop_2d_dense, unpack_chunks, empty_maker
 from datacube.utils.geometry import GeoBox, rio_reproject, compute_reproject_roi
 from datacube.utils.geometry.gbox import GeoboxTiles
 from datacube.utils import spatial_dims
@@ -96,7 +96,7 @@ def dask_reproject(
 
     assert src.shape[axis : axis + 2] == src_geobox.shape
     yx_shape = dst_geobox.shape
-    yx_chunks = tuple(unpack_chunksize(ch, n) for ch, n in zip(chunks, yx_shape))
+    yx_chunks = unpack_chunks(chunks, yx_shape)
 
     dst_chunks = src.chunks[:axis] + yx_chunks + src.chunks[axis + 2 :]
     dst_shape = src.shape[:axis] + yx_shape + src.shape[axis + 2 :]
