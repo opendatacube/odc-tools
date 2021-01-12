@@ -18,7 +18,8 @@ from ._tools import ROI, roi_shape, slice_in_out
 
 
 def chunked_persist(data, n_concurrent, client, verbose=False):
-    """Force limited concurrency when persisting a large collection.
+    """
+    Force limited concurrency when persisting a large collection.
 
     This is useful to control memory usage when operating close to capacity.
 
@@ -114,6 +115,16 @@ def unpack_chunksize(chunk: int, N: int) -> Tuple[int, ...]:
         return tuple(chunk for _ in range(nb))
 
     return tuple(chunk for _ in range(nb)) + (last_chunk,)
+
+
+def unpack_chunks(
+    chunks: Tuple[int, ...], shape: Tuple[int, ...]
+) -> Tuple[Tuple[int, ...], ...]:
+    """
+    Expand chunks
+    """
+    assert len(chunks) == len(shape)
+    return tuple(unpack_chunksize(ch, n) for ch, n in zip(chunks, shape))
 
 
 def _roi_from_chunks(chunks: Tuple[int, ...]) -> Iterator[slice]:
