@@ -7,6 +7,7 @@ from random import randint
 from bisect import bisect_right, bisect_left
 import numpy as np
 import xarray as xr
+import dask
 from dask.distributed import wait as dask_wait
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
@@ -90,6 +91,11 @@ def randomize(prefix: str) -> str:
     Append random token to name
     """
     return "{}-{:08x}".format(prefix, randint(0, 0xFFFFFFFF))
+
+
+@dask.delayed
+def with_deps(value, *deps):
+    return value
 
 
 def list_reshape(x: List[Any], shape: Tuple[int, ...]) -> List[Any]:
