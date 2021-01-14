@@ -41,7 +41,7 @@ from ._dask import (
 
 from ._memsink import (
     store_to_mem,
-    yxbt_sink,
+    yxbt_sink_to_mem,
     da_yxbt_sink,
     da_mem_sink,
 )
@@ -87,7 +87,7 @@ __all__ = (
     "chunked_persist_ds",
     "randomize",
     "store_to_mem",
-    "yxbt_sink",
+    "yxbt_sink_to_mem",
     "da_mem_sink",
     "da_yxbt_sink",
     "is_rgb",
