@@ -1,9 +1,11 @@
 """ Helper methods for Geometric Median computation.
 """
+from typing import Optional
 import numpy as np
 import xarray as xr
 import dask
 import dask.array as da
+import functools
 from ._dask import randomize
 from ._masking import to_float_np, from_float_np
 
@@ -253,3 +255,102 @@ def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, as_array=False, **kw):
         dst.attrs.update(src.attrs)
 
     return ds_out
+
+
+def _gm_mads_compute_f32(yxbt, compute_mads=True, nodata=None, scale=1, offset=0, **kw):
+    """
+    output axis order is:
+
+      y, x, band
+
+    Last three output bands are smad, emad, bcmad
+
+    note that when supplying non-float input, it is scaled according to scale/offset/nodata parameters,
+    output is however returned in that scaled range.
+    """
+    import hdstats
+
+    if yxbt.dtype.kind != "f":
+        yxbt = to_float_np(yxbt, scale=scale, offset=offset, nodata=nodata)
+
+    gm = hdstats.nangeomedian_pcm(yxbt, nocheck=True, **kw)
+
+    if not compute_mads:
+        return gm
+
+    mads = [hdstats.smad_pcm, hdstats.emad_pcm, hdstats.bcmad_pcm]
+
+    ny, nx, nb, nt = yxbt.shape
+    shape = (ny, nx, nb + len(mads))
+
+    out = np.ndarray(shape, dtype=gm.dtype)
+    for i in range(nb):
+        out[:, :, i] = gm[:, :, i]
+
+    for i, op in enumerate(mads):
+        out[:, :, nb + i] = op(yxbt, gm, **kw)
+
+    return out
+
+
+def geomedian_with_mads(
+    yxbt: xr.DataArray,
+    scale: float = 1.0,
+    offset: float = 0.0,
+    eps: Optional[float] = None,
+    maxiters: int = 1000,
+    num_threads: int = 1,
+) -> xr.Dataset:
+    """
+    """
+    assert dask.is_dask_collection(yxbt)
+
+    ny, nx, nb, nt = yxbt.shape
+    nodata = yxbt.attrs.get("nodata", None)
+    assert yxbt.chunks is not None
+    chunks = (*yxbt.chunks[:2], (nb + 3,))
+
+    is_float = yxbt.dtype.kind == "f"
+
+    if eps is None:
+        eps = 1e-4 if is_float else 0.1 * scale
+
+    op = functools.partial(
+        _gm_mads_compute_f32,
+        nodata=nodata,
+        scale=scale,
+        offset=offset,
+        eps=eps,
+        maxiters=maxiters,
+        num_threads=num_threads,
+    )
+
+    _gm = da.map_blocks(
+        op, yxbt.data, dtype="float32", drop_axis=3, chunks=chunks, name="geomedian"
+    )
+    gm_data = _gm[:, :, :-3]
+    smad = _gm[:, :, -3]
+    emad = _gm[:, :, -2]
+    bcmad = _gm[:, :, -1]
+
+    if not is_float:
+        gm_data = da.map_blocks(
+            lambda x: from_float_np(
+                x, yxbt.dtype, nodata, scale=1 / scale, offset=offset / scale
+            ),
+            gm_data,
+            dtype=yxbt.dtype,
+        )
+        emad = emad * (1 / scale)
+
+    dims = yxbt.dims[:3]
+    coords = {k: yxbt.coords[k] for k in dims}
+    result = xr.DataArray(
+        data=gm_data, dims=dims, coords=coords, attrs=yxbt.attrs
+    ).to_dataset("band")
+
+    result["smad"] = xr.DataArray(data=smad, dims=dims[:2], coords=result.coords)
+    result["emad"] = xr.DataArray(data=emad, dims=dims[:2], coords=result.coords)
+    result["bcmad"] = xr.DataArray(data=bcmad, dims=dims[:2], coords=result.coords)
+
+    return result

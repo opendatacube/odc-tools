@@ -3,24 +3,12 @@ Sentinel-2 Geomedian
 """
 from typing import Optional, Tuple
 import xarray as xr
-import dask.array as da
-import functools
-
-import hdstats
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import keep_good_only, da_yxbt_sink
+from odc.algo import keep_good_only, yxbt_sink
 from odc.algo.io import load_enum_filtered
 from .model import OutputProduct, StatsPluginInterface
 from . import _plugins
-
-
-cloud_classes = (
-    "cloud shadows",
-    "cloud medium probability",
-    "cloud high probability",
-    "thin cirrus",
-)
 
 
 class StatsGMS2(StatsPluginInterface):
@@ -29,7 +17,7 @@ class StatsGMS2(StatsPluginInterface):
         resampling: str = "average",
         bands: Optional[Tuple[str, ...]] = None,
         filters: Optional[Tuple[int, int]] = (2, 5),
-        work_chunks: Tuple[int, int] = (100, -1),
+        work_chunks: Tuple[int, int] = (400, 400),
     ):
         if bands is None:
             bands = (
@@ -46,8 +34,18 @@ class StatsGMS2(StatsPluginInterface):
             )
 
         self.resampling = resampling
-        self.bands = bands
+        self.bands = tuple(bands)
+        self._basis_band = self.bands[0]
+        self.mad_bands = ("smad", "emad", "bcmad")
+        self._mask_band = "SCL"
         self.filters = filters
+        self.cloud_classes = (
+            "cloud shadows",
+            "cloud medium probability",
+            "cloud high probability",
+            "thin cirrus",
+        )
+
         self._work_chunks = (*work_chunks, -1, -1)
 
     def product(self, location: Optional[str] = None, **kw) -> OutputProduct:
@@ -61,7 +59,7 @@ class StatsGMS2(StatsPluginInterface):
         else:
             location = location.rstrip("/")
 
-        measurements = tuple(self.bands)
+        measurements = self.bands + self.mad_bands
 
         properties = {
             "odc:file_format": "GeoTIFF",
@@ -81,16 +79,15 @@ class StatsGMS2(StatsPluginInterface):
         )
 
     def input_data(self, task: Task) -> xr.Dataset:
-        basis = task.product.measurements[0]
+        basis = self._basis_band
         chunks = {"y": -1, "x": -1}
         groupby = "solar_day"
-        mask_band = "SCL"
 
         erased = load_enum_filtered(
             task.datasets,
-            mask_band,
+            self._mask_band,
             task.geobox,
-            categories=cloud_classes,
+            categories=self.cloud_classes,
             filters=self.filters,
             groupby=groupby,
             resampling=self.resampling,
@@ -99,7 +96,7 @@ class StatsGMS2(StatsPluginInterface):
 
         xx = load_with_native_transform(
             task.datasets,
-            task.product.measurements,
+            self.bands,
             task.geobox,
             lambda xx: xx,
             groupby=groupby,
@@ -112,35 +109,14 @@ class StatsGMS2(StatsPluginInterface):
         return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
+        from odc.algo._geomedian import geomedian_with_mads
 
-        sample_band, *_ = xx.data_vars.values()
-        nodata = sample_band.attrs.get("nodata", 0)
+        yxbt = yxbt_sink(xx, self._work_chunks)
 
-        bands = [dv.data for dv in xx.data_vars.values()]
-        yxbt = da_yxbt_sink(bands, self._work_chunks)
+        scale = 1 / 10_000
+        cfg = dict(maxiters=1000, num_threads=1, scale=scale, offset=-1 * scale,)
 
-        _gm_u16 = functools.partial(
-            hdstats.nangeomedian_pcm,
-            maxiters=1000,
-            eps=1e-4,
-            nocheck=True,
-            nodata=nodata,
-            num_threads=1,
-        )
-
-        data = da.map_blocks(
-            _gm_u16, yxbt, name="geomedian", dtype="float32", drop_axis=3
-        )
-
-        coords = xx.geobox.xr_coords(with_crs=True)
-        coords["band"] = list(xx.data_vars)
-        gm = xr.DataArray(
-            data=data, coords=coords, dims=("y", "x", "band"), attrs={"nodata": nodata}
-        )
-
-        gm = gm.to_dataset(dim="band")
-        for dv in gm.data_vars.values():
-            dv.attrs.update(gm.attrs)
+        gm = geomedian_with_mads(yxbt, **cfg)
 
         return gm
 
