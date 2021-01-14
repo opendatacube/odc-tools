@@ -159,7 +159,7 @@ def store_to_mem(
             token.release()
 
 
-def yxbt_sink(bands: Tuple[da.Array, ...], client: Client) -> np.ndarray:
+def yxbt_sink_to_mem(bands: Tuple[da.Array, ...], client: Client) -> np.ndarray:
     assert client.scheduler.address.startswith("inproc://")
 
     b = bands[0]
