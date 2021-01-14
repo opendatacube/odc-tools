@@ -43,6 +43,7 @@ from ._memsink import (
     store_to_mem,
     yxbt_sink_to_mem,
     da_yxbt_sink,
+    yxbt_sink,
     da_mem_sink,
 )
 
@@ -88,6 +89,7 @@ __all__ = (
     "randomize",
     "store_to_mem",
     "yxbt_sink_to_mem",
+    "yxbt_sink",
     "da_mem_sink",
     "da_yxbt_sink",
     "is_rgb",

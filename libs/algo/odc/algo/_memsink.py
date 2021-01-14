@@ -1,5 +1,6 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, Hashable
 import numpy as np
+import xarray as xr
 import dask
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
@@ -299,6 +300,18 @@ def da_yxbt_sink(
     return _da_from_mem(
         with_deps(token, fut), shape=shape, dtype=dtype, chunks=chunks, name=name
     )
+
+
+def yxbt_sink(ds: xr.Dataset, chunks: Tuple[int, int, int, int]) -> xr.DataArray:
+    b0, *_ = ds.data_vars.values()
+    data = da_yxbt_sink(tuple(dv.data for dv in ds.data_vars.values()), chunks)
+    attrs = dict(b0.attrs)
+    dims = b0.dims[1:] + ("band", b0.dims[0])
+
+    coords: Dict[Hashable, Any] = {k: c for k, c in ds.coords.items()}
+    coords["band"] = list(ds.data_vars)
+
+    return xr.DataArray(data=data, dims=dims, coords=coords, attrs=attrs)
 
 
 def test_cache():
