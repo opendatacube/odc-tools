@@ -302,6 +302,11 @@ def geomedian_with_mads(
     num_threads: int = 1,
 ) -> xr.Dataset:
     """
+    TODO: make user friendly
+     - check that yxbt chunks are right
+     - accept Dataset and do yxbt conversion internally
+     - allow choosing whether MADs are needed
+     - then expose in `odc.algo.` and deprecate other geomedian versions
     """
     assert dask.is_dask_collection(yxbt)
 
