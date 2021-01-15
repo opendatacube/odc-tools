@@ -303,6 +303,33 @@ def da_yxbt_sink(
 
 
 def yxbt_sink(ds: xr.Dataset, chunks: Tuple[int, int, int, int]) -> xr.DataArray:
+    """
+    Given a Dask dataset with several bands and ``T,Y,X`` axis order on input,
+    turn that into a Dask DataArray with axis order being ``Y, X, Band, T``.
+
+    The way this function work is
+    - Evaluate all input data before making any output chunk available for further processing
+    - For each input block store it into appropriate location in RAM.
+    - Expose in RAM store as Dask Array with requested chunking regime
+
+    This is used for Geomedian computation mostly, for GM chunks need to be ``(ny, nx, -1,-1)``.
+
+    :param ds: Dataset with Dask based arrays ``T,Y,X`` axis order
+    :param chunks: Chunk size for output array, example: ``(100, 100, -1, -1)``
+
+    Gotchas
+    =======
+
+    - Output array can not be moved from one worker to another.
+      - Works with in-process Client
+      - Works with single worker cluster
+      - Can work if scheduler is told to schedule this on a single worker
+
+
+    Returns
+    =======
+    xarray DataArray backed by Dask array.
+    """
     b0, *_ = ds.data_vars.values()
     data = da_yxbt_sink(tuple(dv.data for dv in ds.data_vars.values()), chunks)
     attrs = dict(b0.attrs)
