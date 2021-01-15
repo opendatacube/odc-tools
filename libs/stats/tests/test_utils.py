@@ -1,4 +1,3 @@
-import json
 import pathlib
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -6,8 +5,7 @@ from uuid import UUID
 import pystac
 
 from odc.index.stac import stac_transform
-from odc.stats._gm import gm_product
-from odc.stats.model import DateTimeRange, Task
+from odc.stats.model import DateTimeRange
 from odc.stats.tasks import TaskReader
 from odc.stats.utils import (
     CompressedDataset,
@@ -33,12 +31,16 @@ def gen_compressed_dss(n, dt0=datetime(2010, 1, 1, 11, 30, 27), step=timedelta(d
 
 
 def test_stac():
-    product = gm_product(location="/tmp/")
+    from odc.stats._gm import StatsGMS2
+    product = StatsGMS2().product(location="/tmp/")
     reader = TaskReader(str(TEST_DIR / "test_tiles.db"), product)
     task = reader.load_task(reader.all_tiles[0])
 
     stac_meta = task.render_metadata()
     odc_meta = stac_transform(stac_meta)
+
+    # TODO: actually test content of odc_meta?
+    assert isinstance(odc_meta, dict)
 
     stac_item = pystac.Item.from_dict(stac_meta)
     stac_item.validate()
