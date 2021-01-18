@@ -20,7 +20,6 @@ from .model import Task, EXT_TIFF
 
 DEFAULT_COG_OPTS = dict(
     compress="deflate",
-    predict=2,
     zlevel=6,
     blocksize=512,
 )
