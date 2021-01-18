@@ -1,6 +1,6 @@
 import sys
 import click
-from ._cli_common import main, setup_logging
+from ._cli_common import main, setup_logging, click_resolution
 
 
 @main.command("run")
@@ -36,9 +36,8 @@ from ._cli_common import main, setup_logging
 @click.option(
     "--plugin-config", type=str, help="Config for plugin in yaml format, file or text"
 )
-@click.option(
-    "--resample", type=str, help="Input resampling strategy, e.g. average"
-)
+@click.option("--resample", type=str, help="Input resampling strategy, e.g. average")
+@click_resolution("--resolution", help="Override output resolution")
 @click.argument("filedb", type=str, nargs=1)
 @click.argument("tasks", type=str, nargs=-1)
 def run(
@@ -47,6 +46,7 @@ def run(
     from_sqs,
     plugin_config,
     resample,
+    resolution,
     plugin,
     dryrun,
     threads,
@@ -118,7 +118,7 @@ def run(
         plugin_config=plugin_config,
     )
 
-    runner = TaskRunner(cfg)
+    runner = TaskRunner(cfg, resolution=resolution)
     if dryrun:
         check_exists = runner.verify_setup()
         for task in runner.dry_run(tasks, check_exists=check_exists):
