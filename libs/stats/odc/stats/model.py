@@ -341,7 +341,6 @@ class TaskRunnerConfig:
     def default_cog_settings():
         return dict(
             compress="deflate",
-            predict=2,
             zlevel=9,
             blocksize=800,
             ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
