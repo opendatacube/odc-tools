@@ -1,6 +1,6 @@
 import sys
 import click
-from ._cli_common import main, setup_logging, click_resolution
+from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
 
 
 @main.command("run")
@@ -33,8 +33,8 @@ from ._cli_common import main, setup_logging, click_resolution
     help="Which stats plugin to run",
     default="pq",  # TODO: remove default when dev is finished
 )
-@click.option(
-    "--plugin-config", type=str, help="Config for plugin in yaml format, file or text"
+@click_yaml_cfg(
+    "--plugin-config", help="Config for plugin in yaml format, file or text"
 )
 @click.option("--resample", type=str, help="Input resampling strategy, e.g. average")
 @click_resolution("--resolution", help="Override output resolution")
@@ -96,12 +96,6 @@ def run(
 
     if plugin_config is None:
         plugin_config = {}
-    else:
-        try:
-            plugin_config = parse_yaml_file_or_inline(plugin_config)
-        except Exception as e:
-            _log.error("Failed to parse {plugin_config} {e}")
-            sys.exit(1)
 
     if len(resample) > 0:
         plugin_config["resample"] = resample
