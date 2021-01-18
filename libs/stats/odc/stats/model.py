@@ -363,6 +363,7 @@ class TaskRunnerConfig:
     output_location: str = ""
     s3_public: bool = False
     cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
+    cog_opts_per_band: Dict[str, Dict[str, Any]] = field(init=True, repr=True, default_factory=dict)
     overwrite: bool = False
 
     # SQS config when applicable
