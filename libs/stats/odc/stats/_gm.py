@@ -14,7 +14,7 @@ from . import _plugins
 class StatsGMS2(StatsPluginInterface):
     def __init__(
         self,
-        resampling: str = "average",
+        resampling: str = "bilinear",
         bands: Optional[Tuple[str, ...]] = None,
         filters: Optional[Tuple[int, int]] = (2, 5),
         work_chunks: Tuple[int, int] = (400, 400),
