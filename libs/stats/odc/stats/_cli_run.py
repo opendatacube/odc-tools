@@ -36,6 +36,7 @@ from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
 @click_yaml_cfg(
     "--plugin-config", help="Config for plugin in yaml format, file or text"
 )
+@click_yaml_cfg("--cog-config", help="Configure COG options")
 @click.option("--resample", type=str, help="Input resampling strategy, e.g. average")
 @click_resolution("--resolution", help="Override output resolution")
 @click.argument("filedb", type=str, nargs=1)
@@ -45,6 +46,7 @@ def run(
     tasks,
     from_sqs,
     plugin_config,
+    cog_config,
     resample,
     resolution,
     plugin,
@@ -94,13 +96,7 @@ def run(
 
     import_all()
 
-    if plugin_config is None:
-        plugin_config = {}
-
-    if len(resample) > 0:
-        plugin_config["resample"] = resample
-
-    cfg = TaskRunnerConfig(
+    _cfg = dict(
         filedb=filedb,
         plugin=plugin,
         threads=threads,
@@ -109,8 +105,19 @@ def run(
         s3_public=public,
         overwrite=overwrite,
         max_processing_time=max_processing_time,
-        plugin_config=plugin_config,
     )
+    if len(resample) > 0:
+        if plugin_config is None:
+            plugin_config = {}
+        plugin_config["resample"] = resample
+
+    if plugin_config is not None:
+        _cfg['plugin_config'] = plugin_config
+
+    if cog_config is not None:
+        _cfg['cog_opts'] = cog_config
+
+    cfg = TaskRunnerConfig(**_cfg)
 
     runner = TaskRunner(cfg, resolution=resolution)
     if dryrun:
