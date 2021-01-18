@@ -33,12 +33,20 @@ from ._cli_common import main, setup_logging
     help="Which stats plugin to run",
     default="pq",  # TODO: remove default when dev is finished
 )
+@click.option(
+    "--plugin-config", type=str, help="Config for plugin in yaml format, file or text"
+)
+@click.option(
+    "--resample", type=str, help="Input resampling strategy, e.g. average"
+)
 @click.argument("filedb", type=str, nargs=1)
 @click.argument("tasks", type=str, nargs=-1)
 def run(
     filedb,
     tasks,
     from_sqs,
+    plugin_config,
+    resample,
     plugin,
     dryrun,
     threads,
@@ -64,7 +72,7 @@ def run(
        1::10 -- every tenth but skip first one 1, 11, 21 ..
         :100 -- first 100 tasks
 
-    If no tasks are supplied the whole file will be processed.
+    If no tasks are supplied and --from-sqs is not used, the whole file will be processed.
     """
     setup_logging()
 
@@ -72,6 +80,7 @@ def run(
     from .model import TaskRunnerConfig
     from .proc import TaskRunner
     from ._plugins import import_all
+    from odc.io.text import parse_yaml_file_or_inline
 
     _log = logging.getLogger(__name__)
 
@@ -85,6 +94,18 @@ def run(
 
     import_all()
 
+    if plugin_config is None:
+        plugin_config = {}
+    else:
+        try:
+            plugin_config = parse_yaml_file_or_inline(plugin_config)
+        except Exception as e:
+            _log.error("Failed to parse {plugin_config} {e}")
+            sys.exit(1)
+
+    if len(resample) > 0:
+        plugin_config["resample"] = resample
+
     cfg = TaskRunnerConfig(
         filedb=filedb,
         plugin=plugin,
@@ -94,6 +115,7 @@ def run(
         s3_public=public,
         overwrite=overwrite,
         max_processing_time=max_processing_time,
+        plugin_config=plugin_config,
     )
 
     runner = TaskRunner(cfg)
@@ -104,7 +126,7 @@ def run(
         sys.exit(0)
 
     if not runner.verify_setup():
-        print("Failed to verify setup exiting")
+        print("Failed to verify setup, exiting")
         sys.exit(1)
 
     result_stream = runner.run(sqs=from_sqs) if from_sqs else runner.run(tasks=tasks)
