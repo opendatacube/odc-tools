@@ -25,6 +25,30 @@ def _parse_yaml_ruamel(s: str) -> Dict[str, Any]:
 parse_yaml = _parse_yaml_yaml if _YAML_C is None else _parse_yaml_ruamel
 
 
+def _guess_is_file(s: str):
+    try:
+        return Path(s).exists()
+    except IOError:
+        return False
+
+
+def parse_yaml_file_or_inline(s: str) -> Dict[str, Any]:
+    """
+    Accept on input either a path to yaml file or yaml text, return parsed yaml document.
+    """
+    if _guess_is_file(s):
+        txt = slurp(s, binary=False)
+        assert isinstance(txt, str)
+    else:
+        txt = s
+
+    result = parse_yaml(txt)
+    if isinstance(result, str):
+        raise IOError(f"No such file: {s}")
+
+    return result
+
+
 def read_stdin_lines(skip_empty: bool = False) -> Iterator[str]:
     """Read lines from stdin.
 
