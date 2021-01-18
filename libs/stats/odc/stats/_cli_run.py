@@ -37,7 +37,7 @@ from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
     "--plugin-config", help="Config for plugin in yaml format, file or text"
 )
 @click_yaml_cfg("--cog-config", help="Configure COG options")
-@click.option("--resample", type=str, help="Input resampling strategy, e.g. average")
+@click.option("--resampling", type=str, help="Input resampling strategy, e.g. average")
 @click_resolution("--resolution", help="Override output resolution")
 @click.argument("filedb", type=str, nargs=1)
 @click.argument("tasks", type=str, nargs=-1)
@@ -47,7 +47,7 @@ def run(
     from_sqs,
     plugin_config,
     cog_config,
-    resample,
+    resampling,
     resolution,
     plugin,
     dryrun,
@@ -106,10 +106,10 @@ def run(
         overwrite=overwrite,
         max_processing_time=max_processing_time,
     )
-    if len(resample) > 0:
+    if len(resampling) > 0:
         if plugin_config is None:
             plugin_config = {}
-        plugin_config["resample"] = resample
+        plugin_config["resampling"] = resampling
 
     if plugin_config is not None:
         _cfg['plugin_config'] = plugin_config
