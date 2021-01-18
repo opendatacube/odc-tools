@@ -18,11 +18,7 @@ from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF
 
 
-DEFAULT_COG_OPTS = dict(
-    compress="deflate",
-    zlevel=6,
-    blocksize=512,
-)
+DEFAULT_COG_OPTS = dict(compress="deflate", zlevel=6, blocksize=512,)
 
 
 def load_creds(profile: Optional[str] = None) -> ReadOnlyCredentials:
@@ -43,14 +39,19 @@ class S3COGSink:
         self,
         creds: Union[ReadOnlyCredentials, str, None] = None,
         cog_opts: Optional[Dict[str, Any]] = None,
+        cog_opts_per_band: Optional[Dict[str, Dict[str, Any]]] = None,
         public: bool = False,
     ):
 
         if cog_opts is None:
             cog_opts = dict(**DEFAULT_COG_OPTS)
 
+        if cog_opts_per_band is None:
+            cog_opts_per_band = {}
+
         self._creds = creds
         self._cog_opts = cog_opts
+        self._cog_opts_per_band = cog_opts_per_band
         self._meta_ext = "json"
         self._meta_contentype = "application/json"
         self._band_ext = EXT_TIFF
@@ -104,12 +105,18 @@ class S3COGSink:
             url = paths.get(band, None)
             if url is None:
                 raise ValueError(f"No path for band: '{band}'")
-            cog_bytes = to_cog(dv, **self._cog_opts)
+            cog_opts = self.cog_opts(band)
+            cog_bytes = to_cog(dv, **cog_opts)
             out.append(self._write_blob(cog_bytes, url, ContentType="image/tiff"))
         return out
 
+    def cog_opts(self, band_name: str = "") -> Dict[str, Any]:
+        opts = dict(self._cog_opts)
+        opts.update(self._cog_opts_per_band.get(band_name, {}))
+        return opts
+
     def write_cog(self, da: xr.DataArray, url: str) -> Delayed:
-        cog_bytes = to_cog(da, **self._cog_opts)
+        cog_bytes = to_cog(da, **self.cog_opts(str(da.name)))
         return self._write_blob(cog_bytes, url, ContentType="image/tiff")
 
     def exists(self, task: Union[Task, str]) -> bool:
