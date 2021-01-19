@@ -1,6 +1,6 @@
 """ Helper methods for Geometric Median computation.
 """
-from typing import Optional
+from typing import Optional, Tuple
 import numpy as np
 import xarray as xr
 import dask
@@ -257,13 +257,16 @@ def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, as_array=False, **kw):
     return ds_out
 
 
-def _gm_mads_compute_f32(yxbt, compute_mads=True, nodata=None, scale=1, offset=0, **kw):
+def _gm_mads_compute_f32(
+    yxbt, compute_mads=True, compute_counts=True, nodata=None, scale=1, offset=0, **kw
+):
     """
     output axis order is:
 
       y, x, band
 
-    Last three output bands are smad, emad, bcmad
+    When extra stats are compute they ar returned in the following order:
+    [*bands, smad, emad, bcmad, count]
 
     note that when supplying non-float input, it is scaled according to scale/offset/nodata parameters,
     output is however returned in that scaled range.
@@ -275,22 +278,25 @@ def _gm_mads_compute_f32(yxbt, compute_mads=True, nodata=None, scale=1, offset=0
 
     gm = hdstats.nangeomedian_pcm(yxbt, nocheck=True, **kw)
 
-    if not compute_mads:
+    stats_bands = []
+
+    if compute_mads:
+        mads = [hdstats.smad_pcm, hdstats.emad_pcm, hdstats.bcmad_pcm]
+
+        for i, op in enumerate(mads):
+            stats_bands.append(op(yxbt, gm, **kw))
+
+    if compute_counts:
+        nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
+        count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
+        stats_bands.append(count)
+
+    if len(stats_bands) == 0:
         return gm
 
-    mads = [hdstats.smad_pcm, hdstats.emad_pcm, hdstats.bcmad_pcm]
+    stats_bands = [a[..., np.newaxis] for a in stats_bands]
 
-    ny, nx, nb, nt = yxbt.shape
-    shape = (ny, nx, nb + len(mads))
-
-    out = np.ndarray(shape, dtype=gm.dtype)
-    for i in range(nb):
-        out[:, :, i] = gm[:, :, i]
-
-    for i, op in enumerate(mads):
-        out[:, :, nb + i] = op(yxbt, gm, **kw)
-
-    return out
+    return np.concatenate([gm, *stats_bands], axis=2)
 
 
 def geomedian_with_mads(
@@ -300,6 +306,9 @@ def geomedian_with_mads(
     eps: Optional[float] = None,
     maxiters: int = 1000,
     num_threads: int = 1,
+    compute_mads: bool = True,
+    compute_count: bool = True,
+    out_chunks: Optional[Tuple[int, int, int]] = None,
 ) -> xr.Dataset:
     """
     TODO: make user friendly
@@ -313,7 +322,8 @@ def geomedian_with_mads(
     ny, nx, nb, nt = yxbt.shape
     nodata = yxbt.attrs.get("nodata", None)
     assert yxbt.chunks is not None
-    chunks = (*yxbt.chunks[:2], (nb + 3,))
+    n_extras = (3 if compute_mads else 0) + (1 if compute_count else 0)
+    chunks = (*yxbt.chunks[:2], (nb + n_extras,))
 
     is_float = yxbt.dtype.kind == "f"
 
@@ -322,6 +332,8 @@ def geomedian_with_mads(
 
     op = functools.partial(
         _gm_mads_compute_f32,
+        compute_mads=compute_mads,
+        compute_count=compute_count,
         nodata=nodata,
         scale=scale,
         offset=offset,
@@ -333,11 +345,10 @@ def geomedian_with_mads(
     _gm = da.map_blocks(
         op, yxbt.data, dtype="float32", drop_axis=3, chunks=chunks, name="geomedian"
     )
-    gm_data = _gm[:, :, :-3]
-    smad = _gm[:, :, -3]
-    emad = _gm[:, :, -2]
-    bcmad = _gm[:, :, -1]
+    if out_chunks is not None:
+        _gm = _gm.rechunk(out_chunks)
 
+    gm_data = _gm[:, :, :nb]
     if not is_float:
         gm_data = da.map_blocks(
             lambda x: from_float_np(
@@ -346,7 +357,6 @@ def geomedian_with_mads(
             gm_data,
             dtype=yxbt.dtype,
         )
-        emad = emad * (1 / scale)
 
     dims = yxbt.dims[:3]
     coords = {k: yxbt.coords[k] for k in dims}
@@ -354,8 +364,26 @@ def geomedian_with_mads(
         data=gm_data, dims=dims, coords=coords, attrs=yxbt.attrs
     ).to_dataset("band")
 
-    result["smad"] = xr.DataArray(data=smad, dims=dims[:2], coords=result.coords)
-    result["emad"] = xr.DataArray(data=emad, dims=dims[:2], coords=result.coords)
-    result["bcmad"] = xr.DataArray(data=bcmad, dims=dims[:2], coords=result.coords)
+    for dv in result.data_vars.values():
+        dv.attrs.update(yxbt.attrs)
+
+    next_stat = nb
+    if compute_mads:
+        smad = _gm[:, :, next_stat + 0]
+        emad = _gm[:, :, next_stat + 1]
+        bcmad = _gm[:, :, next_stat + 2]
+        next_stat += 3
+
+        if not is_float:
+            emad = emad * (1 / scale)
+
+        result["smad"] = xr.DataArray(data=smad, dims=dims[:2], coords=result.coords)
+        result["emad"] = xr.DataArray(data=emad, dims=dims[:2], coords=result.coords)
+        result["bcmad"] = xr.DataArray(data=bcmad, dims=dims[:2], coords=result.coords)
+
+    if compute_count:
+        count = _gm[:, :, next_stat].astype("uint16")
+        next_stat += 1
+        result["count"] = xr.DataArray(data=count, dims=dims[:2], coords=result.coords)
 
     return result
