@@ -18,6 +18,14 @@ class StatsGMS2(StatsPluginInterface):
         bands: Optional[Tuple[str, ...]] = None,
         filters: Optional[Tuple[int, int]] = (2, 5),
         work_chunks: Tuple[int, int] = (400, 400),
+        mask_band: str = "SCL",
+        cloud_classes=(
+            "cloud shadows",
+            "cloud medium probability",
+            "cloud high probability",
+            "thin cirrus",
+        ),
+        basis_band=None,
     ):
         if bands is None:
             bands = (
@@ -35,16 +43,11 @@ class StatsGMS2(StatsPluginInterface):
 
         self.resampling = resampling
         self.bands = tuple(bands)
-        self._basis_band = self.bands[0]
+        self._basis_band = basis_band or self.bands[0]
         self.mad_bands = ("smad", "emad", "bcmad")
-        self._mask_band = "SCL"
+        self._mask_band = mask_band
         self.filters = filters
-        self.cloud_classes = (
-            "cloud shadows",
-            "cloud medium probability",
-            "cloud high probability",
-            "thin cirrus",
-        )
+        self.cloud_classes = tuple(cloud_classes)
 
         self._work_chunks = (*work_chunks, -1, -1)
 
