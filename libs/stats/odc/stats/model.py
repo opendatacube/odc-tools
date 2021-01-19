@@ -333,6 +333,12 @@ class StatsPluginInterface(ABC):
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         pass
 
+    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
+        """
+        Given result of ``.reduce(..)`` optionally produce RGBA preview image
+        """
+        return None
+
 
 @dataclass
 class TaskResult:
