@@ -134,9 +134,16 @@ class S3COGSink:
         else:
             raise ValueError(f"Can't handle url: {uri}")
 
-    def dump(self, task: Task, ds: Dataset) -> Delayed:
+    def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
         paths = task.paths("absolute", ext=self._band_ext)
         cogs = self._ds_to_cog(ds, paths)
+
+        if aux is not None:
+            aux_paths = {
+                k: task.aux_path(k, relative_to="absolute", ext=self._band_ext)
+                for k in aux.data_vars
+            }
+            cogs.extend(self._ds_to_cog(aux, aux_paths))
 
         json_url = task.metadata_path("absolute", ext=self._meta_ext)
         meta = task.render_metadata(ext=self._band_ext)

@@ -297,7 +297,13 @@ class TaskRunner:
 
             _log.debug(f"Submitting to Dask ({task.location})")
             ds = client.persist(ds, fifo_timeout="1ms")
-            cog = sink.dump(task, ds)
+
+            aux: Optional[xr.Dataset] = None
+            rgba = proc.rgba(ds)
+            if rgba is not None:
+                aux = xr.Dataset(dict(rgba=rgba))
+
+            cog = sink.dump(task, ds, aux)
             cog = client.compute(cog, fifo_timeout="1ms")
 
             _log.debug("Waiting for completion")
