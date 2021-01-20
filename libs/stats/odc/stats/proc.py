@@ -136,14 +136,20 @@ def process_tasks(
 
 
 class TaskRunner:
-    def __init__(self, cfg: TaskRunnerConfig):
+    def __init__(
+        self, cfg: TaskRunnerConfig, resolution: Optional[Tuple[float, float]] = None
+    ):
         """
 
         """
         _log = logging.getLogger(__name__)
         self._cfg = cfg
         self._log = _log
-        self.sink = S3COGSink(cog_opts=cfg.cog_opts, public=cfg.s3_public)
+        self.sink = S3COGSink(
+            cog_opts=cfg.cog_opts,
+            cog_opts_per_band=cfg.cog_opts_per_band,
+            public=cfg.s3_public,
+        )
 
         _log.info(f"Resolving plugin: {cfg.plugin}")
         mk_proc = _plugins.resolve(cfg.plugin)
@@ -154,6 +160,18 @@ class TaskRunner:
         _log.info(f"Constructing task reader: {cfg.filedb}")
         self.rdr = TaskReader(cfg.filedb, self.product)
         _log.info(f"Will read from {self.rdr}")
+        if resolution is not None:
+            _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
+            if self.rdr.is_compatible_resolution(resolution):
+                self.rdr.change_resolution(resolution)
+            else:
+                _log.error(
+                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                )
+                raise ValueError(
+                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                )
+
         self._client = None
 
     def _init_dask(self) -> Client:

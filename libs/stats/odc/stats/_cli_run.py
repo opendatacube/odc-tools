@@ -1,6 +1,6 @@
 import sys
 import click
-from ._cli_common import main, setup_logging
+from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
 
 
 @main.command("run")
@@ -33,12 +33,22 @@ from ._cli_common import main, setup_logging
     help="Which stats plugin to run",
     default="pq",  # TODO: remove default when dev is finished
 )
+@click_yaml_cfg(
+    "--plugin-config", help="Config for plugin in yaml format, file or text"
+)
+@click_yaml_cfg("--cog-config", help="Configure COG options")
+@click.option("--resampling", type=str, help="Input resampling strategy, e.g. average")
+@click_resolution("--resolution", help="Override output resolution")
 @click.argument("filedb", type=str, nargs=1)
 @click.argument("tasks", type=str, nargs=-1)
 def run(
     filedb,
     tasks,
     from_sqs,
+    plugin_config,
+    cog_config,
+    resampling,
+    resolution,
     plugin,
     dryrun,
     threads,
@@ -64,7 +74,7 @@ def run(
        1::10 -- every tenth but skip first one 1, 11, 21 ..
         :100 -- first 100 tasks
 
-    If no tasks are supplied the whole file will be processed.
+    If no tasks are supplied and --from-sqs is not used, the whole file will be processed.
     """
     setup_logging()
 
@@ -72,6 +82,7 @@ def run(
     from .model import TaskRunnerConfig
     from .proc import TaskRunner
     from ._plugins import import_all
+    from odc.io.text import parse_yaml_file_or_inline
 
     _log = logging.getLogger(__name__)
 
@@ -85,7 +96,7 @@ def run(
 
     import_all()
 
-    cfg = TaskRunnerConfig(
+    _cfg = dict(
         filedb=filedb,
         plugin=plugin,
         threads=threads,
@@ -95,8 +106,20 @@ def run(
         overwrite=overwrite,
         max_processing_time=max_processing_time,
     )
+    if len(resampling) > 0:
+        if plugin_config is None:
+            plugin_config = {}
+        plugin_config["resampling"] = resampling
 
-    runner = TaskRunner(cfg)
+    if plugin_config is not None:
+        _cfg['plugin_config'] = plugin_config
+
+    if cog_config is not None:
+        _cfg['cog_opts'] = cog_config
+
+    cfg = TaskRunnerConfig(**_cfg)
+
+    runner = TaskRunner(cfg, resolution=resolution)
     if dryrun:
         check_exists = runner.verify_setup()
         for task in runner.dry_run(tasks, check_exists=check_exists):
@@ -104,7 +127,7 @@ def run(
         sys.exit(0)
 
     if not runner.verify_setup():
-        print("Failed to verify setup exiting")
+        print("Failed to verify setup, exiting")
         sys.exit(1)
 
     result_stream = runner.run(sqs=from_sqs) if from_sqs else runner.run(tasks=tasks)

@@ -60,6 +60,47 @@ def parse_all_tasks(
     return out
 
 
+def parse_resolution(s: str, separator: str = ",") -> Tuple[float, float]:
+    from odc.io.text import split_and_check
+
+    parts = [float(v) for v in split_and_check(s, separator, (1, 2))]
+
+    if len(parts) == 1:
+        return (-parts[0], parts[0])
+
+    return (parts[0], parts[1])
+
+
+def click_resolution(*args, **kw):
+    """
+    @click_resolution("--custom-flag-for-resolution", help="Whatever help")
+    """
+    def _parse(ctx, param, value):
+        if value is not None:
+            try:
+                return parse_resolution(value)
+            except ValueError as e:
+                raise click.ClickException(str(e)) from None
+    if len(args) == 0:
+        args = ["--resolution"]
+    return click.option(*args, callback=_parse, **kw)
+
+
+def click_yaml_cfg(*args, **kw):
+    """
+    @click_yaml_cfg("--custom-flag", help="Whatever help")
+    """
+    def _parse(ctx, param, value):
+        if value is not None:
+            from odc.io.text import parse_yaml_file_or_inline
+
+            try:
+                return parse_yaml_file_or_inline(value)
+            except Exception as e:
+                raise click.ClickException(str(e)) from None
+    return click.option(*args, callback=_parse, **kw)
+
+
 def setup_logging(level: int = -1):
     """
     Setup logging to print to stdout with default logging level being INFO.

@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 
 from odc.dscache import DatasetCache
 from datacube import Datacube
-from datacube.model import Dataset
+from datacube.model import Dataset, GridSpec
 from datacube.utils.geometry import Geometry
 from datacube.utils.documents import transform_object_tree
 from datacube.utils.dates import normalise_dt
@@ -279,6 +279,27 @@ class TaskReader:
         self._grid = grid
         self._gridspec = gridspec
         self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid))
+
+    def is_compatible_resolution(self, resolution: Tuple[float, float], tol=1e-8):
+        for res, sz in zip(resolution, self._gridspec.tile_size):
+            res = abs(res)
+            npix = int(sz / res)
+            if abs(npix * res - sz) > tol:
+                return False
+        return True
+
+    def change_resolution(self, resolution: Tuple[float, float]):
+        """
+        Modify GridSpec to have different pixel resolution but still covering same tiles as the original.
+        """
+        if not self.is_compatible_resolution(resolution):
+            raise ValueError(
+                "Supplied resolution is not compatible with the current GridSpec"
+            )
+        gs = self._gridspec
+        self._gridspec = GridSpec(
+            gs.crs, gs.tile_size, resolution=resolution, origin=gs.origin
+        )
 
     def __del__(self):
         if self._cache_path is not None:

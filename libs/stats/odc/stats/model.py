@@ -341,7 +341,6 @@ class TaskRunnerConfig:
     def default_cog_settings():
         return dict(
             compress="deflate",
-            predict=2,
             zlevel=9,
             blocksize=800,
             ovr_blocksize=256,  # ovr_blocksize must be powers of 2 for some reason in GDAL
@@ -364,6 +363,7 @@ class TaskRunnerConfig:
     output_location: str = ""
     s3_public: bool = False
     cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
+    cog_opts_per_band: Dict[str, Dict[str, Any]] = field(init=True, repr=True, default_factory=dict)
     overwrite: bool = False
 
     # SQS config when applicable
