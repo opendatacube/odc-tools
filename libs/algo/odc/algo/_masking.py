@@ -82,6 +82,64 @@ def keep_good_only(x, where, inplace=False, nodata=None):
     return xr.DataArray(data, dims=x.dims, coords=x.coords, attrs=x.attrs, name=x.name)
 
 
+def erase_bad_np(xx, where, nodata, out=None):
+    if out is None:
+        out = np.copy(xx)
+    else:
+        assert out.shape == xx.shape
+        assert out.dtype == xx.dtype
+        assert out is not xx
+        out[:] = xx
+    np.copyto(out, nodata, where=where)
+    return out
+
+
+def erase_bad(x, where, inplace=False, nodata=None):
+    """
+    Return a copy of x, but with some pixels replaced with `nodata`.
+
+    This function can work on dask arrays, in which case output will be a dask array as well.
+
+    If x is a Dataset then operation will be applied to all data variables.
+
+    :param x: xarray.DataArray with `nodata` property
+    :param where: xarray.DataArray<bool> True -- replace with `x.nodata` False -- keep as it were
+    :param inplace: Modify pixels in x directly, not valid for dask arrays.
+
+    For every pixel of x[idx], output is:
+
+     - nodata  if where[idx] == True
+     - x[idx]  if where[idx] == False
+    """
+    if isinstance(x, xr.Dataset):
+        return x.apply(lambda x: erase_bad(x, where, inplace=inplace), keep_attrs=True)
+
+    assert x.shape == where.shape
+    if nodata is None:
+        nodata = getattr(x, "nodata", 0)
+
+    if inplace:
+        if dask.is_dask_collection(x):
+            raise ValueError("Can not perform inplace operation on a dask array")
+
+        np.copyto(x.data, nodata, where=where.data)
+        return x
+
+    if dask.is_dask_collection(x):
+        data = da.map_blocks(
+            erase_bad_np,
+            x.data,
+            where.data,
+            nodata,
+            name=randomize("erase_bad"),
+            dtype=x.dtype,
+        )
+    else:
+        data = erase_bad_np(x.data, where.data, nodata)
+
+    return xr.DataArray(data, dims=x.dims, coords=x.coords, attrs=x.attrs, name=x.name)
+
+
 def from_float_np(x, dtype, nodata, scale=1, offset=0, where=None, out=None):
     scale = np.float32(scale)
     offset = np.float32(offset)

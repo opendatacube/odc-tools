@@ -5,6 +5,7 @@
 from ._masking import (
     keep_good_np,
     keep_good_only,
+    erase_bad,
     from_float,
     from_float_np,
     to_f32,
@@ -61,6 +62,7 @@ from ._warp import (
 __all__ = (
     "keep_good_np",
     "keep_good_only",
+    "erase_bad",
     "from_float",
     "from_float_np",
     "to_f32",
