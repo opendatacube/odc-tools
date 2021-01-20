@@ -82,7 +82,6 @@ def run(
     from .model import TaskRunnerConfig
     from .proc import TaskRunner
     from ._plugins import import_all
-    from odc.io.text import parse_yaml_file_or_inline
 
     _log = logging.getLogger(__name__)
 
@@ -112,12 +111,20 @@ def run(
         plugin_config["resampling"] = resampling
 
     if plugin_config is not None:
-        _cfg['plugin_config'] = plugin_config
+        _cfg["plugin_config"] = plugin_config
 
     if cog_config is not None:
-        _cfg['cog_opts'] = cog_config
+        per_band_cfg = {k: v for k, v in cog_config.items() if isinstance(v, dict)}
+        if per_band_cfg:
+            for k in per_band_cfg:
+                cog_config.pop(k)
+
+            _cfg["cog_opts_per_band"] = per_band_cfg
+
+        _cfg["cog_opts"] = cog_config
 
     cfg = TaskRunnerConfig(**_cfg)
+    _log.info(f"Using this config: {cfg}")
 
     runner = TaskRunner(cfg, resolution=resolution)
     if dryrun:
