@@ -86,6 +86,18 @@ def slurp_lines(fname: str, *args, **kwargs) -> List[str]:
         return [s.rstrip() for s in f.readlines()]
 
 
+def read_int(path: PathLike, default=None, base=10) -> Optional[int]:
+    """
+    Read single integer from a text file.
+
+    Useful for things like parsing content of /sys/ or /proc.
+    """
+    try:
+        return int(slurp(path), base)
+    except (FileNotFoundError, ValueError):
+        return default
+
+
 def parse_mtl(txt: str) -> Dict[str, Any]:
     def parse_value(s):
         if len(s) == 0:
