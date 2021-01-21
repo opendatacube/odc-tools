@@ -15,11 +15,14 @@ import dask
 import dask.distributed
 from dask.distributed import Client, wait as dask_wait
 import xarray as xr
+import math
+import psutil
 
 from .model import Task, TaskResult, TaskRunnerConfig
 from .io import S3COGSink
 from .tasks import TaskReader
 from . import _plugins
+from odc.io.cgroups import get_cpu_quota, get_mem_quota
 from odc.algo import chunked_persist_da
 from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
@@ -177,16 +180,22 @@ class TaskRunner:
     def _init_dask(self) -> Client:
         cfg = self._cfg
         _log = self._log
-        dask_args: Dict[str, Any] = dict(
-            threads_per_worker=cfg.threads, processes=False
+
+        nthreads = cfg.threads
+        if nthreads <= 0:
+            nthreads = get_max_cpu()
+
+        memory_limit: Union[str, int] = cfg.memory_limit
+        if memory_limit == "":
+            _1G = 1 << 30
+            memory_limit = get_max_mem()
+            if memory_limit > 2 * _1G:
+                # leave at least a gig extra if total mem more than 2G
+                memory_limit -= _1G
+
+        client = start_local_dask(
+            threads_per_worker=nthreads, processes=False, memory_limit=memory_limit
         )
-
-        if cfg.memory_limit != "":
-            dask_args["memory_limit"] = cfg.memory_limit
-        else:
-            dask_args["mem_safety_margin"] = "1G"
-
-        client = start_local_dask(**dask_args)
         aws_unsigned = self._cfg.aws_unsigned
         for c in (None, client):
             configure_s3_access(
@@ -335,3 +344,25 @@ class TaskRunner:
                 )
             )
         raise ValueError("Must supply one of tasks= or sqs=")
+
+
+def get_max_mem() -> int:
+    """
+    Max available memory, takes into account pod resource allocation
+    """
+    total = psutil.virtual_memory().total
+    mem_quota = get_mem_quota()
+    if mem_quota is None:
+        return total
+    return min(mem_quota, total)
+
+
+def get_max_cpu() -> int:
+    """
+    Max available CPU (rounded up if fractional), takes into account pod
+    resource allocation
+    """
+    ncpu = get_cpu_quota()
+    if ncpu is not None:
+        return int(math.ceil(ncpu))
+    return psutil.cpu_count()

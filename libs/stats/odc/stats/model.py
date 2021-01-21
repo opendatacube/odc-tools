@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 import math
-import psutil
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -388,6 +387,3 @@ class TaskRunnerConfig:
 
     def __post_init__(self):
         self.cog_opts = dicttoolz.merge(self.default_cog_settings(), self.cog_opts)
-
-        if self.threads <= 0:
-            self.threads = psutil.cpu_count()
