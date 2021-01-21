@@ -1,5 +1,5 @@
 import click
-
+import sys
 import logging
 from odc.aws.queue import get_queue, get_messages
 
