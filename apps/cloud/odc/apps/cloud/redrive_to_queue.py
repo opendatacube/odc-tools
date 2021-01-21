@@ -62,3 +62,6 @@ def cli(queue, to_queue, limit, dryrun):
         _log.warning(
             f"DRYRUN enabled, would have pushed approx {count_messages} messages to the queue"
         )
+
+if __name__ == "__main__":
+    cli()

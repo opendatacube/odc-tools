@@ -31,7 +31,7 @@ setup(
             "s3-find = odc.apps.cloud.s3_find:cli",
             "s3-inventory-dump = odc.apps.cloud.s3_inventory:cli",
             "s3-to-tar = odc.apps.cloud.s3_to_tar:cli",
-            "redrive_queue = odc.apps.cloud.redrive_to_queue:cli"
+            "redrive_queue = odc.apps.cloud.redrive_to_queue:cli",
         ]
     },
     packages=["odc.apps.cloud"],
