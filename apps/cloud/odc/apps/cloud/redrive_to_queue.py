@@ -2,11 +2,9 @@ import click
 
 import logging
 from odc.aws.queue import get_queue, get_messages
-from ._cli_common import main, setup_logging
 
-setup_logging()
 
-@main.command("redrive_to_queue")
+@click.command("redrive-to-queue")
 @click.argument("queue", required=True)
 @click.argument("to-queue", required=True)
 
@@ -23,10 +21,16 @@ setup_logging()
     default=False,
     help="Don't actually do real work"
 )
-def redrive_to_queue(queue, to_queue, limit, dryrun):
+def cli(queue, to_queue, limit, dryrun):
     """
     Redrives all the messages from the given sqs queue to the destination
     """
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s",
+        stream=sys.stdout,
+    )
 
     _log = logging.getLogger(__name__)
 
