@@ -105,7 +105,7 @@ def run(
         overwrite=overwrite,
         max_processing_time=max_processing_time,
     )
-    if len(resampling) > 0:
+    if resampling is not None and len(resampling) > 0:
         if plugin_config is None:
             plugin_config = {}
         plugin_config["resampling"] = resampling
