@@ -312,9 +312,7 @@ def geomedian_with_mads(
 ) -> xr.Dataset:
     """
     TODO: make user friendly
-     - check that yxbt chunks are right
      - accept Dataset and do yxbt conversion internally
-     - allow choosing whether MADs are needed
      - then expose in `odc.algo.` and deprecate other geomedian versions
     """
     assert dask.is_dask_collection(yxbt)
@@ -322,6 +320,9 @@ def geomedian_with_mads(
     ny, nx, nb, nt = yxbt.shape
     nodata = yxbt.attrs.get("nodata", None)
     assert yxbt.chunks is not None
+    if yxbt.data.numblocks[2:4] != (1, 1):
+        raise ValueError("There should be one dask block along time and band dimension")
+
     n_extras = (3 if compute_mads else 0) + (1 if compute_count else 0)
     chunks = (*yxbt.chunks[:2], (nb + n_extras,))
 
