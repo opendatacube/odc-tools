@@ -28,6 +28,7 @@ from ._masking import (
 from ._geomedian import (
     xr_geomedian,
     reshape_for_geomedian,
+    geomedian_with_mads,
     int_geomedian,
     int_geomedian_np,
 )
@@ -84,6 +85,7 @@ __all__ = (
     "int_geomedian",
     "int_geomedian_np",
     "reshape_for_geomedian",
+    "geomedian_with_mads",
     "reshape_yxbt",
     "chunked_persist",
     "chunked_persist_da",

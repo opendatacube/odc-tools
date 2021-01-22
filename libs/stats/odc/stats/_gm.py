@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import erase_bad, yxbt_sink, to_rgba
+from odc.algo import erase_bad, geomedian_with_mads, to_rgba
 from odc.algo.io import load_enum_filtered
 from .model import OutputProduct, StatsPluginInterface
 from . import _plugins
@@ -58,8 +58,7 @@ class StatsGMS2(StatsPluginInterface):
         self._mask_band = mask_band
         self.filters = filters
         self.cloud_classes = tuple(cloud_classes)
-
-        self._work_chunks = (*work_chunks, -1, -1)
+        self._work_chunks = work_chunks
 
     def product(self, location: Optional[str] = None, **kw) -> OutputProduct:
         name = "ga_s2_gm"
@@ -122,10 +121,6 @@ class StatsGMS2(StatsPluginInterface):
         return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
-        from odc.algo._geomedian import geomedian_with_mads
-
-        yxbt = yxbt_sink(xx, self._work_chunks)
-
         scale = 1 / 10_000
         cfg = dict(
             maxiters=1000,
@@ -133,9 +128,10 @@ class StatsGMS2(StatsPluginInterface):
             scale=scale,
             offset=-1 * scale,
             out_chunks=(-1, -1, -1),
+            work_chunks=self._work_chunks,
         )
 
-        gm = geomedian_with_mads(yxbt, **cfg)
+        gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self._renames)
 
         return gm
