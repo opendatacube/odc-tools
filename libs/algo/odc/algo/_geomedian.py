@@ -1,6 +1,6 @@
 """ Helper methods for Geometric Median computation.
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import numpy as np
 import xarray as xr
 import dask
@@ -8,6 +8,7 @@ import dask.array as da
 import functools
 from ._dask import randomize
 from ._masking import to_float_np, from_float_np
+from ._memsink import yxbt_sink
 
 
 def reshape_for_geomedian(ds, axis="time"):
@@ -300,22 +301,58 @@ def _gm_mads_compute_f32(
 
 
 def geomedian_with_mads(
-    yxbt: xr.DataArray,
+    src: Union[xr.Dataset, xr.DataArray],
+    compute_mads: bool = True,
+    compute_count: bool = True,
+    out_chunks: Optional[Tuple[int, int, int]] = None,
     scale: float = 1.0,
     offset: float = 0.0,
     eps: Optional[float] = None,
     maxiters: int = 1000,
     num_threads: int = 1,
-    compute_mads: bool = True,
-    compute_count: bool = True,
-    out_chunks: Optional[Tuple[int, int, int]] = None,
+    **kw,
 ) -> xr.Dataset:
     """
-    TODO: make user friendly
-     - accept Dataset and do yxbt conversion internally
-     - then expose in `odc.algo.` and deprecate other geomedian versions
+    Compute Geomedian on Dask backed Dataset.
+
+    NOTE: This code assumes that entire input can be loaded in to RAM on the
+    Dask worker. It also assumes that there is only one worker in the cluster,
+    or that entire task will get scheduled on one single worker only.
+
+    :param src: xr.Dataset or a single array in YXBT order, bands can be either
+                float or integer with `nodata` values to indicate gaps in data.
+
+    :param compute_mads: Whether to compute smad,emad,bcmad statistics
+
+    :param compute_count: Whether to compute count statistic (number of
+                          contributing observations per output pixels)
+
+    :param out_chunks: Advanced option, allows to rechunk output internally,
+                       order is ``(ny, nx, nband)``
+
+    :param scale, offset: Only used when input contains integer values, actual
+                          Geomedian will run on scaled values
+                          ``scale*X+offset``. Only affects internal
+                          computation, final result is scaled back to the
+                          original value range.
+
+    :param eps: Termination criteria passed on to geomedian algorithm
+
+    :param maxiters: Maximum number of iterations done per output pixel
+
+    :param num_threads: Configure internal concurrency of the Geomedian
+                        computation. Default is 1 as we assume that Dask will
+                        run a bunch of those concurrently.
     """
-    assert dask.is_dask_collection(yxbt)
+    if not dask.is_dask_collection(src):
+        raise ValueError("This method only works on Dask inputs")
+
+    if isinstance(src, xr.DataArray):
+        yxbt = src
+    else:
+        # TODO: better automatic defaults for work_chunks
+        ny, nx = kw.get("work_chunks", (100, 100))
+        yxbt = yxbt_sink(src, (ny, nx, -1, -1))
 
     ny, nx, nb, nt = yxbt.shape
     nodata = yxbt.attrs.get("nodata", None)
