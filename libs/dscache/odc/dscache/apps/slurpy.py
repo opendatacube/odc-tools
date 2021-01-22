@@ -43,7 +43,7 @@ def qmap(proc, q, eos_marker=None):
     type=str,
     help=(
         "Grid spec or name 'crs;pixel_resolution;shape_in_pixels',"
-        "albers_au_25, albers_africa_{10|20|30|60}"
+        "albers_au_25, africa_{10|20|30|60}"
     ),
     default=None,
 )

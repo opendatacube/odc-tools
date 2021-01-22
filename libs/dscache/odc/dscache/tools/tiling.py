@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 from math import pi
 from types import SimpleNamespace
 import toolz
@@ -15,19 +15,24 @@ GRIDS = {
     "albers_au_25": GridSpec(
         crs=epsg3577, tile_size=(100_000.0, 100_000.0), resolution=(-25, 25)
     ),
-    "albers_africa_10": GridSpec(
+    "global_10": GridSpec(
         crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-10, 10)
     ),
-    "albers_africa_20": GridSpec(
+    "global_20": GridSpec(
         crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-20, 20)
     ),
-    "albers_africa_30": GridSpec(
+    "global_30": GridSpec(
         crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-30, 30)
     ),
-    "albers_africa_60": GridSpec(
+    "global_60": GridSpec(
         crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-60, 60)
     ),
 }
+
+
+# Inject aliases for Africa
+for r in (10, 20, 30, 60):
+    GRIDS[f"africa_{r}"] = GRIDS[f"global_{r}"]
 
 
 def web_gs(zoom: int, tile_size: int = 256) -> GridSpec:
@@ -111,15 +116,11 @@ def bin_by_native_tile(dss, cells, persist=None, native_tile_id=None):
         yield ds
 
 
-def parse_gridspec(s: str) -> GridSpec:
+def _parse_gridspec_string(s: str) -> GridSpec:
     """
-    "albers_africa_10"
     "epsg:6936;10;9600"
     "epsg:6936;-10x10;9600x9600"
     """
-    named_gs = GRIDS.get(s)
-    if named_gs is not None:
-        return named_gs
 
     crs, res, shape = split_and_check(s, ";", 3)
     try:
@@ -142,9 +143,36 @@ def parse_gridspec(s: str) -> GridSpec:
     return GridSpec(crs=CRS(crs), tile_size=tsz, resolution=res, origin=(0, 0))
 
 
-def parse_gridspec_with_name(s: str) -> Tuple[str, GridSpec]:
-    gs = parse_gridspec(s)
-    if s in GRIDS:
-        return (s, gs)
+def _norm_gridspec_name(s: str) -> str:
+    return s.replace("-", "_")
+
+
+def parse_gridspec(s: str, grids: Optional[Dict[str, GridSpec]] = None) -> GridSpec:
+    """
+    "africa_10"
+    "epsg:6936;10;9600"
+    "epsg:6936;-10x10;9600x9600"
+    """
+    if grids is None:
+        grids = GRIDS
+
+    named_gs = grids.get(_norm_gridspec_name(s))
+    if named_gs is not None:
+        return named_gs
+
+    return _parse_gridspec_string(s)
+
+
+def parse_gridspec_with_name(
+    s: str, grids: Optional[Dict[str, GridSpec]] = None
+) -> Tuple[str, GridSpec]:
+    if grids is None:
+        grids = GRIDS
+
+    named_gs = grids.get(_norm_gridspec_name(s))
+    if named_gs is not None:
+        return (s, named_gs)
+
+    gs = _parse_gridspec_string(s)
     s = s.replace(";", "_")
     return (s, gs)

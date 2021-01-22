@@ -9,11 +9,11 @@ from ._cli_common import main
     "--grid",
     type=str,
     help=(
-        "Grid name or spec: albers_au_25,albers_africa_{10|20|30|60},"
+        "Grid name or spec: albers_au_25,africa_{10|20|30|60},"
         "'crs;pixel_resolution;shape_in_pixels'"
     ),
     prompt="""Enter GridSpec
- one of albers_au_25, albers_africa_{10|20|30|60}
+ one of albers_au_25, africa_{10|20|30|60}
  or custom like 'epsg:3857;30;5000' (30m pixels 5,000 per side in epsg:3857)
  >""",
     default=None,

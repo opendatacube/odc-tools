@@ -42,7 +42,7 @@ def cli(native, native_albers, web, grid, dbfile):
                       ^crs      ^y  ^x ^ny  ^nx
       - square     : 'epsg:3857;10;10000'
       - named      : albers_au_25
-                     albers_africa_10  (20,30,60 are also available)
+                     africa_10  (20,30,60 are also available)
     """
     cache = dscache.open_rw(dbfile)
     label = "Processing {} ({:,d} datasets)".format(dbfile, cache.count)
