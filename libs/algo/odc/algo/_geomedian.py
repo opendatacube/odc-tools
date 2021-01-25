@@ -6,7 +6,7 @@ import xarray as xr
 import dask
 import dask.array as da
 import functools
-from ._dask import randomize
+from ._dask import randomize, reshape_yxbt
 from ._masking import to_float_np, from_float_np
 from ._memsink import yxbt_sink
 
@@ -305,6 +305,7 @@ def geomedian_with_mads(
     compute_mads: bool = True,
     compute_count: bool = True,
     out_chunks: Optional[Tuple[int, int, int]] = None,
+    reshape_strategy: str = "mem",
     scale: float = 1.0,
     offset: float = 0.0,
     eps: Optional[float] = None,
@@ -315,9 +316,10 @@ def geomedian_with_mads(
     """
     Compute Geomedian on Dask backed Dataset.
 
-    NOTE: This code assumes that entire input can be loaded in to RAM on the
-    Dask worker. It also assumes that there is only one worker in the cluster,
-    or that entire task will get scheduled on one single worker only.
+    NOTE: Default configuration of this code assumes that entire input can be
+    loaded in to RAM on the Dask worker. It also assumes that there is only one
+    worker in the cluster, or that entire task will get scheduled on one single
+    worker only. See ``reshape_strategy`` parameter.
 
     :param src: xr.Dataset or a single array in YXBT order, bands can be either
                 float or integer with `nodata` values to indicate gaps in data.
@@ -329,6 +331,14 @@ def geomedian_with_mads(
 
     :param out_chunks: Advanced option, allows to rechunk output internally,
                        order is ``(ny, nx, nband)``
+
+    :param reshape_strategy: One of ``mem`` (default) or ``yxbt``. This is only
+    applicable when supplying Dataset object. It controls how Dataset is
+    reshaped into DataArray in the format expected by Geomedian code. If you
+    have enough RAM and use single-worker Dask cluster, then use ``mem``, it
+    should be the most efficient. If there is not enough RAM to load entire
+    input you can try ``yxbt`` mode, but you might still run out of RAM anyway.
+    If using multi-worker Dask cluster you have to use ``yxbt`` strategy.
 
     :param scale, offset: Only used when input contains integer values, actual
                           Geomedian will run on scaled values
@@ -343,6 +353,9 @@ def geomedian_with_mads(
     :param num_threads: Configure internal concurrency of the Geomedian
                         computation. Default is 1 as we assume that Dask will
                         run a bunch of those concurrently.
+
+    :param work_chunks: Default is ``(100, 100)``, only applicable when input
+                        is Dataset.
     """
     if not dask.is_dask_collection(src):
         raise ValueError("This method only works on Dask inputs")
@@ -352,7 +365,14 @@ def geomedian_with_mads(
     else:
         # TODO: better automatic defaults for work_chunks
         ny, nx = kw.get("work_chunks", (100, 100))
-        yxbt = yxbt_sink(src, (ny, nx, -1, -1))
+        if reshape_strategy == "mem":
+            yxbt = yxbt_sink(src, (ny, nx, -1, -1))
+        elif reshape_strategy == "yxbt":
+            yxbt = reshape_yxbt(src, yx_chunks=(ny, nx))
+        else:
+            raise ValueError(
+                f"Reshape strategy '{reshape_strategy}' not understood use one of: mem or yxbt"
+            )
 
     ny, nx, nb, nt = yxbt.shape
     nodata = yxbt.attrs.get("nodata", None)
