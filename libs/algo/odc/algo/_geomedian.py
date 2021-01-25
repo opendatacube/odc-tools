@@ -259,7 +259,7 @@ def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, as_array=False, **kw):
 
 
 def _gm_mads_compute_f32(
-    yxbt, compute_mads=True, compute_counts=True, nodata=None, scale=1, offset=0, **kw
+    yxbt, compute_mads=True, compute_count=True, nodata=None, scale=1, offset=0, **kw
 ):
     """
     output axis order is:
@@ -287,7 +287,7 @@ def _gm_mads_compute_f32(
         for i, op in enumerate(mads):
             stats_bands.append(op(yxbt, gm, **kw))
 
-    if compute_counts:
+    if compute_count:
         nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
         count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
         stats_bands.append(count)
