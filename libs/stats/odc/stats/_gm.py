@@ -127,6 +127,7 @@ class StatsGMS2(StatsPluginInterface):
             num_threads=1,
             scale=scale,
             offset=-1 * scale,
+            reshape_strategy="mem",
             out_chunks=(-1, -1, -1),
             work_chunks=self._work_chunks,
         )
