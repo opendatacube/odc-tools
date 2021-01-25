@@ -528,6 +528,7 @@ def reshape_yxbt(
     blocks, _ = _get_chunks_for_all_bands(xx)
     b0, *_ = xx.data_vars.values()
 
+    attrs = dict(b0.attrs)
     nb = len(xx.data_vars.values())
     nt, ny, nx = b0.shape
 
@@ -561,4 +562,4 @@ def reshape_yxbt(
     coords: Dict[Hashable, Any] = {k: c for k, c in xx.coords.items()}
     coords["band"] = list(xx.data_vars)
 
-    return xr.DataArray(data=data, dims=dims, coords=coords, name=name0, attrs=xx.attrs)
+    return xr.DataArray(data=data, dims=dims, coords=coords, name=name0, attrs=attrs)
