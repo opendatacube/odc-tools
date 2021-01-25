@@ -285,7 +285,9 @@ def _gm_mads_compute_f32(
         mads = [hdstats.smad_pcm, hdstats.emad_pcm, hdstats.bcmad_pcm]
 
         for i, op in enumerate(mads):
-            stats_bands.append(op(yxbt, gm, **kw))
+            stats_bands.append(
+                op(yxbt, gm, num_threads=kw.get("num_threads", 1))
+            )
 
     if compute_count:
         nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
