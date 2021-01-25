@@ -130,6 +130,8 @@ class StatsGMS2(StatsPluginInterface):
             reshape_strategy="mem",
             out_chunks=(-1, -1, -1),
             work_chunks=self._work_chunks,
+            compute_count=True,
+            compute_mads=True,
         )
 
         gm = geomedian_with_mads(xx, **cfg)
