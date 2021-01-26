@@ -5,6 +5,8 @@ Various I/O adaptors
 from typing import Dict, Any, Optional, List, Union
 import json
 from urllib.parse import urlparse
+import logging
+import dask
 from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
@@ -17,7 +19,7 @@ from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF
 
-
+_log = logging.getLogger(__name__)
 DEFAULT_COG_OPTS = dict(compress="deflate", zlevel=6, blocksize=512,)
 
 
@@ -32,6 +34,17 @@ def load_creds(profile: Optional[str] = None) -> ReadOnlyCredentials:
 
 def dump_json(meta: Dict[str, Any]) -> str:
     return json.dumps(meta, separators=(",", ":"))
+
+
+@dask.delayed(name="verify-write")
+def _verify_write_results(*args):
+    failed_paths = [path for path, ok in args if not ok]
+    if len(failed_paths) > 0:
+        paths = ",".join(failed_paths)
+        _log.error(f"Write failed for '{paths}'")
+        raise IOError(f"Write failed for '{paths}'")
+
+    return True
 
 
 class S3COGSink:
@@ -145,6 +158,10 @@ class S3COGSink:
             }
             cogs.extend(self._ds_to_cog(aux, aux_paths))
 
+        # this will raise IOError if any write failed, hence preventing json
+        # from being written
+        writes_ok = _verify_write_results(*cogs)
+
         json_url = task.metadata_path("absolute", ext=self._meta_ext)
         meta = task.render_metadata(ext=self._band_ext)
 
@@ -154,5 +171,5 @@ class S3COGSink:
             json_txt.encode("utf8"),
             json_url,
             ContentType=self._meta_contentype,
-            with_deps=cogs,
+            with_deps=writes_ok,
         )
