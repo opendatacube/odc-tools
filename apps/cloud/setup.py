@@ -18,11 +18,13 @@ setup(
         "odc_aio",
         "odc_ppt",
         "odc_thredds",
+        "odc_azure",
         "click",
     ],
     extras_require={
         "GCP": ["google-cloud-storage"],
         "THREDDS": ["thredds_crawler", "requests"],
+        "AZURE": ["azure-storage-blob"],
     },
     entry_points={
         "console_scripts": [
@@ -32,6 +34,7 @@ setup(
             "s3-inventory-dump = odc.apps.cloud.s3_inventory:cli",
             "s3-to-tar = odc.apps.cloud.s3_to_tar:cli",
             "redrive-queue = odc.apps.cloud.redrive_to_queue:cli",
+            "azure-to-tar = odc.apps.cloud.azure_to_tar:cli [AZURE]",
         ]
     },
     packages=["odc.apps.cloud"],

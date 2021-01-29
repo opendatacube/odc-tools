@@ -15,7 +15,7 @@ setup(
     license="Apache License 2.0",
     python_requires=">=3.5",
     tests_require=TEST_REQUIREMENTS,
-    install_requires=["click", "datacube", "odc_index", "odc_io", "odc_aws", "odc_aio"],
+    install_requires=["click", "datacube", "odc_index", "odc_io", "odc_aws", "odc_aio", "odc_azure"],
     extras_require={"tests": TEST_REQUIREMENTS},
     entry_points={
         "console_scripts": [
@@ -25,6 +25,7 @@ setup(
             "thredds-to-dc = odc.apps.dc_tools.thredds_to_dc:cli",
             "sqs-to-dc = odc.apps.dc_tools.sqs_to_dc:cli",
             "stac-to-dc = odc.apps.dc_tools.stac_api_to_dc:cli",
+            "azure-to-dc = odc.apps.dc_tools.azure_to_dc:cli",
         ]
     },
     packages=["odc.apps.dc_tools"],
