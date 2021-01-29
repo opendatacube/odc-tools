@@ -14,16 +14,17 @@ from typing import List, Tuple
 
 
 def dump_list_to_odc(
-        account_url,
-        container_name,
-        yaml_content_list: List[Tuple[bytes, str, str]],
-        dc: Datacube,
-        products: List[str],
-        **kwargs,
+    account_url,
+    container_name,
+    yaml_content_list: List[Tuple[bytes, str, str]],
+    dc: Datacube,
+    products: List[str],
+    **kwargs,
 ):
     expand_stream = (
-        (account_url + "/" + container_name + "/" + d[1][:d[1].rfind("/") + 1], d[0]) for d in yaml_content_list if
-        d[0] is not None
+        (account_url + "/" + container_name + "/" + d[1][: d[1].rfind("/") + 1], d[0])
+        for d in yaml_content_list
+        if d[0] is not None
     )
 
     ds_stream = from_yaml_doc_stream(
@@ -61,8 +62,8 @@ def dump_list_to_odc(
     is_flag=True,
     default=True,
     help=(
-            "Default is to fail if lineage documents not present in the database. "
-            "Set auto add to try to index lineage documents."
+        "Default is to fail if lineage documents not present in the database. "
+        "Set auto add to try to index lineage documents."
     ),
 )
 @click.option(
@@ -71,25 +72,31 @@ def dump_list_to_odc(
     default=False,
     help="Default is no verification. Set to verify parent dataset definitions.",
 )
-@click.option('--product', '-p', 'product_names',
-              help=('Only match against products specified with this option, '
-                    'you can supply several by repeating this option with a new product name'),
-              multiple=True)
+@click.option(
+    "--product",
+    "-p",
+    "product_names",
+    help=(
+        "Only match against products specified with this option, "
+        "you can supply several by repeating this option with a new product name"
+    ),
+    multiple=True,
+)
 @click.argument("account_url", type=str, nargs=1)
 @click.argument("containter_name", type=str, nargs=1)
 @click.argument("credential", type=str, nargs=1)
 @click.argument("prefix", type=str, nargs=1)
 @click.argument("suffix", type=str, nargs=1)
 def cli(
-        skip_lineage: bool,
-        fail_on_missing_lineage: bool,
-        verify_lineage: bool,
-        account_url: str,
-        container_name: str,
-        credential: str,
-        product_names: List[str],
-        prefix: str,
-        suffix: str,
+    skip_lineage: bool,
+    fail_on_missing_lineage: bool,
+    verify_lineage: bool,
+    account_url: str,
+    container_name: str,
+    credential: str,
+    product_names: List[str],
+    prefix: str,
+    suffix: str,
 ):
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
@@ -109,7 +116,7 @@ def cli(
         product_names,
         skip_lineage=skip_lineage,
         fail_on_missing_lineage=fail_on_missing_lineage,
-        verify_lineage=verify_lineage
+        verify_lineage=verify_lineage,
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
