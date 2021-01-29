@@ -1,5 +1,7 @@
 """Test thredds downloader code
 """
+import os
+
 import pytest
 from odc.azure import download_yamls, find_blobs
 
@@ -50,7 +52,7 @@ def test_download_yamls(credential, test_blob_names):
 
 @pytest.fixture
 def credential():
-    return "sv=2019-10-10&si=ey-gsa-ro&sr=c&sig=4T2mncGZ2v%2FqVsjjyHp%2Fv7BZytih8b251pSW0QelT98%3D"
+    return os.environ.get("AZURE_STORAGE_SAS_TOKEN")
 
 
 @pytest.fixture
