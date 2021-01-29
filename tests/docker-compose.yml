@@ -23,6 +23,7 @@ services:
       - DB_PORT=5432
       - AWS_DEFAULT_REGION=ap-southeast-2
       - STAC_API_URL=https://earth-search.aws.element84.com/v0/
+      - AZURE_STORAGE_SAS_TOKEN=${AZURE_STORAGE_SAS_TOKEN}
     depends_on:
       - postgres
     volumes:
