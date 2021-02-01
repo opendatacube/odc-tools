@@ -9,7 +9,7 @@ from ._cli_common import main
     "--grid",
     type=str,
     help=(
-        "Grid name or spec: albers_au_25,africa_{10|20|30|60},"
+        "Grid name or spec: au-{10|20|39|60},africa-{10|20|30|60}, albers-au-25 (legacy one)"
         "'crs;pixel_resolution;shape_in_pixels'"
     ),
     prompt="""Enter GridSpec
@@ -24,7 +24,7 @@ from ._cli_common import main
     help="Only extract datasets for a given year. This is a shortcut for --temporal-range=<int>--P1Y",
 )
 @click.option(
-    "--temporal_range",
+    "--temporal-range",
     type=str,
     help="Only extract datasets for a given time range, Example '2020-05--P1M' month of May 2020",
 )
