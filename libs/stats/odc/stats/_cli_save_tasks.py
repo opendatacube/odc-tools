@@ -13,7 +13,7 @@ from ._cli_common import main
         "'crs;pixel_resolution;shape_in_pixels'"
     ),
     prompt="""Enter GridSpec
- one of albers_au_25, africa_{10|20|30|60}
+ one of au-{10|20|30|60}, africa-{10|20|30|60}, albers_au_25 (legacy one)
  or custom like 'epsg:3857;30;5000' (30m pixels 5,000 per side in epsg:3857)
  >""",
     default=None,
