@@ -15,6 +15,18 @@ GRIDS = {
     "albers_au_25": GridSpec(
         crs=epsg3577, tile_size=(100_000.0, 100_000.0), resolution=(-25, 25)
     ),
+    "au_10": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-10, 10)
+    ),
+    "au_20": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-20, 20)
+    ),
+    "au_30": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-30, 30)
+    ),
+    "au_60": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-60, 60)
+    ),
     "global_10": GridSpec(
         crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-10, 10)
     ),
