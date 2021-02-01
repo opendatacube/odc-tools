@@ -35,12 +35,21 @@ def timedelta_to_hours(td: timedelta) -> float:
 
 
 def compute_grid_info(
-    cells: Dict[TileIdx_xy, Any], resolution: float = math.inf, title_width: int = 5
+    cells: Dict[TileIdx_xy, Any], resolution: float = math.inf, title_width: int = 0
 ) -> Dict[TileIdx_xy, Any]:
     """
     Compute geojson feature for every cell in ``cells``.
     Where ``cells`` is produced by ``odc.index.bin_dataset_stream``
     """
+    if title_width == 0:
+        nmax = max([max(abs(ix), abs(iy)) for ix, iy in cells])
+        if nmax < 100:
+            title_width = 3
+        elif nmax < 1000:
+            title_width = 4
+        else:
+            title_width = 5
+
     grid_info = {}
 
     for idx, cell in cells.items():
