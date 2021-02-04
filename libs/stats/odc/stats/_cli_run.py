@@ -162,3 +162,8 @@ def run(
     _log.info(
         f"Completed processing {total:,d} tasks, OK:{finished:,d}, S:{skipped:,d}, E:{errored:,d}"
     )
+
+    _log.info("Shutting down Dask cluster")
+    del runner
+    _log.info("Calling sys.exit(0)")
+    sys.exit(0)
