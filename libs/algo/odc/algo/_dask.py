@@ -563,3 +563,25 @@ def reshape_yxbt(
     coords["band"] = list(xx.data_vars)
 
     return xr.DataArray(data=data, dims=dims, coords=coords, name=name0, attrs=attrs)
+
+
+def flatten_kv(xx):
+    """
+    Turn dictionary into a flat list: [k0, v0, k1, v1, ...].
+
+    Useful for things like map_blocks when passing Dict[str, da.Array] for example.
+    """
+
+    def _kv(xx):
+        for k, v in xx.items():
+            yield k
+            yield v
+
+    return list(_kv(xx))
+
+
+def unflatten_kv(xx):
+    """
+    Reverse operation of `flatten_kv`
+    """
+    return {k: v for k, v in toolz.partition_all(2, xx)}
