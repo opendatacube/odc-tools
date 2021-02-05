@@ -2,6 +2,8 @@
 
 """
 
+from ._numexpr import apply_numexpr, safe_div
+
 from ._masking import (
     keep_good_np,
     keep_good_only,
@@ -55,11 +57,11 @@ from ._rgba import (
     colorize,
 )
 
-from ._warp import (
-    xr_reproject,
-)
+from ._warp import xr_reproject
 
 __all__ = (
+    "apply_numexpr",
+    "safe_div",
     "keep_good_np",
     "keep_good_only",
     "erase_bad",
