@@ -5,7 +5,7 @@ from typing import Optional
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import safe_div, apply_numexpr, erase_bad
+from odc.algo import safe_div, apply_numexpr
 from .model import OutputProduct, StatsPluginInterface
 from . import _plugins
 
@@ -93,10 +93,6 @@ class StatsWofs(StatsPluginInterface):
         count_dry = xx.dry.sum(axis=0, dtype="uint16")
         count_clear = count_wet + count_dry
         frequency = safe_div(count_wet, count_clear, dtype="float32")
-
-        # Distinguish between observed 0 wet vs didn't observe anything
-        count_wet.attrs["nodata"] = 0xFFFF
-        count_wet = erase_bad(count_wet, count_clear == 0)
 
         return xr.Dataset(
             dict(count_wet=count_wet, count_clear=count_clear, frequency=frequency)
