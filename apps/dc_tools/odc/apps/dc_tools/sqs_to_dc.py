@@ -199,7 +199,9 @@ def do_index_update_dataset(
             else:
                 if update:
                     # We're expecting to update a dataset, but it doesn't exist
-                    raise SQStoDCException("Can't update dataset because it doesn't exist.")
+                    raise SQStoDCException(
+                        "Can't update dataset because it doesn't exist."
+                    )
                 # Everything is working as expected, add the dataset
                 dc.index.datasets.add(ds)
         else:
@@ -280,7 +282,15 @@ def queue_to_odc(
                         )
 
             # Index the dataset
-            do_index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
+            do_index_update_dataset(
+                metadata,
+                uri,
+                dc,
+                doc2ds,
+                update=update,
+                update_if_exists=update_if_exists,
+                allow_unsafe=allow_unsafe,
+            )
             ds_success += 1
             # Success, so delete the message.
             message.delete()
