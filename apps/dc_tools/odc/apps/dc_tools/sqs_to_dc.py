@@ -171,25 +171,36 @@ def do_index_update_dataset(
     dc: Datacube,
     doc2ds: Doc2Dataset,
     update=False,
+    update_if_exists=False,
     allow_unsafe=False,
 ):
     if uri is not None:
+        # Make sure we can create a dataset first
         try:
             ds, err = doc2ds(metadata, uri)
         except ValueError as e:
             raise SQStoDCException(
                 f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
             )
+
+        # Now do something with the dataset
         if ds is not None:
-            if update:
-                updates = {}
-                if allow_unsafe:
-                    updates = {tuple(): changes.allow_any}
-                dc.index.datasets.update(ds, updates_allowed=updates)
-            else:
-                if dc.index.datasets.has(metadata.get("id")):
+            if dc.index.datasets.has(metadata.get("id")):
+                # Update
+                if update or update_if_exists:
+                    # Set up update fields
+                    updates = {}
+                    if allow_unsafe:
+                        updates = {tuple(): changes.allow_any}
+                    # Do the updating
+                    dc.index.datasets.update(ds, updates_allowed=updates)
+                else:
                     logging.warning("Dataset already exists, not indexing")
-                    return
+            else:
+                if update:
+                    # We're expecting to update a dataset, but it doesn't exist
+                    raise SQStoDCException("Can't update dataset because it doesn't exist.")
+                # Everything is working as expected, add the dataset
                 dc.index.datasets.add(ds)
         else:
             raise SQStoDCException(
@@ -207,6 +218,7 @@ def queue_to_odc(
     transform=None,
     limit=None,
     update=False,
+    update_if_exists=False,
     archive=False,
     allow_unsafe=False,
     odc_metadata_link=False,
@@ -268,7 +280,7 @@ def queue_to_odc(
                         )
 
             # Index the dataset
-            do_index_update_dataset(metadata, uri, dc, doc2ds, update, allow_unsafe)
+            do_index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
             ds_success += 1
             # Success, so delete the message.
             message.delete()
@@ -329,6 +341,12 @@ def queue_to_odc(
     help="If set, update instead of add datasets",
 )
 @click.option(
+    "--update-if-exists",
+    is_flag=True,
+    default=False,
+    help="If the dataset already exists, update it instead of skipping it.",
+)
+@click.option(
     "--archive",
     is_flag=True,
     default=False,
@@ -361,6 +379,7 @@ def cli(
     odc_metadata_link,
     limit,
     update,
+    update_if_exists,
     archive,
     allow_unsafe,
     record_path,
@@ -391,6 +410,7 @@ def cli(
         transform=transform,
         limit=limit,
         update=update,
+        update_if_exists=update_if_exists,
         archive=archive,
         allow_unsafe=allow_unsafe,
         record_path=record_path,
