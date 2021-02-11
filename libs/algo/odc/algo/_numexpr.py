@@ -129,6 +129,13 @@ def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype='float32') -> xr.DataArra
     """
     Compute ``x1.astype(dtype)/x2.astype(dtype)`` taking care of cases where x2==0.
 
+    For every element compute the following:
+
+    ::
+
+      x2 is 0 => NaN
+      else    => float(x1)/float(x2)
+
     TODO: currently doesn't treat nodata values in any special way.
     """
     dtype = np.dtype(dtype)
