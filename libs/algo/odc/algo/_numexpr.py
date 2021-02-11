@@ -48,7 +48,38 @@ def apply_numexpr(
     **params,
 ):
     """
-    Apply numexpr to variables within a Dataset
+    Apply numexpr to variables within a Dataset.
+
+    numexpr library offers a limited subset of types and operations supported
+    by numpy, but is much faster and memory efficient, particularly for complex
+    expressions. See numexpr documentation for a more detailed explanation of
+    performance advantages of using this library over numpy operations,
+    summary: single pass over input memory, no temporary arrays, cache
+    locality.
+
+    :param expr: Numexpr compatible string to evaluate
+    :param xx: Dataset object that contains arrays to be used in the ``expr`` (can be Dask)
+    :param dtype: specify output dtype
+    :param name: Used to name computation when input is Dask
+    :param casting: Passed to ``numexpr.evaluate``
+    :param order: Passed to ``numexpr.evaluate``
+    :param params: Any other constants you use in the expression
+    :raturns: xr.DataArray containing result of the equation (Dask is input is Dask)
+
+    Example:
+
+    .. code-block:: python
+
+       # Given a Dataset with bands `red` and `nir`
+       xx = dc.load(..., measurements=["red", "nir"], dask_chunks={})
+
+       # Compute NDVI (ignore nodata for simplicity of the example)
+       ndvi = apply_numexpr("(_1f*nir - red)/(_1f*nir + red)",
+                            xx,
+                            dtype='float32',   # Output is float32
+                            _1f=np.float32(1)  # Define constant `_1f` being a float32(1),
+                                               # used for casting to float32
+                           )
     """
 
     bands = {}
