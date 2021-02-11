@@ -9,7 +9,7 @@ from ._cli_common import main
     "--grid",
     type=str,
     help=(
-        "Grid name or spec: au-{10|20|39|60},africa-{10|20|30|60}, albers-au-25 (legacy one)"
+        "Grid name or spec: au-{10|20|30|60},africa-{10|20|30|60}, albers-au-25 (legacy one)"
         "'crs;pixel_resolution;shape_in_pixels'"
     ),
     prompt="""Enter GridSpec
