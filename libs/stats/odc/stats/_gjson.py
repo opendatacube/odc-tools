@@ -43,12 +43,8 @@ def compute_grid_info(
     """
     if title_width == 0:
         nmax = max([max(abs(ix), abs(iy)) for ix, iy in cells])
-        if nmax < 100:
-            title_width = 3
-        elif nmax < 1000:
-            title_width = 4
-        else:
-            title_width = 5
+        # title_width is the number of digits in the index, +1 for positive or negative
+        title_width = len(str(nmax)) + 1
 
     grid_info = {}
 
