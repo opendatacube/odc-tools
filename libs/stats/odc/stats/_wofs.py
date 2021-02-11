@@ -77,9 +77,9 @@ class StatsWofs(StatsPluginInterface):
 
         xx = load_with_native_transform(
             task.datasets,
-            ["water"],
-            task.geobox,
-            self._native_tr,
+            bands=["water"],
+            geobox=task.geobox,
+            native_transform=self._native_tr,
             fuser=self._fuser,
             groupby=groupby,
             resampling=self.resampling,
