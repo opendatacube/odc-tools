@@ -16,10 +16,10 @@ from odc.stats.utils import (
 from . import gen_compressed_dss
 
 
-def test_stac(test_db):
+def test_stac(test_db_path):
     from odc.stats._gm import StatsGMS2
     product = StatsGMS2().product(location="/tmp/")
-    reader = TaskReader(str(test_db), product)
+    reader = TaskReader(test_db_path, product)
     task = reader.load_task(reader.all_tiles[0])
 
     stac_meta = task.render_metadata()
