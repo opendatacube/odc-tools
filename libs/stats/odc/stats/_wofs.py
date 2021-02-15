@@ -1,50 +1,29 @@
 """
 Wofs Summary
 """
-from typing import Optional
+from typing import Optional, Tuple
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import safe_div, apply_numexpr
-from .model import OutputProduct, StatsPluginInterface
+from .model import StatsPluginInterface
 from . import _plugins
 
 
 class StatsWofs(StatsPluginInterface):
+    NAME = "ga_ls_wo_summary"
+    SHORT_NAME = NAME
+    VERSION = '0.0.0'
+    PRODUCT_FAMILY = "wo_summary"
+
     def __init__(
         self, resampling: str = "bilinear",
     ):
         self.resampling = resampling
 
-    def product(self, location: Optional[str] = None, **kw) -> OutputProduct:
-        name = "ga_s2_wo_summary"
-        short_name = "ga_s2_wo_summary"
-        version = "0.0.0"
-
-        if location is None:
-            bucket = "deafrica-stats-processing"  # TODO: ??
-            location = f"s3://{bucket}/{name}/v{version}"
-        else:
-            location = location.rstrip("/")
-
-        measurements = ("count_wet", "count_clear", "frequency")
-
-        properties = {
-            "odc:file_format": "GeoTIFF",
-            "odc:producer": "ga.gov.au",
-            "odc:product_family": "statistics",  # TODO: ???
-            "platform": "landsat",  # TODO: ???
-        }
-
-        return OutputProduct(
-            name=name,
-            version=version,
-            short_name=short_name,
-            location=location,
-            properties=properties,
-            measurements=measurements,
-            href=f"https://collections.digitalearth.africa/product/{name}",
-        )
+    @property
+    def measurements(self) -> Tuple[str, ...]:
+        return ("count_wet", "count_clear", "frequency")
 
     def _native_tr(self, xx):
         wet = xx.water == 128

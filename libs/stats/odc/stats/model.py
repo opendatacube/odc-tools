@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -320,8 +320,13 @@ class Task:
 
 
 class StatsPluginInterface(ABC):
-    @abstractmethod
-    def product(self, location: Optional[str] = None, **kw: Any) -> OutputProduct:
+    NAME = "*unset*"
+    SHORT_NAME = ""
+    VERSION = "0.0.0"
+    PRODUCT_FAMILY = "statistics"
+
+    @abstractproperty
+    def measurements(self) -> Tuple[str, ...]:
         pass
 
     @abstractmethod
@@ -337,6 +342,57 @@ class StatsPluginInterface(ABC):
         Given result of ``.reduce(..)`` optionally produce RGBA preview image
         """
         return None
+
+    def product(
+        self,
+        location: str,
+        name: Optional[str] = None,
+        short_name: Optional[str] = None,
+        version: Optional[str] = None,
+        product_family: Optional[str] = None,
+        collections_site: str = "collections.dea.ga.gov.au",
+        producer: str = "ga.gov.au",
+        properties: Dict[str, Any] = dict(),
+    ) -> OutputProduct:
+        """
+        :param location: Output location string or template, example ``s3://bucket/{product}/v{version}``
+        :param name: Override for product name
+        :param short_name: Override for product short_name
+        :param version: Override for version
+        :param product_family: Override for odc:product_family
+        :param collections_site: href=f"https://{collections_site}/product/{name}"
+        :param producer: Producer ``ga.gov.au``
+        """
+        if name is None:
+            name = self.NAME
+        if short_name is None:
+            short_name = self.SHORT_NAME
+            if len(short_name) == 0:
+                short_name = name
+        if version is None:
+            version = self.VERSION
+        if product_family is None:
+            product_family = self.PRODUCT_FAMILY
+
+        if "{" in location and "}" in location:
+            location = location.format(
+                name=name, product=name, version=version, short_name=short_name
+            )
+
+        return OutputProduct(
+            name=name,
+            version=version,
+            short_name=short_name,
+            location=location,
+            properties={
+                "odc:file_format": "GeoTIFF",
+                "odc:product_family": product_family,
+                "odc:producer": producer,
+                **properties,
+            },
+            measurements=self.measurements,
+            href=f"https://{collections_site}/product/{name}",
+        )
 
 
 @dataclass
@@ -371,6 +427,11 @@ class TaskRunnerConfig:
     plugin: str = ""
     plugin_config: Dict[str, Any] = field(init=True, repr=False, default_factory=dict)
 
+    # Output Product
+    #  .{name| short_name| version| product_family|
+    #    collections_site| producer| properties: Dict[str, Any]}
+    product: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
+
     # Dask config
     threads: int = -1
     memory_limit: str = ""
@@ -379,7 +440,9 @@ class TaskRunnerConfig:
     output_location: str = ""
     s3_public: bool = False
     cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
-    cog_opts_per_band: Dict[str, Dict[str, Any]] = field(init=True, repr=True, default_factory=dict)
+    cog_opts_per_band: Dict[str, Dict[str, Any]] = field(
+        init=True, repr=True, default_factory=dict
+    )
     overwrite: bool = False
 
     # SQS config when applicable
