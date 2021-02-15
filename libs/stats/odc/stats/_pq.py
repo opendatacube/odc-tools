@@ -11,7 +11,7 @@ from odc.algo._masking import _or_fuser
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
-from .model import OutputProduct, StatsPluginInterface
+from .model import StatsPluginInterface
 from . import _plugins
 
 cloud_classes = (
@@ -32,6 +32,11 @@ default_filters = [(2, 5), (0, 5)]
 
 
 class StatsPQ(StatsPluginInterface):
+    NAME = "pc_s2_annual"
+    SHORT_NAME = NAME
+    VERSION = '0.0.1'
+    PRODUCT_FAMILY = "pixel_quality_statistics"
+
     def __init__(
         self,
         filters: Optional[List[Tuple[int, int]]] = None,
@@ -42,38 +47,12 @@ class StatsPQ(StatsPluginInterface):
         self.filters = filters
         self.resampling = resampling
 
-    def product(self, location: Optional[str] = None, **kw) -> OutputProduct:
-        name = "ga_s2_clear_pixel_count"
-        short_name = "ga_s2_cpc"
-        version = "0.0.1"
-
-        if location is None:
-            bucket = "deafrica-stats-processing"
-            location = f"s3://{bucket}/{name}/v{version}"
-        else:
-            location = location.rstrip("/")
-
-        measurements: Tuple[str, ...] = (
+    @property
+    def measurements(self) -> Tuple[str, ...]:
+        return (
             "total",
             "clear",
             *[f"clear_{r1:d}_{r2:d}" for (r1, r2) in self.filters],
-        )
-
-        properties = {
-            "odc:file_format": "GeoTIFF",
-            "odc:producer": "ga.gov.au",
-            "odc:product_family": "pixel_quality_statistics",
-        }
-
-        return OutputProduct(
-            name=name,
-            version=version,
-            short_name=short_name,
-            location=location,
-            properties=properties,
-            measurements=measurements,
-            href=f"https://collections.digitalearth.africa/product/{name}",
-            cfg=dict(filters=self.filters, resampling=self.resampling),
         )
 
     def input_data(self, task: Task) -> xr.Dataset:
@@ -82,8 +61,8 @@ class StatsPQ(StatsPluginInterface):
         .erased          Bool
         .erased{postfix} Bool
         """
-        filters = task.product.cfg["filters"]
-        resampling = task.product.cfg["resampling"]
+        filters = self.filters
+        resampling = self.resampling
 
         return load_with_native_transform(
             task.datasets,
@@ -161,25 +140,25 @@ _plugins.register("pq", StatsPQ)
 
 
 def test_pq_product():
-    product = StatsPQ().product()
+    location = "file:///tmp"
+    product = StatsPQ().product(location)
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
-    assert product.cfg["filters"] == default_filters
 
-    product = StatsPQ(filters=[]).product()
+    product = StatsPQ(filters=[]).product(location)
     assert product.measurements == ("total", "clear")
-    assert product.cfg["filters"] == []
 
 
 def test_plugin():
+    location = "file:///tmp"
     pq = _plugins.resolve("pq")()
-    product = pq.product()
+    product = pq.product(location)
 
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
-    assert product.cfg["filters"] == default_filters
+    assert pq.filters == default_filters
 
     pq = _plugins.resolve("pq")(filters=[], resampling="cubic")
-    product = pq.product()
+    product = pq.product(location)
 
     assert product.measurements == ("total", "clear")
-    assert product.cfg["filters"] == []
-    assert product.cfg["resampling"] == "cubic"
+    assert pq.filters == []
+    assert pq.resampling == "cubic"

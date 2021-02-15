@@ -44,7 +44,7 @@ class TaskRunner:
         _log.info(f"Resolving plugin: {cfg.plugin}")
         mk_proc = _plugins.resolve(cfg.plugin)
         self.proc = mk_proc(**cfg.plugin_config)
-        self.product = self.proc.product(cfg.output_location)
+        self.product = self.proc.product(cfg.output_location, **cfg.product)
         _log.info(f"Output product: {self.product}")
 
         _log.info(f"Constructing task reader: {cfg.filedb}")
