@@ -114,13 +114,6 @@ def run(
         _cfg["plugin_config"] = plugin_config
 
     if cog_config is not None:
-        per_band_cfg = {k: v for k, v in cog_config.items() if isinstance(v, dict)}
-        if per_band_cfg:
-            for k in per_band_cfg:
-                cog_config.pop(k)
-
-            _cfg["cog_opts_per_band"] = per_band_cfg
-
         _cfg["cog_opts"] = cog_config
 
     cfg = TaskRunnerConfig(**_cfg)
