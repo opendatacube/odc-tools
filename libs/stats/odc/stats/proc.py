@@ -37,7 +37,6 @@ class TaskRunner:
         self._log = _log
         self.sink = S3COGSink(
             cog_opts=cfg.cog_opts,
-            cog_opts_per_band=cfg.cog_opts_per_band,
             public=cfg.s3_public,
         )
 
