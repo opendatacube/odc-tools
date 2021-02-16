@@ -4,34 +4,33 @@ from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
 
 
 @main.command("run")
-@click.option("--threads", type=int, help="Number of worker threads", default=0)
-@click.option(
-    "--memory-limit", type=str, help="Limit memory used by Dask cluster", default=""
-)
+@click.option("--threads", type=int, help="Number of worker threads")
+@click.option("--memory-limit", type=str, help="Limit memory used by Dask cluster")
 @click.option(
     "--dryrun",
     is_flag=True,
     help="Do not run computation just print what work will be done",
 )
-@click.option("--overwrite", is_flag=True, help="Do not check if output already exists")
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=None,
+    help="Do not check if output already exists",
+)
 @click.option(
     "--public/--no-public",
     is_flag=True,
-    default=False,
+    default=None,
     help="Mark outputs for public access (default: no)",
 )
 @click.option(
     "--location", type=str, help="Output location prefix as a uri: s3://bucket/path/"
 )
-@click.option(
-    "--max-processing-time", type=int, help="Max seconds per task", default=3600
-)
+@click.option("--max-processing-time", type=int, help="Max seconds per task")
 @click.option("--from-sqs", type=str, help="Read tasks from SQS", default="")
+@click_yaml_cfg("--config", help="Runner Config")
 @click.option(
-    "--plugin",
-    type=str,
-    help="Which stats plugin to run",
-    default="pq",  # TODO: remove default when dev is finished
+    "--plugin", type=str, help="Which stats plugin to run",
 )
 @click_yaml_cfg(
     "--plugin-config", help="Config for plugin in yaml format, file or text"
@@ -45,6 +44,7 @@ def run(
     filedb,
     tasks,
     from_sqs,
+    config,
     plugin_config,
     cog_config,
     resampling,
@@ -95,23 +95,34 @@ def run(
 
     import_all()
 
-    _cfg = dict(
-        filedb=filedb,
-        plugin=plugin,
-        threads=threads,
-        memory_limit=memory_limit,
-        output_location=location,
-        s3_public=public,
-        overwrite=overwrite,
-        max_processing_time=max_processing_time,
-    )
-    if resampling is not None and len(resampling) > 0:
-        if plugin_config is None:
-            plugin_config = {}
-        plugin_config["resampling"] = resampling
+    if config is None:
+        config = {}
 
+    _cfg = dict(**config)
+
+    cfg_from_cli = {
+        k: v
+        for k, v in dict(
+            filedb=filedb,
+            plugin=plugin,
+            threads=threads,
+            memory_limit=memory_limit,
+            output_location=location,
+            s3_public=public,
+            overwrite=overwrite,
+            max_processing_time=max_processing_time,
+        ).items()
+        if v is not None and v != ""
+    }
+
+    _log.info(f"Config overrides: {cfg_from_cli}")
+
+    _cfg.update(cfg_from_cli)
     if plugin_config is not None:
         _cfg["plugin_config"] = plugin_config
+
+    if resampling is not None and len(resampling) > 0:
+        _cfg.setdefault("plugin_config", {})["resampling"] = resampling
 
     if cog_config is not None:
         _cfg["cog_opts"] = cog_config
