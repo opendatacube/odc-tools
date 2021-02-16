@@ -170,6 +170,43 @@ class OutputProduct:
         )
 
 
+class WorkTokenInterface(ABC):
+    @abstractproperty
+    def active_seconds(self) -> float:
+        """
+        :returns: Number of seconds this Token has been active for
+        """
+        pass
+
+    @abstractproperty
+    def deadline(self) -> datetime:
+        """
+        Should return timestamp by which work is to be completed
+        """
+        pass
+
+    @abstractmethod
+    def done(self):
+        """
+        Called when work is completed successfully
+        """
+        pass
+
+    @abstractmethod
+    def cancel(self):
+        """
+        Called when work is terminated for whatever reason without successful result
+        """
+        pass
+
+    @abstractmethod
+    def extend(self, seconds: int) -> bool:
+        """
+        Called to extend work deadline
+        """
+        pass
+
+
 @dataclass
 class Task:
     product: OutputProduct
