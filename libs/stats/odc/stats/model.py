@@ -216,7 +216,7 @@ class Task:
     datasets: Tuple[Dataset, ...] = field(repr=False)
     uuid: UUID = UUID(int=0)
     short_time: str = field(init=False, repr=False)
-    source: Any = field(init=True, repr=False, default=None)
+    source: Optional[WorkTokenInterface] = field(init=True, repr=False, default=None)
 
     def __post_init__(self):
         self.short_time = self.time_range.short

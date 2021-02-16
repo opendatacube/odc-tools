@@ -182,7 +182,7 @@ class TaskRunner:
                     _log.info(f"Skipped task @ {path}")
                     if task.source:
                         _log.info("Notifying completion via SQS")
-                        task.source.delete()
+                        task.source.done()
 
                     yield TaskResult(task, path, skipped=True)
                     continue
@@ -207,7 +207,10 @@ class TaskRunner:
                 _log.info(f"Finished processing of {result.task.location}")
                 if result.task.source:
                     _log.info("Notifying completion via SQS")
-                    result.task.source.delete()
+                    result.task.source.done()
+            else:
+                if result.task.source:
+                    result.task.source.cancel()
 
             yield result
 
