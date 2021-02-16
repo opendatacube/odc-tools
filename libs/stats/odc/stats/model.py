@@ -425,7 +425,7 @@ class TaskRunnerConfig:
 
     # Plugin
     plugin: str = ""
-    plugin_config: Dict[str, Any] = field(init=True, repr=False, default_factory=dict)
+    plugin_config: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
 
     # Output Product
     #  .{name| short_name| version| product_family|
