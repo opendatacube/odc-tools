@@ -2,7 +2,7 @@
 Various I/O adaptors
 """
 
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, cast
 import json
 from urllib.parse import urlparse
 import logging
@@ -82,7 +82,9 @@ class S3COGSink:
             tmp.update(cog_opts)
             cog_opts = tmp
 
-        cog_opts_per_band = cog_opts.pop("overrides", {})
+        cog_opts_per_band = cast(
+            Dict[str, Dict[str, Any]], cog_opts.pop("overrides", {})
+        )
         per_band_cfg = {k: v for k, v in cog_opts.items() if isinstance(v, dict)}
         if per_band_cfg:
             for k in per_band_cfg:
