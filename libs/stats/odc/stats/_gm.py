@@ -7,7 +7,7 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import erase_bad, geomedian_with_mads, to_rgba
 from odc.algo.io import load_enum_filtered
-from .model import OutputProduct, StatsPluginInterface
+from .model import StatsPluginInterface
 from . import _plugins
 
 
