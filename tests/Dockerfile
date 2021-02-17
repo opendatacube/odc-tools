@@ -24,7 +24,7 @@ RUN python3 -m venv /env \
 ADD ./ /code
 WORKDIR /code
 
-ENV PATH="/env/bin:${PATH}"
+ENV PATH="${py_env_path}/bin:${PATH}"
 RUN ./scripts/dev-install.sh --extra-index-url=https://packages.dea.ga.gov.au/ -c /conf/constraints.txt
 
 # Copy in the test runner script
