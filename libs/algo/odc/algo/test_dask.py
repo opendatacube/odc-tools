@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 import dask.array as da
+from dask import delayed
+from dask.distributed import Client
 import toolz
 from ._dask import (
     _rechunk_2x2,
@@ -8,7 +10,37 @@ from ._dask import (
     compute_chunk_range,
     crop_2d_dense,
     unpack_chunksize,
+    wait_for_future,
 )
+
+
+@delayed
+def slow_compute(delay, value=None, fail=False):
+    import time
+
+    if delay > 0:
+        time.sleep(delay)
+    if fail:
+        raise ValueError("Failing as requested")
+    return value
+
+
+def test_wait_for_future():
+    client = Client(
+        processes=False, n_workers=1, threads_per_worker=1, dashboard_address=None
+    )
+    fut = client.compute(slow_compute(1))
+    rr = list(wait_for_future(fut, 0.1))
+    assert fut.done()
+    assert len(rr) > 1
+
+    # Check that exception doesn't leak out
+    fut = client.compute(slow_compute(1, fail=True))
+    rr = list(wait_for_future(fut, 0.1))
+    assert fut.done()
+    assert fut.status == "error"
+    assert len(rr) > 1
+    print(fut)
 
 
 def test_1():
@@ -106,13 +138,7 @@ def test_chunk_range(span, chunks, summed, bspan, pspan):
 
 @pytest.mark.parametrize(
     "yx_roi",
-    [
-        np.s_[:, :],
-        np.s_[:1, :1],
-        np.s_[3:, 1:],
-        np.s_[3:-3, 1:-5],
-        np.s_[3:-3, -5:],
-    ],
+    [np.s_[:, :], np.s_[:1, :1], np.s_[3:, 1:], np.s_[3:-3, 1:-5], np.s_[3:-3, -5:]],
 )
 def test_crop_2d_dense(yx_roi):
     # Y,X
