@@ -40,6 +40,7 @@ from ._dask import (
     chunked_persist_da,
     randomize,
     reshape_yxbt,
+    wait_for_future,
 )
 
 from ._memsink import (
@@ -87,6 +88,7 @@ __all__ = (
     "reshape_for_geomedian",
     "geomedian_with_mads",
     "reshape_yxbt",
+    "wait_for_future",
     "chunked_persist",
     "chunked_persist_da",
     "chunked_persist_ds",

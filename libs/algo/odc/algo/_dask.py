@@ -2,13 +2,14 @@
 Generic dask helpers
 """
 
-from typing import Tuple, Union, cast, Iterator, List, Any, Dict, Hashable
+from typing import Tuple, Union, cast, Iterator, Optional, List, Any, Dict, Hashable
 from random import randint
+from datetime import datetime
 from bisect import bisect_right, bisect_left
 import numpy as np
 import xarray as xr
 import dask
-from dask.distributed import wait as dask_wait
+from dask.distributed import wait as dask_wait, TimeoutError
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
 from dask import is_dask_collection
@@ -585,3 +586,27 @@ def unflatten_kv(xx):
     Reverse operation of `flatten_kv`
     """
     return {k: v for k, v in toolz.partition_all(2, xx)}
+
+
+def wait_for_future(
+    future, poll_timeout: float = 1.0, t0: Optional[datetime] = None
+) -> Iterator[Tuple[float, datetime]]:
+    """
+    Generate a sequence of (time_passed, timestamp) tuples, stop when future becomes ready.
+
+    :param future: Dask future
+    :param poll_timeout: Controls how often
+    :param t0: From what point to start counting (defaults to right now)
+    """
+    if t0 is None:
+        t0 = datetime.utcnow()
+
+    while not future.done():
+        try:
+            dask_wait(future, timeout=poll_timeout, return_when="FIRST_COMPLETED")
+            return
+        except TimeoutError:
+            pass
+        t_now = datetime.utcnow()
+
+        yield ((t_now - t0).total_seconds(), t_now)
