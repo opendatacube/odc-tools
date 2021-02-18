@@ -10,17 +10,17 @@ from .model import WorkTokenInterface
 class SQSWorkToken(WorkTokenInterface):
     def __init__(self, msg, timeout: int, t0: Optional[datetime] = None):
         if t0 is None:
-            t0 = datetime.utcnow()
+            t0 = self.now()
         self._msg = msg
         self._t0 = t0
         self._deadline = t0 + timedelta(seconds=timeout)
 
     @property
-    def active_seconds(self) -> float:
+    def start_time(self) -> datetime:
         """
-        :returns: Number of seconds this Token has been active for
+        Timestamp when SQS message was received
         """
-        return (datetime.utcnow() - self._t0).total_seconds()
+        return self._t0
 
     @property
     def deadline(self) -> datetime:
@@ -54,7 +54,7 @@ class SQSWorkToken(WorkTokenInterface):
         if self._msg is None:
             return False
 
-        new_deadline = datetime.utcnow() + timedelta(seconds=seconds)
+        new_deadline = self.now() + timedelta(seconds=seconds)
         new_timeout = int((new_deadline - self._t0).total_seconds())
 
         rr = self._msg.change_visibility(VisibilityTimeout=new_timeout)

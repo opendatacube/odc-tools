@@ -9,10 +9,17 @@ def test_sqs_work_token(sqs_message):
     tk = SQSWorkToken(sqs_message, 60)
 
     assert tk.active_seconds < 2
+    assert tk.start_time < datetime.utcnow()
     assert tk.deadline > datetime.utcnow()
 
     deadline0 = tk.deadline
-    assert tk.extend(100)
+    assert tk.extend_if_needed(1000, 1)
+    assert tk.deadline == deadline0
+    assert tk.extend_if_needed(100, 60)
+    assert tk.deadline > deadline0
+
+    deadline0 = tk.deadline
+    assert tk.extend(200)
     assert tk.deadline > deadline0
 
     tk.done()
@@ -38,13 +45,11 @@ def test_rdr_sqs(sqs_queue_by_name, test_db_path):
     q = get_queue(sqs_queue_by_name)
     product = OutputProduct.dummy()
     rdr = TaskReader(test_db_path, product)
-    print(rdr.all_tiles)
 
     for tidx in rdr.all_tiles:
         publish_message(q, render_task(tidx))
 
     for task in rdr.stream_from_sqs(sqs_queue_by_name, visibility_timeout=120, max_wait=0):
-        print(task)
         _now = datetime.utcnow()
         assert task.source is not None
         assert task.source.active_seconds < 2
@@ -55,4 +60,3 @@ def test_rdr_sqs(sqs_queue_by_name, test_db_path):
         assert task.source.deadline > _now
         assert task.source.deadline < _now + timedelta(seconds=3600+10)
         task.source.done()
-        print(task.datasets[:3])

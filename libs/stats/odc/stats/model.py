@@ -171,10 +171,17 @@ class OutputProduct:
 
 
 class WorkTokenInterface(ABC):
-    @abstractproperty
-    def active_seconds(self) -> float:
+    @staticmethod
+    def now():
         """
-        :returns: Number of seconds this Token has been active for
+        Implementations should use this method internally
+        """
+        return datetime.utcnow()
+
+    @abstractproperty
+    def start_time(self) -> datetime:
+        """
+        Should return timestamp when task "started"
         """
         pass
 
@@ -205,6 +212,25 @@ class WorkTokenInterface(ABC):
         Called to extend work deadline
         """
         pass
+
+    @property
+    def active_seconds(self) -> float:
+        """
+        :returns: Number of seconds this Token has been active for
+        """
+        return (self.now() - self.start_time).total_seconds()
+
+    def extend_if_needed(self, seconds, buffer_seconds: int = 30) -> bool:
+        """
+        Call ``.extend(seconds)`` only if deadline is within ``buffer_seconds`` from now
+
+        :returns: True if deadline is still too far in the future
+        :returns: Result of ``.extend(seconds)`` if deadline is close enough
+        """
+        t_now = self.now()
+        if t_now + timedelta(seconds=buffer_seconds) > self.deadline:
+            return self.extend(seconds)
+        return True
 
 
 @dataclass
