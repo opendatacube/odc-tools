@@ -505,8 +505,20 @@ class TaskRunnerConfig:
     cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
     overwrite: bool = False
 
-    # SQS config when applicable
-    max_processing_time: int = 60 * 60
+    # Terminate task if running longer than this amount (seconds)
+    max_processing_time: int = 0
+
+    # tuning/testing params
+    #
+
+    # SQS renew amount (seconds)
+    job_queue_max_lease: int = 5 * 60
+
+    # Renew work token when this close to deadline (seconds)
+    renew_safety_margin: int = 30
+
+    # How often future is checked for timeout/sqs renew
+    future_poll_interval: float = 5
 
     def __post_init__(self):
         self.cog_opts = dicttoolz.merge(self.default_cog_settings(), self.cog_opts)

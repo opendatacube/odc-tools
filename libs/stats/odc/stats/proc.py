@@ -9,6 +9,7 @@ from typing import (
     Union,
 )
 from dask.distributed import Client
+from datetime import datetime
 import xarray as xr
 import math
 import psutil
@@ -18,6 +19,7 @@ from .io import S3COGSink
 from .tasks import TaskReader
 from . import _plugins
 from odc.io.cgroups import get_cpu_quota, get_mem_quota
+from odc.algo import wait_for_future
 from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
 
@@ -35,10 +37,7 @@ class TaskRunner:
         _log = logging.getLogger(__name__)
         self._cfg = cfg
         self._log = _log
-        self.sink = S3COGSink(
-            cog_opts=cfg.cog_opts,
-            public=cfg.s3_public,
-        )
+        self.sink = S3COGSink(cog_opts=cfg.cog_opts, public=cfg.s3_public,)
 
         _log.info(f"Resolving plugin: {cfg.plugin}")
         mk_proc = _plugins.resolve(cfg.plugin)
@@ -174,15 +173,20 @@ class TaskRunner:
 
         for task in tasks:
             _log.info(f"Starting processing of {task.location}")
+            tk = task.source
+            if tk is not None:
+                t0 = tk.start_time
+            else:
+                t0 = datetime.utcnow()
 
             if check_exists:
                 path = sink.uri(task)
                 _log.debug(f"Checking if can skip {path}")
                 if sink.exists(task):
                     _log.info(f"Skipped task @ {path}")
-                    if task.source:
+                    if tk:
                         _log.info("Notifying completion via SQS")
-                        task.source.done()
+                        tk.done()
 
                     yield TaskResult(task, path, skipped=True)
                     continue
@@ -202,15 +206,34 @@ class TaskRunner:
             cog = client.compute(cog, fifo_timeout="1ms")
 
             _log.debug("Waiting for completion")
-            result = self._safe_result(cog, task)
+            cancelled = False
+
+            for (dt, t_now) in wait_for_future(cog, cfg.future_poll_interval, t0=t0):
+                if tk:
+                    tk.extend_if_needed(
+                        cfg.job_queue_max_lease, cfg.renew_safety_margin
+                    )
+                if cfg.max_processing_time > 0 and dt > cfg.max_processing_time:
+                    _log.error(
+                        f"Task {task.location} failed to finish on time: {dt}>{cfg.max_processing_time}"
+                    )
+                    cancelled = True
+                    cog.cancel()
+                    break
+
+            if cancelled:
+                result = TaskResult(task, error="Cancelled due to timeout")
+            else:
+                result = self._safe_result(cog, task)
+
             if result:
                 _log.info(f"Finished processing of {result.task.location}")
-                if result.task.source:
+                if tk:
                     _log.info("Notifying completion via SQS")
-                    result.task.source.done()
+                    tk.done()
             else:
-                if result.task.source:
-                    result.task.source.cancel()
+                if tk:
+                    tk.cancel()
 
             yield result
 
@@ -225,11 +248,11 @@ class TaskRunner:
             return self._run(self.tasks(tasks))
         if sqs is not None:
             _log.info(
-                f"Processing from SQS: {sqs}, timeout: {cfg.max_processing_time} seconds"
+                f"Processing from SQS: {sqs}, T:{cfg.job_queue_max_lease} M:{cfg.renew_safety_margin} seconds"
             )
             return self._run(
                 self.rdr.stream_from_sqs(
-                    sqs, visibility_timeout=cfg.max_processing_time
+                    sqs, visibility_timeout=cfg.job_queue_max_lease
                 )
             )
         raise ValueError("Must supply one of tasks= or sqs=")
