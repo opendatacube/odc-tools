@@ -57,7 +57,9 @@ def handle_json_message(metadata, transform, odc_metadata_link):
             odc_yaml_uri = get_uri(metadata, rel_val)
         else:
             # if odc_metadata_link is provided, it will look for value with dict path provided
-            odc_yaml_uri = dicttoolz.get_in(odc_metadata_link.split("/"), metadata)
+            odc_yaml_uri = dicttoolz.get_in(
+                odc_metadata_link.split("/"), metadata
+            )
 
         # if odc_yaml_uri exist, it will load the metadata content from that URL
         if odc_yaml_uri:
@@ -131,7 +133,9 @@ def handle_bucket_notification_message(
             # the contents...
             try:
                 s3 = boto3.resource("s3")
-                obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
+                obj = s3.Object(bucket_name, key).get(
+                    ResponseCacheControl="no-cache"
+                )
                 data = load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
             except Exception as e:
@@ -234,7 +238,9 @@ def queue_to_odc(
     region_codes = None
     if region_code_list_uri:
         try:
-            region_codes = set(pd.read_csv(region_code_list_uri).values.ravel())
+            region_codes = set(
+                pd.read_csv(region_code_list_uri, header=None).values.ravel()
+            )
         except FileNotFoundError as e:
             logging.error(f"Could not find region_code file with error: {e}")
         if len(region_codes) == 0:
