@@ -44,14 +44,19 @@ def guess_location(metadata: dict) -> Tuple[str, bool]:
 
 
 def get_items(
-    srch: Search, limit: bool
+    srch: Search, limit: int
 ) -> Generator[Tuple[dict, str, bool], None, None]:
     if limit:
         items = srch.items(limit=limit)
     else:
         items = srch.items()
 
+    # Workaround bug in STAC Search that doesn't stop at the limit
+    count = 0
     for metadata in items.geojson()["features"]:
+        count += 1
+        if count > limit:
+            break
         uri, relative = guess_location(metadata)
         yield (metadata, uri, relative)
 
