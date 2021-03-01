@@ -165,7 +165,7 @@ def do_archiving(metadata, dc: Datacube):
         dc.index.datasets.archive([dataset_id])
     else:
         raise SQStoDCException(
-            f"Archive skipped as failed to dataset with ID: {dataset_id}"
+            f"Failed to get an ID from the message, can't archive."
         )
 
 
@@ -287,16 +287,16 @@ def queue_to_odc(
                             f"Region code {region_code} not in list of allowed region codes, ignoring this dataset."
                         )
 
-            # Index the dataset
-            do_index_update_dataset(
-                metadata,
-                uri,
-                dc,
-                doc2ds,
-                update=update,
-                update_if_exists=update_if_exists,
-                allow_unsafe=allow_unsafe,
-            )
+                # Index the dataset
+                do_index_update_dataset(
+                    metadata,
+                    uri,
+                    dc,
+                    doc2ds,
+                    update=update,
+                    update_if_exists=update_if_exists,
+                    allow_unsafe=allow_unsafe,
+                )
             ds_success += 1
             # Success, so delete the message.
             message.delete()
