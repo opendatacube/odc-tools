@@ -1,8 +1,11 @@
-import pytest
-from odc.stats.model import DateTimeRange
-from odc.stats._cli_common import parse_task as cli_parse_task, parse_all_tasks
-from odc.stats.tasks import parse_task, render_task
 from datetime import datetime, timedelta
+import pytest
+
+from odc.stats._cli_common import parse_all_tasks
+from odc.stats._cli_common import parse_task as cli_parse_task
+from odc.stats.model import DateTimeRange
+from odc.stats.tasks import parse_task, render_task
+from . import DummyPlugin
 
 
 def test_dt_range():
@@ -85,3 +88,36 @@ def test_parse_all_tasks():
     ):
         with pytest.raises(ValueError):
             parse_all_tasks(bad, all_tasks)
+
+
+def test_plugin_product():
+    plugin = DummyPlugin(bands=("red", "green"))
+    product = plugin.product("file:///tmp/{product}/v{version}")
+    assert product.name == DummyPlugin.NAME
+    assert product.short_name == DummyPlugin.SHORT_NAME
+    assert product.version == DummyPlugin.VERSION
+    assert product.location == f"file:///tmp/{product.name}/v{product.version}"
+    assert product.measurements == ("red", "green")
+    assert product.properties["odc:product_family"] == DummyPlugin.PRODUCT_FAMILY
+    assert product.href == f"https://collections.dea.ga.gov.au/product/{product.name}"
+
+    product = plugin.product(
+        "file:///tmp/{product}/v{version}",
+        name="custom-name",
+        short_name="custom-short-name",
+        version="custom-version",
+        product_family="custom-family",
+        producer="custom-producer",
+        properties={"odc:custom-key": 33},
+        collections_site="custom-site.com",
+    )
+
+    assert product.location == f"file:///tmp/{product.name}/v{product.version}"
+    assert product.name == "custom-name"
+    assert product.short_name == "custom-short-name"
+    assert product.version == "custom-version"
+    assert product.measurements == ("red", "green")
+    assert product.properties["odc:product_family"] == "custom-family"
+    assert product.properties["odc:producer"] == "custom-producer"
+    assert product.properties["odc:custom-key"] == 33
+    assert product.href == f"https://custom-site.com/product/{product.name}"

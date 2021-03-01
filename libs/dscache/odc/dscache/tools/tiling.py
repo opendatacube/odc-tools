@@ -15,6 +15,24 @@ GRIDS = {
     "albers_au_25": GridSpec(
         crs=epsg3577, tile_size=(100_000.0, 100_000.0), resolution=(-25, 25)
     ),
+    "au": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-96_000, 96_000)
+    ),
+    "au_10": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-10, 10)
+    ),
+    "au_20": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-20, 20)
+    ),
+    "au_30": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-30, 30)
+    ),
+    "au_60": GridSpec(
+        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-60, 60)
+    ),
+    "global": GridSpec(
+        crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-96_000, 96_000)
+    ),
     "global_10": GridSpec(
         crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-10, 10)
     ),
@@ -31,12 +49,14 @@ GRIDS = {
 
 
 # Inject aliases for Africa
+GRIDS["africa"] = GRIDS["global"]
 for r in (10, 20, 30, 60):
     GRIDS[f"africa_{r}"] = GRIDS[f"global_{r}"]
 
 
 def web_gs(zoom: int, tile_size: int = 256) -> GridSpec:
-    """Construct grid spec compatible with TerriaJS requests at a given level.
+    """
+    Construct grid spec compatible with TerriaJS requests at a given level.
 
     Tile indexes should be the same as google maps, except that Y component is negative,
     this is a limitation of GridSpec class, you can not have tile index direction be

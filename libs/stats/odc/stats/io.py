@@ -2,7 +2,7 @@
 Various I/O adaptors
 """
 
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, cast
 import json
 from urllib.parse import urlparse
 import logging
@@ -52,15 +52,44 @@ class S3COGSink:
         self,
         creds: Union[ReadOnlyCredentials, str, None] = None,
         cog_opts: Optional[Dict[str, Any]] = None,
-        cog_opts_per_band: Optional[Dict[str, Dict[str, Any]]] = None,
         public: bool = False,
     ):
+        """
+        :param creds: S3 write credentials
+        :param cog_opts: Configure compression settings, globally and per-band
+        :param public: Mark objects as public access
+
+        Example of COG config
+
+        .. code-block:: python
+
+           # - Lossless compression for all bands but rgba
+           # - Webp compression for rgba band
+           cfg = {
+               "compression": "deflate",
+               "zlevel": 9,
+               "blocksize": 1024,
+               "overrides": {"rgba": {"compression": "webp", "webp_level": 80}},
+           }
+
+
+        """
 
         if cog_opts is None:
             cog_opts = dict(**DEFAULT_COG_OPTS)
+        else:
+            tmp = dict(**DEFAULT_COG_OPTS)
+            tmp.update(cog_opts)
+            cog_opts = tmp
 
-        if cog_opts_per_band is None:
-            cog_opts_per_band = {}
+        cog_opts_per_band = cast(
+            Dict[str, Dict[str, Any]], cog_opts.pop("overrides", {})
+        )
+        per_band_cfg = {k: v for k, v in cog_opts.items() if isinstance(v, dict)}
+        if per_band_cfg:
+            for k in per_band_cfg:
+                cog_opts.pop(k)
+            cog_opts_per_band.update(per_band_cfg)
 
         self._creds = creds
         self._cog_opts = cog_opts

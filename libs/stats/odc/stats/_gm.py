@@ -7,11 +7,16 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import erase_bad, geomedian_with_mads, to_rgba
 from odc.algo.io import load_enum_filtered
-from .model import OutputProduct, StatsPluginInterface
+from .model import StatsPluginInterface
 from . import _plugins
 
 
 class StatsGMS2(StatsPluginInterface):
+    NAME = "gm_s2_annual"
+    SHORT_NAME = NAME
+    VERSION = '0.0.0'
+    PRODUCT_FAMILY = "geomedian"
+
     def __init__(
         self,
         resampling: str = "bilinear",
@@ -60,35 +65,9 @@ class StatsGMS2(StatsPluginInterface):
         self.cloud_classes = tuple(cloud_classes)
         self._work_chunks = work_chunks
 
-    def product(self, location: Optional[str] = None, **kw) -> OutputProduct:
-        name = "ga_s2_gm"
-        short_name = "ga_s2_gm"
-        version = "0.0.0"
-
-        if location is None:
-            bucket = "deafrica-stats-processing"
-            location = f"s3://{bucket}/{name}/v{version}"
-        else:
-            location = location.rstrip("/")
-
-        measurements = self.bands + self.aux_bands
-
-        properties = {
-            "odc:file_format": "GeoTIFF",
-            "odc:producer": "ga.gov.au",
-            "odc:product_family": "statistics",  # TODO: ???
-            "platform": "sentinel-2",
-        }
-
-        return OutputProduct(
-            name=name,
-            version=version,
-            short_name=short_name,
-            location=location,
-            properties=properties,
-            measurements=measurements,
-            href=f"https://collections.digitalearth.africa/product/{name}",
-        )
+    @property
+    def measurements(self) -> Tuple[str, ...]:
+        return self.bands + self.aux_bands
 
     def input_data(self, task: Task) -> xr.Dataset:
         basis = self._basis_band

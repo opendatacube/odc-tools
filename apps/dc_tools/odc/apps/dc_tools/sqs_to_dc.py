@@ -57,7 +57,9 @@ def handle_json_message(metadata, transform, odc_metadata_link):
             odc_yaml_uri = get_uri(metadata, rel_val)
         else:
             # if odc_metadata_link is provided, it will look for value with dict path provided
-            odc_yaml_uri = dicttoolz.get_in(odc_metadata_link.split("/"), metadata)
+            odc_yaml_uri = dicttoolz.get_in(
+                odc_metadata_link.split("/"), metadata
+            )
 
         # if odc_yaml_uri exist, it will load the metadata content from that URL
         if odc_yaml_uri:
@@ -131,7 +133,9 @@ def handle_bucket_notification_message(
             # the contents...
             try:
                 s3 = boto3.resource("s3")
-                obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
+                obj = s3.Object(bucket_name, key).get(
+                    ResponseCacheControl="no-cache"
+                )
                 data = load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
             except Exception as e:
@@ -161,7 +165,7 @@ def do_archiving(metadata, dc: Datacube):
         dc.index.datasets.archive([dataset_id])
     else:
         raise SQStoDCException(
-            f"Archive skipped as failed to dataset with ID: {dataset_id}"
+            f"Failed to get an ID from the message, can't archive."
         )
 
 
@@ -171,25 +175,38 @@ def do_index_update_dataset(
     dc: Datacube,
     doc2ds: Doc2Dataset,
     update=False,
+    update_if_exists=False,
     allow_unsafe=False,
 ):
     if uri is not None:
+        # Make sure we can create a dataset first
         try:
             ds, err = doc2ds(metadata, uri)
         except ValueError as e:
             raise SQStoDCException(
                 f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
             )
+
+        # Now do something with the dataset
         if ds is not None:
-            if update:
-                updates = {}
-                if allow_unsafe:
-                    updates = {tuple(): changes.allow_any}
-                dc.index.datasets.update(ds, updates_allowed=updates)
-            else:
-                if dc.index.datasets.has(metadata.get("id")):
+            if dc.index.datasets.has(metadata.get("id")):
+                # Update
+                if update or update_if_exists:
+                    # Set up update fields
+                    updates = {}
+                    if allow_unsafe:
+                        updates = {tuple(): changes.allow_any}
+                    # Do the updating
+                    dc.index.datasets.update(ds, updates_allowed=updates)
+                else:
                     logging.warning("Dataset already exists, not indexing")
-                    return
+            else:
+                if update:
+                    # We're expecting to update a dataset, but it doesn't exist
+                    raise SQStoDCException(
+                        "Can't update dataset because it doesn't exist."
+                    )
+                # Everything is working as expected, add the dataset
                 dc.index.datasets.add(ds)
         else:
             raise SQStoDCException(
@@ -207,6 +224,7 @@ def queue_to_odc(
     transform=None,
     limit=None,
     update=False,
+    update_if_exists=False,
     archive=False,
     allow_unsafe=False,
     odc_metadata_link=False,
@@ -220,7 +238,9 @@ def queue_to_odc(
     region_codes = None
     if region_code_list_uri:
         try:
-            region_codes = set(pd.read_csv(region_code_list_uri).values.ravel())
+            region_codes = set(
+                pd.read_csv(region_code_list_uri, header=None).values.ravel()
+            )
         except FileNotFoundError as e:
             logging.error(f"Could not find region_code file with error: {e}")
         if len(region_codes) == 0:
@@ -267,8 +287,16 @@ def queue_to_odc(
                             f"Region code {region_code} not in list of allowed region codes, ignoring this dataset."
                         )
 
-            # Index the dataset
-            do_index_update_dataset(metadata, uri, dc, doc2ds, update, allow_unsafe)
+                # Index the dataset
+                do_index_update_dataset(
+                    metadata,
+                    uri,
+                    dc,
+                    doc2ds,
+                    update=update,
+                    update_if_exists=update_if_exists,
+                    allow_unsafe=allow_unsafe,
+                )
             ds_success += 1
             # Success, so delete the message.
             message.delete()
@@ -329,6 +357,12 @@ def queue_to_odc(
     help="If set, update instead of add datasets",
 )
 @click.option(
+    "--update-if-exists",
+    is_flag=True,
+    default=False,
+    help="If the dataset already exists, update it instead of skipping it.",
+)
+@click.option(
     "--archive",
     is_flag=True,
     default=False,
@@ -361,6 +395,7 @@ def cli(
     odc_metadata_link,
     limit,
     update,
+    update_if_exists,
     archive,
     allow_unsafe,
     record_path,
@@ -391,6 +426,7 @@ def cli(
         transform=transform,
         limit=limit,
         update=update,
+        update_if_exists=update_if_exists,
         archive=archive,
         allow_unsafe=allow_unsafe,
         record_path=record_path,

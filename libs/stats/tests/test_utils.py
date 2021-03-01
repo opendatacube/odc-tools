@@ -1,14 +1,11 @@
-import pathlib
-from datetime import datetime, timedelta
+from datetime import datetime
 from types import SimpleNamespace
-from uuid import UUID
 import pystac
 
 from odc.index.stac import stac_transform
 from odc.stats.model import DateTimeRange
 from odc.stats.tasks import TaskReader
 from odc.stats.utils import (
-    CompressedDataset,
     bin_annual,
     bin_full_history,
     bin_generic,
@@ -16,24 +13,13 @@ from odc.stats.utils import (
     mk_season_rules,
     season_binner,
 )
-
-TEST_DIR = pathlib.Path(__file__).parent.absolute()
-
-
-def gen_compressed_dss(n, dt0=datetime(2010, 1, 1, 11, 30, 27), step=timedelta(days=1)):
-    if isinstance(step, int):
-        step = timedelta(days=step)
-
-    dt = dt0
-    for i in range(n):
-        yield CompressedDataset(UUID(int=i), dt)
-        dt = dt + step
+from . import gen_compressed_dss
 
 
-def test_stac():
+def test_stac(test_db_path):
     from odc.stats._gm import StatsGMS2
     product = StatsGMS2().product(location="/tmp/")
-    reader = TaskReader(str(TEST_DIR / "test_tiles.db"), product)
+    reader = TaskReader(test_db_path, product)
     task = reader.load_task(reader.all_tiles[0])
 
     stac_meta = task.render_metadata()

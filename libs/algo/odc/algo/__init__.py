@@ -2,6 +2,8 @@
 
 """
 
+from ._numexpr import apply_numexpr, safe_div
+
 from ._masking import (
     keep_good_np,
     keep_good_only,
@@ -38,6 +40,7 @@ from ._dask import (
     chunked_persist_da,
     randomize,
     reshape_yxbt,
+    wait_for_future,
 )
 
 from ._memsink import (
@@ -55,11 +58,11 @@ from ._rgba import (
     colorize,
 )
 
-from ._warp import (
-    xr_reproject,
-)
+from ._warp import xr_reproject
 
 __all__ = (
+    "apply_numexpr",
+    "safe_div",
     "keep_good_np",
     "keep_good_only",
     "erase_bad",
@@ -85,6 +88,7 @@ __all__ = (
     "reshape_for_geomedian",
     "geomedian_with_mads",
     "reshape_yxbt",
+    "wait_for_future",
     "chunked_persist",
     "chunked_persist_da",
     "chunked_persist_ds",

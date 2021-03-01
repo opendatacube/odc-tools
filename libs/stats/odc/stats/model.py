@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -170,6 +170,69 @@ class OutputProduct:
         )
 
 
+class WorkTokenInterface(ABC):
+    @staticmethod
+    def now():
+        """
+        Implementations should use this method internally
+        """
+        return datetime.utcnow()
+
+    @abstractproperty
+    def start_time(self) -> datetime:
+        """
+        Should return timestamp when task "started"
+        """
+        pass
+
+    @abstractproperty
+    def deadline(self) -> datetime:
+        """
+        Should return timestamp by which work is to be completed
+        """
+        pass
+
+    @abstractmethod
+    def done(self):
+        """
+        Called when work is completed successfully
+        """
+        pass
+
+    @abstractmethod
+    def cancel(self):
+        """
+        Called when work is terminated for whatever reason without successful result
+        """
+        pass
+
+    @abstractmethod
+    def extend(self, seconds: int) -> bool:
+        """
+        Called to extend work deadline
+        """
+        pass
+
+    @property
+    def active_seconds(self) -> float:
+        """
+        :returns: Number of seconds this Token has been active for
+        """
+        return (self.now() - self.start_time).total_seconds()
+
+    def extend_if_needed(self, seconds, buffer_seconds: int = 30) -> bool:
+        """
+        Call ``.extend(seconds)`` only if deadline is within ``buffer_seconds`` from now
+
+        :returns: True if deadline is still too far in the future
+        :returns: Result of ``.extend(seconds)`` if deadline is close enough
+        """
+        t_now = self.now()
+        if t_now + timedelta(seconds=buffer_seconds) > self.deadline:
+            return self.extend(seconds)
+        return True
+
+
 @dataclass
 class Task:
     product: OutputProduct
@@ -179,7 +242,7 @@ class Task:
     datasets: Tuple[Dataset, ...] = field(repr=False)
     uuid: UUID = UUID(int=0)
     short_time: str = field(init=False, repr=False)
-    source: Any = field(init=True, repr=False, default=None)
+    source: Optional[WorkTokenInterface] = field(init=True, repr=False, default=None)
 
     def __post_init__(self):
         self.short_time = self.time_range.short
@@ -320,8 +383,13 @@ class Task:
 
 
 class StatsPluginInterface(ABC):
-    @abstractmethod
-    def product(self, location: Optional[str] = None, **kw: Any) -> OutputProduct:
+    NAME = "*unset*"
+    SHORT_NAME = ""
+    VERSION = "0.0.0"
+    PRODUCT_FAMILY = "statistics"
+
+    @abstractproperty
+    def measurements(self) -> Tuple[str, ...]:
         pass
 
     @abstractmethod
@@ -337,6 +405,57 @@ class StatsPluginInterface(ABC):
         Given result of ``.reduce(..)`` optionally produce RGBA preview image
         """
         return None
+
+    def product(
+        self,
+        location: str,
+        name: Optional[str] = None,
+        short_name: Optional[str] = None,
+        version: Optional[str] = None,
+        product_family: Optional[str] = None,
+        collections_site: str = "collections.dea.ga.gov.au",
+        producer: str = "ga.gov.au",
+        properties: Dict[str, Any] = dict(),
+    ) -> OutputProduct:
+        """
+        :param location: Output location string or template, example ``s3://bucket/{product}/v{version}``
+        :param name: Override for product name
+        :param short_name: Override for product short_name
+        :param version: Override for version
+        :param product_family: Override for odc:product_family
+        :param collections_site: href=f"https://{collections_site}/product/{name}"
+        :param producer: Producer ``ga.gov.au``
+        """
+        if name is None:
+            name = self.NAME
+        if short_name is None:
+            short_name = self.SHORT_NAME
+            if len(short_name) == 0:
+                short_name = name
+        if version is None:
+            version = self.VERSION
+        if product_family is None:
+            product_family = self.PRODUCT_FAMILY
+
+        if "{" in location and "}" in location:
+            location = location.format(
+                name=name, product=name, version=version, short_name=short_name
+            )
+
+        return OutputProduct(
+            name=name,
+            version=version,
+            short_name=short_name,
+            location=location,
+            properties={
+                "odc:file_format": "GeoTIFF",
+                "odc:product_family": product_family,
+                "odc:producer": producer,
+                **properties,
+            },
+            measurements=self.measurements,
+            href=f"https://{collections_site}/product/{name}",
+        )
 
 
 @dataclass
@@ -369,7 +488,12 @@ class TaskRunnerConfig:
 
     # Plugin
     plugin: str = ""
-    plugin_config: Dict[str, Any] = field(init=True, repr=False, default_factory=dict)
+    plugin_config: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
+
+    # Output Product
+    #  .{name| short_name| version| product_family|
+    #    collections_site| producer| properties: Dict[str, Any]}
+    product: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
 
     # Dask config
     threads: int = -1
@@ -379,11 +503,22 @@ class TaskRunnerConfig:
     output_location: str = ""
     s3_public: bool = False
     cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
-    cog_opts_per_band: Dict[str, Dict[str, Any]] = field(init=True, repr=True, default_factory=dict)
     overwrite: bool = False
 
-    # SQS config when applicable
-    max_processing_time: int = 60 * 60
+    # Terminate task if running longer than this amount (seconds)
+    max_processing_time: int = 0
+
+    # tuning/testing params
+    #
+
+    # SQS renew amount (seconds)
+    job_queue_max_lease: int = 5 * 60
+
+    # Renew work token when this close to deadline (seconds)
+    renew_safety_margin: int = 30
+
+    # How often future is checked for timeout/sqs renew
+    future_poll_interval: float = 5
 
     def __post_init__(self):
         self.cog_opts = dicttoolz.merge(self.default_cog_settings(), self.cog_opts)
