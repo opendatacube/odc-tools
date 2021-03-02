@@ -74,8 +74,10 @@ s3-to-dc 's3://bucket/path/**/*.yaml' 'product-name-a product-name-b'
 
 Extended usage:
 
+The following command updates the datasets instead of adding them and allows unsafe changes. Be careful!
+
 ``` bash
-TODO:
+s3-to-dc 's3://bucket/path/**/*.yaml' 'product-name-a product-name-b' --update --allow-unsafe
 ```
 
 ### thredds-to-dc
