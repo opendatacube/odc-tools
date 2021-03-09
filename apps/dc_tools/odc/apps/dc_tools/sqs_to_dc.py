@@ -385,6 +385,12 @@ def queue_to_odc(
     default=None,
     help="A path to a list (one item per line, in txt or gzip format) of valide region_codes to include",
 )
+@click.option(
+    "--absolute",
+    is_flag=True,
+    default=False,
+    help="Use absolute paths when converting from stac",
+)
 @click.argument("queue_name", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -400,6 +406,7 @@ def cli(
     allow_unsafe,
     record_path,
     region_code_list_uri,
+    absolute,
     queue_name,
     product,
 ):
@@ -407,7 +414,7 @@ def cli(
 
     transform = None
     if stac:
-        transform = stac_transform
+        transform = lambda stat_doc: stac_transform(stat_doc, not absolute)
 
     candidate_products = product.split()
 
