@@ -112,12 +112,6 @@ def dump_to_odc(
     default=False,
     help="Needed when accessing requester pays public buckets",
 )
-@click.option(
-    "--absolute",
-    is_flag=True,
-    default=False,
-    help="Use absolute measurements file paths instead of relative.",
-)
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -130,7 +124,6 @@ def cli(
     skip_check,
     no_sign_request,
     request_payer,
-    absolute,
     uri,
     product,
 ):
