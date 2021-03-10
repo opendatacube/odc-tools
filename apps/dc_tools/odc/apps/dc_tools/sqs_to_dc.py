@@ -414,7 +414,7 @@ def cli(
 
     transform = None
     if stac:
-        transform = lambda stat_doc: stac_transform(stat_doc, not absolute)
+        transform = lambda stat_doc: stac_transform(stat_doc, relative=not absolute)
 
     candidate_products = product.split()
 
