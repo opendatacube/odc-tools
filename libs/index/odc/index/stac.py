@@ -102,7 +102,7 @@ def _get_stac_bands(
             }
 
         path = asset["href"]
-        band_index = asset["band"] if "band" in asset else None
+        band_index = asset.get("band", None)
         if relative:
             path = Path(path).name
 
