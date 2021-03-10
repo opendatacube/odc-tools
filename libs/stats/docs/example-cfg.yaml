@@ -18,7 +18,7 @@ product:
   # specific to a site: Africa
   # (for AU just keep defaults)
   #collections_site: collections.digitalearthafrica.org
-  collections_site: explorer.digitalearthafrica.org
+  collections_site: explorer.digitalearth.africa
   producer: digitalearthafrica.org 
 
   # Any extra fields to add to .properties section of the STAC/EO3
