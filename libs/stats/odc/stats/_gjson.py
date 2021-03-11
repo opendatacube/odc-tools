@@ -43,8 +43,8 @@ def compute_grid_info(
     """
     if title_width == 0:
         nmax = max([max(abs(ix), abs(iy)) for ix, iy in cells])
-        # title_width is the number of digits in the index, +1 for positive or negative
-        title_width = len(str(nmax)) + 1
+        # title_width is the number of digits in the index
+        title_width = len(str(nmax))
 
     grid_info = {}
 
@@ -61,7 +61,7 @@ def compute_grid_info(
             "type": "Feature",
             "geometry": geom.json,
             "properties": {
-                "title": f"{ix:+0{title_width}d},{iy:+0{title_width}d}",
+                "title": f"{ix:0{title_width}d},{iy:0{title_width}d}",
                 "utc_offset": utc_offset,
                 "total": len(cell.dss),
             },
