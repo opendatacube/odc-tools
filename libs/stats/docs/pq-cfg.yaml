@@ -2,9 +2,6 @@
 #
 #    odc-stats run --config <this-file|content of this file> ...
 
-# It's a template {product} and {version} are replaced at run time
-# output_location: "s3://deafrica-data-dev-af/{product}/{version}/"
-
 # Configure Plugin and Product Attributes
 plugin: pq
 
@@ -12,7 +9,7 @@ plugin: pq
 product:
   name: pc_s2_annual
   short_name: pc_s2_annual
-  version: 1.0.0
+  version: 0.0.1
   product_family: pixel_quality_statistics
 
   # specific to a site: Africa
@@ -57,7 +54,7 @@ cog_opts:
   # Default settings for bands
   compression: deflate
   zlevel: 9
-  blocksize: 1024
+  blocksize: 800
 
   # overview settings
   ovr_blocksize: 512
