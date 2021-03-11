@@ -330,8 +330,9 @@ class Task:
             processing_dt, timespec="seconds"
         )
         properties["odc:region_code"] = region_code
-        properties["odc:lineage"] = dict(inputs=inputs)
         properties["odc:product"] = product.name
+        properties["odc:dataset_version"] = product.version
+        properties["odc:lineage"] = dict(inputs=inputs)
 
         geobox_wgs84 = geobox.extent.to_crs(
             "epsg:4326", resolution=math.inf, wrapdateline=True
