@@ -10,41 +10,44 @@ from odc.io.text import split_and_check, parse_range_int
 epsg3577 = CRS("epsg:3577")
 epsg6933 = CRS("epsg:6933")
 
-
+# Origin was chosen such that there are no negative indexed tiles for any valid
+# point within a given CRS's valid region, and also making sure that x=0,y=0
+# lines fall on tile edges.
+#
 GRIDS = {
     "albers_au_25": GridSpec(
         crs=epsg3577, tile_size=(100_000.0, 100_000.0), resolution=(-25, 25)
     ),
     "au": GridSpec(
-        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-96_000, 96_000)
+        crs=epsg3577,
+        tile_size=(96_000.0, 96_000.0),
+        resolution=(-96_000, 96_000),
+        origin=(-5088000, -2208000),
     ),
-    "au_10": GridSpec(
-        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-10, 10)
-    ),
-    "au_20": GridSpec(
-        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-20, 20)
-    ),
-    "au_30": GridSpec(
-        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-30, 30)
-    ),
-    "au_60": GridSpec(
-        crs=epsg3577, tile_size=(96_000.0, 96_000.0), resolution=(-60, 60)
-    ),
+    **{
+        f"au_{n}": GridSpec(
+            crs=epsg3577,
+            tile_size=(96_000.0, 96_000.0),
+            resolution=(-n, n),
+            origin=(-5088000, -2208000),
+        )
+        for n in (10, 20, 30, 60)
+    },
     "global": GridSpec(
-        crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-96_000, 96_000)
+        crs=epsg6933,
+        tile_size=(96_000.0, 96_000.0),
+        resolution=(-96_000, 96_000),
+        origin=(-7392000, -17376000),
     ),
-    "global_10": GridSpec(
-        crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-10, 10)
-    ),
-    "global_20": GridSpec(
-        crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-20, 20)
-    ),
-    "global_30": GridSpec(
-        crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-30, 30)
-    ),
-    "global_60": GridSpec(
-        crs=epsg6933, tile_size=(96_000.0, 96_000.0), resolution=(-60, 60)
-    ),
+    **{
+        f"global_{n}": GridSpec(
+            crs=epsg6933,
+            tile_size=(96_000.0, 96_000.0),
+            resolution=(-n, n),
+            origin=(-7392000, -17376000),
+        )
+        for n in (10, 20, 30, 60)
+    },
 }
 
 
