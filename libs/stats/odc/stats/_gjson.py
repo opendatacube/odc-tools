@@ -62,6 +62,9 @@ def compute_grid_info(
             "geometry": geom.json,
             "properties": {
                 "title": f"{ix:0{title_width}d},{iy:0{title_width}d}",
+                "region_code": f"x{ix:0{title_width}d}y{iy:0{title_width}d}",
+                "ix": ix,
+                "iy": iy,
                 "utc_offset": utc_offset,
                 "total": len(cell.dss),
             },
