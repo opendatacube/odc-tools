@@ -141,11 +141,8 @@ class TaskRunner:
             nds = len(task.datasets)
             # TODO: take care of utc offset for day boundaries when computing ndays
             ndays = len(set(ds.center_time.date() for ds in task.datasets))
-            task_id = (
-                f"{task.short_time}/{task.tile_index[0]:+05d}/{task.tile_index[1]:+05d}"
-            )
             flag = flag_mapping.get(exists, "")
-            msg = f"{task_id} days={ndays:03} ds={nds:04} {uri}{flag}"
+            msg = f"{task.location} days={ndays:03} ds={nds:04} {uri}{flag}"
 
             yield TaskResult(task, uri, skipped=skipped, meta=msg)
 
