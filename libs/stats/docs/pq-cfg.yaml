@@ -12,3 +12,4 @@ product:
 
   collections_site: explorer.digitalearth.africa
   producer: digitalearthafrica.org
+  region_code_format: "x{x:03d}y{y:03d}"
