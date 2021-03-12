@@ -141,17 +141,19 @@ class OutputProduct:
     properties: Dict[str, str]
     measurements: Tuple[str, ...]
     href: str = ""
+    region_code_format: str = "x{x:02d}y{y:02d}"
     cfg: Any = None
 
     def __post_init__(self):
         if self.href == "":
             self.href = f"{default_href_prefix}/{self.name}"
 
-    def region_code(self, tidx: TileIdx_xy, sep="", n=4) -> str:
+    def region_code(self, tidx: TileIdx_xy) -> str:
         """
         Render tile index into a string.
         """
-        return f"x{tidx[0]:+0{n}d}{sep}y{tidx[1]:+0{n}d}"
+        x, y = tidx
+        return self.region_code_format.format(x=x, y=y)
 
     @staticmethod
     def dummy(
@@ -261,7 +263,10 @@ class Task:
         """
         Product relative location for this task
         """
-        return self.product.region_code(self.tile_index, "/") + "/" + self.short_time
+        rc = self.product.region_code(self.tile_index)
+        mid = len(rc)//2
+        p1, p2 = rc[:mid], rc[mid:]
+        return "/".join([p1, p2 , self.short_time])
 
     def _lineage(self) -> Tuple[UUID, ...]:
         return tuple(ds.id for ds in self.datasets)

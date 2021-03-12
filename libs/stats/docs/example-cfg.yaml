@@ -21,6 +21,9 @@ product:
   collections_site: explorer.digitalearth.africa
   producer: digitalearthafrica.org
 
+  # For Africa we need to pad to 3 chars for fixed width
+  region_code_format: "x{x:03d}y{y:03d}"
+
   # Any extra fields to add to .properties section of the STAC/EO3
   # for each dataset document
   properties: {}
