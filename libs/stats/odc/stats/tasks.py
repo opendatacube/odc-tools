@@ -361,7 +361,7 @@ class TaskReader:
         self,
         sqs_queue,
         product: Optional[OutputProduct] = None,
-        visibility_timeout: int = 3600,
+        visibility_timeout: int = 300,
         **kw,
     ) -> Iterator[Task]:
         from odc.aws.queue import get_messages, get_queue
