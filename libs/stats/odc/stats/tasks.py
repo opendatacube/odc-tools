@@ -63,7 +63,7 @@ def sanitize_query(query):
 
 def render_task(tidx: TileIdx_txy) -> str:
     period, xi, yi = tidx
-    return f"{period}/{xi:+04d}/{yi:+04d}"
+    return f"{period}/{xi:02d}/{yi:02d}"
 
 
 def parse_task(s: str) -> TileIdx_txy:
