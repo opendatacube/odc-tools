@@ -121,3 +121,5 @@ def test_plugin_product():
     assert product.properties["odc:producer"] == "custom-producer"
     assert product.properties["odc:custom-key"] == 33
     assert product.href == f"https://custom-site.com/product/{product.name}"
+
+    assert product.region_code((1, 22)) == 'x01y22'
