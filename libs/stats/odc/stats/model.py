@@ -448,6 +448,9 @@ class StatsPluginInterface(ABC):
                 name=name, product=name, version=version, short_name=short_name
             )
 
+        # remove trailing / if present
+        location = location.rstrip("/")
+
         return OutputProduct(
             name=name,
             version=version,
