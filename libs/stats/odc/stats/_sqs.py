@@ -55,9 +55,8 @@ class SQSWorkToken(WorkTokenInterface):
             return False
 
         new_deadline = self.now() + timedelta(seconds=seconds)
-        new_timeout = int((new_deadline - self._t0).total_seconds())
 
-        rr = self._msg.change_visibility(VisibilityTimeout=new_timeout)
+        rr = self._msg.change_visibility(VisibilityTimeout=seconds)
         ok = toolz.get_in(["ResponseMetadata", "HTTPStatusCode"], rr, default=-1) == 200
 
         if ok:
