@@ -52,12 +52,16 @@ class S3COGSink:
         self,
         creds: Union[ReadOnlyCredentials, str, None] = None,
         cog_opts: Optional[Dict[str, Any]] = None,
+        acl: Optional[str] = None,
         public: bool = False,
     ):
         """
         :param creds: S3 write credentials
         :param cog_opts: Configure compression settings, globally and per-band
-        :param public: Mark objects as public access
+        :param acl: Canned ACL string:
+                    private|public-read|public-read-write|authenticated-read|
+                    aws-exec-read|bucket-owner-read|bucket-owner-full-control
+        :param public: Mark objects as public access, same as `acl="public-read"`
 
         Example of COG config
 
@@ -91,13 +95,16 @@ class S3COGSink:
                 cog_opts.pop(k)
             cog_opts_per_band.update(per_band_cfg)
 
+        if acl is None and public:
+            acl = "public-read"
+
         self._creds = creds
         self._cog_opts = cog_opts
         self._cog_opts_per_band = cog_opts_per_band
         self._meta_ext = "json"
         self._meta_contentype = "application/json"
         self._band_ext = EXT_TIFF
-        self._public = public
+        self._acl = acl
 
     def uri(self, task: Task) -> str:
         return task.metadata_path("absolute", ext=self._meta_ext)
@@ -128,8 +135,8 @@ class S3COGSink:
             kw = dict(creds=self._get_creds())
             if ContentType is not None:
                 kw["ContentType"] = ContentType
-            if self._public:
-                kw["ACL"] = "public-read"
+            if self._acl is not None:
+                kw["ACL"] = self._acl
 
             return save_blob_to_s3(data, url, with_deps=with_deps, **kw)
         elif _u.scheme == "file":

@@ -37,7 +37,9 @@ class TaskRunner:
         _log = logging.getLogger(__name__)
         self._cfg = cfg
         self._log = _log
-        self.sink = S3COGSink(cog_opts=cfg.cog_opts, public=cfg.s3_public,)
+        self.sink = S3COGSink(
+            cog_opts=cfg.cog_opts, acl=cfg.s3_acl, public=cfg.s3_public
+        )
 
         _log.info(f"Resolving plugin: {cfg.plugin}")
         mk_proc = _plugins.resolve(cfg.plugin)

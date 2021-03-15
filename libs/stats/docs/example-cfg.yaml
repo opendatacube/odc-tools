@@ -41,8 +41,16 @@ product:
 # input data is public-access
 aws_unsigned: true
 
-# mark output files as public read (default is false)
-s3_public: true
+# Supply arbitrary "canned" ACL for s3 put operations
+#
+# Mark objects for public read
+#  s3_acl: 'public-read'
+# When writing cross-account use this
+#  s3_acl: 'bucket-owner-full-control'
+
+# Same as s3_acl: 'public-read', use `s3_acl: public-read` instead
+# s3_public: true
+
 
 # Completion deadline in seconds, 0 (default) means take
 # as along as it takes
