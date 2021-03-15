@@ -264,9 +264,9 @@ class Task:
         Product relative location for this task
         """
         rc = self.product.region_code(self.tile_index)
-        mid = len(rc)//2
+        mid = len(rc) // 2
         p1, p2 = rc[:mid], rc[mid:]
-        return "/".join([p1, p2 , self.short_time])
+        return "/".join([p1, p2, self.short_time])
 
     def _lineage(self) -> Tuple[UUID, ...]:
         return tuple(ds.id for ds in self.datasets)
@@ -424,7 +424,7 @@ class StatsPluginInterface(ABC):
         properties: Dict[str, Any] = dict(),
     ) -> OutputProduct:
         """
-        :param location: Output location string or template, example ``s3://bucket/{product}/v{version}``
+        :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
         :param name: Override for product name
         :param short_name: Override for product short_name
         :param version: Override for version
@@ -444,8 +444,14 @@ class StatsPluginInterface(ABC):
             product_family = self.PRODUCT_FAMILY
 
         if "{" in location and "}" in location:
+            version_dashed = version.replace(".", "-")
             location = location.format(
-                name=name, product=name, version=version, short_name=short_name
+                name=name,
+                product=name,
+                short_name=short_name,
+                version=version_dashed,
+                version_dashed=version_dashed,
+                version_raw=version,
             )
 
         # remove trailing / if present

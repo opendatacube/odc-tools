@@ -92,7 +92,7 @@ def test_parse_all_tasks():
 
 def test_plugin_product():
     plugin = DummyPlugin(bands=("red", "green"))
-    product = plugin.product("file:///tmp/{product}/v{version}")
+    product = plugin.product("file:///tmp/{product}/v{version_raw}")
     assert product.name == DummyPlugin.NAME
     assert product.short_name == DummyPlugin.SHORT_NAME
     assert product.version == DummyPlugin.VERSION
