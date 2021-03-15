@@ -99,6 +99,7 @@ def run(
         config = {}
 
     _cfg = dict(**config)
+    s3_acl = 'public-read' if public else None
 
     cfg_from_cli = {
         k: v
@@ -108,7 +109,7 @@ def run(
             threads=threads,
             memory_limit=memory_limit,
             output_location=location,
-            s3_public=public,
+            s3_acl=s3_acl,
             overwrite=overwrite,
             max_processing_time=max_processing_time,
         ).items()

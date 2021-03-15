@@ -510,6 +510,8 @@ class TaskRunnerConfig:
 
     # S3/Output config
     output_location: str = ""
+    s3_acl: Optional[str] = None
+    # s3_public is deprecated, use s3_acl="public-read" instead
     s3_public: bool = False
     cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
     overwrite: bool = False
