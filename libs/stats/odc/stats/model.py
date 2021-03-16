@@ -422,6 +422,7 @@ class StatsPluginInterface(ABC):
         collections_site: str = "collections.dea.ga.gov.au",
         producer: str = "ga.gov.au",
         properties: Dict[str, Any] = dict(),
+        region_code_format: str = "x{x:02d}y{y:02d}",
     ) -> OutputProduct:
         """
         :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
@@ -431,6 +432,7 @@ class StatsPluginInterface(ABC):
         :param product_family: Override for odc:product_family
         :param collections_site: href=f"https://{collections_site}/product/{name}"
         :param producer: Producer ``ga.gov.au``
+        :param region_code_format: Change region code formatting, default ``"x{x:02d}y{y:02d}"``
         """
         if name is None:
             name = self.NAME
@@ -470,6 +472,7 @@ class StatsPluginInterface(ABC):
             },
             measurements=self.measurements,
             href=f"https://{collections_site}/product/{name}",
+            region_code_format=region_code_format,
         )
 
 
