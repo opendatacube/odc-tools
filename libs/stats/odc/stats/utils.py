@@ -44,8 +44,8 @@ def bin_seasonal(
 
     tasks = {}
     for tidx, cell in cells.items():
-        # TODO: deal with UTC offsets for day boundary determination
-        grouped = toolz.groupby(lambda ds: binner(ds.time), cell.dss)
+        utc_offset = cell.utc_offset
+        grouped = toolz.groupby(lambda ds: binner(ds.time + utc_offset), cell.dss)
 
         for temporal_k, dss in grouped.items():
             if temporal_k != "":
@@ -71,8 +71,8 @@ def bin_annual(
     """
     tasks = {}
     for tidx, cell in cells.items():
-        # TODO: deal with UTC offsets for day boundary determination
-        grouped = toolz.groupby(lambda ds: ds.time.year, cell.dss)
+        utc_offset = cell.utc_offset
+        grouped = toolz.groupby(lambda ds: (ds.time + utc_offset).year, cell.dss)
 
         for year, dss in grouped.items():
             temporal_k = (f"{year}--P1Y",)
