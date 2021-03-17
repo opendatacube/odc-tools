@@ -145,8 +145,6 @@ class SaveTasks:
             cfg["tiles"] = tiles
             query["geopolygon"] = gs_bounds(self._gridspec, tiles)
 
-        # TODO: properly handle UTC offset when limiting query to a given time temporal_range
-        #       Basically need to pad query by 12hours, then trim datasets post-query
         if temporal_range is not None:
             query.update(
                 temporal_range.dc_query(pad=0.6)
@@ -199,8 +197,14 @@ class SaveTasks:
         if tiles is not None:
             # prune out tiles that were not requested
             cells = {
-                tidx: dss for tidx, dss in cells.items() if is_tile_in(tidx, tiles)
+                tidx: cell for tidx, cell in cells.items() if is_tile_in(tidx, tiles)
             }
+
+        if temporal_range is not None:
+            # Prune Datasets outside of temporal range (after correcting for UTC offset)
+            for cell in cells.values():
+                utc_offset = cell.utc_offset
+                cell.dss = [ds for ds in cell.dss if (ds.time + utc_offset) in temporal_range]
 
         n_tiles = len(cells)
         msg(f"Total of {n_tiles:,d} spatial tiles")
