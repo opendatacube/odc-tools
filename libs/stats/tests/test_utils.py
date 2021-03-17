@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 import pystac
 
@@ -18,6 +18,7 @@ from . import gen_compressed_dss
 
 def test_stac(test_db_path):
     from odc.stats._gm import StatsGMS2
+
     product = StatsGMS2().product(location="/tmp/")
     reader = TaskReader(test_db_path, product)
     task = reader.load_task(reader.all_tiles[0])
@@ -34,7 +35,11 @@ def test_stac(test_db_path):
 
 def test_binning():
     dss = list(gen_compressed_dss(100, dt0=datetime(2000, 1, 1), step=27))
-    cells = {(0, 1): SimpleNamespace(dss=dss, geobox=None, idx=None)}
+    cells = {
+        (0, 1): SimpleNamespace(
+            dss=dss, geobox=None, idx=None, utc_offset=timedelta(seconds=0)
+        )
+    }
 
     def verify(task):
         for (t, *_), dss in task.items():
