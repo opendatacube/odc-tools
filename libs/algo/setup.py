@@ -19,12 +19,12 @@ setup(
         "xarray",
         "numpy",
         "toolz",
-        "hdstats>=0.1.7.post5",
         "odc-index",
         "datacube",
         "scikit-image",
         "dask_image",
     ],
+    extras_require={'hdstats': ["hdstats>=0.1.7.post5"]},
     packages=["odc.algo"],
     zip_safe=False,
 )
