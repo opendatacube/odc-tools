@@ -127,10 +127,8 @@ def stac_api_to_odc(
     **kwargs,
 ) -> Tuple[int, int]:
     # QA the BBOX
-    if config.get("bbox"):
-        assert (
-            len(config["bbox"]) == 4
-        ), "Bounding box must be of the form lon-min,lat-min,lon-max,lat-max"
+    if config.get("bbox") and len(config["bbox"]) != 4:
+        raise ValueError("Bounding box must be of the form lon-min,lat-min,lon-max,lat-max")
 
     # QA the search
     srch = Search().search(**config)
