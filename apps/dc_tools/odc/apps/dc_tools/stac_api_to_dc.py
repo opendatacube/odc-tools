@@ -211,18 +211,17 @@ def cli(
 
     candidate_products = product.split()
 
-    config = {
-        "datetime": datetime,
-        "bbox": bbox,
-        "collections": collections,
-    }
+    config = {}
 
     # Format the search terms
     if bbox:
         config["bbox"] = list(map(float, config["bbox"].split(",")))
 
-    if config["collections"]:
+    if collections:
         config["collections"] = config["collections"].split(",")
+
+    if datetime:
+        config["datetime"] = datetime
 
     # Do the thing
     dc = Datacube()
