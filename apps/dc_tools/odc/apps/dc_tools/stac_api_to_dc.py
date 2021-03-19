@@ -127,10 +127,8 @@ def stac_api_to_odc(
     **kwargs,
 ) -> Tuple[int, int]:
     # QA the BBOX
-    if config["bbox"]:
-        assert (
-            len(config["bbox"]) == 4
-        ), "Bounding box must be of the form lon-min,lat-min,lon-max,lat-max"
+    if config.get("bbox") and len(config["bbox"]) != 4:
+        raise ValueError("Bounding box must be of the form lon-min,lat-min,lon-max,lat-max")
 
     # QA the search
     srch = Search().search(**config)
@@ -211,18 +209,17 @@ def cli(
 
     candidate_products = product.split()
 
-    config = {
-        "datetime": datetime,
-        "bbox": bbox,
-        "collections": collections,
-    }
+    config = {}
 
     # Format the search terms
     if bbox:
         config["bbox"] = list(map(float, config["bbox"].split(",")))
 
-    if config["collections"]:
+    if collections:
         config["collections"] = config["collections"].split(",")
+
+    if datetime:
+        config["datetime"] = datetime
 
     # Do the thing
     dc = Datacube()
