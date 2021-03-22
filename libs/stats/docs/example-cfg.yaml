@@ -67,7 +67,7 @@ future_poll_interval: 5
 # TIFF compression settings
 cog_opts:
   # Default settings for bands
-  compression: deflate
+  compress: deflate
   zlevel: 9
   blocksize: 800
 
@@ -80,5 +80,5 @@ cog_opts:
   # Applies to Geomedian Product
   overrides:
     rgba:
-      compression: webp
+      compress: webp
       webp_level: 90
