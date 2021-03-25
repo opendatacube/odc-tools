@@ -3,6 +3,58 @@ import itertools
 from typing import Mapping, Any, Iterable, Optional
 
 
+def redrive_queue(
+    queue_name: str,
+    to_queue_name: Optional[str] = None,
+    limit: Optional[int] = None,
+    dryrun: Optional[bool] = False,
+):
+    """
+    Redrive messages from one queue to another. Default usage is to define
+    a "deadletter" queue, and pick its "alive" counterpart, and redrive
+    messages to that queue.
+    """
+    dead_queue = get_queue(queue_name)
+    alive_queue = None
+
+    if to_queue_name is not None:
+        alive_queue = get_queue(to_queue_name)
+    else:
+        count = 0
+        for q in dead_queue.dead_letter_source_queues.all():
+            alive_queue = q
+            count += 1
+            if count > 1:
+                raise Exception(
+                    "Deadletter queue has more than one source, please specify the target queue name."
+                )
+        if count == 0:
+            raise Exception(
+                "No alive queue found for the deadletter queue, please check your configuration."
+            )
+
+    messages = get_messages(dead_queue)
+
+    count_messages = int(dead_queue.attributes.get("ApproximateNumberOfMessages"))
+
+    # If there's no messages then there's no work to do. If it's a dryrun, we
+    # don't do anything either.
+    if count_messages == 0 or dryrun:
+        return count_messages
+
+    count = 0
+    for message in messages:
+        # Assume this works. Exception handling elsewhere.
+        alive_queue.send_message(MessageBody=message.body)
+        message.delete()
+        count += 1
+        if limit and count >= limit:
+            break
+
+    # Return the number of messages that were redriven.
+    return count
+
+
 def get_queue(queue_name: str):
     """
     Return a queue resource by name, e.g., alex-really-secret-queue

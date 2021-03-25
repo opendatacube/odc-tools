@@ -1,13 +1,12 @@
 import click
 import sys
 import logging
-from odc.aws.queue import get_queue, get_messages
+from odc.aws.queue import redrive_queue
 
 
 @click.command("redrive-to-queue")
 @click.argument("queue", required=True)
-@click.argument("to-queue", required=True)
-
+@click.argument("to-queue", required=False)
 @click.option(
     "--limit",
     "-l",
@@ -34,34 +33,19 @@ def cli(queue, to_queue, limit, dryrun):
 
     _log = logging.getLogger(__name__)
 
-    dead_queue = get_queue(queue)
-    alive_queue = get_queue(to_queue)
+    count = redrive_queue(queue, to_queue, limit, dryrun)
 
-    messages = get_messages(dead_queue)
-
-    count = 0
-
-    count_messages = dead_queue.attributes.get("ApproximateNumberOfMessages")
-
-    if count_messages == 0:
+    if count == 0:
         _log.info("No messages to redrive")
         return
 
     if not dryrun:
-        for message in messages:
-            response = alive_queue.send_message(MessageBody=message.body)
-            if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
-                message.delete()
-                count += 1
-                if limit and count >= limit:
-                    break
-            else:
-                _log.error(f"Unable to send message {message} to queue")
         _log.info(f"Completed sending {count} messages to the queue")
     else:
         _log.warning(
-            f"DRYRUN enabled, would have pushed approx {count_messages} messages to the queue"
+            f"DRYRUN enabled, would have pushed approx {count} messages to the queue"
         )
+
 
 if __name__ == "__main__":
     cli()
