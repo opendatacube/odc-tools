@@ -18,6 +18,7 @@ def test_find_blobs():
     assert blob_names
     assert len(blob_names) == 1
 
+
 def test_download_yamls():
     """Test pass/fail arms of YAML download from Azure blobstore
     """

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Index datasets found from an SQS queue into Postgres
 """
-import json
 import logging
 import os
 import sys
-from typing import Any, Dict, Generator, Iterable, List, Tuple
+from typing import Any, Dict, Generator, Iterable, Tuple
 
 import click
 from datacube import Datacube
@@ -128,7 +127,9 @@ def stac_api_to_odc(
 ) -> Tuple[int, int]:
     # QA the BBOX
     if config.get("bbox") and len(config["bbox"]) != 4:
-        raise ValueError("Bounding box must be of the form lon-min,lat-min,lon-max,lat-max")
+        raise ValueError(
+            "Bounding box must be of the form lon-min,lat-min,lon-max,lat-max"
+        )
 
     # QA the search
     srch = Search().search(**config)

@@ -41,6 +41,7 @@ def test_get_metadata_s3_object(sentinel_2_nrt_message, sentinel_2_nrt_record_pa
 
     assert type(data) is dict
 
+
 def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
     actual_doc, uri = handle_json_message(
         ga_ls8c_ard_3_message, None, "STAC-LINKS-REL:odc_yaml"
