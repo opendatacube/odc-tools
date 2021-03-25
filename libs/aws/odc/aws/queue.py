@@ -6,8 +6,8 @@ from typing import Mapping, Any, Iterable, Optional
 def redrive_queue(
     queue_name: str,
     to_queue_name: Optional[str] = None,
-    limit: Optional[int] = None,
-    dryrun: Optional[bool] = False,
+    limit: Optional[int] = 0,
+    dryrun: bool = False,
 ):
     """
     Redrive messages from one queue to another. Default usage is to define
@@ -20,18 +20,16 @@ def redrive_queue(
     if to_queue_name is not None:
         alive_queue = get_queue(to_queue_name)
     else:
-        count = 0
-        for q in dead_queue.dead_letter_source_queues.all():
-            alive_queue = q
-            count += 1
-            if count > 1:
-                raise Exception(
-                    "Deadletter queue has more than one source, please specify the target queue name."
-                )
-        if count == 0:
+        source_queues = list(dead_queue.dead_letter_source_queues.all())
+        if len(source_queues) == 0:
             raise Exception(
                 "No alive queue found for the deadletter queue, please check your configuration."
             )
+        elif len(source_queues) > 1:
+            raise Exception(
+                "Deadletter queue has more than one source, please specify the target queue name."
+            )
+        alive_queue = source_queues[0]
 
     messages = get_messages(dead_queue)
 
