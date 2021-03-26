@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-import pystac
 
+import pystac
+import pytest
 from odc.index.stac import stac_transform
 from odc.stats.model import DateTimeRange
 from odc.stats.tasks import TaskReader
@@ -13,6 +14,7 @@ from odc.stats.utils import (
     mk_season_rules,
     season_binner,
 )
+
 from . import gen_compressed_dss
 
 
@@ -104,3 +106,14 @@ def test_season_binner():
     binner = season_binner({1: "01--P1M"})
     assert binner(datetime(2001, 10, 19)) == ""
     assert binner(datetime(2001, 1, 19)) == "2001-01--P1M"
+
+
+@pytest.mark.parametrize(
+    "months,anchor",
+    [(6, 1)]
+)
+def test_bin_seasonal_mk_season_rules(months, anchor):
+    season_rules = mk_season_rules(months, anchor)
+    assert {'01--P6M', '07--P6M'} == set(season_rules.values())
+
+

@@ -29,7 +29,7 @@ from ._cli_common import main
     help="Only extract datasets for a given time range, Example '2020-05--P1M' month of May 2020",
 )
 @click.option(
-    "--frequency", type=str, help="Specify temporal binning: annual|seasonal|all"
+    "--frequency", type=str, help="Specify temporal binning: annual|semiannual|seasonal|all"
 )
 @click.option("--env", "-E", type=str, help="Datacube environment name")
 @click.option(
@@ -97,7 +97,7 @@ def save_tasks(
         temporal_range = DateTimeRange.year(year)
 
     if frequency is not None:
-        if frequency not in ("annual", "all", "seasonal"):
+        if frequency not in ("annual", "all", "semiannual", "seasonal"):
             print(f"Frequency must be one of annual|seasonal|all and not '{frequency}'")
             sys.exit(1)
 
