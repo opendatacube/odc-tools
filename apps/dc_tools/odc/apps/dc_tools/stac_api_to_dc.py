@@ -214,10 +214,10 @@ def cli(
 
     # Format the search terms
     if bbox:
-        config["bbox"] = list(map(float, config["bbox"].split(",")))
+        config["bbox"] = list(map(float, bbox.split(",")))
 
     if collections:
-        config["collections"] = config["collections"].split(",")
+        config["collections"] = collections.split(",")
 
     if datetime:
         config["datetime"] = datetime
