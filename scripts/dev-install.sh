@@ -2,6 +2,8 @@
 
 set -eu
 
+curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+
 mk_edit_requirements () {
     for d in $(find $(pwd)/libs $(pwd)/apps -name "setup.py" -type f -exec dirname '{}' ';'); do
         echo "-e $d"
