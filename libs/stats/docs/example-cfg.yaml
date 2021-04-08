@@ -7,6 +7,11 @@ output_location: 's3://deafrica-services/s2_stats_annual/{product}/{version}/'
 
 # Configure Plugin and Product Attributes
 plugin: pq
+plugin_config:
+  # Plugin specific configuration
+  filters: [[2, 5], [0, 5]]
+  resampling: 'nearest'
+
 
 # Generic product attributes
 product:
