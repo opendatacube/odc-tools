@@ -1,0 +1,14 @@
+[package]
+name = "algo-backend"
+version = "0.1.0"
+authors = ["kieran"]
+edition = "2018"
+
+[lib]
+name = "backend"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.11.1", features = ["extension-module"] }
+numpy = "0.11.0"
+ndarray="0.15.1"
