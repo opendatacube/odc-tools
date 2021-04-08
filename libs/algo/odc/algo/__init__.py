@@ -1,7 +1,6 @@
 """ Various Algorithmic Helpers
 
 """
-
 from ._numexpr import apply_numexpr, safe_div
 
 from ._masking import (

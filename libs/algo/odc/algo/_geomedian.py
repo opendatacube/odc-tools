@@ -9,6 +9,7 @@ import functools
 from ._dask import randomize, reshape_yxbt
 from ._masking import to_float_np, from_float_np
 from ._memsink import yxbt_sink
+from .backend import rust_geomedian
 
 
 def reshape_for_geomedian(ds, axis="time"):
@@ -96,14 +97,14 @@ def xr_geomedian(ds, axis="time", where=None, **kw):
             xx_data = xx_data.rechunk(xx_data.chunksize[:2] + (-1, -1))
 
         data = da.map_blocks(
-            lambda x: nangeomedian_pcm(x, **kw),
+            lambda x: rust_geomedian(x, max_iter=kw['maxiters'], eps=kw['eps']),
             xx_data,
             name=randomize("geomedian"),
             dtype=xx_data.dtype,
             drop_axis=3,
         )
     else:
-        data = nangeomedian_pcm(xx_data, **kw)
+        data = rust_geomedian(x, max_iter=kw['maxiters'], eps=kw['eps'])
 
     if set_nan is not None:
         data[set_nan, :] = np.nan
@@ -167,7 +168,7 @@ def int_geomedian_np(*bands, nodata=None, scale=1, offset=0, wk_rows=-1, **kw):
                 )
 
         # run partial computation
-        gm_f32 = nangeomedian_pcm(bb_f32, **kw)
+        gm_f32 = rust_geomedian(bb_f32, max_iter=kw['maxiters'], eps=kw['eps'])
 
         # extract results with scaling back
         for b_idx in range(nb):
@@ -277,7 +278,7 @@ def _gm_mads_compute_f32(
     if yxbt.dtype.kind != "f":
         yxbt = to_float_np(yxbt, scale=scale, offset=offset, nodata=nodata)
 
-    gm = hdstats.nangeomedian_pcm(yxbt, nocheck=True, **kw)
+    gm = rust_geomedian(yxbt, nocheck=True, **kw)
 
     stats_bands = []
 
