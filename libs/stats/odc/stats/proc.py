@@ -151,13 +151,13 @@ class TaskRunner:
     def _safe_result(self, f: Future, task: Task) -> TaskResult:
         _log = self._log
         try:
-            path, ok = f.result()
-            if ok:
-                return TaskResult(task, path)
+            rr = f.result()
+            if rr.error is None:
+                return TaskResult(task, rr.path)
             else:
-                error_msg = f"Failed to write: {path}"
+                error_msg = f"Failed to write: {rr.path}"
                 _log.error(error_msg)
-                return TaskResult(task, path, error=error_msg)
+                return TaskResult(task, rr.path, error=error_msg)
         except Exception as e:
             _log.error(f"Error during processing of {task.location} {e}")
             return TaskResult(task, error=str(e))
