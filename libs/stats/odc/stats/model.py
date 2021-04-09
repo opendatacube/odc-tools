@@ -337,7 +337,6 @@ class Task:
         properties["odc:region_code"] = region_code
         properties["odc:product"] = product.name
         properties["odc:dataset_version"] = product.version
-        properties["odc:lineage"] = dict(inputs=inputs)
 
         geobox_wgs84 = geobox.extent.to_crs(
             "epsg:4326", resolution=math.inf, wrapdateline=True
@@ -350,11 +349,12 @@ class Task:
             bbox=[bbox.left, bbox.bottom, bbox.right, bbox.top],
             datetime=self.time_range.start.replace(tzinfo=timezone.utc),
             properties=properties,
+            stac_extensions=["projection"]
         )
 
-        # Enable the Projection extension
-        item.ext.enable("projection")
         item.ext.projection.epsg = geobox.crs.epsg
+        # Lineage last
+        item.properties["odc:lineage"] = dict(inputs=inputs)
 
         # Add all the assets
         for band, path in self.paths(ext=ext).items():
