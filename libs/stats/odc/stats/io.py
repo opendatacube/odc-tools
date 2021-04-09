@@ -18,6 +18,11 @@ from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF
+from hashlib import sha1
+from collections import namedtuple
+
+
+WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
 
 _log = logging.getLogger(__name__)
 DEFAULT_COG_OPTS = dict(compress="deflate", zlevel=6, blocksize=512,)
@@ -36,15 +41,33 @@ def dump_json(meta: Dict[str, Any]) -> str:
     return json.dumps(meta, separators=(",", ":"))
 
 
-@dask.delayed(name="verify-write")
-def _verify_write_results(*args):
-    failed_paths = [path for path, ok in args if not ok]
-    if len(failed_paths) > 0:
-        paths = ",".join(failed_paths)
-        _log.error(f"Write failed for '{paths}'")
-        raise IOError(f"Write failed for '{paths}'")
+def mk_sha1(data):
+    if isinstance(data, str):
+        data = data.encode("utf8")
+    return sha1(data).hexdigest()
 
-    return True
+
+_dask_sha1 = dask.delayed(mk_sha1, name="sha1")
+
+
+@dask.delayed
+def _pack_write_result(write_out, sha1):
+    path, ok = write_out
+    if ok:
+        return WriteResult(path, sha1, None)
+    else:
+        return WriteResult(path, sha1, "Failed Write")
+
+
+@dask.delayed(name="sha1-digest")
+def _sha1_digest(*write_results):
+    lines = []
+    for wr in write_results:
+        if wr.error is not None:
+            raise IOError(f"Failed to write for: {wr.path}")
+        file = wr.path.split("/")[-1]
+        lines.append(f"{wr.sha1}\t{file}\n")
+    return "".join(lines)
 
 
 class S3COGSink:
@@ -101,7 +124,7 @@ class S3COGSink:
         self._creds = creds
         self._cog_opts = cog_opts
         self._cog_opts_per_band = cog_opts_per_band
-        self._meta_ext = "json"
+        self._meta_ext = "stac-item.json"
         self._meta_contentype = "application/json"
         self._band_ext = EXT_TIFF
         self._acl = acl
@@ -123,14 +146,19 @@ class S3COGSink:
             return False
         if test_uri is None:
             return True
-        path, ok = self._write_blob(b"verifying S3 permissions", test_uri).compute()
-        assert path == test_uri
-        return ok
+        rr = self._write_blob(b"verifying S3 permissions", test_uri).compute()
+        assert rr.path == test_uri
+        return rr.error is None
 
     def _write_blob(
         self, data, url: str, ContentType: Optional[str] = None, with_deps=None
     ) -> Delayed:
+        """
+        Returns Delayed WriteResult[path, sha1, error=None]
+        """
         _u = urlparse(url)
+        sha1 = _dask_sha1(data)
+
         if _u.scheme == "s3":
             kw = dict(creds=self._get_creds())
             if ContentType is not None:
@@ -138,12 +166,16 @@ class S3COGSink:
             if self._acl is not None:
                 kw["ACL"] = self._acl
 
-            return save_blob_to_s3(data, url, with_deps=with_deps, **kw)
+            return _pack_write_result(
+                save_blob_to_s3(data, url, with_deps=with_deps, **kw), sha1
+            )
         elif _u.scheme == "file":
             _dir = Path(_u.path).parent
             if not _dir.exists():
                 _dir.mkdir(parents=True, exist_ok=True)
-            return save_blob_to_file(data, _u.path, with_deps=with_deps)
+            return _pack_write_result(
+                save_blob_to_file(data, _u.path, with_deps=with_deps), sha1
+            )
         else:
             raise ValueError(f"Don't know how to save to '{url}'")
 
@@ -184,6 +216,15 @@ class S3COGSink:
             raise ValueError(f"Can't handle url: {uri}")
 
     def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
+        json_url = task.metadata_path("absolute", ext=self._meta_ext)
+        meta = task.render_metadata(ext=self._band_ext)
+        json_data = dump_json(meta).encode("utf8")
+
+        # fake write result for metadata output, we want metadata file to be
+        # the last file written, so need to delay it until after sha1 is
+        # written.
+        meta_sha1 = dask.delayed(WriteResult(json_url, mk_sha1(json_data), None))
+
         paths = task.paths("absolute", ext=self._band_ext)
         cogs = self._ds_to_cog(ds, paths)
 
@@ -196,16 +237,10 @@ class S3COGSink:
 
         # this will raise IOError if any write failed, hence preventing json
         # from being written
-        writes_ok = _verify_write_results(*cogs)
-
-        json_url = task.metadata_path("absolute", ext=self._meta_ext)
-        meta = task.render_metadata(ext=self._band_ext)
-
-        json_txt = dump_json(meta)
+        sha1_digest = _sha1_digest(meta_sha1, *cogs)
+        sha1_url = task.metadata_path("absolute", ext="sha1")
+        sha1_done = self._write_blob(sha1_digest, sha1_url, ContentType="text/plain")
 
         return self._write_blob(
-            json_txt.encode("utf8"),
-            json_url,
-            ContentType=self._meta_contentype,
-            with_deps=writes_ok,
+            json_data, json_url, ContentType=self._meta_contentype, with_deps=sha1_done,
         )
