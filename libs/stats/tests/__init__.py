@@ -17,9 +17,11 @@ class DummyPlugin(StatsPluginInterface):
     VERSION = "1.2.3"
     PRODUCT_FAMILY = "test"
 
-    def __init__(self, bands=("a", "b", "c"), delay=0):
+    def __init__(self, bands=("a", "b", "c"), delay=0, nodata=-9999, dtype="int16"):
         self._bands = tuple(bands)
         self._delay = delay
+        self._nodata = nodata
+        self._dtype = dtype
 
     @property
     def measurements(self):
@@ -28,7 +30,11 @@ class DummyPlugin(StatsPluginInterface):
     def input_data(self, task):
         ts = sorted([ds.center_time for ds in task.datasets])
         xx = mk_dask_xx(
-            task.geobox, timestamps=ts, mode="random", attrs=dict(nodata=-9999)
+            task.geobox,
+            timestamps=ts,
+            mode="random",
+            attrs=dict(nodata=self._nodata),
+            dtype=self._dtype,
         )
         return xr.Dataset(dict(xx=xx))
 
