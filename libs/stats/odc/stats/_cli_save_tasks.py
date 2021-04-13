@@ -29,7 +29,9 @@ from ._cli_common import main
     help="Only extract datasets for a given time range, Example '2020-05--P1M' month of May 2020",
 )
 @click.option(
-    "--frequency", type=str, help="Specify temporal binning: annual|semiannual|seasonal|all"
+    "--frequency",
+    type=str,
+    help="Specify temporal binning: annual|semiannual|seasonal|all",
 )
 @click.option("--env", "-E", type=str, help="Datacube environment name")
 @click.option(
@@ -52,6 +54,11 @@ from ._cli_common import main
     hidden=True,
     help="Dump debug data to pickle",
 )
+@click.option(
+    "--gqa",
+    type=float,
+    help="Only save datasets that pass `gqa_iterative_mean_xy <= gqa` test",
+)
 @click.argument("product", type=str, nargs=1)
 @click.argument("output", type=str, nargs=1, default="")
 def save_tasks(
@@ -66,6 +73,7 @@ def save_tasks(
     overwrite=False,
     tiles=None,
     debug=False,
+    gqa=None,
 ):
     """
     Prepare tasks for processing (query db).
@@ -118,6 +126,13 @@ def save_tasks(
     def on_message(msg):
         print(msg)
 
+    def gqa_predicate(ds):
+        return ds.metadata.gqa_iterative_mean_xy <= gqa
+
+    predicate = None
+    if gqa is not None:
+        predicate = gqa_predicate
+
     dc = Datacube(env=env)
     try:
         ok = tasks.save(
@@ -125,6 +140,7 @@ def save_tasks(
             product,
             temporal_range=temporal_range,
             tiles=tiles,
+            predicate=predicate,
             debug=debug,
             msg=on_message,
         )
