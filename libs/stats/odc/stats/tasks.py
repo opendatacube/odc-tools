@@ -105,9 +105,18 @@ class SaveTasks:
         product: str,
         temporal_range: Union[str, DateTimeRange, None] = None,
         tiles: Optional[TilesRange2d] = None,
+        predicate: Optional[Callable[[Dataset], bool]] = None,
         msg: Optional[Callable[[str], Any]] = None,
         debug: bool = False,
     ) -> bool:
+        """
+        :param product: Product name to consume
+        :param temporal_range: Optionally  limit query in time
+        :param tiles: Optionally limit query to a range of tiles
+        :param predicate: If supplied filter Datasets as they come in with custom filter, Dataset->Bool
+        :param msg: Observe messages if needed via callback
+        :param debug: Dump some intermediate state to files for debugging
+        """
 
         dt_range = SimpleNamespace(start=None, end=None)
 
@@ -187,6 +196,8 @@ class SaveTasks:
                 # note: this blocks for large result sets
                 dss = dc.find_datasets_lazy(**query)
 
+        if predicate is not None:
+            dss = filter(predicate, dss)
         dss = cache.tee(dss)
         dss = bin_dataset_stream(self._gridspec, dss, cells, persist=persist)
         dss = tqdm(dss, total=n_dss)
@@ -204,7 +215,9 @@ class SaveTasks:
             # Prune Datasets outside of temporal range (after correcting for UTC offset)
             for cell in cells.values():
                 utc_offset = cell.utc_offset
-                cell.dss = [ds for ds in cell.dss if (ds.time + utc_offset) in temporal_range]
+                cell.dss = [
+                    ds for ds in cell.dss if (ds.time + utc_offset) in temporal_range
+                ]
 
         n_tiles = len(cells)
         msg(f"Total of {n_tiles:,d} spatial tiles")
