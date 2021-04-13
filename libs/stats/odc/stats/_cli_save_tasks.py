@@ -105,8 +105,8 @@ def save_tasks(
         temporal_range = DateTimeRange.year(year)
 
     if frequency is not None:
-        if frequency not in ("annual", "all", "semiannual", "seasonal"):
-            print(f"Frequency must be one of annual|seasonal|all and not '{frequency}'")
+        if frequency not in ("annual", "annual-fy", "all", "semiannual", "seasonal"):
+            print(f"Frequency must be one of annual|annual-fy|semiannual|seasonal|all and not '{frequency}'")
             sys.exit(1)
 
     if output == "":
