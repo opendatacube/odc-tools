@@ -99,7 +99,10 @@ def mk_season_rules(months: int, anchor: int) -> Dict[int, str]:
         for m in range(start_month, start_month + months):
             if m > 12:
                 m = m - 12
-            rules[m] = f"{start_month:02d}--P{months:d}M"
+            if months == 12:
+                rules[m] = f"{start_month:02d}--P1Y"
+            else:
+                rules[m] = f"{start_month:02d}--P{months:d}M"
 
     return rules
 
