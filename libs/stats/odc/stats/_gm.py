@@ -14,7 +14,7 @@ from . import _plugins
 class StatsGMS2(StatsPluginInterface):
     NAME = "gm_s2_annual"
     SHORT_NAME = NAME
-    VERSION = '0.0.0'
+    VERSION = "0.0.0"
     PRODUCT_FAMILY = "geomedian"
 
     def __init__(
@@ -31,6 +31,7 @@ class StatsGMS2(StatsPluginInterface):
             "thin cirrus",
         ),
         basis_band=None,
+        nodata_class: Optional[str] = None,
         aux_names=dict(smad="SMAD", emad="EMAD", bcmad="BCMAD", count="COUNT"),
         rgb_bands=None,
         rgb_clamp=(1, 3_000),
@@ -61,6 +62,7 @@ class StatsGMS2(StatsPluginInterface):
             self._renames.get(k, k) for k in ("smad", "emad", "bcmad", "count")
         )
         self._mask_band = mask_band
+        self._nodata_class = nodata_class
         self.filters = filters
         self.cloud_classes = tuple(cloud_classes)
         self._work_chunks = work_chunks
@@ -68,6 +70,22 @@ class StatsGMS2(StatsPluginInterface):
     @property
     def measurements(self) -> Tuple[str, ...]:
         return self.bands + self.aux_bands
+
+    def _native_op_data_band(self, xx):
+        from odc.algo import enum_to_bool, keep_good_only
+
+        if not self._mask_band in xx.data_vars:
+            return xx
+
+        # Erase Data Pixels for which mask == nodata
+        #
+        #  xx[mask == nodata] = nodata
+        mask = xx[self._mask_band]
+        xx = xx.drop_vars([self._mask_band])
+        keeps = enum_to_bool(mask, [self._nodata_class], invert=True)
+        xx = keep_good_only(xx, keeps)
+
+        return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
         basis = self._basis_band
@@ -85,11 +103,15 @@ class StatsGMS2(StatsPluginInterface):
             chunks={},
         )
 
+        bands_to_load = self.bands
+        if self._nodata_class is not None:
+            bands_to_load = (*bands_to_load, self._mask_band)
+
         xx = load_with_native_transform(
             task.datasets,
-            self.bands,
+            bands_to_load,
             task.geobox,
-            lambda xx: xx,
+            self._native_op_data_band,
             groupby=groupby,
             basis=basis,
             resampling=self.resampling,
