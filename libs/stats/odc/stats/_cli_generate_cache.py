@@ -31,7 +31,7 @@ def s3_fetch_dss(base, product, glob="*.json", s3=None):
     return dss
 
 
-@click.command()
+@click.command("generate-cache")
 @click.argument("product", type=str)
 @click.argument("input_prefix", type=str)
 @click.argument("location", type=str)
