@@ -1,6 +1,8 @@
 import click
 import json
 
+from ._cli_common import main
+
 from odc.aio import S3Fetcher
 from datacube.index.eo3 import prep_eo3
 from odc.index.stac import stac_transform
@@ -31,7 +33,7 @@ def s3_fetch_dss(base, product, glob="*.json", s3=None):
     return dss
 
 
-@click.command("generate-cache")
+@main.command("generate-cache")
 @click.argument("product", type=str)
 @click.argument("input_prefix", type=str)
 @click.argument("location", type=str)
