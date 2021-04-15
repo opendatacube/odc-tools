@@ -36,7 +36,7 @@ class StatsWofs(StatsPluginInterface):
             7   6   5   4     3   2   1   0
             |   |   |   |     |   |   |   |
             |   |   |   |     |   |   |   x---> NODATA: 1 -- all bands were nodata
-            |   |   |   |     |   |   o-------> Non Contigous - some bands were nodata)
+            |   |   |   |     |   |   o-------> Non Contiguous - some bands were nodata)
             |   |   |   |     |   x-----------> Low Solar Angle
             |   |   |   |     o---------------> Terrain Shadow
             |   |   |   |
