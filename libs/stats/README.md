@@ -52,6 +52,38 @@ odc-stats run s3-path/ga_ls8c_nbart_gm_cyear_3.db  2015--P1Y/41/13 --threads=96 
 
 Where cfg.txt contains the following configurations (sample from a geomedian run):
 ```
+plugin: gm-ls
+plugin_config:
+  resampling: bilinear
+  bands: ["blue", "red", "green", "nir", "swir1", "swir2"]
+  rgb_bands: ["red", "green", "blue"]
+  mask_band: fmask
+  cloud_classes: ["shadow", "cloud"]
+  filters: [0, 0] 
+  aux_names:
+    smad: sdev
+    emad: edev
+    bcmad: bcdev
+    count: count                   
+product:
+  name: ga_ls8c_nbart_gm_cyear_3
+  short_name: ga_ls8c_nbart_gm_cyear_3 
+  version: 3.0.0
+  product_family: geomedian
+max_processing_time: 3600
+job_queue_max_lease: 300
+renew_safety_margin: 60
+future_poll_interval: 2
+s3_acl: public-read
+# Generic product attributes
+cog_opts:
+  zlevel: 9
+  overrides:
+    rgba:
+      compress: JPEG
+      jpeg_quality: 90
+
+
 plugin: gm-s2
 max_processing_time: 3600
 job_queue_max_lease: 300
