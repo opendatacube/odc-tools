@@ -86,10 +86,39 @@ https://bitbucket.org/geoscienceaustralia/datakube-apps/src/master/workspaces/de
 Orchestration
 -----
 
-In order to run stats on a large area, use stats orchestration tool which relies on SQS queues and Kubernetes jobs.  The job definition, creates several replicas (default is 200) and runs stats jobs concurrently.  Each replica/pod pulls messages off the stats queue which contains the tasks to be processed.  The job definition, also specifies the output location where the resulting datasets should be stored in.
+In order to run stats on a large area, use stats orchestration tool which relies on SQS queues and Kubernetes jobs.  Before running a job, one need to create infrastructures using below step.
 
 ### 1- Create queues and a user 
-Adding
+Each user will need to create a queue to publish their tasks to.  Each queue will have a corresponding dead letter queue. 
+
+The user and the queue will be created using a terraform module which contains code similar to the following:
+
+```
+module "odc_stats_geomedian" {
+
+  source = "../../../modules/statistician"
+
+  stats_process = "geomedian"
+
+  destination_bucket = "destination-bucket-name"
+  destination_path   = "gm_s2_annual"
+
+  test_bucket = "test-bucket-name"
+
+  cluster_id = local.cluster_id
+  owner      = local.owner
+}
+```
+The stats process name is used to name the user and the queue, and the destination and test buckets specifies the output locations in which this user has access to.
+
+for an example, check the following file:
+```
+https://bitbucket.org/geoscienceaustralia/datakube/src/master/workspaces/deafrica-dev/03_odc_k8s_apps/stats_procesing.tf
+```
+
+When you run stats using jobs, tasks that are tried three time and have failed, will end up in the dead letter queue.  The user can then find the logs corresponding to these tasks and identify why they failed.  Once underlying issues are detected (bad datasets for example), a new cache file can be generated with ```save-tasks``` and the tasks can be rerun.  If tasks have failed for resource issues, usually rerun will pass.
+
+
 ### 2- Publish tasks 
 
 ```
@@ -109,24 +138,30 @@ where 1000 to 2000 covers the indexes for a single year.
 Alway run with the dryrun option and check tasks against the csv file to ensure you're publishing the correct set of indexes.
 
 ### 3- Run tasks 
-Define a yaml file that specifies your run configuration.  This includes, location of the cache file containing the status of the dataset, a queue containing the list of tasks to process, AWS node group types to be deployed, resource requests and limits, plugin and product configs.  An example of the job definition for running geometric median on Landsat-8 can be found in the following location.
+
+in order to run a job, create a job template.  The hob template is a yaml file which specifies your run configuration.  This includes, location of the cache file containing the status of the dataset, a queue containing the list of tasks to process, AWS node group types to be deployed, resource requests and limits, plugin and product configs.  An example of the job definition for running geometric median on Landsat-8 can be found in the following location.
 
 
-<span style="color:red">WARNING:  Do not run the following configurations directly as they may overwrite existing data.  Always change the output directory and create your own infrastructure before running stats.</span>
+<span style="color:red">WARNING:  Do not run the following configurations directly as they may overwrite existing data.  Always change the output directory and create your own infrastructure by running the step 1 above before running stats.</span>
 ```
 https://bitbucket.org/geoscienceaustralia/datakube-apps/src/develop/workspaces/dea-dev/processing/06_stats.yaml
 ```
 ### Issues 
 
-During the run, monitor the number of messages in flight, this can be done from cli or the dashboard.  Counts of inflight messages should be the same as (or close to) the number of pod/replicas.
+During the run, monitor the number of messages inflight, this can be done from cli or the dashboard.  Counts of inflight messages should be the same as (or close to) the number of pod/replicas.
 
-Monitor the AWS Autoscaling Groups and keep track of the number of instances that it successfully obtains.  This should match the number of the replicas that you've defined in your job template.
+Monitor the AWS Autoscaling Groups and keep track of the number of instances that it successfully obtains during the run.  This should match the number of the replicas that you've defined in your job template.
 
-Currently when the jobs complete, pods do not shutdown cleanly due to an error in the dask library.  In order to ensure assigned EC2 instances are released, you need to 
-run the following command:
+Currently when the jobs complete, pods do not shutdown cleanly due to an error in the dask library.  In order to ensure assigned EC2 instances are released, you need to delete the job manually by running the following command:
 
 ``` 
 kp delete -f path-to-job-template.yaml
+```
+### 4- Redrive queue
+For tasks that have failed and need to be retried, they be redirected to the main stats queue using the following command:
+
+```
+redrive-queue stats-dead-letter-queue-name  dead-letter-queue-name 
 ```
 
 ### Monitoring
