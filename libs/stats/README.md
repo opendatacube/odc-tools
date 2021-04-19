@@ -24,9 +24,7 @@ From your sandbox (or a machine that has access to your database), run:
 odc-stats save-tasks --frequency annual --temporal-range 2015--P6Y --grid au-10  ga_ls8c_ard_3
 ```
 
-The above command will generate a csv file containing a list of tasks for years between 2015 to 2020, a cache file that will be used as an input to the stats cli, and geojson files.  
-
-The above command will generate the following files:
+The above command will generate the following files i.e. a csv file containing a list of tasks for years between 2015 to 2020, a cache file that will be used as an input to the stats cli, and geojson files.  
 
 ```
 ga_ls8c_ard_3_2015--P6Y-2015--P1Y.geojson  
@@ -37,7 +35,6 @@ ga_ls8c_ard_3_2015--P6Y-2019--P1Y.geojson
 ga_ls8c_ard_3_2015--P6Y-2020--P1Y.geojson  
 ga_ls8c_ard_3_2015--P6Y.db
 ga_ls8c_ard_3_2015--P6Y.csv
-ga_ls8c_nbart_gm_cyear_3.db
 ```
 
 The csv file contains the list of tasks for all the years and consists of x, y coordinates of each tile to be processed as well as the counts of datasets and satellite observations for each tile.
