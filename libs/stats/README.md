@@ -47,7 +47,7 @@ geojson files are useful when selecting test regions as well as for debugging sp
 ### 2- Run stats
 Sample command:
 ```
-odc-stats run s3-path/ga_ls8c_nbart_gm_cyear_3.db  2015--P1Y/41/13 --threads=96 --memory-limit=700Gi --max-procesing-time 3600 --config cfg.txt --location file://localpath/
+odc-stats run s3-path/ga_ls8c_nbart_gm_cyear_3.db  2015--P1Y/41/13 --threads=16 --memory-limit=60Gi --resolution=30 --config cfg.txt --location file://localpath/
 ```  
 
 Where cfg.txt contains the following configurations (sample from a geomedian run):
