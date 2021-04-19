@@ -82,29 +82,6 @@ cog_opts:
     rgba:
       compress: JPEG
       jpeg_quality: 90
-
-
-plugin: gm-s2
-max_processing_time: 3600
-job_queue_max_lease: 300
-renew_safety_margin: 60
-future_poll_interval: 2
-s3_acl: bucket-owner-full-control
-cog_opts:
-    zlevel: 6
-    overrides:
-    rgba:
-        compress: JPEG             
-        jpeg_quality: 90                     
-# Generic product attributes
-product:
-    name: gm_s2_annual
-    short_name: gm_s2_annual
-    version: 1.0.0
-    product_family: geomedian
-    collections_site: explorer.digitalearth.africa
-    producer: digitalearthafrica.org
-    region_code_format: "x{x:03d}y{y:03d}"
 ```
 
 Note that the configurations vary between different products.  A sample plugin configuration for Australia on Landsat-8 can be found here: 
