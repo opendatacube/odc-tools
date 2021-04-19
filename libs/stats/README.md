@@ -88,8 +88,8 @@ Orchestration
 
 In order to run stats on a large area, use stats orchestration tool which relies on SQS queues and Kubernetes jobs.  The job definition, creates several replicas (default is 200) and runs stats jobs concurrently.  Each replica/pod pulls messages off the stats queue which contains the tasks to be processed.  The job definition, also specifies the output location where the resulting datasets should be stored in.
 
-### 2- Create queues and a user 
-
+### 1- Create queues and a user 
+Adding
 ### 2- Publish tasks 
 
 ```
