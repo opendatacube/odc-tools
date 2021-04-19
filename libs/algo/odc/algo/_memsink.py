@@ -3,17 +3,18 @@ import numpy as np
 import xarray as xr
 import dask
 import dask.array as da
+from dask.delayed import Delayed
+from dask.base import tokenize
 from dask.highlevelgraph import HighLevelGraph
 from distributed import Client
 import uuid
-from ._dask import randomize, unpack_chunks, _roi_from_chunks, with_deps
+from ._dask import unpack_chunks, _roi_from_chunks
 
 
 ShapeLike = Union[int, Tuple[int, ...]]
 DtypeLike = Union[str, np.dtype]
 ROI = Union[slice, Tuple[slice, ...]]
 MaybeROI = Optional[ROI]
-Delayed = Any
 CacheKey = Union["Token", str]
 
 _cache: Dict[str, np.ndarray] = {}
@@ -54,6 +55,15 @@ class Cache:
     @staticmethod
     def new(shape: ShapeLike, dtype: DtypeLike) -> Token:
         return Cache.put(np.ndarray(shape, dtype=dtype))
+
+    @staticmethod
+    def dask_new(shape: ShapeLike, dtype: DtypeLike, name: str = "") -> Delayed:
+        if name == "":
+            name = f"mem_array_{str(dtype)}"
+
+        name = name + "-" + tokenize(name, shape, dtype)
+        dsk = {name: (Cache.new, shape, dtype)}
+        return Delayed(name, dsk)
 
     @staticmethod
     def put(x: np.ndarray) -> Token:
@@ -236,10 +246,12 @@ def _da_from_mem(
     shape_in_chunks = tuple(len(ch) for ch in _chunks)
 
     dsk = {}
-    name = randomize(name)
+    name = name + "-" + tokenize(token, shape, dtype, chunks)
+    dsk[name] = []
 
     for idx in np.ndindex(shape_in_chunks):
         dsk[(name, *idx)] = (_chunk_extractor, token.key, _roi(idx))
+        dsk[name].append((name, *idx))
 
     dsk = HighLevelGraph.from_collections(name, dsk, dependencies=[token])
 
@@ -267,13 +279,21 @@ def da_mem_sink(xx: da.Array, chunks: Tuple[int, ...], name="memsink") -> da.Arr
     introduces large memory copy overhead as all input chunks need to be cached
     then re-assembled into a different chunking structure.
     """
-    token = dask.delayed(Cache.new)(xx.shape, xx.dtype)
+    tk = tokenize(xx)
 
+    token = Cache.dask_new(xx.shape, xx.dtype, f"{name}_alloc")
+
+    # Store everything to MEM and only then evaluate to Token
     sink = dask.delayed(CachedArray)(token)
     fut = da.store(xx, sink, lock=False, compute=False)
+    sink_name = f"{name}_collect-{tk}"
+    dsk = dict(fut.dask)
+    dsk[sink_name] = (lambda *x: x[0], token.key, *fut.dask[fut.key])
+    dsk = HighLevelGraph.from_collections(sink_name, dsk, dependencies=[sink])
+    token_done = Delayed(sink_name, dsk)
 
     return _da_from_mem(
-        with_deps(token, fut), shape=xx.shape, dtype=xx.dtype, chunks=chunks, name=name
+        token_done, shape=xx.shape, dtype=xx.dtype, chunks=chunks, name=name
     )
 
 
@@ -286,20 +306,25 @@ def da_yxbt_sink(
 
     eval(bands) |> transpose(YXBT) |> Store(RAM) |> DaskArray(RAM, chunks)
     """
+    tk = tokenize(*bands)
+
     b = bands[0]
     dtype = b.dtype
     nt, ny, nx = b.shape
     nb = len(bands)
     shape = (ny, nx, nb, nt)
 
-    token = dask.delayed(Cache.new)(shape, dtype)
+    token = Cache.dask_new(shape, dtype, f"{name}_alloc")
 
     sinks = [dask.delayed(_YXBTSink)(token, idx) for idx in range(nb)]
     fut = da.store(bands, sinks, lock=False, compute=False)
+    sink_name = f"{name}_collect-{tk}"
+    dsk = dict(fut.dask)
+    dsk[sink_name] = (lambda *x: x[0], token.key, *fut.dask[fut.key])
+    dsk = HighLevelGraph.from_collections(sink_name, dsk, dependencies=sinks)
+    token_done = Delayed(sink_name, dsk)
 
-    return _da_from_mem(
-        with_deps(token, fut), shape=shape, dtype=dtype, chunks=chunks, name=name
-    )
+    return _da_from_mem(token_done, shape=shape, dtype=dtype, chunks=chunks, name=name)
 
 
 def yxbt_sink(ds: xr.Dataset, chunks: Tuple[int, int, int, int]) -> xr.DataArray:
@@ -389,3 +414,22 @@ def test_da_from_mem():
     assert (yy.compute() == xx).all()
 
     assert (yy[:3, :5].compute() == xx[:3, :5]).all()
+
+
+def test_cache_dask_new():
+    tk = Cache.dask_new((10, 10), "float32", "jj")
+    assert dask.is_dask_collection(tk)
+    assert tk.key.startswith("jj-")
+
+
+def test_da_to_mem():
+    xx = da.random.uniform(size=(10, 20), chunks=(5, 4))
+    yy = da_mem_sink(xx, chunks=(-1, -1), name="yy")
+
+    assert dask.is_dask_collection(yy)
+    assert xx.shape == yy.shape
+    assert xx.dtype == yy.dtype
+
+    _yy = yy.compute()
+    _xx = xx.compute()
+    assert (_xx == _yy).all()
