@@ -12,19 +12,19 @@ pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-stats
 
 Usage
 -----
-Stats offers a set of tools to generate clear pixel count and geometric median on Sentinel-2 and Landsat satellite images and it's currently being extended to support sibling products.
+Statistician offers a set of tools to generate clear pixel count and geometric median on Sentinel-2 and Landsat satellite images and it's currently being extended to support sibling products.
 
-### Steps to run stats
+### Steps to run statistician
 
 ### 1- Save tasks
 
-From your sandbox (or a machine that has access to your database), run:
+From your Sandbox (or a machine that has access to your an odc database), run:
 
 ```
 odc-stats save-tasks --frequency annual --grid au-30  ga_ls8c_ard_3
 ```
 
-The above command will generate the following files i.e. a csv file containing a list of tasks for all the years in the database, a cache file that will be used as an input to the stats cli, and several geojson files (one for each year).  
+The above command will generate the following files i.e. a csv file containing a list of tasks for all the years in the database, a cache file that will be used as an input to the statistician cli, and several geojson files (one for each year).  
 
 ```
 ga_ls8c_ard_3_all-2013--P1Y.geojson
@@ -42,18 +42,18 @@ ga_ls8c_ard_3_all.db
 
 The csv file contains the list of tasks for all the years and consists of x, y coordinates of each tile to be processed as well as the counts of datasets and satellite observations.
 
-geojson files are useful when selecting test regions as well as for debugging specific tasks - see the example below from Landsat-8, 2015.  This example shows a tile from Australia coastal region near Sydney.
+GeoJSON files are useful when selecting test regions as well as for debugging specific tasks - see the example below from Landsat-8, 2015.  This example shows a tile from an Australian coastal region near Sydney.
 
 <img src="odc/stats/stats/auxiliary/screenshot-L8-2015.png" alt="drawing" width="1000"/>
 
 
-### 2- Run stats
+### 2- Run statistician
 Sample command:
 ```
 odc-stats run ga_ls8c_ard_3_all.db  2015--P1Y/41/13 --threads=16 --memory-limit=60Gi --resolution=30 --config cfg.yaml --location file:///localpath/
 ```  
 
-Where cfg.yaml contains the following configurations (sample from a geomedian run):
+Where cfg.yaml contains the following configuration (sample from a geomedian run):
 ```
 plugin: gm-ls
 plugin_config:
@@ -95,7 +95,7 @@ https://bitbucket.org/geoscienceaustralia/datakube-apps/src/develop/workspaces/d
 Orchestration
 -----
 
-In order to run stats on a large volume of data, use stats orchestration tool which relies on SQS queues and Kubernetes jobs.  Before running a job, one needs to create the necessary infrastructures by running the step 1 described below.
+In order to run statistician on a large volume of data, use statistician orchestration tool which relies on SQS queues and Kubernetes jobs.  Before running a job, one needs to create the necessary infrastructures by running the step 1 described below.
 
 ### 1- Create queues and a user 
 Each user will need to create a user and a queue to publish their tasks to.  Note that each queue will have a corresponding dead letter queue. 
@@ -118,7 +118,7 @@ module "odc_stats_geomedian" {
   owner      = local.owner
 }
 ```
-The stats process name is used to name the user and the queue, and the destination and test buckets specifies the output locations in which this user has access to.
+The statistician process name is used to name the user and the queue, and the destination and test buckets specifies the output locations in which this user has access to.
 
 For an example, check the following file:
 ```
@@ -162,7 +162,7 @@ The following command will start your job.  This will create n pods where n is t
 kp apply -f path-to-job-template
 ```
 
-When you run stats using jobs, tasks that are tried three times and have failed, will end up in the dead letter queue.  The user can then find the logs corresponding to these tasks and identify why they failed.  If the failure is due to resource limits, a rerun will usually pass.  However, if failure is due to issues such as bad datasets, you need to archive the bad datasets and regenerate your cache file before restarting the job.
+When you run statistician using jobs, tasks that are tried three times and have failed, will end up in the dead letter queue.  The user can then find the logs corresponding to these tasks and identify why they failed.  If the failure is due to resource limits, a rerun will usually pass.  However, if failure is due to issues such as bad datasets, you need to archive the bad datasets and regenerate your cache file before restarting the job.
 
 ### Issues 
 
@@ -177,14 +177,14 @@ kp delete -f path-to-job-template.yaml
 Monitor the AWS Autoscaling Groups and ensure they are reduced to 0 once the job has completed.  There is a delay of about 10 minutes before ASGs are released. 
 
 ### 4- Redrive queue
-For tasks that have failed and need to be retried, they can be redirected to the main stats queue using the following command:
+For tasks that have failed and need to be retried, they can be redirected to the main statistician queue using the following command:
 
 ```
 redrive-queue stats-dead-letter-queue-name  dead-letter-queue-name 
 ```
 
 ### Monitoring
-Grafana is a powerful tool for monitoring stats jobs and pods.  You can query all the logs for a single job, to detect errors, or drill down into logs of a particular pod to identify specific issues for tasks.  To use this, log into the grafana which corresponds to the cluster that you're running the job in, from the left panel, select ```Explore```, change the explore method to ```Loki```, from log label, select ```job_name``` and then select your job name for example, ```stats-geomedian```.  You can now run a query on the log of the selected job:
+Grafana is a powerful tool for monitoring statistician jobs and pods.  You can query all the logs for a single job, to detect errors, or drill down into logs of a particular pod to identify specific issues for tasks.  To use this, log into the grafana which corresponds to the cluster that you're running the job in, from the left panel, select ```Explore```, change the explore method to ```Loki```, from log label, select ```job_name``` and then select your job name for example, ```stats-geomedian```.  You can now run a query on the log of the selected job:
 
 <img src="odc/stats/stats/auxiliary/screenshot-grafana.png" alt="drawing" width="1000"/>
 
