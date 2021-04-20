@@ -21,20 +21,23 @@ Stats offers a set of tools to generate clear pixel count and geometric median o
 From your sandbox (or a machine that has access to your database), run:
 
 ```
-odc-stats save-tasks --frequency annual --temporal-range 2015--P6Y --grid au-10  ga_ls8c_ard_3
+odc-stats save-tasks --frequency annual --grid au-30  ga_ls8c_ard_3
 ```
 
-The above command will generate the following files i.e. a csv file containing a list of tasks for years between 2015 to 2020, a cache file that will be used as an input to the stats cli, and several geojson files (one for each year).  
+The above command will generate the following files i.e. a csv file containing a list of tasks for all the years in the dataset, a cache file that will be used as an input to the stats cli, and several geojson files (one for each year).  
 
 ```
-ga_ls8c_ard_3_2015--P6Y-2015--P1Y.geojson  
-ga_ls8c_ard_3_2015--P6Y-2016--P1Y.geojson  
-ga_ls8c_ard_3_2015--P6Y-2017--P1Y.geojson  
-ga_ls8c_ard_3_2015--P6Y-2018--P1Y.geojson
-ga_ls8c_ard_3_2015--P6Y-2019--P1Y.geojson
-ga_ls8c_ard_3_2015--P6Y-2020--P1Y.geojson  
-ga_ls8c_ard_3_2015--P6Y.db
-ga_ls8c_ard_3_2015--P6Y.csv
+ga_ls8c_ard_3_all-2013--P1Y.geojson
+ga_ls8c_ard_3_all-2014--P1Y.geojson
+ga_ls8c_ard_3_all-2015--P1Y.geojson
+ga_ls8c_ard_3_all-2016--P1Y.geojson
+ga_ls8c_ard_3_all-2017--P1Y.geojson
+ga_ls8c_ard_3_all-2018--P1Y.geojson
+ga_ls8c_ard_3_all-2019--P1Y.geojson
+ga_ls8c_ard_3_all-2020--P1Y.geojson
+ga_ls8c_ard_3_all-2021--P1Y.geojson
+ga_ls8c_ard_3_all.csv
+ga_ls8c_ard_3_all.db
 ```
 
 The csv file contains the list of tasks for all the years and consists of x, y coordinates of each tile to be processed as well as the counts of datasets and satellite observations.
@@ -47,10 +50,10 @@ geojson files are useful when selecting test regions as well as for debugging sp
 ### 2- Run stats
 Sample command:
 ```
-odc-stats run s3-path/ga_ls8c_nbart_gm_cyear_3.db  2015--P1Y/41/13 --threads=16 --memory-limit=60Gi --resolution=30 --config cfg.txt --location file://localpath/
+odc-stats run ga_ls8c_ard_3_all.db  2015--P1Y/41/13 --threads=16 --memory-limit=60Gi --resolution=30 --config cfg.yaml --location file:///localpath/
 ```  
 
-Where cfg.txt contains the following configurations (sample from a geomedian run):
+Where cfg.yaml contains the following configurations (sample from a geomedian run):
 ```
 plugin: gm-ls
 plugin_config:
