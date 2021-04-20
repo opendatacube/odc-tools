@@ -54,7 +54,7 @@ def get_items(
     count = 0
     for metadata in items.geojson()["features"]:
         count += 1
-        if count > limit:
+        if (limit is not None) and (count > limit):
             break
         uri, relative = guess_location(metadata)
         yield (metadata, uri, relative)
