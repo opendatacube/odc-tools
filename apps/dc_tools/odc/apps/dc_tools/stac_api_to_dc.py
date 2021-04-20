@@ -4,7 +4,7 @@
 import logging
 import os
 import sys
-from typing import Any, Dict, Generator, Iterable, Tuple
+from typing import Any, Dict, Generator, Iterable, Tuple, Optional
 
 import click
 from datacube import Datacube
@@ -43,7 +43,7 @@ def guess_location(metadata: dict) -> Tuple[str, bool]:
 
 
 def get_items(
-    srch: Search, limit: int
+    srch: Search, limit: Optional[int]
 ) -> Generator[Tuple[dict, str, bool], None, None]:
     if limit:
         items = srch.items(limit=limit)
@@ -51,9 +51,8 @@ def get_items(
         items = srch.items()
 
     # Workaround bug in STAC Search that doesn't stop at the limit
-    count = 0
-    for metadata in items.geojson()["features"]:
-        count += 1
+    for count, metadata in enumerate(items.geojson()["features"]):
+        # Stop at the limit if it's set
         if (limit is not None) and (count > limit):
             break
         uri, relative = guess_location(metadata)
