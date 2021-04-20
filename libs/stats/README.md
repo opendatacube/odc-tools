@@ -24,7 +24,7 @@ From your sandbox (or a machine that has access to your database), run:
 odc-stats save-tasks --frequency annual --grid au-30  ga_ls8c_ard_3
 ```
 
-The above command will generate the following files i.e. a csv file containing a list of tasks for all the years in the dataset, a cache file that will be used as an input to the stats cli, and several geojson files (one for each year).  
+The above command will generate the following files i.e. a csv file containing a list of tasks for all the years in the database, a cache file that will be used as an input to the stats cli, and several geojson files (one for each year).  
 
 ```
 ga_ls8c_ard_3_all-2013--P1Y.geojson
