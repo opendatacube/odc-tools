@@ -481,7 +481,7 @@ class PredGMS2(StatsGMS2):
         with fsspec.open(PredConf.model_path) as fh:
             model = joblib.load(fh)
         predicted = predict_with_model(PredConf, model, pred_input_data, {})
-        predicted, prob, filtered = post_processing(predicted, geobox)
+        predicted, prob, filtered = post_processing(pred_input_data, predicted, geobox)
         output_ds = xr.Dataset(
             {
                 'mask': predicted,
