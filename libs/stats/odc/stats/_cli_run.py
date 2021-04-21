@@ -18,6 +18,11 @@ from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
     help="Do not check if output already exists",
 )
 @click.option(
+    "--heartbeat-filepath",
+    type=str,
+    help="Path to store pod's heartbeats when running stats as K8 jobs",
+)
+@click.option(
     "--public/--no-public",
     is_flag=True,
     default=None,
@@ -57,6 +62,7 @@ def run(
     public,
     location,
     max_processing_time,
+    heartbeat_filepath,
 ):
     """
     Run Stats.
@@ -112,6 +118,7 @@ def run(
             s3_acl=s3_acl,
             overwrite=overwrite,
             max_processing_time=max_processing_time,
+            heartbeat_filepath=heartbeat_filepath,
         ).items()
         if v is not None and v != ""
     }

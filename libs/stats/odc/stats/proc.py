@@ -162,6 +162,15 @@ class TaskRunner:
             _log.error(f"Error during processing of {task.location} {e}")
             return TaskResult(task, error=str(e))
 
+    def _register_heartbeat(self, hearbeat_filepath: str):
+        """
+        Records the timestamp at which a hearbeat was detected
+
+        """
+        t_now = datetime.utcnow()
+        with open(f"{hearbeat_filepath}", "w") as file_obj:
+            file_obj.write(t_now.strftime("%Y-%m-%d %H:%M:%S"))
+
     def _run(self, tasks: Iterable[Task]) -> Iterator[TaskResult]:
         cfg = self._cfg
         client = self.client()
@@ -177,7 +186,6 @@ class TaskRunner:
                 t0 = tk.start_time
             else:
                 t0 = datetime.utcnow()
-
             if check_exists:
                 path = sink.uri(task)
                 _log.debug(f"Checking if can skip {path}")
@@ -208,6 +216,8 @@ class TaskRunner:
             cancelled = False
 
             for (dt, t_now) in wait_for_future(cog, cfg.future_poll_interval, t0=t0):
+                if cfg.heartbeat_filepath is not None:
+                    self._register_heartbeat(cfg.heartbeat_filepath)
                 if tk:
                     tk.extend_if_needed(
                         cfg.job_queue_max_lease, cfg.renew_safety_margin

@@ -234,7 +234,6 @@ class WorkTokenInterface(ABC):
             return self.extend(seconds)
         return True
 
-
 @dataclass
 class Task:
     product: OutputProduct
@@ -525,6 +524,9 @@ class TaskRunnerConfig:
     cog_opts: Dict[str, Any] = field(init=True, repr=True, default_factory=dict)
     overwrite: bool = False
 
+    # Heartbeat filepath
+    heartbeat_filepath: Optional[str] = None
+    
     # Terminate task if running longer than this amount (seconds)
     max_processing_time: int = 0
 
