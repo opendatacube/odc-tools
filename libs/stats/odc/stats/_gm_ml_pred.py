@@ -386,7 +386,7 @@ def post_processing(
     mode = mode.where(~slope, 0)
 
     # mask where the elevation is above 3600m
-    elevation = dc.load(product="srtm", like=data.geobox)
+    elevation = dc.load(product="dem_srtm", like=data.geobox)
     elevation = elevation.elevation > 3600  # threshold
     predict = predict.where(~elevation.squeeze(), 0)
     proba = proba.where(~elevation.squeeze(), 0)
