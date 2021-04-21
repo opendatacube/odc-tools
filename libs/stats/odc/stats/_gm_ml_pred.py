@@ -201,10 +201,8 @@ def calculate_indices(ds: xr.Dataset) -> xr.Dataset:
 
 
 def gm_rainfall_single_season(
-        geomedian_with_mads: Dict[str, xr.Dataset],
-        season_time_dict: Dict[str, Tuple],
-        rainfall_dict: Dict[str, xr.DataArray],
-        season_key="_S1",
+        geomedian_with_mads: xr.Dataset,
+        rainfall: xr.DataArray,
 ) -> xr.Dataset:
     """
     generate gm-semiannual with rainfall, query sample see bellow
@@ -223,7 +221,7 @@ def gm_rainfall_single_season(
     geomedian_with_mads = assign_crs(calculate_indices(geomedian_with_mads))
 
     # rainfall
-    rainfall = assign_crs(rainfall_dict[season_key], crs="epsg:4326")
+    rainfall = assign_crs(rainfall, crs="epsg:4326")
     rainfall = chirp_clip(geomedian_with_mads, rainfall)
 
     rainfall = (
@@ -477,7 +475,7 @@ class PredGMS2(StatsGMS2):
         }
         # TODO: build feature from dss
         assembled_gm_dict = dict(
-            (k, gm_rainfall_single_season(dss[k], rainfall_dict[k], season_key=k)) for k in dss.keys()
+            (k, gm_rainfall_single_season(dss[k], rainfall_dict[k])) for k in dss.keys()
         )
         pred_input_data = merge_two_season_feature(assembled_gm_dict, PredConf)
         with fsspec.open(PredConf.model_path) as fh:
