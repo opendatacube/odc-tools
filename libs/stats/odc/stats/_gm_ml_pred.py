@@ -251,9 +251,12 @@ def merge_two_season_feature(
             .drop("spatial_ref")
             .to_dataset(name="slope")
     )
+    renamed_seasoned_ds = {}
+    for k, v in seasoned_ds.items():
+        renamed_seasoned_ds[k] = v.rename(dict((str(band), str(band)+k) for band in v.data_vars))
 
     return xr.merge(
-        [seasoned_ds["_S1"], seasoned_ds["_S2"], slope], compat="override"
+        [renamed_seasoned_ds["_S1"], renamed_seasoned_ds["_S2"], slope], compat="override"
     ).chunk({"x": -1, "y": -1})
 
 
@@ -471,17 +474,21 @@ class PredGMS2(StatsGMS2):
             resampling=self.resampling,
         )
         dss = {"_S1": ds.isel(time=0), "_S2": ds.isel(time=1)}
+
         rainfall_dict = {
             '_S1': xr.open_rasterio(self.chirps_paths[0]),
             '_S2': xr.open_rasterio(self.chirps_paths[1])
         }
-        # TODO: build feature from dss
+
         assembled_gm_dict = dict(
             (k, gm_rainfall_single_season(dss[k], rainfall_dict[k], season_key=k)) for k in dss.keys()
         )
+
         pred_input_data = merge_two_season_feature(assembled_gm_dict, PredConf)
+
         with fsspec.open(PredConf.model_path) as fh:
             model = joblib.load(fh)
+
         predicted = predict_with_model(PredConf, model, pred_input_data, {})
         predicted, prob, filtered = post_processing(predicted, geobox)
         output_ds = xr.Dataset(
