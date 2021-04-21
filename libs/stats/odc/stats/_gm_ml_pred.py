@@ -1,11 +1,30 @@
-from typing import Optional, Tuple
+import os
+import shutil
+from typing import Dict, Optional
+from typing import Tuple
 
+import fsspec
+import gdal
+import geopandas as gpd
+import joblib
+import numpy as np
+import pandas as pd
 import xarray as xr
 from dataclasses import dataclass
-from odc.algo import erase_bad, geomedian_with_mads, to_rgba
-from odc.algo.io import load_enum_filtered
-from odc.algo.io import load_with_native_transform
+from datacube import Datacube
+from datacube.testutils.io import rio_slurp_xarray
+from datacube.utils.cog import write_cog
+from datacube.utils.geometry import
+from datacube.utils.geometry import
+from datacube.utils.geometry import GeoBox, Geometry, assign_crs
+from deafrica_tools.classification import predict_xr
+from deafrica_tools.spatial import xr_rasterize
+from odc.algo import xr_reproject
+from odc.dscache.tools.tiling import GRIDS
 from odc.stats.model import Task, DateTimeRange, OutputProduct
+from pyproj import Proj, transform
+from rsgislib.segmentation import segutils
+from scipy.ndimage.measurements import _stats
 
 from . import _plugins
 from ._gm import StatsGMS2
@@ -21,6 +40,21 @@ class PredConf:
 
     model_path = "https://github.com/digitalearthafrica/crop-mask/blob/main/eastern_cropmask/results/gm_mads_two_seasons_ml_model_20210401.joblib?raw=true"  # noqa
     url_slope = "https://deafrica-data.s3.amazonaws.com/ancillary/dem-derivatives/cog_slope_africa.tif"
+    rename_dict = {  # "nir_1": "nir",
+        "B02": "blue",
+        "B03": "green",
+        "B04": "red",
+        "B05": "red_edge_1",
+        "B06": "red_edge_2",
+        "B07": "red_edge_3",
+        "B08": "nir",
+        "B8A": "nir_narrow",
+        "B11": "swir_1",
+        "B12": "swir_2",
+        "BCMAD": "bcdev",
+        "EMAD": "edev",
+        "SMAD": "sdev",
+    }
     training_features = [
         "red_S1",
         "blue_S1",
@@ -89,11 +123,287 @@ class PredConf:
     )
 
 
+def down_scale_gm_band(
+        ds: xr.Dataset, exclude: Tuple[str, str] = ("sdev", "bcdev"), scale=10_000
+) -> xr.Dataset:
+    """
+    down scale band not in exclude list.
+    :param ds:
+    :param exclude:
+    :param scale:
+    :return:
+    """
+    for band in ds.data_vars:
+        if band not in exclude:
+            ds[band] = ds[band] / scale
+    return ds
+
+
+def chirp_clip(ds: xr.Dataset, chirps: xr.DataArray) -> xr.DataArray:
+    """
+     fill na with mean on chirps data
+    :param ds: geomedian collected with certain geobox
+    :param chirps: rainfall data
+    :return: chirps data without na
+    """
+    # TODO: test with dummy ds and chirps
+    # Clip CHIRPS to ~ S2 tile boundaries so we can handle NaNs local to S2 tile
+    xmin, xmax = ds.x.values[0], ds.x.values[-1]
+    ymin, ymax = ds.y.values[0], ds.y.values[-1]
+    inProj = Proj("epsg:6933")
+    outProj = Proj("epsg:4326")
+    xmin, ymin = transform(inProj, outProj, xmin, ymin)
+    xmax, ymax = transform(inProj, outProj, xmax, ymax)
+
+    # create lat/lon indexing slices - buffer S2 bbox by 0.05deg
+    # Todo: xmin < 0 and xmax < 0,  x_slice = [], unit tests
+    if (xmin < 0) & (xmax < 0):
+        x_slice = list(np.arange(xmin + 0.05, xmax - 0.05, -0.05))
+    else:
+        x_slice = list(np.arange(xmax - 0.05, xmin + 0.05, 0.05))
+
+    if (ymin < 0) & (ymax < 0):
+        y_slice = list(np.arange(ymin + 0.05, ymax - 0.05, -0.05))
+    else:
+        y_slice = list(np.arange(ymin - 0.05, ymax + 0.05, 0.05))
+
+    # index global chirps using buffered s2 tile bbox
+    chirps = assign_crs(chirps.sel(x=y_slice, y=x_slice, method="nearest"))
+
+    # fill any NaNs in CHIRPS with local (s2-tile bbox) mean
+    return chirps.fillna(chirps.mean())
+
+
+def calculate_indices(ds: xr.Dataset) -> xr.Dataset:
+    """
+    add calculate_indices into the datasets
+    :param ds: input ds with nir, red, green bands
+    :return: ds with new bands
+    """
+    inices_dict = {
+        "NDVI": lambda ds: (ds.nir - ds.red) / (ds.nir + ds.red),
+        "LAI": lambda ds: (
+                3.618
+                * ((2.5 * (ds.nir - ds.red)) / (ds.nir + 6 * ds.red - 7.5 * ds.blue + 1))
+                - 0.118
+        ),
+        "MNDWI": lambda ds: (ds.green - ds.swir_1) / (ds.green + ds.swir_1),
+    }
+
+    for k, func in inices_dict.items():
+        ds[k] = func(ds)
+
+    ds["sdev"] = -np.log(ds["sdev"])
+    ds["bcdev"] = -np.log(ds["bcdev"])
+    ds["edev"] = -np.log(ds["edev"])
+
+    return ds
+
+
+def gm_rainfall_single_season(
+        geomedian_with_mads: Dict[str, xr.Dataset],
+        season_time_dict: Dict[str, Tuple],
+        rainfall_dict: Dict[str, xr.DataArray],
+        season_key="_S1",
+) -> xr.Dataset:
+    """
+    generate gm-semiannual with rainfall, query sample see bellow
+    :param dc: Datacube context
+    :param query: require fields above
+    :param season_time_dict: define the time range for each crop season
+    :param rainfall_dict: cache the rainfall data with dict
+    :param season_key: one of {'_S1', '_S2'}
+    :return: gm with rainfall
+    """
+
+    # remove time dim
+    geomedian_with_mads = geomedian_with_mads.drop("time")
+    # scale
+    geomedian_with_mads = down_scale_gm_band(geomedian_with_mads)
+    geomedian_with_mads = assign_crs(calculate_indices(geomedian_with_mads))
+
+    # rainfall
+    rainfall = assign_crs(rainfall_dict[season_key], crs="epsg:4326")
+    rainfall = chirp_clip(geomedian_with_mads, rainfall)
+
+    rainfall = (
+        xr_reproject(rainfall, geomedian_with_mads.geobox, "bilinear")
+            .drop(["band", "spatial_ref"])
+            .squeeze()
+    )
+
+    geomedian_with_mads["rain"] = rainfall
+
+    return geomedian_with_mads.drop("spatial_ref").squeeze()
+
+
+def merge_two_season_feature(
+        seasoned_ds: Dict[str, xr.Dataset], config: dataclass
+) -> xr.Dataset:
+    """
+    combine the two season datasets and add slope to build the machine learning feature
+    :param seasoned_ds:  gm+indices+rainfall
+    :param config: FeaturePathConfig has slop url
+    :return: merged xr Dataset
+    """
+    slope = (
+        rio_slurp_xarray(config.url_slope, gbox=seasoned_ds["_S1"].geobox)
+            .drop("spatial_ref")
+            .to_dataset(name="slope")
+    )
+
+    return xr.merge(
+        [seasoned_ds["_S1"], seasoned_ds["_S2"], slope], compat="override"
+    ).chunk({"x": -1, "y": -1})
+
+
+def predict_with_model(config, model, data: xr.Dataset, chunk_size=None) -> xr.Dataset:
+    """
+    run the prediction here
+    """
+    # step 1: select features
+    input_data = data[config.training_features]
+
+    # step 2: prediction
+    predicted = predict_xr(
+        model,
+        input_data,
+        chunk_size=chunk_size,
+        clean=True,
+        proba=True,
+        return_input=True
+    )
+
+    predicted['Predictions'] = predicted['Predictions'].astype('int8')
+    predicted['Probabilities'] = predicted['Probabilities'].astype('float32')
+
+    return predicted
+
+
+def post_processing(
+        data: xr.Dataset,
+        predicted: xr.Dataset,
+        geobox_used: GeoBox,
+        config: dataclass = PredConf,
+) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+    """
+    filter prediction results with post processing filters.
+    :param data: raw data with all features to run prediction
+    :param predicted: The prediction results
+    :param config:  FeaturePathConfig configureation
+    :param geobox_used: Geobox used to generate the prediciton feature
+    :return: only predicted binary class label
+    """
+
+    query = config.query.copy()
+    # Update dc query with geometry
+    # geobox_used = self.geobox_dict[(x, y)]
+    geom = Geometry(geobox_used.extent.geom, crs=geobox_used.crs)
+    query["geopolygon"] = geom
+    dc = Datacube(app=__name__)
+
+    # create gdf from geom to help with masking
+    df = pd.DataFrame({"col1": [0]})
+    df["geometry"] = geobox_used.extent.geom
+    gdf = gpd.GeoDataFrame(df, geometry=df["geometry"], crs=geobox_used.crs)
+
+    # Mask dataset to set pixels outside the polygon to `NaN`
+    mask = xr_rasterize(gdf, data)
+    predicted = predicted.where(mask).astype("float32")
+
+    # write out ndvi for image seg
+    ndvi = assign_crs(predicted[["NDVI_S1", "NDVI_S2"]], crs=predicted.geobox.crs)
+    write_cog(ndvi.to_array(), "Eastern_tile_NDVI.tif", overwrite=True)
+
+    # grab predictions and proba for post process filtering
+    predict = predicted.Predictions
+    proba = predicted.Probabilities
+    proba = proba.where(predict == 1, 100 - proba)  # crop proba only
+
+    # -----------------image seg---------------------------------------------
+    print("  image segmentation...")
+    # store temp files somewhere
+    directory = "tmp"
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+
+    tmp = "tmp/"
+
+    # inputs to image seg
+    tiff_to_segment = "Eastern_tile_NDVI.tif"
+    kea_file = "Eastern_tile_NDVI.kea"
+    segmented_kea_file = "Eastern_tile_segmented.kea"
+
+    # convert tiff to kea
+    gdal.Translate(
+        destName=kea_file, srcDS=tiff_to_segment, format="KEA", outputSRS="EPSG:6933"
+    )
+
+    # run image seg
+    segutils.runShepherdSegmentation(
+        inputImg=kea_file,
+        outputClumps=segmented_kea_file,
+        tmpath=tmp,
+        numClusters=60,
+        minPxls=50,
+    )
+
+    # open segments
+    segments = xr.open_rasterio(segmented_kea_file).squeeze().values
+
+    # calculate mode
+    print("  calculating mode...")
+    count, _sum = _stats(predict, labels=segments, index=segments)
+    mode = _sum > (count / 2)
+    mode = xr.DataArray(
+        mode, coords=predict.coords, dims=predict.dims, attrs=predict.attrs
+    )
+
+    # remove the tmp folder
+    shutil.rmtree(tmp)
+    os.remove(kea_file)
+    os.remove(segmented_kea_file)
+    os.remove(tiff_to_segment)
+
+    # --Post processing---------------------------------------------------------------
+    print("  post processing")
+    # mask with WOFS
+    #     wofs=dc.load(product='ga_ls8c_wofs_2_summary',like=data.geobox)
+    #     wofs=wofs.frequency > 0.2 # threshold
+    #     predict=predict.where(~wofs, 0)
+    #     proba=proba.where(~wofs, 0)
+    #     mode=mode.where(~wofs, 0)
+
+    # mask steep slopes
+    url_slope = config.url_slope
+    slope = rio_slurp_xarray(url_slope, gbox=data.geobox)
+    slope = slope > 35
+    predict = predict.where(~slope, 0)
+    proba = proba.where(~slope, 0)
+    mode = mode.where(~slope, 0)
+
+    # mask where the elevation is above 3600m
+    elevation = dc.load(product="srtm", like=data.geobox)
+    elevation = elevation.elevation > 3600  # threshold
+    predict = predict.where(~elevation.squeeze(), 0)
+    proba = proba.where(~elevation.squeeze(), 0)
+    mode = mode.where(~elevation.squeeze(), 0)
+
+    # set dtype
+    predict = predict.astype(np.int8)
+    proba = proba.astype(np.float32)
+    mode = mode.astype(np.int8)
+
+    return predict, proba, mode
+
+
 class PredGMS2(StatsGMS2):
     """
     Prediction from GeoMAD
     task run with the template
     datakube-apps/src/develop/workspaces/deafrica-dev/processing/06_stats_2019_semiannual_gm.yaml
+    TODO: target product derived from source product.
+    TODO: use half year task messages from semiannual to do the prediction
     """
     NAME = "pred_gm_s2"
     SHORT_NAME = NAME
@@ -103,6 +413,8 @@ class PredGMS2(StatsGMS2):
         f'{PredConf.protocol}{PredConf.s3bucket}/{PredConf.ref_folder}/CHIRPS/CHPclim_jan_jun_cumulative_rainfall.nc',
         f'{PredConf.protocol}{PredConf.s3bucket}/{PredConf.ref_folder}/CHIRPS/CHPclim_jul_dec_cumulative_rainfall.nc'
     )
+    source_product = 'gm_s2_semiannual'
+    target_product = 'crop_mask_eastern'
 
     def __init__(
             self,
@@ -137,86 +449,52 @@ class PredGMS2(StatsGMS2):
             work_chunks=work_chunks,
             **other,
         )
+        self.africa_N = GRIDS[f'africa_{PredConf.resolution[1]}']
 
     @property
     def measurements(self) -> Tuple[str, ...]:
         return self.bands
 
-    def _native_op_data_band(self, xx):
-        from odc.algo import enum_to_bool, keep_good_only
-
-        if not self._mask_band in xx.data_vars:
-            return xx
-
-        # Erase Data Pixels for which mask == nodata
-        #
-        #  xx[mask == nodata] = nodata
-        mask = xx[self._mask_band]
-        xx = xx.drop_vars([self._mask_band])
-        keeps = enum_to_bool(mask, self._nodata_classes, invert=True)
-        xx = keep_good_only(xx, keeps)
-
-        return xx
-
     def input_data(self, task: Task) -> xr.Dataset:
-        basis = self._basis_band
-        chunks = {"y": -1, "x": -1}
-        groupby = "solar_day"
-
-        erased = load_enum_filtered(
-            task.datasets,
-            self._mask_band,
-            task.geobox,
-            categories=self.cloud_classes,
-            filters=self.filters,
-            groupby=groupby,
+        """
+        assemble the input data and do prediction here.
+        This method work as pipeline
+        """
+        dc = Datacube(app=self.target_product)
+        geobox = self.africa_N.tile_geobox(task.tile_index)
+        ds = dc.load(
+            product=self.source_product,
+            time=PredConf.datetime_range.year,
+            measurements=list(PredConf.rename_dict.values()),
+            like=geobox,
+            dask_chunks={},
             resampling=self.resampling,
-            chunks={},
         )
-
-        bands_to_load = self.bands
-        if self._nodata_classes is not None:
-            # NOTE: this ends up loading Mask band twice, once to compute
-            # ``.erase`` band and once to compute ``nodata`` mask.
-            bands_to_load = (*bands_to_load, self._mask_band)
-
-        xx = load_with_native_transform(
-            task.datasets,
-            bands_to_load,
-            task.geobox,
-            self._native_op_data_band,
-            groupby=groupby,
-            basis=basis,
-            resampling=self.resampling,
-            chunks=chunks,
+        dss = {"_S1": ds.isel(time=0), "_S2": ds.isel(time=1)}
+        rainfall_dict = {
+            '_S1': xr.open_rasterio(self.chirps_paths[0]),
+            '_S2': xr.open_rasterio(self.chirps_paths[1])
+        }
+        # TODO: build feature from dss
+        assembled_gm_dict = dict(
+            (k, gm_rainfall_single_season(dss[k], rainfall_dict[k], season_key=k)) for k in dss.keys()
         )
-
-        xx = erase_bad(xx, erased)
-        return xx
+        pred_input_data = merge_two_season_feature(assembled_gm_dict, PredConf)
+        with fsspec.open(PredConf.model_path) as fh:
+            model = joblib.load(fh)
+        predicted = predict_with_model(PredConf, model, pred_input_data, {})
+        predicted, prob, filtered = post_processing(predicted, geobox)
+        output_ds = xr.Dataset(
+            {
+                'mask': predicted,
+                'prob': prob,
+                'filtered': filtered
+            }
+        )
+        return output_ds
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
-        scale = 1 / 10_000
-        cfg = dict(
-            maxiters=1000,
-            num_threads=1,
-            scale=scale,
-            offset=-1 * scale,
-            reshape_strategy="mem",
-            out_chunks=(-1, -1, -1),
-            work_chunks=self._work_chunks,
-            compute_count=True,
-            compute_mads=True,
-        )
-
-        gm = geomedian_with_mads(xx, **cfg)
-        gm = gm.rename(self._renames)
-
-        return gm
-
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        if self.rgb_bands is None:
-            return None
-        return to_rgba(xx, clamp=self.rgb_clamp, bands=self.rgb_bands)
+        return xx
 
 
 _plugins.register("pred-gm-s2", PredGMS2)
