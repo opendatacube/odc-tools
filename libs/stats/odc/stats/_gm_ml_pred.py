@@ -1,13 +1,13 @@
+from io import BytesIO
 from typing import Dict
 from typing import Tuple
 
 import boto3
-from io import BytesIO
-from botocore import UNSIGNED
-from botocore.config import Config
 import joblib
 import numpy as np
 import xarray as xr
+from botocore import UNSIGNED
+from botocore.config import Config
 from dataclasses import dataclass
 from datacube import Datacube
 from datacube.testutils.io import rio_slurp_xarray
@@ -19,7 +19,6 @@ from odc.stats.model import Task, DateTimeRange, OutputProduct, StatsPluginInter
 from pyproj import Proj, transform
 
 from . import _plugins
-
 
 
 def read_joblib(path):
@@ -36,16 +35,18 @@ def read_joblib(path):
         s3_bucket, s3_key = path.split('/')[2], path.split('/')[3:]
         s3_key = '/'.join(s3_key)
         with BytesIO() as f:
-            boto3.client("s3", config=Config(signature_version=UNSIGNED)).download_fileobj(Bucket=s3_bucket, Key=s3_key, Fileobj=f)
+            boto3.client("s3", config=Config(signature_version=UNSIGNED)).download_fileobj(Bucket=s3_bucket, Key=s3_key,
+                                                                                           Fileobj=f)
             f.seek(0)
             model = joblib.load(f)
-    
+
     # Path is a local directory 
     else:
         with open(path, 'rb') as f:
             model = joblib.load(f)
-    
+
     return model
+
 
 @dataclass
 class PredConf:
@@ -55,8 +56,7 @@ class PredConf:
     s3bucket = 'deafrica-data-dev-af'
     ref_folder = 'crop_mask_references'
 
-#     model_path =  f'{protocol}{s3bucket}/{ref_folder}/ml_models/gm_mads_two_seasons_ml_model_20210401.joblib'  # noqa
-    model_path =  f'{protocol}{s3bucket}/{ref_folder}/ml_models/gm_mads_two_seasons_ml_model_20210401.joblib'  # noqa
+    model_path = f'{protocol}{s3bucket}/{ref_folder}/ml_models/gm_mads_two_seasons_ml_model_20210401.joblib'  # noqa
     url_slope = "https://deafrica-data.s3.amazonaws.com/ancillary/dem-derivatives/cog_slope_africa.tif"
     chirps_paths = (
         f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jan_jun_cumulative_rainfall.nc',
