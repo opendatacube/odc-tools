@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 from typing import Tuple
 
 import fsspec
@@ -12,11 +12,10 @@ from datacube.utils.geometry import assign_crs
 from deafrica_tools.classification import predict_xr
 from odc.algo import xr_reproject
 from odc.dscache.tools.tiling import GRIDS
-from odc.stats.model import Task, DateTimeRange, OutputProduct
+from odc.stats.model import Task, DateTimeRange, OutputProduct, StatsPluginInterface
 from pyproj import Proj, transform
 
 from . import _plugins
-from ._gm import StatsGMS2
 
 
 @dataclass
@@ -29,6 +28,10 @@ class PredConf:
 
     model_path = "https://github.com/digitalearthafrica/crop-mask/blob/main/eastern_cropmask/results/gm_mads_two_seasons_ml_model_20210401.joblib?raw=true"  # noqa
     url_slope = "https://deafrica-data.s3.amazonaws.com/ancillary/dem-derivatives/cog_slope_africa.tif"
+    chirps_paths = (
+        f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jan_jun_cumulative_rainfall.nc',
+        f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jul_dec_cumulative_rainfall.nc'
+    )
     rename_dict = {  # "nir_1": "nir",
         "B02": "blue",
         "B03": "green",
@@ -255,6 +258,7 @@ def predict_with_model(config, model, data: xr.Dataset, chunk_size=None) -> xr.D
     input_data = data[config.training_features]
 
     # step 2: prediction
+    # TODO: require dask to process, require the client
     predicted = predict_xr(
         model,
         input_data,
@@ -262,7 +266,7 @@ def predict_with_model(config, model, data: xr.Dataset, chunk_size=None) -> xr.D
         clean=True,
         proba=True,
         return_input=True
-    ).compute()
+    )
 
     predicted['Predictions'] = predicted['Predictions'].astype('int8')
     predicted['Probabilities'] = predicted['Probabilities'].astype('float32')
@@ -270,7 +274,7 @@ def predict_with_model(config, model, data: xr.Dataset, chunk_size=None) -> xr.D
     return predicted
 
 
-class PredGMS2(StatsGMS2):
+class PredGMS2(StatsPluginInterface):
     """
     Prediction from GeoMAD
     task run with the template
@@ -282,46 +286,13 @@ class PredGMS2(StatsGMS2):
     SHORT_NAME = NAME
     VERSION = "0.1.0"
     PRODUCT_FAMILY = "geomedian"
-    chirps_paths = (
-        f'{PredConf.protocol}{PredConf.s3bucket}/{PredConf.ref_folder}/CHIRPS/CHPclim_jan_jun_cumulative_rainfall.nc',
-        f'{PredConf.protocol}{PredConf.s3bucket}/{PredConf.ref_folder}/CHIRPS/CHPclim_jul_dec_cumulative_rainfall.nc'
-    )
+
     source_product = 'gm_s2_semiannual'
     target_product = 'crop_mask_eastern'
 
-    def __init__(
-            self,
-            bands: Optional[Tuple[str, ...]] = None,
-            mask_band: Optional[str] = None,
-            cloud_classes: Tuple[str, ...] = None,
-            nodata_classes: Optional[Tuple[str, ...]] = None,
-            filters: Optional[Tuple[int, int]] = None,
-            basis_band: Optional[str] = None,
-            aux_names=None,
-            rgb_bands=None,
-            rgb_clamp=None,
-            resampling: str = "bilinear",
-            work_chunks: Tuple[int, int] = (400, 400),
-            **other,
-    ):
-        if bands is None:
-            # target band to be saved
-            bands = ('mask', 'prob')  # skip, 'filtered')
-
-        super().__init__(
-            bands=bands,
-            mask_band=mask_band,
-            cloud_classes=cloud_classes,
-            nodata_classes=nodata_classes,
-            filters=filters,
-            basis_band=basis_band,
-            aux_names=aux_names,
-            rgb_bands=rgb_bands,
-            rgb_clamp=rgb_clamp,
-            resampling=resampling,
-            work_chunks=work_chunks,
-            **other,
-        )
+    def __init__(self):
+        # target band to be saved
+        self.bands = ('mask', 'prob')  # skip, 'filtered')
         self.africa_N = GRIDS[f'africa_{PredConf.resolution[1]}']
 
     @property
@@ -334,20 +305,21 @@ class PredGMS2(StatsGMS2):
         This method work as pipeline
         """
         dc = Datacube(app=self.target_product)
+
         geobox = self.africa_N.tile_geobox(task.tile_index)
         ds = dc.load(
             product=self.source_product,
-            time=PredConf.datetime_range.year,
+            time=str(PredConf.datetime_range.start.year),
             measurements=list(PredConf.rename_dict.values()),
             like=geobox,
             dask_chunks={},
-            resampling=self.resampling,
         )
+
         dss = {"_S1": ds.isel(time=0), "_S2": ds.isel(time=1)}
 
         rainfall_dict = {
-            '_S1': xr.open_rasterio(self.chirps_paths[0]),
-            '_S2': xr.open_rasterio(self.chirps_paths[1])
+            '_S1': xr.open_rasterio(PredConf.chirps_paths[0]),
+            '_S2': xr.open_rasterio(PredConf.chirps_paths[1])
         }
 
         assembled_gm_dict = dict(
@@ -360,7 +332,7 @@ class PredGMS2(StatsGMS2):
             model = joblib.load(fh)
 
         predicted = predict_with_model(PredConf, model, pred_input_data, {})
-        # predicted, prob, filtered = post_processing(pred_input_data, predicted, geobox)
+
         output_ds = xr.Dataset(
             {
                 'mask': predicted['Predictions'],
