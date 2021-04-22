@@ -8,8 +8,6 @@ import xarray as xr
 from dataclasses import dataclass
 from datacube import Datacube
 from datacube.testutils.io import rio_slurp_xarray
-from datacube.utils.geometry import
-from datacube.utils.geometry import
 from datacube.utils.geometry import assign_crs
 from deafrica_tools.classification import predict_xr
 from odc.algo import xr_reproject
