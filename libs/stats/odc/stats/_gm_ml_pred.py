@@ -1,30 +1,21 @@
-import os
-import shutil
 from typing import Dict, Optional
 from typing import Tuple
 
 import fsspec
-import gdal
-import geopandas as gpd
 import joblib
 import numpy as np
-import pandas as pd
 import xarray as xr
 from dataclasses import dataclass
 from datacube import Datacube
 from datacube.testutils.io import rio_slurp_xarray
-from datacube.utils.cog import write_cog
 from datacube.utils.geometry import
 from datacube.utils.geometry import
-from datacube.utils.geometry import GeoBox, Geometry, assign_crs
+from datacube.utils.geometry import assign_crs
 from deafrica_tools.classification import predict_xr
-from deafrica_tools.spatial import xr_rasterize
 from odc.algo import xr_reproject
 from odc.dscache.tools.tiling import GRIDS
 from odc.stats.model import Task, DateTimeRange, OutputProduct
 from pyproj import Proj, transform
-from rsgislib.segmentation import segutils
-from scipy.ndimage.measurements import _stats
 
 from . import _plugins
 from ._gm import StatsGMS2
@@ -251,7 +242,7 @@ def merge_two_season_feature(
     )
     renamed_seasoned_ds = {}
     for k, v in seasoned_ds.items():
-        renamed_seasoned_ds[k] = v.rename(dict((str(band), str(band)+k) for band in v.data_vars))
+        renamed_seasoned_ds[k] = v.rename(dict((str(band), str(band) + k) for band in v.data_vars))
 
     return xr.merge(
         [renamed_seasoned_ds["_S1"], renamed_seasoned_ds["_S2"], slope], compat="override"
@@ -273,129 +264,12 @@ def predict_with_model(config, model, data: xr.Dataset, chunk_size=None) -> xr.D
         clean=True,
         proba=True,
         return_input=True
-    )
+    ).compute()
 
     predicted['Predictions'] = predicted['Predictions'].astype('int8')
     predicted['Probabilities'] = predicted['Probabilities'].astype('float32')
 
     return predicted
-
-
-def post_processing(
-        data: xr.Dataset,
-        predicted: xr.Dataset,
-        geobox_used: GeoBox,
-        config: dataclass = PredConf,
-) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
-    """
-    filter prediction results with post processing filters.
-    :param data: raw data with all features to run prediction
-    :param predicted: The prediction results
-    :param config:  FeaturePathConfig configureation
-    :param geobox_used: Geobox used to generate the prediciton feature
-    :return: only predicted binary class label
-    """
-
-    query = config.query.copy()
-    # Update dc query with geometry
-    # geobox_used = self.geobox_dict[(x, y)]
-    geom = Geometry(geobox_used.extent.geom, crs=geobox_used.crs)
-    query["geopolygon"] = geom
-    dc = Datacube(app=__name__)
-
-    # create gdf from geom to help with masking
-    df = pd.DataFrame({"col1": [0]})
-    df["geometry"] = geobox_used.extent.geom
-    gdf = gpd.GeoDataFrame(df, geometry=df["geometry"], crs=geobox_used.crs)
-
-    # Mask dataset to set pixels outside the polygon to `NaN`
-    mask = xr_rasterize(gdf, data)
-    predicted = predicted.where(mask).astype("float32")
-
-    # write out ndvi for image seg
-    ndvi = assign_crs(predicted[["NDVI_S1", "NDVI_S2"]], crs=predicted.geobox.crs)
-    write_cog(ndvi.to_array(), "Eastern_tile_NDVI.tif", overwrite=True)
-
-    # grab predictions and proba for post process filtering
-    predict = predicted.Predictions
-    proba = predicted.Probabilities
-    proba = proba.where(predict == 1, 100 - proba)  # crop proba only
-
-    # -----------------image seg---------------------------------------------
-    print("  image segmentation...")
-    # store temp files somewhere
-    directory = "tmp"
-    if not os.path.exists(directory):
-        os.mkdir(directory)
-
-    tmp = "tmp/"
-
-    # inputs to image seg
-    tiff_to_segment = "Eastern_tile_NDVI.tif"
-    kea_file = "Eastern_tile_NDVI.kea"
-    segmented_kea_file = "Eastern_tile_segmented.kea"
-
-    # convert tiff to kea
-    gdal.Translate(
-        destName=kea_file, srcDS=tiff_to_segment, format="KEA", outputSRS="EPSG:6933"
-    )
-
-    # run image seg
-    segutils.runShepherdSegmentation(
-        inputImg=kea_file,
-        outputClumps=segmented_kea_file,
-        tmpath=tmp,
-        numClusters=60,
-        minPxls=50,
-    )
-
-    # open segments
-    segments = xr.open_rasterio(segmented_kea_file).squeeze().values
-
-    # calculate mode
-    print("  calculating mode...")
-    count, _sum = _stats(predict, labels=segments, index=segments)
-    mode = _sum > (count / 2)
-    mode = xr.DataArray(
-        mode, coords=predict.coords, dims=predict.dims, attrs=predict.attrs
-    )
-
-    # remove the tmp folder
-    shutil.rmtree(tmp)
-    os.remove(kea_file)
-    os.remove(segmented_kea_file)
-    os.remove(tiff_to_segment)
-
-    # --Post processing---------------------------------------------------------------
-    print("  post processing")
-    # mask with WOFS
-    #     wofs=dc.load(product='ga_ls8c_wofs_2_summary',like=data.geobox)
-    #     wofs=wofs.frequency > 0.2 # threshold
-    #     predict=predict.where(~wofs, 0)
-    #     proba=proba.where(~wofs, 0)
-    #     mode=mode.where(~wofs, 0)
-
-    # mask steep slopes
-    url_slope = config.url_slope
-    slope = rio_slurp_xarray(url_slope, gbox=data.geobox)
-    slope = slope > 35
-    predict = predict.where(~slope, 0)
-    proba = proba.where(~slope, 0)
-    mode = mode.where(~slope, 0)
-
-    # mask where the elevation is above 3600m
-    elevation = dc.load(product="dem_srtm", like=data.geobox)
-    elevation = elevation.elevation > 3600  # threshold
-    predict = predict.where(~elevation.squeeze(), 0)
-    proba = proba.where(~elevation.squeeze(), 0)
-    mode = mode.where(~elevation.squeeze(), 0)
-
-    # set dtype
-    predict = predict.astype(np.int8)
-    proba = proba.astype(np.float32)
-    mode = mode.astype(np.int8)
-
-    return predict, proba, mode
 
 
 class PredGMS2(StatsGMS2):
@@ -434,7 +308,7 @@ class PredGMS2(StatsGMS2):
     ):
         if bands is None:
             # target band to be saved
-            bands = ('mask', 'prob', 'filtered')
+            bands = ('mask', 'prob')  # skip, 'filtered')
 
         super().__init__(
             bands=bands,
@@ -488,12 +362,11 @@ class PredGMS2(StatsGMS2):
             model = joblib.load(fh)
 
         predicted = predict_with_model(PredConf, model, pred_input_data, {})
-        predicted, prob, filtered = post_processing(pred_input_data, predicted, geobox)
+        # predicted, prob, filtered = post_processing(pred_input_data, predicted, geobox)
         output_ds = xr.Dataset(
             {
-                'mask': predicted,
-                'prob': prob,
-                'filtered': filtered
+                'mask': predicted['Predictions'],
+                'prob': predicted['Probabilities']
             }
         )
         return output_ds
