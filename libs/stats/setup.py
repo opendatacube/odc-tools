@@ -18,7 +18,8 @@ setup(
         "odc_dscache",
         "odc_algo",
         "odc_aws",
-        "dataclasses",
+        "odc_aio",
+        "dataclasses; python_version<'3.7'",
         "tqdm",
         "pystac"
     ],
