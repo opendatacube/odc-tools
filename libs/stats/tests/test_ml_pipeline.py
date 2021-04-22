@@ -7,6 +7,7 @@ from odc.stats._gm_ml_pred import PredGMS2
 def dummy_pred_gms2():
     return PredGMS2()
 
+
 @pytest.mark.skip(reason="integration check the input_data methods only")
 def test_pred_gms2_pred_input(dummy_pred_gms2):
     from dask.distributed import Client

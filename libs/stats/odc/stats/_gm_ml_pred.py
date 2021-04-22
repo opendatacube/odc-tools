@@ -309,8 +309,6 @@ class PredGMS2(StatsPluginInterface):
     Prediction from GeoMAD
     task run with the template
     datakube-apps/src/develop/workspaces/deafrica-dev/processing/06_stats_2019_semiannual_gm.yaml
-    TODO: target product derived from source product.
-    TODO: use half year task messages from semiannual to do the prediction
     """
     NAME = "pred_gm_s2"
     SHORT_NAME = NAME
