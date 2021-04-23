@@ -199,3 +199,35 @@ def parse_gridspec_with_name(
     gs = _parse_gridspec_string(s)
     s = s.replace(";", "_")
     return (s, gs)
+
+
+def gridspec_from_crs(
+    crs: CRS,
+    tile_size: Tuple[float, float] = (96_000, 96_000),
+    pad_yx: Tuple[int, int] = (0, 0),
+    resolution: Optional[Tuple[float, float]] = None,
+):
+    """
+    Compute GridSpec such that there are no negative tiles overlapping with the
+    valid region of the target CRS.
+
+    :param crs: Coordinate System used to define the grid
+    :param tile_size: (Y, X) size of each tile, in CRS units
+    :param pad_yx: (Y, X) safety margin in number of tiles
+    :param resolution: (Y, X) size of each data point in the grid, in CRS units. Y will
+                       usually be negative.
+    """
+    from math import floor
+
+    if resolution is None:
+        resolution = (-tile_size[0], tile_size[1])
+
+    x0, y0, x1, y1 = crs.valid_region.to_crs(crs).boundingbox
+    # index of the tile containing bottom left corner
+    iy, ix = (int(floor(v / tsz)) for v, tsz in zip((y0, x0), tile_size))
+
+    y0_, x0_ = [
+        float((idx - pad) * tsz) for (idx, pad, tsz) in zip((iy, ix), pad_yx, tile_size)
+    ]
+
+    return GridSpec(crs, tile_size, resolution=resolution, origin=(y0_, x0_))
