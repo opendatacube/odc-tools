@@ -14,6 +14,12 @@ epsg6933 = CRS("epsg:6933")
 # point within a given CRS's valid region, and also making sure that x=0,y=0
 # lines fall on tile edges.
 #
+#  au = gridspec_from_crs(CRS("epsg:3577"),
+#                         tile_size=(96_000, 96_000),
+#                         pad_yx=(5, 5))
+#
+#  So AU tiles with index `y < 5 or x < 5` are outside of the valid range of EPSG:3577.
+#
 GRIDS = {
     "albers_au_25": GridSpec(
         crs=epsg3577, tile_size=(100_000.0, 100_000.0), resolution=(-25, 25)
@@ -22,14 +28,14 @@ GRIDS = {
         crs=epsg3577,
         tile_size=(96_000.0, 96_000.0),
         resolution=(-96_000, 96_000),
-        origin=(-5088000, -2208000),
+        origin=(-5472000.0, -2688000.0),
     ),
     **{
         f"au_{n}": GridSpec(
             crs=epsg3577,
             tile_size=(96_000.0, 96_000.0),
             resolution=(-n, n),
-            origin=(-5088000, -2208000),
+            origin=(-5472000.0, -2688000.0),
         )
         for n in (10, 20, 30, 60)
     },
