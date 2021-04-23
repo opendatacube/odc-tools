@@ -3,6 +3,7 @@ from typing import Dict
 from typing import Tuple
 
 import boto3
+import dask.array as da
 import joblib
 import numpy as np
 import xarray as xr
