@@ -21,7 +21,9 @@ setup(
         "odc_aio",
         "dataclasses; python_version<'3.7'",
         "tqdm",
-        "pystac"
+        "pystac",
+        "joblib",
+        "dask_ml"
     ],
     packages=["odc.stats"],
     zip_safe=False,
