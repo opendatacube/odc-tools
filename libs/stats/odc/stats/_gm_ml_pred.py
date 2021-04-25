@@ -100,7 +100,7 @@ def predict_xr(
         # reshape for prediction
         input_data_flattened = da.array(input_data_flattened).transpose()
 
-        if clean == True:
+        if clean:
             input_data_flattened = da.where(
                 da.isfinite(input_data_flattened), input_data_flattened, 0
             )
@@ -114,7 +114,7 @@ def predict_xr(
         out_class = model.predict(input_data_flattened)
 
         # Mask out NaN or Inf values in results
-        if clean == True:
+        if clean:
             out_class = da.where(da.isfinite(out_class), out_class, 0)
 
         # Reshape when writing out
@@ -125,14 +125,14 @@ def predict_xr(
 
         output_xr = output_xr.to_dataset(name="Predictions")
 
-        if proba == True:
+        if proba:
             print("   probabilities...")
             out_proba = model.predict_proba(input_data_flattened)
 
             # convert to %
             out_proba = da.max(out_proba, axis=1) * 100.0
 
-            if clean == True:
+            if clean:
                 out_proba = da.where(da.isfinite(out_proba), out_proba, 0)
 
             out_proba = out_proba.reshape(len(y), len(x))
@@ -142,7 +142,7 @@ def predict_xr(
             )
             output_xr["Probabilities"] = out_proba
 
-        if return_input == True:
+        if return_input:
             print("   input features...")
             # unflatten the input_data_flattened array and append
             # to the output_xr containin the predictions
@@ -180,7 +180,7 @@ def predict_xr(
 
         return assign_crs(output_xr, str(crs))
 
-    if dask == True:
+    if dask:
         # convert model to dask predict
         model = ParallelPostFit(model)
         with joblib.parallel_backend("dask"):
