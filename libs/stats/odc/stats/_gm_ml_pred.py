@@ -233,9 +233,13 @@ class PredConf:
 
     model_path = f'{protocol}{s3bucket}/{ref_folder}/ml_models/gm_mads_two_seasons_ml_model_20210401.joblib'  # noqa
     url_slope = "https://deafrica-data.s3.amazonaws.com/ancillary/dem-derivatives/cog_slope_africa.tif"
+    # chirps_paths = (
+    #     f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jan_jun_cumulative_rainfall.nc',
+    #     f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jul_dec_cumulative_rainfall.nc'
+    # )
     chirps_paths = (
-        f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jan_jun_cumulative_rainfall.nc',
-        f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jul_dec_cumulative_rainfall.nc'
+        "s3://deafrica-input-datasets/rainfall/CHPclim_jan_jun_cumulative_rainfall.tif",
+        "s3://deafrica-input-datasets/rainfall/CHPclim_jul_dec_cumulative_rainfall.tif"
     )
     rename_dict = {  # "nir_1": "nir",
         "B02": "blue",
@@ -353,7 +357,6 @@ def chirp_clip(ds: xr.Dataset, chirps: xr.DataArray) -> xr.DataArray:
     xmax, ymax = transform(inProj, outProj, xmax, ymax)
 
     # create lat/lon indexing slices - buffer S2 bbox by 0.05deg
-    # Todo: xmin < 0 and xmax < 0,  x_slice = [], unit tests
     if (xmin < 0) & (xmax < 0):
         x_slice = list(np.arange(xmin + 0.05, xmax - 0.05, -0.05))
     else:
@@ -365,10 +368,10 @@ def chirp_clip(ds: xr.Dataset, chirps: xr.DataArray) -> xr.DataArray:
         y_slice = list(np.arange(ymin - 0.05, ymax + 0.05, 0.05))
 
     # index global chirps using buffered s2 tile bbox
-    chirps = assign_crs(chirps.sel(x=y_slice, y=x_slice, method="nearest"))
+    chirps = assign_crs(chirps.sel(longitude=y_slice, latitude=x_slice, method="nearest"))
 
     # fill any NaNs in CHIRPS with local (s2-tile bbox) mean
-    return chirps.fillna(chirps.mean())
+    return xr_reproject(chirps, ds.geobox, "bilinear").drop(["band", "spatial_ref"]).squeeze()
 
 
 def calculate_indices(ds: xr.Dataset) -> xr.Dataset:
@@ -418,14 +421,7 @@ def gm_rainfall_single_season(
     geomedian_with_mads = assign_crs(calculate_indices(geomedian_with_mads))
 
     # rainfall
-    rainfall = assign_crs(rainfall, crs="epsg:4326")
     rainfall = chirp_clip(geomedian_with_mads, rainfall)
-
-    rainfall = (
-        xr_reproject(rainfall, geomedian_with_mads.geobox, "bilinear")
-            .drop(["band", "spatial_ref"])
-            .squeeze()
-    )
 
     geomedian_with_mads["rain"] = rainfall
 
@@ -521,8 +517,8 @@ class PredGMS2(StatsPluginInterface):
         dss = {"_S1": ds.isel(time=0), "_S2": ds.isel(time=1)}
 
         rainfall_dict = {
-            '_S1': xr.open_rasterio(PredConf.chirps_paths[0]),
-            '_S2': xr.open_rasterio(PredConf.chirps_paths[1])
+            '_S1': rio_slurp_xarray(PredConf.chirps_paths[0]),
+            '_S2': rio_slurp_xarray(PredConf.chirps_paths[1])
         }
 
         assembled_gm_dict = dict(
