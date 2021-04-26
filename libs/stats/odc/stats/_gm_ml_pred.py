@@ -233,14 +233,14 @@ class PredConf:
 
     model_path = f'{protocol}{s3bucket}/{ref_folder}/ml_models/gm_mads_two_seasons_ml_model_20210401.joblib'  # noqa
     url_slope = "https://deafrica-data.s3.amazonaws.com/ancillary/dem-derivatives/cog_slope_africa.tif"
-    # chirps_paths = (
-    #     f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jan_jun_cumulative_rainfall.nc',
-    #     f'{protocol}{s3bucket}/{ref_folder}/CHIRPS/CHPclim_jul_dec_cumulative_rainfall.nc'
-    # )
     chirps_paths = (
-        "s3://deafrica-input-datasets/rainfall/CHPclim_jan_jun_cumulative_rainfall.tif",
-        "s3://deafrica-input-datasets/rainfall/CHPclim_jul_dec_cumulative_rainfall.tif"
+        f'{protocol}{s3bucket}/{ref_folder}/rainfall/CHPclim_jan_jun_cumulative_rainfall.tif',
+        f'{protocol}{s3bucket}/{ref_folder}/rainfall/CHPclim_jul_dec_cumulative_rainfall.tif'
     )
+    # chirps_paths = (
+    #     "s3://deafrica-input-datasets/rainfall/CHPclim_jan_jun_cumulative_rainfall.tif",
+    #     "s3://deafrica-input-datasets/rainfall/CHPclim_jul_dec_cumulative_rainfall.tif"
+    # )
     rename_dict = {  # "nir_1": "nir",
         "B02": "blue",
         "B03": "green",
