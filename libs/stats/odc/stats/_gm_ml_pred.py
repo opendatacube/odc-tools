@@ -371,7 +371,7 @@ def chirp_clip(ds: xr.Dataset, chirps: xr.DataArray) -> xr.DataArray:
     chirps = assign_crs(chirps.sel(longitude=y_slice, latitude=x_slice, method="nearest"))
 
     # fill any NaNs in CHIRPS with local (s2-tile bbox) mean
-    return xr_reproject(chirps, ds.geobox, "bilinear").drop(["band", "spatial_ref"]).squeeze()
+    return xr_reproject(chirps, ds.geobox, "bilinear").drop(["spatial_ref"]).squeeze()
 
 
 def calculate_indices(ds: xr.Dataset) -> xr.Dataset:
