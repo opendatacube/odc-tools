@@ -6,6 +6,9 @@
 output_location: 's3://deafrica-services/s2_stats_annual/{product}/{version}/'
 
 # Configure Plugin and Product Attributes
+# Either pre-defined name like: pq, gm-generic, gm-s2, gm-ls
+# OR an external class
+#  plugin: mycustomlib.SomePluginOfMine
 plugin: pq
 plugin_config:
   # Plugin specific configuration
