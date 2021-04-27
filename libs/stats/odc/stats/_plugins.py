@@ -1,3 +1,4 @@
+import pydoc
 from typing import Callable, Dict
 from functools import partial
 
@@ -14,6 +15,14 @@ def _new(plugin_class, *args, **kwargs) -> StatsPluginInterface:
 
 def resolve(name: str) -> PluginFactory:
     maker = _plugins.get(name)
+    if maker is None:
+        maker = pydoc.locate(name)
+        if maker is not None:
+            mro = getattr(maker, "__mro__", tuple())
+            if StatsPluginInterface not in mro:
+                raise ValueError(f"Custom StatsPlugin '{name}' is not derived from StatsPluginInterface")
+            return partial(_new, maker)
+
     if maker is None:
         raise ValueError(f"Failed to resolved named plugin: '{name}'")
     return maker
