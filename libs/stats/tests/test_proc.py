@@ -1,3 +1,4 @@
+import pytest
 from odc.stats.proc import TaskRunner, TaskRunnerConfig
 
 
@@ -33,3 +34,19 @@ def test_runner_product_cfg(test_db_path, dummy_plugin_name):
     assert cfg["blocksize"] == 1024
     assert cfg["compression"] == "webp"
     assert cfg["webp_level"] == 80
+
+
+def test_plugin_resolve():
+    from odc.stats._plugins import resolve
+    from odc.stats._gm import StatsGM
+
+    assert resolve("gm-generic") is not None
+    assert resolve("odc.stats._gm.StatsGM") is not None
+
+    # Test no such class
+    with pytest.raises(ValueError):
+        resolve("odc.nosuch.Class")
+
+    # Test wrong class
+    with pytest.raises(ValueError):
+        resolve("queue.Queue")
