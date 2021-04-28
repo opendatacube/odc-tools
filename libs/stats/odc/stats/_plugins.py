@@ -18,8 +18,7 @@ def resolve(name: str) -> PluginFactory:
     if maker is None:
         maker = pydoc.locate(name)
         if maker is not None:
-            mro = getattr(maker, "__mro__", tuple())
-            if StatsPluginInterface not in mro:
+            if not issubclass(maker, (StatsPluginInterface,)):
                 raise ValueError(f"Custom StatsPlugin '{name}' is not derived from StatsPluginInterface")
             return partial(_new, maker)
 
