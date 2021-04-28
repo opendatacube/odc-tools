@@ -1,7 +1,7 @@
 odc.geom
 ========
 
-Geometry utils of various kind.
+Geometry utils of various kinds.
 
 Installation
 ------------
