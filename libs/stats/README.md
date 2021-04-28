@@ -78,7 +78,13 @@ Statistician has multiple different execution modes:
 A sample command to run a single task:
 
 ```
-odc-stats run ga_ls8c_ard_3_all.db  2015--P1Y/41/13 --threads=16 --memory-limit=60Gi --resolution=30 --config cfg.yaml --location file:///localpath/
+odc-stats run ga_ls8c_ard_3_all.db \
+ 2015--P1Y/41/13 \
+ --config cfg.yaml \
+ --resolution=30 \
+ --location file:///localpath/ \
+ --threads=16 \
+ --memory-limit=60Gi
 ```
 
 ```
@@ -164,7 +170,7 @@ Note that each queue will have a corresponding dead letter queue.
 
 The user and the queue will be created using a Terraform module which contains code similar to the following:
 
-```
+```terraform
 module "odc_stats_geomedian" {
 
   source = "../../../modules/statistician"
