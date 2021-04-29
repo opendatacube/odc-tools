@@ -12,7 +12,7 @@ from datacube.utils.geometry import GeoBox, rio_reproject, compute_reproject_roi
 from datacube.utils.geometry.gbox import GeoboxTiles
 from datacube.utils import spatial_dims
 
-NodataType = Union[int, float]
+from ._types import NodataType
 
 
 def _reproject_block_impl(
