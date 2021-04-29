@@ -4,15 +4,22 @@ Dask aware reproject implementation
 from typing import Tuple, Optional, Union, Dict, Any
 import numpy as np
 import xarray as xr
+from affine import Affine
 from dask import is_dask_collection
 import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
 from ._dask import randomize, crop_2d_dense, unpack_chunks, empty_maker
-from datacube.utils.geometry import GeoBox, rio_reproject, compute_reproject_roi
+from datacube.utils.geometry import (
+    GeoBox,
+    rio_reproject,
+    compute_reproject_roi,
+    warp_affine,
+)
 from datacube.utils.geometry.gbox import GeoboxTiles
 from datacube.utils import spatial_dims
 
 from ._types import NodataType
+from ._numeric import shape_shrink2
 
 
 def _reproject_block_impl(
@@ -250,3 +257,54 @@ def xr_reproject(
     }
 
     return xr.Dataset(data_vars=bands)
+
+
+def _shrink2(
+    xx: np.ndarray,
+    resampling: str = "nearest",
+    nodata: Optional[NodataType] = None,
+    axis: int = 0,
+):
+    """
+    :param xx: Image to shrink
+    :param resampling: Resampling strategy to use
+    :param nodata: nodata value for missing value fill
+    :param axis: Y-axis index, to distinguish Y,X,B (default) vs B,Y,X (axis=1)
+    """
+    out_shape = shape_shrink2(xx.shape, axis=axis)
+
+    if xx.ndim == 2 or (xx.ndim == 3 and axis == 1):
+        # [Y, X] or [B, Y, X]
+        out = np.empty(out_shape, dtype=xx.dtype)
+        warp_affine(
+            xx,
+            out,
+            Affine.scale(2),
+            resampling=resampling,
+            src_nodata=nodata,
+            dst_nodata=nodata,
+        )
+    elif xx.ndim == 3 and axis == 0:
+        # [Y, X, B] -> [Y', X', B]
+        assert xx.ndim == 3
+
+        # Need to turn into B,Y,X order
+        xx = xx.transpose((2, 0, 1))
+        out = np.empty(out_shape[2:] + out_shape[:2], dtype=xx.dtype)
+        warp_affine(
+            xx,
+            out,
+            Affine.scale(2),
+            resampling=resampling,
+            src_nodata=nodata,
+            dst_nodata=nodata,
+        )
+
+        # back to Y',X',B
+        out = out.transpose((1, 2, 0))
+
+        assert out_shape == out.shape
+    else:
+        raise ValueError("Only support Y,X | Y,X,B | B,Y,X inputs")
+
+    return out
