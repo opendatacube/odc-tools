@@ -1,4 +1,8 @@
 import threading
+from dask.delayed import Delayed
+import dask
+import dask.array as da
+from dask.base import tokenize
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, Union, Tuple
@@ -319,3 +323,80 @@ class COGSink:
             else:
                 rio_copy(src, self._dst, copy_src_overviews=True, **self._rio_opts)
                 return None
+
+
+def save_cog(
+    xx: xr.DataArray,
+    dst: str,
+    blocksize: Optional[int] = None,
+    ovr_blocksize: Optional[int] = None,
+    bigtiff: Union[bool, str] = "auto",
+    temp_folder: Optional[str] = None,
+    overview_resampling: str = "average",
+    **extra_rio_opts,
+):
+    """
+    Save Dask array to COG incrementally (without instantiating whole image at once).
+
+    COG generation is a two stage process. First we create a bunch of TIFF
+    images, one for each overview levels, these are compressed with fast ZSTD
+    compression (lossless and with quick rather than good compression
+    settings). Overviews are generated block by block so we do not keep them
+    in-memory uncompressed. To avoid block boundary artefacts, input blocks are
+    set to be 2048x2048 (2**11, edge blocks can have any size). Use that size
+    at construction time for optimal performance.
+
+    :param xx: Geo registered Array, data could be arranged in Y,X or Y,X,B or B,Y,X order.
+               To avoid re-chunking use block sizes of 2048x2048.
+    :param dst: ":mem:" or file path
+    :param blocksize: Block size of the final COG (512 pixels)
+    :param ovr_blocksize: Block size of the overview images (default same as main image)
+    :param bigtiff: True|False|"auto" Default is to use bigtiff for inputs greater than 4Gb uncompressed
+    :param temp_folder: By default first pass images are written to RAM, with this option they can be written to disk instead
+    :param overview_resampling: Resampling to use for overview generation: nearest|average|bilinear|...
+    """
+    assert dask.is_dask_collection(xx)
+    tk = tokenize(
+        xx,
+        dst,
+        blocksize,
+        ovr_blocksize,
+        bigtiff,
+        temp_folder,
+        overview_resampling,
+        extra_rio_opts,
+    )
+
+    info = GeoRasterInfo.from_xarray(xx)
+
+    # Rechunk to 2048x2048 in YX, if needed
+    axis = info.axis
+    data = xx.data
+    chunks = data.chunksize
+    yx_chunks = chunks[axis : axis + 2]
+
+    if yx_chunks != (2048, 2048):
+        data = data.rechunk(
+            chunks[:axis] + (2048, 2048) + chunks[axis + 2 :]
+        )
+
+    # set up sink
+    sink = dask.delayed(COGSink)(
+        info,
+        dst,
+        blocksize=blocksize,
+        ovr_blocksize=ovr_blocksize,
+        bigtiff=bigtiff,
+        temp_folder=temp_folder,
+        overview_resampling=overview_resampling,
+        **extra_rio_opts,
+    )
+
+    rr = da.store(data, sink, lock=False, compute=False)
+    dsk = dict(rr.dask)
+    deps = dsk.pop(rr.key)
+    name = "cog-" + tk
+
+    # when all stores are complete, do second pass re-encode
+    dsk[name] = (lambda sink, *deps: sink.finalise(), sink.key, *deps)
+    return Delayed(name, dsk)
