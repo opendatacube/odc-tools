@@ -4,7 +4,7 @@ import dask.array as da
 from dask import delayed
 from dask.distributed import Client
 import toolz
-from ._dask import (
+from odc.algo._dask import (
     _rechunk_2x2,
     _stack_2d_np,
     compute_chunk_range,
