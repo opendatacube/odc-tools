@@ -60,6 +60,8 @@ from ._rgba import (
 
 from ._warp import xr_reproject
 
+from ._tiff import save_cog
+
 __all__ = (
     "apply_numexpr",
     "safe_div",
@@ -103,4 +105,5 @@ __all__ = (
     "to_rgba_np",
     "colorize",
     "xr_reproject",
+    "save_cog",
 )
