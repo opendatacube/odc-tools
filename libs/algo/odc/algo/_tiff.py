@@ -314,7 +314,10 @@ class COGSink:
     def finalise(self) -> Optional[bytes]:
         self.close()  # Write out any remainders if needed
 
-        with rasterio.Env(GDAL_TIFF_OVR_BLOCKSIZE=self._ovr_blocksize):
+        with rasterio.Env(
+            GDAL_TIFF_OVR_BLOCKSIZE=self._ovr_blocksize,
+            GDAL_DISABLE_READDIR_ON_OPEN=False,
+        ):
             src = self._layers[0].name
             if self._dst == ":mem:":
                 with MemoryFile() as mem:
@@ -376,9 +379,7 @@ def save_cog(
     yx_chunks = chunks[axis : axis + 2]
 
     if yx_chunks != (2048, 2048):
-        data = data.rechunk(
-            chunks[:axis] + (2048, 2048) + chunks[axis + 2 :]
-        )
+        data = data.rechunk(chunks[:axis] + (2048, 2048) + chunks[axis + 2 :])
 
     # set up sink
     sink = dask.delayed(COGSink)(
