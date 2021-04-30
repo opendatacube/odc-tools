@@ -62,9 +62,9 @@ class GeoRasterInfo:
             count = 1
         elif xx.ndim == 3:
             if xx.shape[:2] == (height, width):
-                count = xx.shape[0]
-            elif xx.shape[1:] == (height, width):
                 count = xx.shape[2]
+            elif xx.shape[1:] == (height, width):
+                count = xx.shape[0]
                 axis = 1
             else:
                 raise ValueError("Geobox shape does not match array size")
