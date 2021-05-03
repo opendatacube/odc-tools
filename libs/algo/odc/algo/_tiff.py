@@ -5,7 +5,7 @@ import dask.array as da
 from dask.base import tokenize
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Any
 import xarray as xr
 import numpy as np
 from affine import Affine
@@ -221,6 +221,7 @@ class COGSink:
         lock: bool = True,
         temp_folder: Optional[str] = None,
         overview_resampling: str = "average",
+        rio_opts_first_pass: Optional[Dict[str, Any]]=None,
         **extra_rio_opts,
     ):
         if blocksize is None:
@@ -246,14 +247,16 @@ class COGSink:
         )
         opts.update(extra_rio_opts)
 
-        rio_opts_temp = dict(
-            compress="zstd",
-            zstd_level=1,
-            predictor=1,
-            num_threads="ALL_CPUS",
-            sparse_ok=True,
-            interleave=opts.get("interleave", "pixel"),
-        )
+        if rio_opts_first_pass is None:
+            rio_opts_first_pass = dict(
+                compress="zstd",
+                zstd_level=1,
+                predictor=1,
+                num_threads="ALL_CPUS",
+                sparse_ok=True,
+                interleave=opts.get("interleave", "pixel"),
+            )
+
         layers = []
         temp = str(uuid4())
         t_dir = ""
@@ -271,7 +274,7 @@ class COGSink:
             else:
                 _dst = MemoryFile(dirname=t_dir, filename=t_name + ext)
             sink = TIFFSink(
-                ii, _dst, lock=lock, blocksize=bsz, bigtiff=bigtiff, **rio_opts_temp
+                ii, _dst, lock=lock, blocksize=bsz, bigtiff=bigtiff, **rio_opts_first_pass
             )
             layers.append(sink)
 
@@ -325,10 +328,22 @@ class COGSink:
             src = self._layers[0].name
             if self._dst == ":mem:":
                 with MemoryFile() as mem:
-                    rio_copy(src, mem.name, copy_src_overviews=True, strict=strict, **self._rio_opts)
+                    rio_copy(
+                        src,
+                        mem.name,
+                        copy_src_overviews=True,
+                        strict=strict,
+                        **self._rio_opts,
+                    )
                     return bytes(mem.getbuffer())
             else:
-                rio_copy(src, self._dst, copy_src_overviews=True, strict=strict, **self._rio_opts)
+                rio_copy(
+                    src,
+                    self._dst,
+                    copy_src_overviews=True,
+                    strict=strict,
+                    **self._rio_opts,
+                )
                 return None
 
     def finalise(self) -> Optional[bytes]:
