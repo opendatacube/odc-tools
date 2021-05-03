@@ -5,7 +5,7 @@ import dask.array as da
 from dask.base import tokenize
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Union, Tuple, Any
+from typing import Optional, Union, Tuple, Any, Dict
 import xarray as xr
 import numpy as np
 from affine import Affine
@@ -221,7 +221,8 @@ class COGSink:
         lock: bool = True,
         temp_folder: Optional[str] = None,
         overview_resampling: str = "average",
-        rio_opts_first_pass: Optional[Dict[str, Any]]=None,
+        rio_opts_first_pass: Optional[Dict[str, Any]] = None,
+        use_final_blocksizes: bool = False,
         **extra_rio_opts,
     ):
         if blocksize is None:
@@ -268,13 +269,24 @@ class COGSink:
         ext = ".tif"
         ii = info
         bsz = 2048
-        for _ in range(7 + 1):
+        for idx in range(7 + 1):
             if temp_folder:
                 _dst = str(Path(temp_folder) / f"{t_name}{ext}")
             else:
                 _dst = MemoryFile(dirname=t_dir, filename=t_name + ext)
+
+            if use_final_blocksizes:
+                _bsz = blocksize if idx == 0 else ovr_blocksize
+            else:
+                _bsz = bsz
+
             sink = TIFFSink(
-                ii, _dst, lock=lock, blocksize=bsz, bigtiff=bigtiff, **rio_opts_first_pass
+                ii,
+                _dst,
+                lock=lock,
+                blocksize=_bsz,
+                bigtiff=bigtiff,
+                **rio_opts_first_pass,
             )
             layers.append(sink)
 
@@ -370,6 +382,7 @@ def save_cog(
     bigtiff: Union[bool, str] = "auto",
     temp_folder: Optional[str] = None,
     overview_resampling: str = "average",
+    use_final_blocksizes: bool = False,
     **extra_rio_opts,
 ):
     """
@@ -391,6 +404,13 @@ def save_cog(
     :param bigtiff: True|False|"auto" Default is to use bigtiff for inputs greater than 4Gb uncompressed
     :param temp_folder: By default first pass images are written to RAM, with this option they can be written to disk instead
     :param overview_resampling: Resampling to use for overview generation: nearest|average|bilinear|...
+
+    :param use_final_blocksizes: By default first pass blocksizes are fixed at
+                                 2048x2048, 1024x1024, 512x512,...64x64, this
+                                 way blocks across different overview levels
+                                 have one to one mapping. With this option one
+                                 can use final image block sizes for the first
+                                 pass instead.
     """
     assert dask.is_dask_collection(xx)
     tk = tokenize(
