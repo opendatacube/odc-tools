@@ -308,16 +308,19 @@ class COGSink:
             key, item = self._shrink2(item, key)
             dst[key] = item
 
-    def close(self):
-        for dst in self._layers:
-            dst.close()
+    def close(self, idx=-1):
+        if idx < 0:
+            for dst in self._layers:
+                dst.close()
+        elif idx < len(self._layers):
+            self._layers[idx].close()
 
-    def finalise(self) -> Optional[bytes]:
-        self.close()  # Write out any remainders if needed
-
+    def _copy_cog(self) -> Optional[bytes]:
         with rasterio.Env(
             GDAL_TIFF_OVR_BLOCKSIZE=self._ovr_blocksize,
             GDAL_DISABLE_READDIR_ON_OPEN=False,
+            NUM_THREADS="ALL_CPUS",
+            GDAL_NUM_THREADS="ALL_CPUS",
         ):
             src = self._layers[0].name
             if self._dst == ":mem:":
@@ -327,6 +330,21 @@ class COGSink:
             else:
                 rio_copy(src, self._dst, copy_src_overviews=True, **self._rio_opts)
                 return None
+
+    def finalise(self) -> Optional[bytes]:
+        self.close()  # Write out any remainders if needed
+        self._copy_cog()
+
+    @staticmethod
+    def dask_finalise(sink: Delayed, *deps) -> Delayed:
+        delayed_close = dask.delayed(lambda sink, idx, *deps: sink.close(idx))
+        parts = [
+            delayed_close(sink, idx, *deps, dask_key_name=("cog_close", idx))
+            for idx in range(8)
+        ]
+        return dask.delayed(lambda sink, *parts: sink._copy_cog())(
+            sink, *parts, dask_key_name="cog"
+        )
 
 
 def save_cog(
@@ -395,10 +413,12 @@ def save_cog(
     )
 
     rr = da.store(data, sink, lock=False, compute=False)
+
+    # wait for all stores to complete
     dsk = dict(rr.dask)
     deps = dsk.pop(rr.key)
-    name = "cog-" + tk
+    name = "cog_finish-" + tk
+    dsk[name] = (lambda sink, *deps: sink, sink.key, *deps)
+    cog_finish = Delayed(name, dsk)
 
-    # when all stores are complete, do second pass re-encode
-    dsk[name] = (lambda sink, *deps: sink.finalise(), sink.key, *deps)
-    return Delayed(name, dsk)
+    return COGSink.dask_finalise(cog_finish)
