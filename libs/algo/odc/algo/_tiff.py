@@ -252,6 +252,7 @@ class COGSink:
             predictor=1,
             num_threads="ALL_CPUS",
             sparse_ok=True,
+            interleave=opts.get("interleave", "pixel"),
         )
         layers = []
         temp = str(uuid4())
