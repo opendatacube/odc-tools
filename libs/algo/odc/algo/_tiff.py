@@ -315,7 +315,7 @@ class COGSink:
         elif idx < len(self._layers):
             self._layers[idx].close()
 
-    def _copy_cog(self) -> Optional[bytes]:
+    def _copy_cog(self, strict=False) -> Optional[bytes]:
         with rasterio.Env(
             GDAL_TIFF_OVR_BLOCKSIZE=self._ovr_blocksize,
             GDAL_DISABLE_READDIR_ON_OPEN=False,
@@ -325,10 +325,10 @@ class COGSink:
             src = self._layers[0].name
             if self._dst == ":mem:":
                 with MemoryFile() as mem:
-                    rio_copy(src, mem.name, copy_src_overviews=True, **self._rio_opts)
+                    rio_copy(src, mem.name, copy_src_overviews=True, strict=strict, **self._rio_opts)
                     return bytes(mem.getbuffer())
             else:
-                rio_copy(src, self._dst, copy_src_overviews=True, **self._rio_opts)
+                rio_copy(src, self._dst, copy_src_overviews=True, strict=strict, **self._rio_opts)
                 return None
 
     def finalise(self) -> Optional[bytes]:
