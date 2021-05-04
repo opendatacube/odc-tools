@@ -367,6 +367,21 @@ class COGSink:
     def mem(self):
         return self._mem
 
+    def dump_to_s3(self, url, **kw):
+        import boto3
+        from boto3.s3.transfer import TransferConfig
+        from odc.aws import s3_url_parse
+
+        assert self._mem is not None
+
+        GB = 1 << 30
+        transfer_config = TransferConfig(multipart_threshold=5 * GB)
+        bucket, key = s3_url_parse(url)
+        s3 = boto3.client("s3")
+
+        return s3.upload_fileobj(
+            self._mem, bucket, key, ExtraArgs=kw, Config=transfer_config
+        )
 
     @staticmethod
     def dask_finalise(sink: Delayed, extract=False, strict=False, *deps) -> Delayed:
@@ -399,6 +414,7 @@ def save_cog(
     temp_folder: Optional[str] = None,
     overview_resampling: str = "average",
     use_final_blocksizes: bool = False,
+    ACL: Optional[str] = None,
     **extra_rio_opts,
 ):
     """
@@ -414,7 +430,7 @@ def save_cog(
 
     :param xx: Geo registered Array, data could be arranged in Y,X or Y,X,B or B,Y,X order.
                To avoid re-chunking use block sizes of 2048x2048.
-    :param dst: ":mem:" or file path
+    :param dst: ":mem:" or file path or s3 url
     :param blocksize: Block size of the final COG (512 pixels)
     :param ovr_blocksize: Block size of the overview images (default same as main image)
     :param bigtiff: True|False|"auto" Default is to use bigtiff for inputs greater than 4Gb uncompressed
@@ -427,6 +443,7 @@ def save_cog(
                                  have one to one mapping. With this option one
                                  can use final image block sizes for the first
                                  pass instead.
+    :param ACL: Used when dst is S3
     """
     assert dask.is_dask_collection(xx)
     tk = tokenize(
@@ -451,6 +468,18 @@ def save_cog(
     if yx_chunks != (2048, 2048):
         data = data.rechunk(chunks[:axis] + (2048, 2048) + chunks[axis + 2 :])
 
+    s3_url: Optional[str] = None
+    extract = False
+    if dst == ":mem:":
+        extract = True
+    elif dst.startswith("s3:"):
+        s3_url, dst = dst, ":mem:"
+    else:
+        # Assume file path
+        # TODO: check if overwrite?
+        # TODO: create folder structure?
+        pass
+
     # set up sink
     sink = dask.delayed(COGSink)(
         info,
@@ -472,4 +501,14 @@ def save_cog(
     dsk[name] = (lambda sink, *deps: sink, sink.key, *deps)
     cog_finish = Delayed(name, dsk)
 
-    return COGSink.dask_finalise(cog_finish)
+    if s3_url is not None:
+        s3_opts = dict(ContentType="image/tiff")
+        if ACL is not None:
+            s3_opts["ACL"] = ACL
+
+        cog_finish = COGSink.dask_finalise(cog_finish, extract=False)
+        return dask.delayed(lambda sink, url, opts: sink.dump_to_s3(url, **opts))(
+            cog_finish, s3_url, s3_opts, dask_key_name="dump_to_s3"
+        )
+    else:
+        return COGSink.dask_finalise(cog_finish, extract=extract)
