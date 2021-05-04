@@ -413,6 +413,7 @@ def save_cog(
     bigtiff: Union[bool, str] = "auto",
     temp_folder: Optional[str] = None,
     overview_resampling: str = "average",
+    rio_opts_first_pass: Optional[Dict[str, Any]] = None,
     use_final_blocksizes: bool = False,
     ACL: Optional[str] = None,
     **extra_rio_opts,
@@ -437,6 +438,7 @@ def save_cog(
     :param temp_folder: By default first pass images are written to RAM, with this option they can be written to disk instead
     :param overview_resampling: Resampling to use for overview generation: nearest|average|bilinear|...
 
+    :param rio_opts_first_pass: Change defaults for first pass compression
     :param use_final_blocksizes: By default first pass blocksizes are fixed at
                                  2048x2048, 1024x1024, 512x512,...64x64, this
                                  way blocks across different overview levels
@@ -489,6 +491,8 @@ def save_cog(
         bigtiff=bigtiff,
         temp_folder=temp_folder,
         overview_resampling=overview_resampling,
+        rio_opts_first_pass=rio_opts_first_pass,
+        use_final_blocksizes=use_final_blocksizes,
         **extra_rio_opts,
     )
 
