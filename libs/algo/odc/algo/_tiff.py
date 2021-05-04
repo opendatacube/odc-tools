@@ -301,6 +301,7 @@ class COGSink:
                 bsz = bsz // 2
 
         self._layers = layers
+        self._mem = MemoryFile() if dst == ":mem:" else None
         self._dst = dst
         self._rio_opts = opts
         self._ovr_blocksize = ovr_blocksize
@@ -330,7 +331,7 @@ class COGSink:
         elif idx < len(self._layers):
             self._layers[idx].close()
 
-    def _copy_cog(self, strict=False) -> Optional[bytes]:
+    def _copy_cog(self, extract=False, strict=False) -> Optional[bytes]:
         with rasterio.Env(
             GDAL_TIFF_OVR_BLOCKSIZE=self._ovr_blocksize,
             GDAL_DISABLE_READDIR_ON_OPEN=False,
@@ -338,16 +339,17 @@ class COGSink:
             GDAL_NUM_THREADS="ALL_CPUS",
         ):
             src = self._layers[0].name
-            if self._dst == ":mem:":
-                with MemoryFile() as mem:
-                    rio_copy(
-                        src,
-                        mem.name,
-                        copy_src_overviews=True,
-                        strict=strict,
-                        **self._rio_opts,
-                    )
-                    return bytes(mem.getbuffer())
+            if self._mem is not None:
+                rio_copy(
+                    src,
+                    self._mem.name,
+                    copy_src_overviews=True,
+                    strict=strict,
+                    **self._rio_opts,
+                )
+                if extract:
+                    # NOTE: this creates a copy of compressed bytes
+                    return bytes(self._mem.getbuffer())
             else:
                 rio_copy(
                     src,
@@ -356,21 +358,35 @@ class COGSink:
                     strict=strict,
                     **self._rio_opts,
                 )
-                return None
+            return None
 
-    def finalise(self) -> Optional[bytes]:
+    def finalise(self, extract=False, strict=False) -> Optional[bytes]:
         self.close()  # Write out any remainders if needed
-        self._copy_cog()
+        return self._copy_cog(strict=strict, extract=extract)
+
+    def mem(self):
+        return self._mem
+
 
     @staticmethod
-    def dask_finalise(sink: Delayed, *deps) -> Delayed:
+    def dask_finalise(sink: Delayed, extract=False, strict=False, *deps) -> Delayed:
+        """
+
+        When extract=True --> returns bytes (doubles memory requirements!!!)
+        When extract=False -> returns sink after completing everything
+        """
         delayed_close = dask.delayed(lambda sink, idx, *deps: sink.close(idx))
         parts = [
             delayed_close(sink, idx, *deps, dask_key_name=("cog_close", idx))
             for idx in range(8)
         ]
-        return dask.delayed(lambda sink, *parts: sink._copy_cog())(
-            sink, *parts, dask_key_name="cog"
+
+        def _copy_cog(sink, extract, strict, *parts):
+            bb = sink._copy_cog(extract=extract, strict=strict)
+            return bb if extract else sink
+
+        return dask.delayed(_copy_cog)(
+            sink, extract, strict, *parts, dask_key_name="cog"
         )
 
 
