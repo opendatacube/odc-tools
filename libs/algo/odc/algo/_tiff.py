@@ -362,7 +362,7 @@ class COGSink:
 
     def finalise(self, extract=False, strict=False) -> Optional[bytes]:
         self.close()  # Write out any remainders if needed
-        return self._copy_cog(strict=strict, extract=extract)
+        return self._copy_cog(extract=extract, strict=strict)
 
     def mem(self):
         return self._mem
@@ -499,10 +499,22 @@ def save_cog(
     rr = da.store(data, sink, lock=False, compute=False)
 
     # wait for all stores to complete
+    #
+    # NOTE: here we edit dask graph returned from `da.store`, essentially
+    # replacing top level result with a lambda that returns original COGSink
+    # once all parallel stores are done. One could just depend on `rr` itself
+    # in theory, but in practice Dask optimizer removes it from the graph. So
+    # if you had something like:
+    #
+    #   dask.delayed(lambda sink, rr: sink)(sink, rr).compute()
+    #
+    # it would throw an exception from deep inside Dask,
+    # `.compute(optimize=False)` does work though.
+
     dsk = dict(rr.dask)
     deps = dsk.pop(rr.key)
     name = "cog_finish-" + tk
-    dsk[name] = (lambda sink, *deps: sink, sink.key, *deps)
+    dsk[name] = ((lambda sink, *deps: sink), sink.key, *deps)
     cog_finish = Delayed(name, dsk)
 
     if s3_url is not None:
