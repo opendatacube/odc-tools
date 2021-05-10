@@ -43,7 +43,7 @@ docutils==0.15.2
 ecdsa==0.14.1
 entrypoints==0.3
 future==0.18.2
-hdstats==0.1.8.post1
+hdstats==0.2.1
 HeapDict==1.0.1
 idna==2.10
 imageio==2.9.0
