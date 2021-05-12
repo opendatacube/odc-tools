@@ -9,6 +9,11 @@ TEST_DIR = pathlib.Path(__file__).parent.absolute()
 
 
 @pytest.fixture
+def aws_env(monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
+
+
+@pytest.fixture
 def test_dir():
     return TEST_DIR
 
@@ -51,7 +56,7 @@ def sqs_message():
 
 
 @pytest.fixture
-def sqs_queue_by_name():
+def sqs_queue_by_name(aws_env):
     qname = "test-sqs"
     with mock_sqs():
         sqs = boto3.resource("sqs")
