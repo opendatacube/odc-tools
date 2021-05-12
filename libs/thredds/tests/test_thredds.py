@@ -4,6 +4,8 @@ import pytest
 from odc.thredds import thredds_find_glob, download_yamls
 
 
+# It's too slow to fail, disabling this for now
+@pytest.mark.skip
 @pytest.mark.xfail
 def test_thredds_crawl():
     """Crawl a sample Thredds URL, this will fail if NCI loses this data
