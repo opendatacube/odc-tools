@@ -1,0 +1,18 @@
+# for now don't bother with compiling anything
+# but potential choices are
+#
+
+#aiohttp
+#cffi
+#cftime
+#lmdb
+#lxml
+#numexpr
+#numpy
+#pandas
+#pillow
+#pyyaml
+#pyzmq
+#sqlalchemy
+#tornado
+#zstandard
