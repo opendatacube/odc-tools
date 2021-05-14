@@ -10,12 +10,10 @@ mk_edit_requirements () {
 
 install_all_in_edit_mode () {
     local reqs=$(mktemp /tmp/requirements-XXXX.txt)
-    mk_edit_requirements >> "${reqs}"
 
-    # do double install
-    #  1. without deps -- install odc-* but none of their dependents
-    #  2. with deps -- now that all `odc-*` are here, reinstall getting all other deps
-    python3 -m pip install --no-deps -r "${reqs}"
+    # List all libs in -e /path/to/lib mode
+    #  this should let pip find all the odc- dependencies locally
+    mk_edit_requirements >> "${reqs}"
     python3 -m pip install -r "${reqs}" $@
 
     rm "${reqs}"

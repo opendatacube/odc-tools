@@ -1,0 +1,22 @@
+datacube[dev]
+moto
+mock
+pytest
+docker
+deepdiff
+
+-e /code/apps/dc_tools[AZURE,THREDDS]
+-e /code/apps/cloud[AZURE,THREDDS,GCP]
+-e /code/libs/geom
+-e /code/libs/dtools
+-e /code/libs/index
+-e /code/libs/aws
+-e /code/libs/azure
+-e /code/libs/dscache
+-e /code/libs/io
+-e /code/libs/aio
+-e /code/libs/algo
+-e /code/libs/ppt
+-e /code/libs/ui
+-e /code/libs/stats
+-e /code/libs/thredds
