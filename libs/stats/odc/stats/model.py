@@ -234,6 +234,7 @@ class WorkTokenInterface(ABC):
             return self.extend(seconds)
         return True
 
+
 @dataclass
 class Task:
     product: OutputProduct
@@ -348,7 +349,7 @@ class Task:
             bbox=[bbox.left, bbox.bottom, bbox.right, bbox.top],
             datetime=self.time_range.start.replace(tzinfo=timezone.utc),
             properties=properties,
-            stac_extensions=["projection"]
+            stac_extensions=["projection"],
         )
 
         item.ext.projection.epsg = geobox.crs.epsg
@@ -526,7 +527,7 @@ class TaskRunnerConfig:
 
     # Heartbeat filepath
     heartbeat_filepath: Optional[str] = None
-    
+
     # Terminate task if running longer than this amount (seconds)
     max_processing_time: int = 0
 
