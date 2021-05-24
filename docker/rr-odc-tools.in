@@ -4,6 +4,9 @@ mock
 pytest
 docker
 deepdiff
+pip-tools
+rio-cogeo
+
 
 -e /code/apps/dc_tools[AZURE,THREDDS]
 -e /code/apps/cloud[AZURE,THREDDS,GCP]

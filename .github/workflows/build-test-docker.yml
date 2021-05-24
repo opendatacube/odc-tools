@@ -29,10 +29,13 @@ jobs:
         echo "::set-output name=push_image::${push_image}"
 
     - uses: actions/cache@v2
-      name: Cache Python Env
+      name: Cache Python Env Files
       id: cache_env
       with:
-        path: docker/.build
+        path: |
+          docker/.build
+          docker/wheels
+
         key: ${{ runner.os }}-env-${{ hashFiles('docker/requirements.txt', 'docker/constraints.txt', 'docker/nobinary.txt', 'docker/Makefile') }}
 
     - uses: actions/cache@v2
@@ -42,16 +45,15 @@ jobs:
       with:
         path: |
           docker/.cache
-          docker/wheels
 
         key: ${{ runner.os }}-pip-${{ github.run_id }}
         restore-keys: |
           ${{ runner.os }}-pip-
 
-    - name: Build test environment
+    - name: Build Wheels
       if: steps.cache_env.outputs.cache-hit != 'true'
       run: |
-        make -C docker env
+        make -C docker compile
 
     - name: Build test docker
       run: |
@@ -59,9 +61,11 @@ jobs:
         make -C docker dkr-no-deps
 
     - name: Run tests
-      timeout-minutes: 20
+      timeout-minutes: 10
       run: |
-        make -C docker run-test
+        cd tests
+        docker-compose up -d
+        docker-compose exec -T tools-tester pytest --timeout=30
 
     - name: DockerHub Login
       if: steps.cfg.outputs.push_image == 'yes'
@@ -73,3 +77,4 @@ jobs:
       if: steps.cfg.outputs.push_image == 'yes'
       run: |
         docker push opendatacube/odc-test-runner:latest
+

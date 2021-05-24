@@ -1,5 +1,6 @@
 # Base image to use for constructing environment
-BUILDER_IMG ?= opendatacube/geobase-builder:3.3.0
+V_BASE ?= 3.3.0
+BUILDER_IMG ?= opendatacube/geobase-builder:$(V_BASE)
 
 # Docker we are building
 DKR_IMG ?= opendatacube/odc-test-runner:latest
@@ -9,14 +10,11 @@ WK := $(shell pwd)
 
 # Absolute path to code
 CODE := $(shell readlink -f ..)
+TTY := $(shell bash -c "tty -s && echo '-t' || true")
 
-# ENV -- location of python env inside the docker
-ENV := "/env"
-
-dkr := docker run --rm -i \
+dkr := docker run --rm -i $(TTY) \
         -v $(CODE):/code \
         -v $(WK):/wk \
-        -v $(WK)/.build/env:$(ENV) \
         -e TZ=Australia/Sydney \
         -e NOBINARY=/wk/nobinary.txt \
         $(BUILDER_IMG)
@@ -25,13 +23,9 @@ all: dkr
 
 download: .build/download.info.txt
 compile: .build/compile.info.txt
-env: .build/env.info.txt
-
-env.tgz: .cache/env.info.txt
-	@$(dkr) tar czf $@ $(ENV)
 
 .build/prepared.txt:
-	@mkdir -p .cache/pip .build/env
+	@mkdir -p .cache/pip .build
 	@date > $@
 
 .build/download.info.txt: requirements.txt constraints.txt nobinary.txt .build/prepared.txt
@@ -40,10 +34,6 @@ env.tgz: .cache/env.info.txt
 
 .build/compile.info.txt: .build/download.info.txt
 	@$(dkr) env-build-tool compile ./wheels
-	@date > $@
-
-.build/env.info.txt: .build/compile.info.txt
-	@$(dkr) env-build-tool new_no_index rr-odc-tools.in constraints.txt $(ENV) ./wheels
 	@date > $@
 
 bash: .build/prepared.txt
@@ -57,22 +47,21 @@ bash-runner:
 
 dbg: .build/prepared.txt
 	@echo "dkr: " $(dkr)
-	@$(dkr) python --version
+	@$(dkr) python3 --version
 
-dkr: .build/env.info.txt Dockerfile
-	docker build -t $(DKR_IMG) --cache-from $(DKR_IMG) .
+dkr: .build/compile.info.txt Dockerfile
+	DOCKER_BUILDKIT=1 docker build --build-arg V_BASE=$(V_BASE) -t $(DKR_IMG) --cache-from $(DKR_IMG) -f Dockerfile ..
 
 dkr-no-deps:
-	docker build -t $(DKR_IMG) --cache-from $(DKR_IMG) .
+	DOCKER_BUILDKIT=1 docker build --build-arg V_BASE=$(V_BASE) -t $(DKR_IMG) --cache-from $(DKR_IMG) -f Dockerfile ..
 
 run-test:
-	@docker run --rm -i \
+	@docker run --rm \
     -v $(CODE):/code \
-    $(DKR_IMG) pytest .
+    $(DKR_IMG) pytest --timeout=30 .
 
 clean:
-	rm -f .build/download.info.txt .build/compile.info.txt .build/env.info.txt
-	rm -rf .build/env
+	rm -f .build/download.info.txt .build/compile.info.txt
 	@echo "Keeping wheels and pip cache"
 
-.PHONY: dbg all clean download compile env dkr
+.PHONY: dbg all clean download compile dkr run-test dkr dkr-no-deps bash bash-runner

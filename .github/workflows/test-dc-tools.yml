@@ -23,4 +23,4 @@ jobs:
       run: |
         cd tests
         docker-compose up -d
-        docker-compose exec -T tools-tester pytest
+        docker-compose exec -T tools-tester pytest --timeout=30

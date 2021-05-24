@@ -23,7 +23,7 @@ export PIP_CACHE_DIR=/wk/.cache/pip
 
 case "${1:-help}" in
     help)
-        echo "TODO: help" 
+        echo "TODO: help"
         ;;
     python|python3|pip|pip3|pip-compile|pytest)
         source /env/bin/activate
