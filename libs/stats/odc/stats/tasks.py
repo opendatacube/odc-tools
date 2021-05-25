@@ -1,7 +1,10 @@
+from random import random
 from typing import Optional, Tuple, Union, Callable, Any, Dict, List, Iterable, Iterator
+import random
 from types import SimpleNamespace
 from collections import namedtuple
 from datetime import datetime
+from itertools import chain, islice
 import pickle
 import json
 import os
@@ -99,48 +102,19 @@ class SaveTasks:
     def out_path(self, suffix: str) -> str:
         return out_path(suffix, self._output)
 
-    def save(
-        self,
+    def _get_dss(self,
         dc: Datacube,
         product: str,
-        temporal_range: Union[str, DateTimeRange, None] = None,
+        msg: Callable[[str], Any],
+        temporal_range: Optional[DateTimeRange] = None,
         tiles: Optional[TilesRange2d] = None,
-        predicate: Optional[Callable[[Dataset], bool]] = None,
-        msg: Optional[Callable[[str], Any]] = None,
-        debug: bool = False,
-    ) -> bool:
+    ):
         """
-        :param product: Product name to consume
-        :param temporal_range: Optionally  limit query in time
-        :param tiles: Optionally limit query to a range of tiles
-        :param predicate: If supplied filter Datasets as they come in with custom filter, Dataset->Bool
-        :param msg: Observe messages if needed via callback
-        :param debug: Dump some intermediate state to files for debugging
+        This returns a tuple containing:
+        - a generator of datasets
+        - the number of datasets in the generator
+        - a config dictionary containing the product, temporal range, tiles, and the datacube query used
         """
-
-        dt_range = SimpleNamespace(start=None, end=None)
-
-        def _update_start_end(x, out):
-            if out.start is None:
-                out.start = x
-                out.end = x
-            else:
-                out.start = min(out.start, x)
-                out.end = max(out.end, x)
-
-        def persist(ds: Dataset) -> CompressedDataset:
-            _ds = compress_ds(ds)
-            _update_start_end(_ds.time, dt_range)
-            return _ds
-
-        def msg_default(msg):
-            pass
-
-        if msg is None:
-            msg = msg_default
-
-        if isinstance(temporal_range, str):
-            temporal_range = DateTimeRange(temporal_range)
 
         cfg: Dict[str, Any] = dict(
             grid=self._grid, freq=self._frequency,
@@ -173,8 +147,90 @@ class SaveTasks:
 
         msg(f"Processing {n_dss:,d} datasets")
 
+        cells: Dict[Tuple[int, int], Any] = {}
+        if "time" in query:
+            dss = chopped_dss(dc, freq="w", **query)
+        else:
+            if len(query) == 1:
+                dss = all_datasets(dc, **query)
+            else:
+                # note: this blocks for large result sets
+                dss = dc.find_datasets_lazy(**query)
+                
+        return dss, n_dss, cfg
+    
+    def save(
+        self,
+        dc: Datacube,
+        product: str,
+        temporal_range: Union[str, DateTimeRange, None] = None,
+        tiles: Optional[TilesRange2d] = None,
+        predicate: Optional[Callable[[Dataset], bool]] = None,
+        msg: Optional[Callable[[str], Any]] = None,
+        debug: bool = False,
+        dss = None,
+        n_dss = None,
+    ) -> bool:
+        """
+        :param product: Product name to consume
+        :param temporal_range: Optionally  limit query in time
+        :param tiles: Optionally limit query to a range of tiles
+        :param predicate: If supplied filter Datasets as they come in with custom filter, Dataset->Bool
+        :param msg: Observe messages if needed via callback
+        :param debug: Dump some intermediate state to files for debugging
+        :param dss: A generator of datasets to use
+        :param n_dss: The number of datasets in the generator
+        """
+
+        dt_range = SimpleNamespace(start=None, end=None)
+
+        def _update_start_end(x, out):
+            if out.start is None:
+                out.start = x
+                out.end = x
+            else:
+                out.start = min(out.start, x)
+                out.end = max(out.end, x)
+
+        def persist(ds: Dataset) -> CompressedDataset:
+            _ds = compress_ds(ds)
+            _update_start_end(_ds.time, dt_range)
+            return _ds
+
+        def msg_default(msg):
+            pass
+
+        if msg is None:
+            msg = msg_default
+
+        if isinstance(temporal_range, str):
+            temporal_range = DateTimeRange(temporal_range)
+
+        if dss is None:
+            dss, n_dss, cfg  = self._get_dss(dc, product, msg, temporal_range, tiles)
+        else:
+
+            cfg: Dict[str, Any] = dict(
+                grid=self._grid, freq=self._frequency,
+            )
+
+            if temporal_range is not None:
+                cfg["temporal_range"] = temporal_range.short
+
+            if tiles is not None:
+                cfg["tiles"] = tiles
+
+        if DatasetCache.exists(self._output) and self._overwrite is False:
+            raise ValueError(f"File database already exists: {self._output}")
+
+        msg(f"Processing {n_dss:,d} datasets")
+
         msg("Training compression dictionary")
-        zdict = dictionary_from_product_list(dc, [product], samples_per_product=100)
+        dss_slice = list(islice(dss, 0, 100))
+        samples = dss_slice.copy()
+        random.shuffle(samples)
+        zdict = DatasetCache.train_dictionary(samples, 8 * 1024)
+        dss = chain(dss_slice, dss)
         msg(".. done")
 
         cache = DatasetCache.create(
@@ -187,14 +243,6 @@ class SaveTasks:
         cache.append_info_dict("stats/", dict(config=cfg))
 
         cells: Dict[Tuple[int, int], Any] = {}
-        if "time" in query:
-            dss = chopped_dss(dc, freq="w", **query)
-        else:
-            if len(query) == 1:
-                dss = all_datasets(dc, **query)
-            else:
-                # note: this blocks for large result sets
-                dss = dc.find_datasets_lazy(**query)
 
         if predicate is not None:
             dss = filter(predicate, dss)
@@ -243,6 +291,11 @@ class SaveTasks:
         cache.add_grid_tiles(self._grid, tasks_uuid)
         msg(".. done")
 
+        self._write_info(tasks, msg, cells, debug)
+
+        return True
+        
+    def _write_info(self, tasks, msg, cells, debug):
         csv_path = self.out_path(".csv")
         msg(f"Writing summary to {csv_path}")
         with open(csv_path, "wt") as f:
