@@ -12,7 +12,18 @@ from ._masking import _max_fuser, _nodata_fuser
 
 def compute_native_load_geobox(
     dst_geobox: GeoBox, ds: Dataset, band: str, buffer: Optional[float] = None
-):
+) -> GeoBox:
+    """
+    Take native projection and resolution from ``ds, band`` pair and compute
+    region in that projection that fully encloses footprint of the
+    ``dst_geobox`` with some padding. Construct GeoBox that encloses that
+    region fully with resolution/pixel alignment copied from supplied band.
+
+    :param dst_geobox:
+    :param ds: Sample dataset (only resolution and projection is used, not footprint)
+    :param band: Reference band to use (resolution of output GeoBox will match resolution of this band)
+    :param buffer: Buffer in units of CRS of ``ds`` (meters usually), default is 10 pixels worth
+    """
 
     native = native_geobox(ds, basis=band)
     if buffer is None:
