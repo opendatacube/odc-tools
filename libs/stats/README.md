@@ -27,7 +27,7 @@ Running statistician requires a few steps, to prepare and cache the input data, 
 
 ### 1 - Save tasks
 
-From your Sandbox (or a machine that has access to your an ODC database), run:
+From your Sandbox (or a machine that has access to your ODC database), run:
 
 ```
 odc-stats save-tasks --frequency annual --grid au-30  ga_ls8c_ard_3
