@@ -35,13 +35,13 @@ commonmark==0.9.1
 coverage==5.5
 cryptography==3.4.7
 cycler==0.10.0
-dask==2021.4.1
+dask==2021.5.1
 dask-image==0.6.0
 datacube==1.8.3
 decorator==4.4.2
 deepdiff==5.5.0
 defusedxml==0.7.1
-distributed==2021.4.1
+distributed==2021.5.1
 docker==5.0.0
 docutils==0.15.2
 entrypoints==0.3
