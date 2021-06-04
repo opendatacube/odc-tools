@@ -16,7 +16,6 @@ dkr := docker run --rm -i $(TTY) \
         -v $(CODE):/code \
         -v $(WK):/wk \
         -e TZ=Australia/Sydney \
-        -e NOBINARY=/wk/nobinary.txt \
         $(BUILDER_IMG)
 
 all: dkr
