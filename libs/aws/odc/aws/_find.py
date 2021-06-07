@@ -62,7 +62,7 @@ def parse_query(url_query):
             depth = 0
         elif qq_set == {"**"}:
             depth = -1
-        elif qq_set == {"*"}:
+        elif "**" not in qq_set:
             depth = len(qq)
         else:
             raise ValueError("Bad query: %s" % url_query)
@@ -94,6 +94,9 @@ def test_parse_query():
     assert parse_query(base + "**/*txt") == E(
         base=base, depth=-1, glob="*txt", file=None
     )
+    assert parse_query(base + "*/*/something/*yaml") == E(
+        base=base, depth=3, glob="*yaml", file=None
+    )
 
     with pytest.raises(ValueError):
-        parse_query(base + "*/*/something/*yaml")
+        parse_query(base + "**/*/something/*yaml")
