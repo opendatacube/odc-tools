@@ -4,6 +4,7 @@ import botocore
 import aiobotocore
 from aiobotocore.config import AioConfig
 import asyncio
+from fnmatch import fnmatch
 from types import SimpleNamespace
 from typing import Optional, Iterator, Any
 
@@ -514,17 +515,17 @@ def s3_find_glob(
     if s3 is None:
         s3 = S3Fetcher()
 
-    def do_file_query(qq, pred):
-        for d in s3.dir_dir(qq.base, qq.depth, **kw):
+    def do_file_query(qq, pred, dirs_pred=None):
+        for d in s3.dir_dir(qq.base, qq.depth, pred=dirs_pred, **kw):
             _, _files = s3.list_dir(d, **kw).result()
             for f in _files:
                 if pred(f):
                     yield f
 
-    def do_file_query2(qq):
+    def do_file_query2(qq, dirs_pred=None):
         fname = qq.file
 
-        stream = s3.dir_dir(qq.base, qq.depth, **kw)
+        stream = s3.dir_dir(qq.base, qq.depth, pred=dirs_pred, **kw)
 
         if skip_check:
             yield from (SimpleNamespace(url=d + fname) for d in stream)
@@ -536,8 +537,8 @@ def s3_find_glob(
             if f is not None:
                 yield f
 
-    def do_dir_query(qq):
-        return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth, **kw))
+    def do_dir_query(qq, dirs_pred=None):
+        return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth, pred=dirs_pred, **kw))
 
     try:
         qq = parse_query(glob_pattern)
@@ -557,12 +558,19 @@ def s3_find_glob(
             stream = s3.find(qq.base, pred=lambda o: o.url.endswith(postfix), **kw)
     else:
         # fixed depth query
+        _, prefix = s3_url_parse(glob_pattern)
+        dirs_glob = prefix.split('/')[:-1]
+        def dirs_pred(f):
+            n = f.count('/')
+            _glob = '/'.join(dirs_glob[:n]) + '/'
+            return fnmatch(f, _glob)
+        
         if qq.glob is not None:
             pred = norm_predicate(glob=qq.glob)
-            stream = do_file_query(qq, pred)
+            stream = do_file_query(qq, pred, dirs_pred=dirs_pred)
         elif qq.file is not None:
-            stream = do_file_query2(qq)
+            stream = do_file_query2(qq, dirs_pred=dirs_pred)
         else:
-            stream = do_dir_query(qq)
+            stream = do_dir_query(qq, dirs_pred=dirs_pred)
 
     return stream
