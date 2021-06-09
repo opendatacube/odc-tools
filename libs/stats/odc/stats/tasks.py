@@ -102,7 +102,8 @@ class SaveTasks:
     def out_path(self, suffix: str) -> str:
         return out_path(suffix, self._output)
 
-    def _get_dss(self,
+    def _get_dss(
+        self,
         dc: Datacube,
         product: str,
         msg: Callable[[str], Any],
@@ -117,7 +118,8 @@ class SaveTasks:
         """
 
         cfg: Dict[str, Any] = dict(
-            grid=self._grid, freq=self._frequency,
+            grid=self._grid,
+            freq=self._frequency,
         )
 
         query = dict(product=product)
@@ -156,9 +158,9 @@ class SaveTasks:
             else:
                 # note: this blocks for large result sets
                 dss = dc.find_datasets_lazy(**query)
-                
+
         return dss, n_dss, cfg
-    
+
     def save(
         self,
         dc: Datacube,
@@ -168,8 +170,8 @@ class SaveTasks:
         predicate: Optional[Callable[[Dataset], bool]] = None,
         msg: Optional[Callable[[str], Any]] = None,
         debug: bool = False,
-        dss = None,
-        n_dss = None,
+        dss=None,
+        n_dss=None,
     ) -> bool:
         """
         :param product: Product name to consume
@@ -207,11 +209,12 @@ class SaveTasks:
             temporal_range = DateTimeRange(temporal_range)
 
         if dss is None:
-            dss, n_dss, cfg  = self._get_dss(dc, product, msg, temporal_range, tiles)
+            dss, n_dss, cfg = self._get_dss(dc, product, msg, temporal_range, tiles)
         else:
 
             cfg: Dict[str, Any] = dict(
-                grid=self._grid, freq=self._frequency,
+                grid=self._grid,
+                freq=self._frequency,
             )
 
             if temporal_range is not None:
@@ -294,7 +297,7 @@ class SaveTasks:
         self._write_info(tasks, msg, cells, debug)
 
         return True
-        
+
     def _write_info(self, tasks, msg, cells, debug):
         csv_path = self.out_path(".csv")
         msg(f"Writing summary to {csv_path}")
