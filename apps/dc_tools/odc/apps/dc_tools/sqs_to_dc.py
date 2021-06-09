@@ -57,9 +57,7 @@ def handle_json_message(metadata, transform, odc_metadata_link):
             odc_yaml_uri = get_uri(metadata, rel_val)
         else:
             # if odc_metadata_link is provided, it will look for value with dict path provided
-            odc_yaml_uri = dicttoolz.get_in(
-                odc_metadata_link.split("/"), metadata
-            )
+            odc_yaml_uri = dicttoolz.get_in(odc_metadata_link.split("/"), metadata)
 
         # if odc_yaml_uri exist, it will load the metadata content from that URL
         if odc_yaml_uri:
@@ -133,9 +131,7 @@ def handle_bucket_notification_message(
             # the contents...
             try:
                 s3 = boto3.resource("s3")
-                obj = s3.Object(bucket_name, key).get(
-                    ResponseCacheControl="no-cache"
-                )
+                obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
                 data = load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
             except Exception as e:
@@ -164,9 +160,7 @@ def do_archiving(metadata, dc: Datacube):
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
     else:
-        raise SQStoDCException(
-            f"Failed to get an ID from the message, can't archive."
-        )
+        raise SQStoDCException(f"Failed to get an ID from the message, can't archive.")
 
 
 def do_index_update_dataset(
@@ -197,7 +191,12 @@ def do_index_update_dataset(
                     if allow_unsafe:
                         updates = {tuple(): changes.allow_any}
                     # Do the updating
-                    dc.index.datasets.update(ds, updates_allowed=updates)
+                    try:
+                        dc.index.datasets.update(ds, updates_allowed=updates)
+                    except ValueError as e:
+                        raise SQStoDCException(
+                            f"Updating the dataset raised an exception: {e}"
+                        )
                 else:
                     logging.warning("Dataset already exists, not indexing")
             else:
