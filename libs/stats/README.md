@@ -57,7 +57,7 @@ The CSV file contains the list of tasks for all the years and consists of x, y c
 
 GeoJSON files are useful when selecting test regions as well as for debugging specific tasks - see the example below from Landsat-8, 2015.  This example shows a tile from an Australian coastal region near Sydney.
 
-<img src="odc/stats/stats/auxiliary/screenshot-L8-2015.png" alt="drawing" width="1000"/>
+<img src="docs/auxiliary/screenshot-L8-2015.png" alt="Screenshot GeoJSON" width="1000"/>
 
 
 ### 2 - Run Statistician
@@ -194,7 +194,7 @@ https://bitbucket.org/geoscienceaustralia/datakube/src/master/workspaces/deafric
 ```
 Once you created a file similar to the above file, run the datakube pipeline:
 
-<img src="odc/stats/stats/auxiliary/screenshot-pipeline.png" alt="drawing" width="1000"/>
+<img src="docs/auxiliary/screenshot-pipeline.png" alt="Screenshot of Pipeline" width="1000"/>
 
 
 ### 2. Publish tasks 
@@ -270,5 +270,5 @@ You can query all the logs for a single job, to detect errors, or drill down int
 To use this, log into the grafana which corresponds to the cluster that you're running the job in, from the left panel, select ```Explore```, change the explore method to ```Loki```, from log label, select ```job_name``` and then select your job name for example, ```stats-geomedian```.
 You can now run a query on the log of the selected job:
 
-<img src="odc/stats/stats/auxiliary/screenshot-grafana.png" alt="drawing" width="1000"/>
+<img src="docs/auxiliary/screenshot-grafana.png" alt="Screenshot Grafana" width="1000"/>
 
