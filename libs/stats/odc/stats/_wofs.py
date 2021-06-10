@@ -1,5 +1,18 @@
 """
-Wofs Summary
+Water Observations Summaries
+
+Water Observations Summaries are made up of:
+
+- `count_clear`: a count of every time a pixel was observed (not obscured by terrain or clouds)
+- `count_wet`: a count of every time a pixel was observed and wet
+- `frequency`: what fraction of time (wet/clear) was the pixel wet
+
+The counts are stored as `int16` and the frequency as `float32`.
+
+There are two different Stats Plugin classes implemented in this module. The first generates summary data from
+individual water observations, and the second generates a summary of summaries, which is used when generating an all
+of time summary from existing annual summaries.
+
 """
 from typing import Optional, Tuple
 import numpy as np
@@ -13,6 +26,18 @@ from . import _plugins
 
 
 class StatsWofs(StatsPluginInterface):
+    """
+    Generate a Summary of Water Observations data from individual observations
+
+    The summary is made up of counts of visible and visible and wet, and the frequency of visible and wet.
+
+    Output data types are:
+    - `count_clear`: `int16`
+    - `count_wet`: `int16`
+    - `frequency`: `float32`
+
+    Special care is taken when handling NaN values and `no-data` values.
+    """
     NAME = "ga_ls_wo_summary"
     SHORT_NAME = NAME
     VERSION = "1.6.0"
@@ -26,9 +51,10 @@ class StatsWofs(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        return ("count_wet", "count_clear", "frequency")
+        return "count_wet", "count_clear", "frequency"
 
-    def _native_tr(self, xx):
+    @staticmethod
+    def _native_tr(xx):
         """
         xx.water -- uint8 classifier bitmask
 
@@ -63,7 +89,8 @@ class StatsWofs(StatsPluginInterface):
         some.attrs.pop("nodata", None)
         return xr.Dataset(dict(wet=wet, dry=dry, bad=bad, some=some))
 
-    def _fuser(self, xx):
+    @staticmethod
+    def _fuser(xx):
         """
         xx.bad  -- don't count
         xx.wet  -- is wet
@@ -133,7 +160,17 @@ _plugins.register("wofs-summary", StatsWofs)
 
 class StatsWofsFullHistory(StatsPluginInterface):
     """
-    Summing annual summaries to product full history summary
+    Generate a Summary of Water Observations data from existing WO Summaries
+
+    This is useful to turn Annual summary data into all of time summaries.
+
+    Output data is the same as `StatsWofs` produces.
+    - `count_clear`: `int16`
+    - `count_wet`: `int16`
+    - `frequency`: `float32`
+
+    Special care is taken with no-data values, both to pass them through and when calculating the counts and
+    frequencies.
     """
 
     NAME = "ga_ls_wo_fq_myear_3"
@@ -141,12 +178,9 @@ class StatsWofsFullHistory(StatsPluginInterface):
     VERSION = "1.6.0"
     PRODUCT_FAMILY = "wo_summary"
 
-    def __init__(self):
-        pass
-
     @property
     def measurements(self) -> Tuple[str, ...]:
-        return ("count_wet", "count_clear", "frequency")
+        return "count_wet", "count_clear", "frequency"
 
     def input_data(self, task: Task) -> xr.Dataset:
         return dc_load(
@@ -160,6 +194,9 @@ class StatsWofsFullHistory(StatsPluginInterface):
         dtype = xx.count_clear.dtype
         nodata = dtype.type(xx.count_clear.nodata)
 
+        # `missing` is a record of all pixels that were never observed.
+        # Store it separately first, then substitute it back in after computing the counts and
+        # frequency.
         missing = (xx.count_clear == xx.count_clear.nodata).all(axis=0)
         cc = apply_numexpr(
             "where(count_clear==nodata, 0, count_clear)",
@@ -187,6 +224,7 @@ class StatsWofsFullHistory(StatsPluginInterface):
             _nan=np.float32("nan"),
         )
 
+        # Finalise the *count* variables by re-inserting the no-data value based on `missing`
         count_clear = apply_numexpr(
             "where(missing, nodata, cc)",
             _yy,
