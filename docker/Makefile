@@ -49,10 +49,20 @@ dbg: .build/prepared.txt
 	@$(dkr) python3 --version
 
 dkr: .build/compile.info.txt Dockerfile
-	DOCKER_BUILDKIT=1 docker build --build-arg V_BASE=$(V_BASE) -t $(DKR_IMG) --cache-from $(DKR_IMG) -f Dockerfile ..
+	DOCKER_BUILDKIT=1 docker build \
+  --build-arg BUILDKIT_INLINE_CACHE=1 \
+  --build-arg V_BASE=$(V_BASE) \
+  --cache-from $(DKR_IMG) \
+  -t $(DKR_IMG) \
+  -f Dockerfile ..
 
 dkr-no-deps:
-	DOCKER_BUILDKIT=1 docker build --build-arg V_BASE=$(V_BASE) -t $(DKR_IMG) --cache-from $(DKR_IMG) -f Dockerfile ..
+	DOCKER_BUILDKIT=1 docker build \
+  --build-arg BUILDKIT_INLINE_CACHE=1 \
+  --build-arg V_BASE=$(V_BASE) \
+  --cache-from $(DKR_IMG) \
+  -t $(DKR_IMG) \
+  -f Dockerfile ..
 
 run-test:
 	@docker run --rm \
