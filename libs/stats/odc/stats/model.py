@@ -180,26 +180,26 @@ class WorkTokenInterface(ABC):
         """
         return datetime.utcnow()
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def start_time(self) -> datetime:
         """
         Should return timestamp when task "started"
         """
-        pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def deadline(self) -> datetime:
         """
         Should return timestamp by which work is to be completed
         """
-        pass
 
+    @property
     @abstractmethod
     def done(self):
         """
         Called when work is completed successfully
         """
-        pass
 
     @abstractmethod
     def cancel(self):
@@ -394,7 +394,8 @@ class StatsPluginInterface(ABC):
     VERSION = "0.0.0"
     PRODUCT_FAMILY = "statistics"
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def measurements(self) -> Tuple[str, ...]:
         pass
 
