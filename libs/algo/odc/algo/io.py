@@ -174,7 +174,7 @@ def _load_with_native_transform_1(
 
 def load_with_native_transform(
     dss: Sequence[Dataset],
-    bands: Sequence[str, ...],
+    bands: Sequence[str],
     geobox: GeoBox,
     native_transform: Callable[[xr.Dataset], xr.Dataset],
     basis: Optional[str] = None,
