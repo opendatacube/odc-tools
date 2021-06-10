@@ -42,3 +42,7 @@ toolz
 tqdm
 xarray
 zstandard
+
+wheel
+setuptools
+pip
