@@ -3,8 +3,6 @@ from typing import Dict, Tuple, List, Any, Callable, Optional
 from collections import namedtuple
 from datetime import datetime
 from .model import DateTimeRange
-from datacube import Datacube
-from datacube.model import DatasetType, Dataset
 from odc.index import odc_uuid
 from datacube.storage import measurement_paths
 from datacube.model import Dataset, DatasetType
