@@ -173,8 +173,8 @@ def _load_with_native_transform_1(
 
 
 def load_with_native_transform(
-    dss: List[Dataset],
-    bands: Tuple[str, ...],
+    dss: Sequence[Dataset],
+    bands: Sequence[str, ...],
     geobox: GeoBox,
     native_transform: Callable[[xr.Dataset], xr.Dataset],
     basis: Optional[str] = None,
@@ -304,7 +304,7 @@ def load_enum_mask(
 
 
 def load_enum_filtered(
-    dss: List[Dataset],
+    dss: Sequence[Dataset],
     band: str,
     geobox: GeoBox,
     categories: Iterable[Union[str, int]],
