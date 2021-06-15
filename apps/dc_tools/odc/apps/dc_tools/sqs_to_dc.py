@@ -44,7 +44,7 @@ def extract_metadata_from_message(message):
     if metadata:
         return metadata
     else:
-        raise SQStoDCException(f"Failed to load metadata from the SQS message")
+        raise SQStoDCException("Failed to load metadata from the SQS message")
 
 
 def handle_json_message(metadata, transform, odc_metadata_link):
@@ -140,7 +140,7 @@ def handle_bucket_notification_message(
                 )
     else:
         raise SQStoDCException(
-            f"Attempted to get metadata from record when no record key exists in message."
+            "Attempted to get metadata from record when no record key exists in message."
         )
 
     return data, uri
@@ -160,7 +160,7 @@ def do_archiving(metadata, dc: Datacube):
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
     else:
-        raise SQStoDCException(f"Failed to get an ID from the message, can't archive.")
+        raise SQStoDCException("Failed to get an ID from the message, can't archive.")
 
 
 def do_index_update_dataset(
