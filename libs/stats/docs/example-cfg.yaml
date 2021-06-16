@@ -2,6 +2,9 @@
 #
 #    odc-stats run --config <this-file|content of this file> ...
 
+# local or s3 path, can be supplied/overwritten on a command line
+filedb: 's3://deafrica-services/dbs/s2ab.db'
+
 # It's a template {product} and {version} are replaced at run time
 output_location: 's3://deafrica-services/s2_stats_annual/{product}/{version}/'
 
