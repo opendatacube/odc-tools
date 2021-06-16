@@ -43,7 +43,7 @@ from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
 @click_yaml_cfg("--cog-config", help="Configure COG options")
 @click.option("--resampling", type=str, help="Input resampling strategy, e.g. average")
 @click_resolution("--resolution", help="Override output resolution")
-@click.argument("filedb", type=str, nargs=1)
+@click.argument("filedb", type=str, nargs=1, default="")
 @click.argument("tasks", type=str, nargs=-1)
 def run(
     filedb,
@@ -135,6 +135,9 @@ def run(
     if cog_config is not None:
         _cfg["cog_opts"] = cog_config
 
+    if not _cfg.get('filedb'):
+        _log.error("Must supply `filedb` either through config or CLI")
+        sys.exit(1)
     cfg = TaskRunnerConfig(**_cfg)
     _log.info(f"Using this config: {cfg}")
 
