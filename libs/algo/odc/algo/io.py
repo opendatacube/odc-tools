@@ -77,7 +77,7 @@ def dc_load(
 
     # dask_chunks is a backward-compatibility alias for chunks
     if chunks is None:
-        chunks = kw.pop('dask_chunks', None)
+        chunks = kw.pop("dask_chunks", None)
     # group_by is a backward-compatibility alias for groupby
     if groupby is None:
         groupby = kw.pop("group_by", "time")
@@ -107,12 +107,11 @@ def dc_load(
     product = ds.type
 
     if geobox is None:
-        if len(geo_keys) == 0:
-            # TODO: figure out extent to load based on supplied datasets
-            raise NotImplementedError("Have to supply region to load (for now)")
-
         geobox = output_geobox(
-            grid_spec=product.grid_spec, load_hints=product.load_hints(), **geo_keys
+            grid_spec=product.grid_spec,
+            load_hints=product.load_hints(),
+            **geo_keys,
+            datasets=datasets,
         )
     elif len(geo_keys):
         warn(f"Supplied 'geobox=' parameter aliases {list(geo_keys)} inputs")
