@@ -26,6 +26,7 @@ class DcViewer:
         height=None,
         width=None,
         style=None,
+        max_datasets_to_display=2000,
     ):
         """
         :param dc:        Datacube object
@@ -40,6 +41,8 @@ class DcViewer:
             - color/fillColor
             - opacity/fillOpacity
             - full list of options here: https://leafletjs.com/reference-1.5.0.html#path-option
+        :param max_datasets_to_display: If the view contains more than that many datasets don't bother querying DB
+                                        and displaying footprints.
         """
         self._dc = dc
 
@@ -61,6 +64,7 @@ class DcViewer:
         self._last_query_bounds = None
         self._last_query_polygon = None
         self._style = style
+        self._max_datasets_to_display = max_datasets_to_display
 
     def _build_ui(
         self, product_names, time, zoom=None, center=None, height=None, width=None
@@ -225,7 +229,10 @@ class DcViewer:
         else:
             self._clear_footprints()
 
-    def _maybe_show(self, max_dss, clear=False):
+    def _maybe_show(self, max_dss=None, clear=False):
+        if max_dss is None:
+            max_dss = self._max_datasets_to_display
+
         if self._state.count < max_dss:
             self._update_footprints()
         elif clear:
@@ -239,18 +246,18 @@ class DcViewer:
                 skip_refresh = True
 
         if not skip_refresh:
-            self._maybe_show(500, clear=True)
+            self._maybe_show(clear=True)
 
     def on_date(self, time):
         self._update_info_count()
-        self._maybe_show(500, clear=True)
+        self._maybe_show(clear=True)
 
     def on_show(self):
         self._update_footprints()
 
     def on_product(self, prod):
         self._update_info_count()
-        self._maybe_show(500, clear=True)
+        self._maybe_show(clear=True)
 
     def _ipython_display_(self):
         return self._gui.ui._ipython_display_()
