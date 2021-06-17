@@ -390,9 +390,10 @@ class COGSink:
         When extract=True --> returns bytes (doubles memory requirements!!!)
         When extract=False -> returns sink after completing everything
         """
+        tk = tokenize(sink, extract, strict)
         delayed_close = dask.delayed(lambda sink, idx, *deps: sink.close(idx))
         parts = [
-            delayed_close(sink, idx, *deps, dask_key_name=("cog_close", idx))
+            delayed_close(sink, idx, *deps, dask_key_name=(f"cog_close-{tk}", idx))
             for idx in range(8)
         ]
 
@@ -401,7 +402,7 @@ class COGSink:
             return bb if extract else sink
 
         return dask.delayed(_copy_cog)(
-            sink, extract, strict, *parts, dask_key_name="cog"
+            sink, extract, strict, *parts, dask_key_name=f"cog-{tk}"
         )
 
 
@@ -522,9 +523,11 @@ def save_cog(
         if ACL is not None:
             s3_opts["ACL"] = ACL
 
+        # TODO: deal with credentials here
+
         cog_finish = COGSink.dask_finalise(cog_finish, extract=False)
         return dask.delayed(lambda sink, url, opts: sink.dump_to_s3(url, **opts))(
-            cog_finish, s3_url, s3_opts, dask_key_name="dump_to_s3"
+            cog_finish, s3_url, s3_opts, dask_key_name=f"dump_to_s3-{tk}"
         )
     else:
         return COGSink.dask_finalise(cog_finish, extract=extract)
