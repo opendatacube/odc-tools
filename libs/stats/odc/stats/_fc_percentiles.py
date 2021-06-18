@@ -13,8 +13,7 @@ from . import _plugins
 
 
 class StatsFCP(StatsPluginInterface):
-    """
-    """
+    
     NAME = "ga_fc_percentiles"
     SHORT_NAME = NAME
     VERSION = "0.0.1"
@@ -33,9 +32,15 @@ class StatsFCP(StatsPluginInterface):
     @staticmethod
     def _native_tr(xx):
         """
-        
+        Loads in the data in the native projection. It performs the following:
+
+        1. Loads all the fc and WOfS bands
+        2. Extracts the clear dry and clear wet flags from WOfS
+        3. Drops the WOfS band
+        4. Stores the clear wet flags for QA later on 
+        5. Masks out all pixels that are not clear and dry to a nodata value of 255
+        6. Discards the clear dry flags
         """
-        
         # use the dry flag to indicate good measurementd
         dry = xx.water == 0
 
@@ -45,8 +50,8 @@ class StatsFCP(StatsPluginInterface):
         return keep_good_only(xx, dry, nodata=255)
 
     def input_data(self, task: Task) -> xr.Dataset:
+
         chunks = {"y": -1, "x": -1}
-        groupby = "solar_day"
 
         xx = load_with_native_transform(
             task.datasets,
@@ -54,7 +59,7 @@ class StatsFCP(StatsPluginInterface):
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=None,
-            groupby=groupby,
+            groupby=None,
             resampling=self.resampling,
             chunks=chunks,
         )
