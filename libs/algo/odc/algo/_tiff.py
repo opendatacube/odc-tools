@@ -22,7 +22,7 @@ from ._numeric import roundup16, half_up, roi_shrink2, np_slice_to_idx
 from ._warp import _shrink2
 
 
-_UNSET = object()
+_UNSET = ":unset:-427d8b3f1944"
 
 
 def _adjust_blocksize(block: int, dim: int) -> int:
@@ -415,7 +415,7 @@ class COGSink:
 
         def _copy_cog(sink, extract, strict, return_value, *parts):
             bb = sink._copy_cog(extract=extract, strict=strict)
-            if return_value is _UNSET:
+            if return_value == _UNSET:
                 return bb if extract else sink
             else:
                 return return_value
