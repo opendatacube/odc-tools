@@ -404,7 +404,7 @@ class COGSink:
         """
 
         When extract=True --> returns bytes (doubles memory requirements!!!)
-        When extract=False -> returns sink after completing everything
+        When extract=False -> returns return_value if supplied, or sink after completing everything
         """
         tk = tokenize(sink, extract, strict)
         delayed_close = dask.delayed(lambda sink, idx, *deps: sink.close(idx))
