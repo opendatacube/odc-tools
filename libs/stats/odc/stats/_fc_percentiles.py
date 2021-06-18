@@ -2,6 +2,7 @@
 Fractional Cover Percentiles
 """
 from typing import Optional, Tuple
+from itertools import product
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
@@ -27,7 +28,9 @@ class StatsFCP(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        return "count_wet", "count_clear", "frequency"
+        _measurments = [f"{b}_pc_{p}" for b, p in product(["pv", "bs", "npv", "ue"], ["10", "50", "90"])]
+        _measurments.append("is_ever_wet")
+        return _measurments
 
     @staticmethod
     def _native_tr(xx):
