@@ -20,6 +20,9 @@ from ._numeric import roundup16, half_up, roi_shrink2, np_slice_to_idx
 from ._warp import _shrink2
 
 
+_UNSET = object()
+
+
 def _adjust_blocksize(block: int, dim: int) -> int:
     if block > dim:
         return roundup16(dim)
@@ -384,7 +387,9 @@ class COGSink:
         )
 
     @staticmethod
-    def dask_finalise(sink: Delayed, extract=False, strict=False, *deps) -> Delayed:
+    def dask_finalise(
+        sink: Delayed, *deps, extract=False, strict=False, return_value=_UNSET
+    ) -> Delayed:
         """
 
         When extract=True --> returns bytes (doubles memory requirements!!!)
@@ -397,12 +402,15 @@ class COGSink:
             for idx in range(8)
         ]
 
-        def _copy_cog(sink, extract, strict, *parts):
+        def _copy_cog(sink, extract, strict, return_value, *parts):
             bb = sink._copy_cog(extract=extract, strict=strict)
-            return bb if extract else sink
+            if return_value is _UNSET:
+                return bb if extract else sink
+            else:
+                return return_value
 
         return dask.delayed(_copy_cog)(
-            sink, extract, strict, *parts, dask_key_name=f"cog-{tk}"
+            sink, extract, strict, return_value, *parts, dask_key_name=f"cog-{tk}"
         )
 
 
@@ -529,5 +537,7 @@ def save_cog(
         return dask.delayed(lambda sink, url, opts: sink.dump_to_s3(url, **opts))(
             cog_finish, s3_url, s3_opts, dask_key_name=f"dump_to_s3-{tk}"
         )
+    elif extract:
+        return COGSink.dask_finalise(cog_finish, extract=True)
     else:
-        return COGSink.dask_finalise(cog_finish, extract=extract)
+        return COGSink.dask_finalise(cog_finish, extract=False, return_value=dst)
