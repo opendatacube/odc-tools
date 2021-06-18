@@ -1,4 +1,5 @@
 import threading
+import warnings
 from dask.delayed import Delayed
 import dask
 import dask.array as da
@@ -15,6 +16,7 @@ from rasterio.windows import Window
 from rasterio import MemoryFile
 from rasterio.shutil import copy as rio_copy
 
+from odc.aws import ReadOnlyCredentials, mk_boto_session, get_creds_with_retry
 from ._types import NodataType, NumpyIndex
 from ._numeric import roundup16, half_up, roi_shrink2, np_slice_to_idx
 from ._warp import _shrink2
@@ -370,7 +372,7 @@ class COGSink:
     def mem(self):
         return self._mem
 
-    def dump_to_s3(self, url, **kw):
+    def dump_to_s3(self, url, creds=None, **kw):
         import boto3
         from boto3.s3.transfer import TransferConfig
         from odc.aws import s3_url_parse
@@ -380,7 +382,16 @@ class COGSink:
         GB = 1 << 30
         transfer_config = TransferConfig(multipart_threshold=5 * GB)
         bucket, key = s3_url_parse(url)
-        s3 = boto3.client("s3")
+        creds_opts = (
+            {}
+            if creds is None
+            else dict(
+                aws_access_key_id=creds.access_key,
+                aws_secret_access_key=creds.secret_key,
+                aws_session_token=creds.token,
+            )
+        )
+        s3 = boto3.client("s3", **creds_opts)
 
         return s3.upload_fileobj(
             self._mem, bucket, key, ExtraArgs=kw, Config=transfer_config
@@ -410,7 +421,7 @@ class COGSink:
                 return return_value
 
         return dask.delayed(_copy_cog)(
-            sink, extract, strict, return_value, *parts, dask_key_name=f"cog-{tk}"
+            sink, extract, strict, return_value, *parts, dask_key_name=f"cog_copy-{tk}"
         )
 
 
@@ -425,6 +436,7 @@ def save_cog(
     rio_opts_first_pass: Optional[Dict[str, Any]] = None,
     use_final_blocksizes: bool = False,
     ACL: Optional[str] = None,
+    creds: Optional[ReadOnlyCredentials] = None,
     **extra_rio_opts,
 ):
     """
@@ -455,6 +467,11 @@ def save_cog(
                                  can use final image block sizes for the first
                                  pass instead.
     :param ACL: Used when dst is S3
+
+    :param creds: Credentials to use for writing to S3. If not supplied will
+                  attempt to obtain them locally and pass on to the worker. If
+                  local credentials are absent then it will print a warning and
+                  will attempt to credentialize on the worker instead.
     """
     assert dask.is_dask_collection(xx)
     tk = tokenize(
@@ -484,6 +501,14 @@ def save_cog(
     if dst == ":mem:":
         extract = True
     elif dst.startswith("s3:"):
+        if creds is None:
+            _creds = get_creds_with_retry(mk_boto_session())
+
+            if _creds is None:
+                warnings.warn("Found no credentials locally assuming workers can credentialize")
+            else:
+                creds = _creds.get_frozen_credentials()
+
         s3_url, dst = dst, ":mem:"
     else:
         # Assume file path
@@ -530,8 +555,8 @@ def save_cog(
         s3_opts = dict(ContentType="image/tiff")
         if ACL is not None:
             s3_opts["ACL"] = ACL
-
-        # TODO: deal with credentials here
+        if creds is not None:
+            s3_opts["creds"] = creds
 
         cog_finish = COGSink.dask_finalise(cog_finish, extract=False)
         return dask.delayed(lambda sink, url, opts: sink.dump_to_s3(url, **opts))(
