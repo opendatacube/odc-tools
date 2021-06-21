@@ -7,9 +7,9 @@ import dask.array as da
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import keep_good_only, apply_numexpr
+from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _nodata_fuser
+from odc.algo._masking import _nodata_fuser, _or_fuser
 from .model import StatsPluginInterface
 from . import _plugins
 
