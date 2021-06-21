@@ -9,7 +9,7 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only, apply_numexpr
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _first_fuser
+from odc.algo._masking import _nodata_fuser
 from .model import StatsPluginInterface
 from . import _plugins
 
@@ -68,7 +68,7 @@ class StatsFCP(StatsPluginInterface):
             bands=["water", "pv", "bs", "npv", "ue"],
             geobox=task.geobox,
             native_transform=self._native_tr,
-            fuser=_first_fuser,
+            fuser=_nodata_fuser,
             groupby="solar_day",
             resampling=self.resampling,
             chunks=chunks,
