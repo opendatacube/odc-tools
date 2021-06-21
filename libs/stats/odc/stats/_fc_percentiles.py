@@ -48,8 +48,11 @@ class StatsFCP(StatsPluginInterface):
         dry = xx.water == 0
 
         # keep the clear wet measurements to calculate the QA band in reduce
-        xx["wet"] = xx.water == 128
+        dry = xx.water == 0
+        wet = xx.water == 128
         xx = xx.drop_vars(["water"])
+        xx = keep_good_only(xx, dry, nodata=255)
+        xx["wet"] = wet
         return keep_good_only(xx, dry, nodata=255)
 
     def input_data(self, task: Task) -> xr.Dataset:
