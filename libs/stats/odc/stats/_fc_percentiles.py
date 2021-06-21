@@ -50,11 +50,6 @@ class StatsFCP(StatsPluginInterface):
         water = da.bitwise_and(xx["water"], 0b11101111)
         xx = xx.drop_vars(["water"])
 
-        # equivalent to water & 0b11101111
-        expression = "((water << 4) >> 4) + ((water >> 5) << 5)"
-        water = apply_numexpr(expression, xx, dtype="bool")
-        xx = xx.drop_vars(["water"])
-
         # use the dry flag to indicate good measurements
         dry = water == 0
 
