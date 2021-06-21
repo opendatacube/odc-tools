@@ -731,7 +731,7 @@ def _first_np(*aa: np.ndarray) -> np.ndarray:
     return aa[0]
 
 
-def choose_first(x: xr.DataArray, nodata=None) -> xr.DataArray:
+def choose_first(x: xr.DataArray) -> xr.DataArray:
     """
     ``Out[0, y, x] = In[0, y, x]``
 
@@ -743,12 +743,10 @@ def choose_first(x: xr.DataArray, nodata=None) -> xr.DataArray:
     )
 
 
-def _first_fuser(xx, **kw):
-    """
-    meant to be called by `xx.groupby(..).map(_nodata_fuser)`
-    """
+def _first_fuser(xx):
+
     if isinstance(xx, xr.Dataset):
-        return xx.map(choose_first, **kw)
+        return xx.map(choose_first)
     if xx.shape[0] <= 1:
         return xx
-    return choose_first(xx, **kw)
+    return choose_first(xx)
