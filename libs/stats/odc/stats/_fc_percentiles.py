@@ -3,10 +3,11 @@ Fractional Cover Percentiles
 """
 from typing import Optional, Tuple
 from itertools import product
+import dask.array as da
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import keep_good_only
+from odc.algo import keep_good_only, apply_numexpr
 from odc.algo._percentile import xr_percentile
 from odc.algo._masking import _or_fuser
 from .model import StatsPluginInterface
@@ -44,13 +45,21 @@ class StatsFCP(StatsPluginInterface):
         5. Masks out all pixels that are not clear and dry to a nodata value of 255
         6. Discards the clear dry flags
         """
-        # use the dry flag to indicate good measurementd
-        dry = xx.water == 0
+
+        # set terrain flag to zero
+        water = da.bitwise_and(xx["water"], 0b11101111)
+        xx = xx.drop_vars(["water"])
+
+        # equivalent to water & 0b11101111
+        expression = "((water << 4) >> 4) + ((water >> 5) << 5)"
+        water = apply_numexpr(expression, xx, dtype="bool")
+        xx = xx.drop_vars(["water"])
+
+        # use the dry flag to indicate good measurements
+        dry = water == 0
 
         # keep the clear wet measurements to calculate the QA band in reduce
-        dry = xx.water == 0
-        wet = xx.water == 128
-        xx = xx.drop_vars(["water"])
+        wet = water == 128
         xx = keep_good_only(xx, dry, nodata=255)
         xx["wet"] = wet
         return keep_good_only(xx, dry, nodata=255)
