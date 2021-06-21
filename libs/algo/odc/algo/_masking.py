@@ -725,3 +725,30 @@ def _nodata_fuser(xx, **kw):
     if xx.shape[0] <= 1:
         return xx
     return choose_first_valid(xx, **kw)
+
+
+def _first_np(*aa: np.ndarray) -> np.ndarray:
+    return aa[0]
+
+
+def choose_first(x: xr.DataArray, nodata=None) -> xr.DataArray:
+    """
+    ``Out[0, y, x] = In[0, y, x]``
+
+    Expects data in ``_, y, x`` order. Works on Dask inputs too.
+    """
+
+    return _fuse_with_custom_op(
+        x, _first_np, name="choose_first"
+    )
+
+
+def _first_fuser(xx, **kw):
+    """
+    meant to be called by `xx.groupby(..).map(_nodata_fuser)`
+    """
+    if isinstance(xx, xr.Dataset):
+        return xx.map(choose_first, **kw)
+    if xx.shape[0] <= 1:
+        return xx
+    return choose_first(xx, **kw)
