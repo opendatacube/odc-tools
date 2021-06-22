@@ -39,11 +39,12 @@ class StatsFCP(StatsPluginInterface):
         Loads in the data in the native projection. It performs the following:
 
         1. Loads all the fc and WOfS bands
-        2. Extracts the clear dry and clear wet flags from WOfS
-        3. Drops the WOfS band
-        4. Stores the clear wet flags for QA later on 
-        5. Masks out all pixels that are not clear and dry to a nodata value of 255
-        6. Discards the clear dry flags
+        2. Set high slope terrain flag to 0
+        3. Extracts the clear dry and clear wet flags from WOfS
+        4. Drops the WOfS band
+        5. Stores the clear wet flags for QA later on 
+        6. Masks out all pixels that are not clear and dry to a nodata value of 255
+        7. Discards the clear dry flags
         """
 
         # set terrain flag to zero
@@ -52,12 +53,23 @@ class StatsFCP(StatsPluginInterface):
 
         # use the dry flag to indicate good measurements
         dry = water == 0
-
-        # keep the clear wet measurements to calculate the QA band in reduce
-        wet = water == 128
         xx = keep_good_only(xx, dry, nodata=255)
-        xx["wet"] = wet
-        return keep_good_only(xx, dry, nodata=255)
+        return xx
+
+    @staticmethod
+    def _native_tr_wet(xx):
+        """
+        Loads in the data in the native projection. It performs the following:
+
+        1. Loads the WOfS band
+        2. Set high slope terrain flag to 0
+        3. Extracts clear wet flags from WOfS
+        """
+
+        # set terrain flag to zero
+        water = da.bitwise_and(xx["water"], 0b11101111)
+        wet = water == 128
+        return wet
 
     def input_data(self, task: Task) -> xr.Dataset:
 
@@ -69,6 +81,17 @@ class StatsFCP(StatsPluginInterface):
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=_nodata_fuser,
+            groupby="solar_day",
+            resampling=self.resampling,
+            chunks=chunks,
+        )
+
+        xx["wet"] = load_with_native_transform(
+            task.datasets,
+            bands=["water"],
+            geobox=task.geobox,
+            native_transform=self._native_tr_wet,
+            fuser=_or_fuser,
             groupby="solar_day",
             resampling=self.resampling,
             chunks=chunks,
