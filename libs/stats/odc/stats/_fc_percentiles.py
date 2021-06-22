@@ -40,11 +40,10 @@ class StatsFCP(StatsPluginInterface):
 
         1. Loads all the fc and WOfS bands
         2. Set high slope terrain flag to 0
-        3. Extracts the clear dry and clear wet flags from WOfS
+        3. Extracts the clear dry flags from WOfS
         4. Drops the WOfS band
-        5. Stores the clear wet flags for QA later on 
-        6. Masks out all pixels that are not clear and dry to a nodata value of 255
-        7. Discards the clear dry flags
+        5. Masks out all pixels that are not clear and dry to a nodata value of 255
+        6. Discards the clear dry flags
         """
 
         # set terrain flag to zero
