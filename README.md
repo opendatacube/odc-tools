@@ -26,7 +26,7 @@ Full list of libraries, and install instructions:
 - `odc.dtools` tools/experiments in the area of dask.distributed/dask<>datacube integration
 - `odc.ppt` parallel processing helper methods, internal lib
 
-Installation requires using custom package repo `https://packages.dea.ga.gov.au`.
+Installation requires using custom the package repo `https://packages.dea.ga.gov.au`.
 
 ```
 pip install --extra-index-url="https://packages.dea.ga.gov.au" \
@@ -41,7 +41,7 @@ pip install --extra-index-url="https://packages.dea.ga.gov.au" \
   odc-dtools
 ```
 
-**NOTE**: on Ubuntu 18.04 default `pip` version is awfully old and does not
+**NOTE**: on Ubuntu 18.04 the default `pip` version is awfully old and does not
 support `--extra-index-url` command line option, so make sure to upgrade `pip`
 first: `pip3 install --upgrade pip`.
 
@@ -81,9 +81,9 @@ Apps
 ----
 
 1. `s3-find` list S3 bucket with wildcard
-2. `s3-to-tar` fetch documents from S3 and dump them to tar archive
-3. `gs-to-tar` search GS for documents and dump them to tar archive
-4. `dc-index-from-tar` read yaml documents from tar archive and add them to datacube
+2. `s3-to-tar` fetch documents from S3 and dump them to a tar archive
+3. `gs-to-tar` search GS for documents and dump them to a tar archive
+4. `dc-index-from-tar` read yaml documents from a tar archive and add them to datacube
 
 
 Example:
