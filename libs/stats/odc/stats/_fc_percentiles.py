@@ -55,6 +55,7 @@ class StatsFCP(StatsPluginInterface):
         # use the dry flag to indicate good measurements
         dry = water == 0
         xx = keep_good_only(xx, dry, nodata=255)
+        xx["wet"] = water == 128
         return xx
 
     @staticmethod
@@ -67,7 +68,7 @@ class StatsFCP(StatsPluginInterface):
     @staticmethod
     def _fuse_op(*xx):
         if xx[0].dtype == np.bool:
-            raise NotImplementedError
+            return _fuse_or_np(*xx)
         else:
             return _first_valid_np(*xx, nodata=255)
 
@@ -96,17 +97,6 @@ class StatsFCP(StatsPluginInterface):
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self.fuser,
-            groupby="solar_day",
-            resampling=self.resampling,
-            chunks=chunks,
-        )
-
-        xx["wet"] = load_with_native_transform(
-            task.datasets,
-            bands=["water"],
-            geobox=task.geobox,
-            native_transform=self._native_tr_wet,
-            fuser=_or_fuser,
             groupby="solar_day",
             resampling=self.resampling,
             chunks=chunks,

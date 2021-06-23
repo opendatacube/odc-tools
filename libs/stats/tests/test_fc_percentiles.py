@@ -66,6 +66,11 @@ def test_fusing(dataset):
     expected_result = np.array(
         [[30, 40], [20, 50]],
     )
-
     result = xx.compute()["band_1"].data
+    assert (result == expected_result).all()
+
+    expected_result = np.array(
+        [[False, True], [False, False]],
+    )
+    result = xx.compute()["wet"].data
     assert (result == expected_result).all()
