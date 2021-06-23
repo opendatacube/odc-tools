@@ -19,9 +19,6 @@ def dataset():
         [[0, 0], [0, 0]], 
     ])
 
-    # band_1 = da.from_array(band_1, chunks=(2, 20, 20))
-    # band_2 = da.from_array(band_2, chunks=(2, 20, 20))
-
     tuples = [(np.datetime64(f"2000-01-01T0{i}"), np.datetime64(f"2000-01-01")) for i in range(2)]
     index = pd.MultiIndex.from_tuples(tuples, names=["time", "solar_day"])
     coords = {
