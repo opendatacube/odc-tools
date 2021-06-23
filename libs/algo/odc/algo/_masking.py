@@ -53,7 +53,7 @@ def keep_good_only(x, where, inplace=False, nodata=None):
     """
     if isinstance(x, xr.Dataset):
         return x.apply(
-            lambda x: keep_good_only(x, where, inplace=inplace), keep_attrs=True
+            lambda x: keep_good_only(x, where, inplace=inplace, nodata=nodata), keep_attrs=True
         )
 
     assert x.shape == where.shape
@@ -627,9 +627,11 @@ def _da_fuse_with_custom_op(xx: da.Array, op, name="fuse") -> da.Array:
     Out[0, y, x] = op(In[0:1, y, x], In[1:2, y, x], In[2:3, y, x]...)
 
     """
+    print("Bad array:", xx)
+    print("Type:", type(xx))
     can_do_flat = all([ch == 1 for ch in xx.chunks[0]])
     if not can_do_flat:
-        slices = [xx.data[i : i + 1] for i in range(xx.shape[0])]
+        slices = [xx[i : i + 1] for i in range(xx.shape[0])]
         return da.map_blocks(op, *slices, name=name)
 
     chunks, shapes = _get_chunks_asarray(xx)
