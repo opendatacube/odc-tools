@@ -89,9 +89,23 @@ class StatsFCP(StatsPluginInterface):
 
         return xx
 
-    def reduce(self, xx: xr.Dataset) -> xr.Dataset:        
+    @staticmethod
+    def reduce(xx: xr.Dataset) -> xr.Dataset: 
+        # not 255 & True => 1
+        # not 255 & False => 1
+        # 255 & False => 2  
+        # 255 + True => 3
+
         yy = xr_percentile(xx.drop_vars(["wet"]), [0.1, 0.5, 0.9], nodata=255)
-        yy["is_ever_wet"] = _or_fuser(xx["wet"]).squeeze(xx["wet"].dims[0], drop=True)
+        is_ever_wet = _or_fuser(xx["wet"]).squeeze(xx["wet"].dims[0], drop=True)
+
+        band, *bands = [band for band in yy.data_vars.keys() if band != "wet"]
+        all_bands_valid = yy[band] != 255
+        for band in bands:
+            all_bands_valid &= yy[band] != 255
+
+        yy["qa"] = all_bands_valid + (1 - all_bands_valid) * (2 + is_ever_wet)
+        
         return yy
 
     def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:

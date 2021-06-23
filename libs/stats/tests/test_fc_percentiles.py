@@ -11,17 +11,19 @@ def dataset():
     band_1 = np.array([
         [[255, 57], [20, 50]],
         [[30, 40], [70, 80]], 
+        [[25, 52], [73, 98]], 
     ])
 
     band_2 = np.array([
         [[0, 128], [0, 0]],
         [[0, 0], [0, 0]], 
+        [[0, 0], [0, 0]], 
     ])
 
-    band_1 = da.from_array(band_1, chunks=(2, -1, -1))
-    band_2 = da.from_array(band_2, chunks=(2, -1, 20))
+    band_1 = da.from_array(band_1, chunks=(3, -1, -1))
+    band_2 = da.from_array(band_2, chunks=(3, -1, 20))
 
-    tuples = [(np.datetime64(f"2000-01-01T0{i}"), np.datetime64(f"2000-01-01")) for i in range(2)]
+    tuples = [(np.datetime64(f"2000-01-01T0{i}"), np.datetime64(f"2000-01-01")) for i in range(3)]
     index = pd.MultiIndex.from_tuples(tuples, names=["time", "solar_day"])
     coords = {
         "x": np.linspace(10, 20, band_1.shape[2]), 
@@ -36,26 +38,14 @@ def dataset():
 
 def test_native_transform(dataset):
     
-    xx = StatsFCP._native_tr(dataset())
-    expected_result = np.array([
-        [[255, 255], [20, 50]],
-        [[30, 40], [70, 80]], 
-    ])
-
-    assert (xx.compute() == expected_result).all()
-
-
-def test_native_transform(dataset):
-    
     xx = StatsFCP._native_tr(dataset)
     
     expected_result = np.array([
         [[255, 255], [20, 50]],
         [[30, 40], [70, 80]], 
+        [[25, 52], [73, 98]],
     ])
-
     result = xx.compute()["band_1"].data
-
     assert (result == expected_result).all()
 
 
@@ -73,4 +63,19 @@ def test_fusing(dataset):
         [[False, True], [False, False]],
     )
     result = xx.compute()["wet"].data
+    assert (result == expected_result).all()
+
+
+def test_reduce(dataset):
+    xx = StatsFCP._native_tr(dataset)
+    xx = StatsFCP.reduce(xx)
+
+    result = xx.compute()["band_1_pc_10"].data
+    assert (result[0, :] == 255).all()
+    assert (result[1, :] != 255).all()
+
+    expected_result = np.array(
+        [[2, 3], [1, 1]],
+    )
+    result = xx.compute()["qa"].data
     assert (result == expected_result).all()
