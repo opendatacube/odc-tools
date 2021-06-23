@@ -16,6 +16,9 @@ from .model import StatsPluginInterface
 from . import _plugins
 
 
+NODATA = 255
+
+
 class StatsFCP(StatsPluginInterface):
     
     NAME = "ga_fc_percentiles"
@@ -32,7 +35,7 @@ class StatsFCP(StatsPluginInterface):
     @property
     def measurements(self) -> Tuple[str, ...]:
         _measurments = [f"{b}_pc_{p}" for b, p in product(["pv", "bs", "npv", "ue"], ["10", "50", "90"])]
-        _measurments.append("is_ever_wet")
+        _measurments.append("qa")
         return _measurments
 
     @staticmethod
@@ -61,7 +64,7 @@ class StatsFCP(StatsPluginInterface):
         variables = {}
         data_bands = [band for band in xx.data_vars.keys() if band != "wet"]
         for band in data_bands:
-            variables[band] = _fuse_with_custom_op(xx[band], partial(_first_valid_np, nodata=255))
+            variables[band] = _fuse_with_custom_op(xx[band], partial(_first_valid_np, nodata=NODATA))
         variables["wet"] = _fuse_with_custom_op(xx["wet"], _fuse_or_np)
         variables["dry"] = _fuse_with_custom_op(xx["dry"], _fuse_and_np)
 
@@ -98,15 +101,15 @@ class StatsFCP(StatsPluginInterface):
         mask = xx["dry"]
         wet = xx["wet"]
         xx.drop_vars(["dry", "wet"])
-        xx = keep_good_only(xx, mask, nodata=255)
+        xx = keep_good_only(xx, mask, nodata=NODATA)
 
-        yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=255)
+        yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=NODATA)
         is_ever_wet = _or_fuser(wet).squeeze(wet.dims[0], drop=True)
 
-        band, *bands = [band for band in yy.data_vars.keys() if band != "wet"]
-        all_bands_valid = yy[band] != 255
+        band, *bands = yy.data_vars.keys()
+        all_bands_valid = yy[band] != NODATA
         for band in bands:
-            all_bands_valid &= yy[band] != 255
+            all_bands_valid &= yy[band] != NODATA
 
         yy["qa"] = (1 - all_bands_valid) * (1 + is_ever_wet)
         
