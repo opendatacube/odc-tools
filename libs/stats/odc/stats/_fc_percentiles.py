@@ -60,17 +60,17 @@ class StatsFCP(StatsPluginInterface):
 
     @staticmethod
     def _fuser(xx):
-        if isinstance(xx, xr.Dataset):
-            return xx.map(partial(_fuse_with_custom_op, op=StatsFCP._fuse_op))
-        else:
-            raise TypeError
+        variables = {}
+        data_bands = [band for band in xx.data_vars.keys() if band != "wet"]
+        for band in data_bands:
+            variables[band] = _fuse_with_custom_op(xx[band], partial(_first_valid_np, nodata=255))
+        variables["wet"] = _fuse_with_custom_op(xx["wet"], _fuse_or_np)
         
-    @staticmethod
-    def _fuse_op(*xx):
-        if xx[0].dtype == np.bool:
-            return _fuse_or_np(*xx)
-        else:
-            return _first_valid_np(*xx, nodata=255)
+        for k, v in variables.items():
+            v._copy_attrs_from(xx.data_vars[k])
+
+        yy = type(xx)(variables, attrs=xx.attrs)
+        return yy
 
     def input_data(self, task: Task) -> xr.Dataset:
 
