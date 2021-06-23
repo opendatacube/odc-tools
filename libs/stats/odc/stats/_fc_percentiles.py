@@ -11,7 +11,7 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _fuse_with_custom_op, _first_valid_np, _fuse_or_np
+from odc.algo._masking import _fuse_with_custom_op, _or_fuser, _first_valid_np, _fuse_or_np
 from .model import StatsPluginInterface
 from . import _plugins
 
