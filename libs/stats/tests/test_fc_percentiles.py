@@ -75,7 +75,8 @@ def test_reduce(dataset):
     assert (result[1, :] != 255).all()
 
     expected_result = np.array(
-        [[2, 3], [1, 1]],
+        [[1, 2], [0, 0]],
     )
     result = xx.compute()["qa"].data
     assert (result == expected_result).all()
+    

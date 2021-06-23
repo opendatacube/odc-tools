@@ -104,7 +104,7 @@ class StatsFCP(StatsPluginInterface):
         for band in bands:
             all_bands_valid &= yy[band] != 255
 
-        yy["qa"] = all_bands_valid + (1 - all_bands_valid) * (2 + is_ever_wet)
+        yy["qa"] = (1 - all_bands_valid) * (1 + is_ever_wet)
         
         return yy
 
