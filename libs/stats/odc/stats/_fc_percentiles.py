@@ -42,7 +42,7 @@ class StatsFCP(StatsPluginInterface):
 
         1. Loads all the fc and WOfS bands
         2. Set high slope terrain flag to 0
-        3. Extracts the clear dry flags from WOfS
+        3. Extracts the clear dry and clear wet flags from WOfS
         4. Drops the WOfS band
         5. Masks out all pixels that are not clear and dry to a nodata value of 255
         6. Discards the clear dry flags
@@ -71,21 +71,6 @@ class StatsFCP(StatsPluginInterface):
             return _fuse_or_np(*xx)
         else:
             return _first_valid_np(*xx, nodata=255)
-
-    @staticmethod
-    def _native_tr_wet(xx):
-        """
-        Loads in the data in the native projection. It performs the following:
-
-        1. Loads the WOfS band
-        2. Set high slope terrain flag to 0
-        3. Extracts clear wet flags from WOfS
-        """
-
-        # set terrain flag to zero
-        water = da.bitwise_and(xx["water"], 0b11101111)
-        wet = water == 128
-        return wet
 
     def input_data(self, task: Task) -> xr.Dataset:
 
