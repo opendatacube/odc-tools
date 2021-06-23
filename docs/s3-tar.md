@@ -1,10 +1,10 @@
 Collate Objects from S3
 =======================
 
-1. Uses async http to have many concurrent S3 object get request from a few python threads
-2. Example tool `s3-to-tar` turns list of urls read from `stdin` into a tar archive on `stdout` or on disk
+1. Uses async http to have many concurrent S3 object get requests from a few python threads
+2. Example tool `s3-to-tar` turns a list of urls read from `stdin` into a tar archive on `stdout` or on disk
 
-Using WOfS yamls as a sample data set I get following performance:
+Using WOfS yamls as a sample dataset I get following performance:
 
 - Instance type `r4.xlarge`, 4 cores, 32Gb of memory
 - Reading 100K documents completes in about 4 minutes when running 2 concurrent tasks
@@ -15,7 +15,7 @@ Using WOfS yamls as a sample data set I get following performance:
 In comparison a simple fetch one object at a time using `boto3` is about 30
 small objects per second per thread.
 
-Processing single chunk looks like this:
+Processing a single chunk looks like this:
 
 ```bash
 #!/bin/bash
@@ -43,7 +43,7 @@ find . -name 'wofs-??' | sort | xargs -n 1 -P 2 ./process-chunk.sh
 ```
 
 Downloading all 2.6 million WOfS meatadata documents from S3 took less than
-hour, this is higher throughput than yaml parser can parse.
+hour, this is higher throughput than the yaml parser can parse.
 
 Limitations
 -----------
