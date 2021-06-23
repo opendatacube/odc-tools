@@ -58,9 +58,8 @@ def test_native_transform(dataset):
 
 
 def test_fusing(dataset):
-    
     xx = StatsFCP._native_tr(dataset)
-    xx = xx.groupby("solar_day").map(_nodata_fuser)
+    xx = xx.groupby("solar_day").map(StatsFCP._fuser)
 
     expected_result = np.array(
         [[30, 40], [20, 50]],

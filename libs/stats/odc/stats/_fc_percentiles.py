@@ -56,6 +56,10 @@ class StatsFCP(StatsPluginInterface):
         return xx
 
     @staticmethod
+    def _fuser(xx):
+        return _nodata_fuser(xx, nodata=255)
+
+    @staticmethod
     def _native_tr_wet(xx):
         """
         Loads in the data in the native projection. It performs the following:
@@ -79,7 +83,7 @@ class StatsFCP(StatsPluginInterface):
             bands=["water", "pv", "bs", "npv", "ue"],
             geobox=task.geobox,
             native_transform=self._native_tr,
-            fuser=_nodata_fuser,
+            fuser=self.fuser,
             groupby="solar_day",
             resampling=self.resampling,
             chunks=chunks,
