@@ -11,7 +11,7 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _fuse_with_custom_op, _or_fuser, _first_valid_np, _fuse_or_np
+from odc.algo._masking import _fuse_with_custom_op, _or_fuser, _first_valid_np, _fuse_or_np, _fuse_and_np
 from .model import StatsPluginInterface
 from . import _plugins
 
@@ -52,9 +52,7 @@ class StatsFCP(StatsPluginInterface):
         water = da.bitwise_and(xx["water"], 0b11101111)
         xx = xx.drop_vars(["water"])
 
-        # use the dry flag to indicate good measurements
-        dry = water == 0
-        xx = keep_good_only(xx, dry, nodata=255)
+        xx["dry"] = water == 0
         xx["wet"] = water == 128
         return xx
 
@@ -65,7 +63,8 @@ class StatsFCP(StatsPluginInterface):
         for band in data_bands:
             variables[band] = _fuse_with_custom_op(xx[band], partial(_first_valid_np, nodata=255))
         variables["wet"] = _fuse_with_custom_op(xx["wet"], _fuse_or_np)
-        
+        variables["dry"] = _fuse_with_custom_op(xx["dry"], _fuse_and_np)
+
         for k, v in variables.items():
             v._copy_attrs_from(xx.data_vars[k])
 
@@ -86,7 +85,7 @@ class StatsFCP(StatsPluginInterface):
             resampling=self.resampling,
             chunks=chunks,
         )
-
+        
         return xx
 
     @staticmethod
@@ -96,8 +95,13 @@ class StatsFCP(StatsPluginInterface):
         # 255 & False => 2  
         # 255 + True => 3
 
-        yy = xr_percentile(xx.drop_vars(["wet"]), [0.1, 0.5, 0.9], nodata=255)
-        is_ever_wet = _or_fuser(xx["wet"]).squeeze(xx["wet"].dims[0], drop=True)
+        mask = xx["dry"]
+        wet = xx["wet"]
+        xx.drop_vars(["dry", "wet"])
+        xx = keep_good_only(xx, mask, nodata=255)
+
+        yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=255)
+        is_ever_wet = _or_fuser(wet).squeeze(wet.dims[0], drop=True)
 
         band, *bands = [band for band in yy.data_vars.keys() if band != "wet"]
         all_bands_valid = yy[band] != 255
