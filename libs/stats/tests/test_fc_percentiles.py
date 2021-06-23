@@ -2,7 +2,6 @@ import numpy as np
 import xarray as xr
 import dask.array as da
 from odc.stats._fc_percentiles import StatsFCP
-from odc.algo._masking import _nodata_fuser
 import pytest 
 import pandas as pd
 
@@ -18,6 +17,9 @@ def dataset():
         [[0, 128], [0, 0]],
         [[0, 0], [0, 0]], 
     ])
+
+    band_1 = da.from_array(band_1, chunks=(2, -1, -1))
+    band_2 = da.from_array(band_2, chunks=(2, -1, 20))
 
     tuples = [(np.datetime64(f"2000-01-01T0{i}"), np.datetime64(f"2000-01-01")) for i in range(2)]
     index = pd.MultiIndex.from_tuples(tuples, names=["time", "solar_day"])

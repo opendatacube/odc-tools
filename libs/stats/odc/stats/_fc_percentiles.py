@@ -1,15 +1,17 @@
 """
 Fractional Cover Percentiles
 """
+from functools import partial
 from typing import Optional, Tuple
 from itertools import product
 import dask.array as da
 import xarray as xr
+import numpy as np
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _nodata_fuser, _or_fuser
+from odc.algo._masking import _fuse_with_custom_op, _first_valid_np, _fuse_or_np
 from .model import StatsPluginInterface
 from . import _plugins
 
@@ -57,7 +59,17 @@ class StatsFCP(StatsPluginInterface):
 
     @staticmethod
     def _fuser(xx):
-        return _nodata_fuser(xx, nodata=255)
+        if isinstance(xx, xr.Dataset):
+            return xx.map(partial(_fuse_with_custom_op, op=StatsFCP._fuse_op))
+        else:
+            raise TypeError
+        
+    @staticmethod
+    def _fuse_op(*xx):
+        if xx[0].dtype == np.bool:
+            raise NotImplementedError
+        else:
+            return _first_valid_np(*xx, nodata=255)
 
     @staticmethod
     def _native_tr_wet(xx):
