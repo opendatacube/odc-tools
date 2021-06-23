@@ -156,7 +156,7 @@ def read_pixels(
     """
     mode, coord = _mode_value(pixel=pixel, xy=xy, lonlat=lonlat)
     if mode is None:
-        raise ValueError("Have to supply one of: xy, lonlat or pixel")
+        raise ValueError("Have to supply one of: pixel, xy, or lonlat.")
 
     extractor = make_pixel_extractor(mode=mode, band=band, **kwargs)
 
