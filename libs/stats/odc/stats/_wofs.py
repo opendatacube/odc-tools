@@ -19,7 +19,7 @@ import numpy as np
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import safe_div, apply_numexpr, keep_good_only
+from odc.algo import safe_div, apply_numexpr, keep_good_only, binary_dilation
 from odc.algo.io import dc_load
 from .model import StatsPluginInterface
 from . import _plugins
@@ -38,23 +38,28 @@ class StatsWofs(StatsPluginInterface):
 
     Special care is taken when handling NaN values and `no-data` values.
     """
+
     NAME = "ga_ls_wo_summary"
     SHORT_NAME = NAME
     VERSION = "1.6.0"
     PRODUCT_FAMILY = "wo_summary"
 
+    # these get padded out if dilation was requested
+    BAD_BITS_MASK = 0b0110_1000  # Cloud/Shadow + Terrain Shadow
+
     def __init__(
         self,
         resampling: str = "bilinear",
+        dilation: int = 0,
     ):
         self.resampling = resampling
+        self._dilation = dilation  # number of pixels to pad around BAD pixels
 
     @property
     def measurements(self) -> Tuple[str, ...]:
         return "count_wet", "count_clear", "frequency"
 
-    @staticmethod
-    def _native_tr(xx):
+    def _native_tr(self, xx):
         """
         xx.water -- uint8 classifier bitmask
 
@@ -74,20 +79,28 @@ class StatsWofs(StatsPluginInterface):
             |   x-----------------------------> Cloud
             o---------------------------------> Water
 
+        out:
+          .bad<Bool>   - pixel should not be counted
+          .some<Bool>  - there is data (bad or good but not nodata)
+          .dry<Bool>   - pixel has dry classification and is not ``bad``
+          .wet<Bool>   - pixel has wet classification and is not ``bad``
         """
-        wet = xx.water == 128
-        dry = xx.water == 0
-        # bad -- if any bit in [1, 6] range is non zero
-        #        X--- ---X
-        #        7654 3210
-        # Erase bits 7 and 0 and check if what's left is non-zero
-        bad = apply_numexpr("((water%128)>>1) > 0", xx, dtype="bool")
-        bad.attrs.pop("nodata", None)
+        if self._dilation != 0:
+            xx["bad"] = binary_dilation(
+                (xx.water & self.BAD_BITS_MASK) > 0, self._dilation
+            ) | ((xx.water & 0b0111_1110) > 0)
+        else:
+            xx["bad"] = (xx.water & 0b0111_1110) > 0
 
-        # some -- nodata flag is not set and contiguity flag is not set
-        some = apply_numexpr("((water)%4) == 0", xx, dtype="bool")
-        some.attrs.pop("nodata", None)
-        return xr.Dataset(dict(wet=wet, dry=dry, bad=bad, some=some))
+        # some = (x.water&3)==0, i.e. nodata==0 and non_contigous==0
+        xx["some"] = apply_numexpr("((water<<30)>>30)==0", xx, name="some")
+        xx["dry"] = xx.water == 0
+        xx["wet"] = xx.water == 128
+        xx = xx.drop_vars("water")
+        for dv in xx.data_vars.values():
+            dv.attrs.pop("nodata", None)
+
+        return xx
 
     @staticmethod
     def _fuser(xx):
@@ -100,7 +113,7 @@ class StatsWofs(StatsPluginInterface):
         from odc.algo._masking import _or_fuser
 
         # Merge everything with OR first
-        xx = xx.map(_or_fuser)
+        xx = _or_fuser(xx)
 
         # Ensure all 3 bits are exclusive
         #  bad=T, wet=?, dry=? => (wet'=F  , dry'=F)
@@ -240,8 +253,8 @@ class StatsWofsFullHistory(StatsPluginInterface):
             casting="unsafe",
         )
 
-        count_clear.attrs['nodata'] = int(nodata)
-        count_wet.attrs['nodata'] = int(nodata)
+        count_clear.attrs["nodata"] = int(nodata)
+        count_wet.attrs["nodata"] = int(nodata)
 
         yy = xr.Dataset(
             dict(count_clear=count_clear, count_wet=count_wet, frequency=frequency)
