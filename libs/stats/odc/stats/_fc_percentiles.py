@@ -64,7 +64,7 @@ class StatsFCP(StatsPluginInterface):
 
         wet = xx.wet
         dry = xx.dry
-        xx = _xr_fuse(xx.drop('wet'), partial(_first_valid_np, nodata=NODATA), '')
+        xx = _xr_fuse(xx.drop_vars(["wet", "dry"]), partial(_first_valid_np, nodata=NODATA), '')
         xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name)
         xx["dry"] = _xr_fuse(dry, _fuse_and_np, wet.name)
         return xx
