@@ -11,7 +11,7 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _fuse_with_custom_op, _or_fuser, _first_valid_np, _fuse_or_np, _fuse_and_np
+from odc.algo._masking import _xr_fuse, _or_fuser, _first_valid_np, _fuse_or_np, _fuse_and_np
 from .model import StatsPluginInterface
 from . import _plugins
 
@@ -61,18 +61,13 @@ class StatsFCP(StatsPluginInterface):
 
     @staticmethod
     def _fuser(xx):
-        variables = {}
-        data_bands = [band for band in xx.data_vars.keys() if band != "wet"]
-        for band in data_bands:
-            variables[band] = _fuse_with_custom_op(xx[band], partial(_first_valid_np, nodata=NODATA))
-        variables["wet"] = _fuse_with_custom_op(xx["wet"], _fuse_or_np)
-        variables["dry"] = _fuse_with_custom_op(xx["dry"], _fuse_and_np)
 
-        for k, v in variables.items():
-            v._copy_attrs_from(xx.data_vars[k])
-
-        yy = type(xx)(variables, attrs=xx.attrs)
-        return yy
+        wet = xx.wet
+        dry = xx.dry
+        xx = _xr_fuse(xx.drop('wet'), partial(_first_valid_np, nodata=NODATA), '')
+        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name)
+        xx["dry"] = _xr_fuse(dry, _fuse_and_np, wet.name)
+        return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
 
