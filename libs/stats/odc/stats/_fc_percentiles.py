@@ -88,10 +88,9 @@ class StatsFCP(StatsPluginInterface):
 
     @staticmethod
     def reduce(xx: xr.Dataset) -> xr.Dataset: 
-        # not 255 & True => 1
-        # not 255 & False => 1
-        # 255 & False => 2  
-        # 255 + True => 3
+        # (!all_bands_valid) & is_ever_wet => 0
+        # (!all_bands_valid) & (!is_ever_wet) => 1
+        # all_bands_valid => 2  
 
         mask = xx["dry"]
         wet = xx["wet"]
@@ -106,8 +105,7 @@ class StatsFCP(StatsPluginInterface):
         for band in bands:
             all_bands_valid &= yy[band] != NODATA
 
-        yy["qa"] = (1 - all_bands_valid) * (1 + is_ever_wet)
-        
+        yy["qa"] = 1 + all_bands_valid - is_ever_wet * (1 - all_bands_valid)
         return yy
 
     def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
