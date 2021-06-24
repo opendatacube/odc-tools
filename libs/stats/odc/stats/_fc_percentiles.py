@@ -94,7 +94,7 @@ class StatsFCP(StatsPluginInterface):
 
         mask = xx["dry"]
         wet = xx["wet"]
-        xx.drop_vars(["dry", "wet"])
+        xx = xx.drop_vars(["dry", "wet"])
         xx = keep_good_only(xx, mask, nodata=NODATA)
 
         yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=NODATA)

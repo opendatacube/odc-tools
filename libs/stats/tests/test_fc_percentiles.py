@@ -89,8 +89,9 @@ def test_fusing(dataset):
 
 
 def test_reduce(dataset):
-    xx = StatsFCP._native_tr(dataset)
-    xx = StatsFCP.reduce(xx)
+    fcp = StatsFCP()
+    xx = fcp._native_tr(dataset)
+    xx = fcp.reduce(xx)
 
     result = xx.compute()["band_1_pc_10"].data
     assert (result[0, :] == 255).all()
@@ -102,3 +103,6 @@ def test_reduce(dataset):
     result = xx.compute()["qa"].data
     assert (result == expected_result).all()
     
+    assert set(xx.data_vars.keys()) == set(
+        ["band_1_pc_10", "band_1_pc_50", "band_1_pc_90", "qa"]
+    )
