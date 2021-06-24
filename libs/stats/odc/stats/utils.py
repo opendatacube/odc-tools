@@ -180,7 +180,7 @@ def dedup_s2_datasets(dss):
 def fuse_products(type_1: DatasetType, type_2: DatasetType) -> DatasetType:
     """
     Fuses two products. This function requires access to a Datacube to access the metadata type.
-    
+
     Fusing two products requires that:
       - both metadata types are eo3
       - there are no conflicting band names
@@ -193,8 +193,8 @@ def fuse_products(type_1: DatasetType, type_2: DatasetType) -> DatasetType:
     assert def_1["metadata_type"] == def_2["metadata_type"]
     assert def_1["metadata_type"] == "eo3"
 
-    measurements_1 = set(m["name"] for m in def_1['measurements'])
-    measurements_2 = set(m["name"] for m in def_2['measurements'])
+    measurements_1 = set(m["name"] for m in def_1["measurements"])
+    measurements_2 = set(m["name"] for m in def_2["measurements"])
     assert len(measurements_1.intersection(measurements_2)) == 0
 
     file_format = def_1["metadata"]["properties"]["odc:file_format"]
@@ -203,15 +203,22 @@ def fuse_products(type_1: DatasetType, type_2: DatasetType) -> DatasetType:
     name = f"fused__{def_1['name']}__{def_2['name']}"
 
     fused_def["name"] = name
-    fused_def["metadata"] = {"product": {"name": name}, "properties": {"odc:file_format": file_format}}
-    fused_def["description"] = f"Fused products: {def_1['description']}, {def_2['description']}"
-    fused_def["measurements"] = def_1["measurements"] + def_2["measurements"] 
+    fused_def["metadata"] = {
+        "product": {"name": name},
+        "properties": {"odc:file_format": file_format},
+    }
+    fused_def[
+        "description"
+    ] = f"Fused products: {def_1['description']}, {def_2['description']}"
+    fused_def["measurements"] = def_1["measurements"] + def_2["measurements"]
     fused_def["metadata_type"] = def_1["metadata_type"]
 
     return DatasetType(type_1.metadata_type, fused_def)
 
 
-def fuse_ds(ds_1: Dataset, ds_2: Dataset, product: Optional[DatasetType] = None) -> Dataset:
+def fuse_ds(
+    ds_1: Dataset, ds_2: Dataset, product: Optional[DatasetType] = None
+) -> Dataset:
     """
     This function fuses two datasets. It requires that:
       - the products are fusable
@@ -219,43 +226,47 @@ def fuse_ds(ds_1: Dataset, ds_2: Dataset, product: Optional[DatasetType] = None)
       - labels are in the format 'product_suffix' with identical suffixes
       - CRSs' are identical
       - datetimes are identical
-      - $schemas are identical 
+      - $schemas are identical
     """
-    
+
     doc_1, doc_2 = ds_1.metadata_doc, ds_2.metadata_doc
-    
+
     if product is None:
         product = fuse_products(ds_1.type, ds_2.type)
-    
+
     fused_doc = dict()
 
-    fused_doc["id"] = str(odc_uuid(product.name, "0.0.0", sources=[doc_1["id"], doc_2["id"]]))
+    fused_doc["id"] = str(
+        odc_uuid(product.name, "0.0.0", sources=[doc_1["id"], doc_2["id"]])
+    )
     fused_doc["lineage"] = {"source_datasets": [doc_1["id"], doc_2["id"]]}
 
     # check that all grids with the same name are identical
     common_grids = set(doc_1["grids"].keys()).intersection(doc_2["grids"].keys())
     assert all(doc_1["grids"][g] == doc_2["grids"][g] for g in common_grids)
-    
+
     # TODO: handle the case that grids have conflicts in a seperate function
     fused_doc["grids"] = {**doc_1["grids"], **doc_2["grids"]}
-    
+
     label_suffix = doc_1["label"].replace(doc_1["product"]["name"], "")
-    assert label_suffix == doc_2["label"].replace(doc_2["product"]["name"], "") 
+    assert label_suffix == doc_2["label"].replace(doc_2["product"]["name"], "")
     fused_doc["label"] = f"{product.name}{label_suffix}"
 
     equal_keys = ["$schema", "crs"]
     for key in equal_keys:
         assert doc_1[key] == doc_2[key]
         fused_doc[key] = doc_1[key]
-    
+
     fused_doc["properties"] = dict()
-    assert doc_1["properties"]["datetime"] == doc_2["properties"]["datetime"] # datetime is the only manditory property
-    
+    assert (
+        doc_1["properties"]["datetime"] == doc_2["properties"]["datetime"]
+    )  # datetime is the only manditory property
+
     # copy over all identical properties
     for key, val in doc_1["properties"].items():
         if val == doc_2["properties"].get(key, None):
             fused_doc["properties"][key] = val
-    
+
     fused_doc["measurements"] = {**doc_1["measurements"], **doc_2["measurements"]}
     for key, path in {**measurement_paths(ds_1), **measurement_paths(ds_2)}.items():
         fused_doc["measurements"][key]["path"] = path
