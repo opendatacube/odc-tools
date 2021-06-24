@@ -14,11 +14,14 @@ import pandas as pd
 import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from datacube.utils import changes, documents
+from datacube.utils import documents
 from odc.aws.queue import get_messages
 from odc.index.stac import stac_transform
 from toolz import dicttoolz
 from yaml import load
+
+from odc.apps.dc_tools.utils import index_update_dataset
+
 
 # Added log handler
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
@@ -163,58 +166,6 @@ def do_archiving(metadata, dc: Datacube):
         raise SQStoDCException("Failed to get an ID from the message, can't archive.")
 
 
-def do_index_update_dataset(
-    metadata: dict,
-    uri,
-    dc: Datacube,
-    doc2ds: Doc2Dataset,
-    update=False,
-    update_if_exists=False,
-    allow_unsafe=False,
-):
-    if uri is not None:
-        # Make sure we can create a dataset first
-        try:
-            ds, err = doc2ds(metadata, uri)
-        except ValueError as e:
-            raise SQStoDCException(
-                f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
-            )
-
-        # Now do something with the dataset
-        if ds is not None:
-            if dc.index.datasets.has(metadata.get("id")):
-                # Update
-                if update or update_if_exists:
-                    # Set up update fields
-                    updates = {}
-                    if allow_unsafe:
-                        updates = {tuple(): changes.allow_any}
-                    # Do the updating
-                    try:
-                        dc.index.datasets.update(ds, updates_allowed=updates)
-                    except ValueError as e:
-                        raise SQStoDCException(
-                            f"Updating the dataset raised an exception: {e}"
-                        )
-                else:
-                    logging.warning("Dataset already exists, not indexing")
-            else:
-                if update:
-                    # We're expecting to update a dataset, but it doesn't exist
-                    raise SQStoDCException(
-                        "Can't update dataset because it doesn't exist."
-                    )
-                # Everything is working as expected, add the dataset
-                dc.index.datasets.add(ds)
-        else:
-            raise SQStoDCException(
-                f"Failed to create dataset with error {err}\n The URI was {uri}"
-            )
-    else:
-        raise SQStoDCException("Failed to get URI from metadata doc")
-
-
 def queue_to_odc(
     queue,
     dc: Datacube,
@@ -287,7 +238,7 @@ def queue_to_odc(
                         )
 
                 # Index the dataset
-                do_index_update_dataset(
+                index_update_dataset(
                     metadata,
                     uri,
                     dc,

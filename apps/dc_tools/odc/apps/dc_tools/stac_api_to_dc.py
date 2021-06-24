@@ -9,9 +9,10 @@ from typing import Any, Dict, Generator, Iterable, Tuple, Optional
 import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from datacube.utils import changes
 from odc.index.stac import stac_transform, stac_transform_absolute
 from satsearch import Search
+
+from odc.apps.dc_tools.utils import index_update_datasets
 
 
 def guess_location(metadata: dict) -> Tuple[str, bool]:
@@ -88,31 +89,6 @@ def transform_items(
                 f"Failed to create dataset with error {err}\n The URI was {uri}"
             )
             yield None, uri
-
-
-def index_update_datasets(
-    dc: Datacube, datasets: Tuple[dict, str], update: bool, allow_unsafe: bool
-) -> Tuple[int, int]:
-    ds_added = 0
-    ds_failed = 0
-
-    for dataset, uri in datasets:
-        if uri is not None:
-            if dataset is not None:
-                if update:
-                    updates = {}
-                    if allow_unsafe:
-                        updates = {tuple(): changes.allow_any}
-                    dc.index.datasets.update(dataset, updates_allowed=updates)
-                else:
-                    ds_added += 1
-                    dc.index.datasets.add(dataset)
-            else:
-                ds_failed += 1
-        else:
-            ds_failed += 1
-
-    return ds_added, ds_failed
 
 
 def stac_api_to_odc(
