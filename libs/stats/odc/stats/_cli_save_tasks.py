@@ -119,7 +119,7 @@ def save_tasks(
         dss = None
         n_dss = None
     else:
-        dss, n_dss, product = _parse_products(dc, products, temporal_range)
+        dss, n_dss, product, error_logger = _parse_products(dc, products, temporal_range)
         
     if output == "":
         if temporal_range is not None:
@@ -161,6 +161,10 @@ def save_tasks(
         print(str(e))
         sys.exit(2)
 
+    if len(products) != 1:
+        for product, count in error_logger.missing_counts.items():
+            print(f"Product {product} has {count} missing datasets.")
+
     if not ok:
         # exit with error code, failure message was already printed
         sys.exit(3)
@@ -172,8 +176,9 @@ def _parse_products(dc, products, temporal_range):
     query.update(temporal_range.dc_query(pad=0.6)) 
     dss = ordered_dss(dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query)
     paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
-    paired_dss = (tuple(t[1]) for t in paired_dss)
-    paired_dss = (x for x in paired_dss if len(x) == len(products))
+    
+    error_logger = ErrorLogger(products)
+    paired_dss = _filter_bad_with_logging(paired_dss, error_logger)
     n_dss = max(dataset_count(dc.index, time=query["time"], product=product) for product in products)
 
     products = [dc.index.products.get_by_name(product) for product in products]
@@ -182,4 +187,29 @@ def _parse_products(dc, products, temporal_range):
     dss = map(map_fuse_func, paired_dss)
     product = fused_product.name
 
-    return dss, n_dss, product
+    return dss, n_dss, product, error_logger
+
+
+def _filter_bad_with_logging(groups, error_logger):
+    for _, ds_group in groups:
+        ds_group = tuple(ds_group)
+        if not error_logger.check(ds_group):
+            error_logger.append(ds_group)
+        else:
+            yield ds_group
+
+
+class ErrorLogger:
+
+    def __init__(self, products):
+        self.products = products
+        self.missing_counts = dict((p, 0) for p in products)
+
+    def append(self, ds_group):
+        product_group = tuple(ds.type.name for ds in ds_group)
+        for product in self.products:
+            if product not in product_group:
+                self.missing_counts[product] += 1
+    
+    def check(self, ds_group):
+        return len(ds_group) == len(self.products)
