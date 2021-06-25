@@ -178,7 +178,7 @@ def _parse_products(dc, products, temporal_range):
     paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
     
     error_logger = ErrorLogger(products)
-    paired_dss = _filter_bad_with_logging(paired_dss, error_logger)
+    paired_dss = error_logger.filter(paired_dss)
     n_dss = max(dataset_count(dc.index, time=query["time"], product=product) for product in products)
 
     products = [dc.index.products.get_by_name(product) for product in products]
@@ -188,15 +188,6 @@ def _parse_products(dc, products, temporal_range):
     product = fused_product.name
 
     return dss, n_dss, product, error_logger
-
-
-def _filter_bad_with_logging(groups, error_logger):
-    for _, ds_group in groups:
-        ds_group = tuple(ds_group)
-        if not error_logger.check(ds_group):
-            error_logger.append(ds_group)
-        else:
-            yield ds_group
 
 
 class ErrorLogger:
@@ -213,3 +204,12 @@ class ErrorLogger:
     
     def check(self, ds_group):
         return len(ds_group) == len(self.products)
+
+    def filter(self, groups):
+        for _, ds_group in groups:
+            ds_group = tuple(ds_group)
+            if not self.check(ds_group):
+                self.append(ds_group)
+            else:
+                yield ds_group
+        
