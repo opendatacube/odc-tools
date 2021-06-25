@@ -113,7 +113,7 @@ def save_tasks(
             sys.exit(1)
 
     dc = Datacube(env=env)
-    products = products.split(",")
+    products = products.split("+")
     dss, n_dss, product = _parse_products(dc, products, temporal_range)
 
     if output == "":
