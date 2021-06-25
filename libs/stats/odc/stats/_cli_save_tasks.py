@@ -2,6 +2,9 @@ import click
 import sys
 from odc.io.text import click_range2d
 from ._cli_common import main
+from .utils import fuse_products, fuse_ds
+from odc.index import ordered_dss, dataset_count
+from itertools import groupby
 
 
 @main.command("save-tasks")
@@ -59,7 +62,7 @@ from ._cli_common import main
     type=float,
     help="Only save datasets that pass `gqa_iterative_mean_xy <= gqa` test",
 )
-@click.argument("product", type=str, nargs=1)
+@click.argument("products", type=str, nargs=1)
 @click.argument("output", type=str, nargs=1, default="")
 def save_tasks(
     grid,
@@ -67,7 +70,7 @@ def save_tasks(
     temporal_range,
     frequency,
     output,
-    product,
+    products,
     env,
     complevel,
     overwrite=False,
@@ -109,6 +112,10 @@ def save_tasks(
             print(f"Frequency must be one of annual|annual-fy|semiannual|seasonal|all and not '{frequency}'")
             sys.exit(1)
 
+    dc = Datacube(env=env)
+    products = products.split(",")
+    dss, n_dss, product = _parse_products(dc, products, temporal_range)
+
     if output == "":
         if temporal_range is not None:
             output = f"{product}_{temporal_range.short}.db"
@@ -133,7 +140,9 @@ def save_tasks(
     if gqa is not None:
         predicate = gqa_predicate
 
-    dc = Datacube(env=env)
+    if len(products) != 1: 
+        dc = None
+        product = None
     try:
         ok = tasks.save(
             dc,
@@ -143,6 +152,8 @@ def save_tasks(
             predicate=predicate,
             debug=debug,
             msg=on_message,
+            dss=dss, 
+            n_dss=n_dss,
         )
     except ValueError as e:
         print(str(e))
@@ -151,3 +162,35 @@ def save_tasks(
     if not ok:
         # exit with error code, failure message was already printed
         sys.exit(3)
+
+
+def _parse_products(dc, products, temporal_range):
+    if len(products) == 1:
+        product = products[0]
+        dss = None
+        n_dss = None
+    elif len(products) == 2:
+        
+        query = {"product": products, "time": (str(temporal_range.start), str(temporal_range.end))}
+        dss = ordered_dss(
+            dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query
+        )
+        paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
+        paired_dss = [list(t[1]) for t in paired_dss]
+        bad_dss = [x for x in paired_dss if len(x) != 2]
+        paired_dss = [x for x in paired_dss if len(x) == 2]
+        
+        for x in groupby(bad_dss, key=lambda ds: ds[0].type.name):
+            name, _iter = x
+            print(f"Warning: product {name} has {len(list(_iter))} unpaired datasets")
+        
+        products = [dc.index.products.get_by_name(product) for product in products]
+        fused_product = fuse_products(*products)
+        map_fuse_func = lambda x: fuse_ds(*x, product=fused_product)
+        dss = map(map_fuse_func, paired_dss)
+        product = fused_product.name
+        n_dss = dataset_count(dc.index, **query)
+    else:
+        raise NotImplementedError("Only 1 or 2 products are supported.")
+
+    return dss, n_dss, product
