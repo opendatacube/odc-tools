@@ -114,8 +114,13 @@ def save_tasks(
 
     dc = Datacube(env=env)
     products = products.split("+")
-    dss, n_dss, product = _parse_products(dc, products, temporal_range)
-
+    if len(products) == 1: 
+        product = products[0]
+        dss = None
+        n_dss = None
+    else:
+        dss, n_dss, product = _parse_products(dc, products, temporal_range)
+        
     if output == "":
         if temporal_range is not None:
             output = f"{product}_{temporal_range.short}.db"
@@ -140,9 +145,6 @@ def save_tasks(
     if gqa is not None:
         predicate = gqa_predicate
 
-    if len(products) != 1: 
-        dc = None
-        product = None
     try:
         ok = tasks.save(
             dc,
@@ -165,35 +167,28 @@ def save_tasks(
 
 
 def _parse_products(dc, products, temporal_range):
-    if len(products) == 1:
-        product = products[0]
-        dss = None
-        n_dss = None
-    elif len(products) == 2:
         
-        query = {"product": products}
-        query.update(
-                temporal_range.dc_query(pad=0.6)
-            ) 
-        dss = ordered_dss(
-            dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query
-        )
-        paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
-        paired_dss = [list(t[1]) for t in paired_dss]
-        bad_dss = [x for x in paired_dss if len(x) != 2]
-        paired_dss = [x for x in paired_dss if len(x) == 2]
-        
-        for x in groupby(bad_dss, key=lambda ds: ds[0].type.name):
-            name, _iter = x
-            print(f"Warning: product {name} has {len(list(_iter))} unpaired datasets")
-        
-        products = [dc.index.products.get_by_name(product) for product in products]
-        fused_product = fuse_products(*products)
-        map_fuse_func = lambda x: fuse_ds(*x, product=fused_product)
-        dss = map(map_fuse_func, paired_dss)
-        product = fused_product.name
-        n_dss = dataset_count(dc.index, **query)
-    else:
-        raise NotImplementedError("Only 1 or 2 products are supported.")
+    query = {"product": products}
+    query.update(
+            temporal_range.dc_query(pad=0.6)
+        ) 
+    dss = ordered_dss(
+        dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query
+    )
+    paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
+    paired_dss = [list(t[1]) for t in paired_dss]
+    bad_dss = [x for x in paired_dss if len(x) != 2]
+    paired_dss = [x for x in paired_dss if len(x) == 2]
+    
+    for x in groupby(bad_dss, key=lambda ds: ds[0].type.name):
+        name, _iter = x
+        print(f"Warning: product {name} has {len(list(_iter))} unpaired datasets")
+    
+    products = [dc.index.products.get_by_name(product) for product in products]
+    fused_product = fuse_products(*products)
+    map_fuse_func = lambda x: fuse_ds(*x, product=fused_product)
+    dss = map(map_fuse_func, paired_dss)
+    product = fused_product.name
+    n_dss = dataset_count(dc.index, **query)
 
     return dss, n_dss, product
