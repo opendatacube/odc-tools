@@ -171,7 +171,10 @@ def _parse_products(dc, products, temporal_range):
         n_dss = None
     elif len(products) == 2:
         
-        query = {"product": products, "time": (str(temporal_range.start), str(temporal_range.end))}
+        query = {"product": products}
+        query.update(
+                temporal_range.dc_query(pad=0.6)
+            ) 
         dss = ordered_dss(
             dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query
         )
