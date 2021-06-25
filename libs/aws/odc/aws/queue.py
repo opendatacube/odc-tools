@@ -8,12 +8,24 @@ def redrive_queue(
     to_queue_name: Optional[str] = None,
     limit: Optional[int] = 0,
     dryrun: bool = False,
+    max_wait: int = 10,
 ):
     """
     Redrive messages from one queue to another. Default usage is to define
     a "deadletter" queue, and pick its "alive" counterpart, and redrive
     messages to that queue.
     """
+
+    def post_messages(to_queue, messages):
+        message_bodies = [
+            {"Id": str(n), "MessageBody": m.body} for n, m in enumerate(messages)
+        ]
+        to_queue.send_messages(Entries=message_bodies)
+        # Delete after sending, not before
+        for message in messages:
+            message.delete()
+        return []
+
     dead_queue = get_queue(queue_name)
     alive_queue = None
 
@@ -31,8 +43,7 @@ def redrive_queue(
             )
         alive_queue = source_queues[0]
 
-    messages = get_messages(dead_queue)
-
+    messages = get_messages(dead_queue, max_wait=max_wait)
     count_messages = int(dead_queue.attributes.get("ApproximateNumberOfMessages"))
 
     # If there's no messages then there's no work to do. If it's a dryrun, we
@@ -41,13 +52,23 @@ def redrive_queue(
         return count_messages
 
     count = 0
+    message_group = []
+
     for message in messages:
         # Assume this works. Exception handling elsewhere.
-        alive_queue.send_message(MessageBody=message.body)
-        message.delete()
+        message_group.append(message)
         count += 1
+
         if limit and count >= limit:
+            message_group = post_messages(alive_queue, message_group)
             break
+        elif count % 10 == 0:
+            message_group = post_messages(alive_queue, message_group)
+
+    # Post the last few messages
+
+    if len(message_group) > 0:
+        message_group = post_messages(alive_queue, message_group)
 
     # Return the number of messages that were redriven.
     return count
