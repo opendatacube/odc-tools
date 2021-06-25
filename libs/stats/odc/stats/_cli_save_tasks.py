@@ -169,26 +169,17 @@ def save_tasks(
 def _parse_products(dc, products, temporal_range):
         
     query = {"product": products}
-    query.update(
-            temporal_range.dc_query(pad=0.6)
-        ) 
-    dss = ordered_dss(
-        dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query
-    )
+    query.update(temporal_range.dc_query(pad=0.6)) 
+    dss = ordered_dss(dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query)
     paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
-    paired_dss = [list(t[1]) for t in paired_dss]
-    bad_dss = [x for x in paired_dss if len(x) != 2]
-    paired_dss = [x for x in paired_dss if len(x) == 2]
-    
-    for x in groupby(bad_dss, key=lambda ds: ds[0].type.name):
-        name, _iter = x
-        print(f"Warning: product {name} has {len(list(_iter))} unpaired datasets")
-    
+    paired_dss = (tuple(t[1]) for t in paired_dss)
+    paired_dss = (x for x in paired_dss if len(x) == len(products))
+    n_dss = max(dataset_count(dc.index, time=query["time"], product=product) for product in products)
+
     products = [dc.index.products.get_by_name(product) for product in products]
     fused_product = fuse_products(*products)
     map_fuse_func = lambda x: fuse_ds(*x, product=fused_product)
     dss = map(map_fuse_func, paired_dss)
     product = fused_product.name
-    n_dss = dataset_count(dc.index, **query)
 
     return dss, n_dss, product
