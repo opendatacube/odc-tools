@@ -55,8 +55,9 @@ def test_np_percentile_bad_data(nodata):
     np.testing.assert_equal(np_percentile(arr, 0.0, nodata), np.array([nodata, 3]))
 
 
-@pytest.mark.parametrize("nodata", [255, 200, np.nan, -1]) #should do -1
-def test_xr_percentile(nodata):
+@pytest.mark.parametrize("nodata", [255, 200, np.nan, -1])
+@pytest.mark.parametrize("use_dask", [False, True])
+def test_xr_percentile(nodata, use_dask):
     band_1 = np.random.randint(0, 100, size=(10, 100, 200)).astype(type(nodata))
     band_2 = np.random.randint(0, 100, size=(10, 100, 200)).astype(type(nodata))
 
@@ -69,8 +70,9 @@ def test_xr_percentile(nodata):
     true_results["band_1_pc_60"] = np_percentile(band_1, 0.6, nodata)
     true_results["band_2_pc_60"] = np_percentile(band_2, 0.6, nodata)
 
-    band_1 = da.from_array(band_1, chunks=(2, 20, 20))
-    band_2 = da.from_array(band_2, chunks=(2, 20, 20))
+    if use_dask:
+        band_1 = da.from_array(band_1, chunks=(2, 20, 20))
+        band_2 = da.from_array(band_2, chunks=(2, 20, 20))
 
     attrs = {"test": "attrs"}
     coords = {

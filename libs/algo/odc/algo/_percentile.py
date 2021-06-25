@@ -4,6 +4,7 @@ import xarray as xr
 import numpy as np
 from ._masking import keep_good_np
 from dask.base import tokenize
+import dask
 from functools import partial
 
 
@@ -58,20 +59,24 @@ def xr_percentile(
     for band, xx in src.data_vars.items():
        
         xx_data = xx.data
-        if len(xx.chunks[0]) > 1:
-            xx_data = xx_data.rechunk({0: -1})
+
+        if dask.is_dask_collection(xx_data):
+            if len(xx.chunks[0]) > 1:
+                xx_data = xx_data.rechunk({0: -1})
         
         tk = tokenize(xx_data, percentiles, nodata)
         for percentile in percentiles:
             name = f"{band}_pc_{int(100 * percentile)}"
-            yy = da.map_blocks(
-                partial(np_percentile, percentile=percentile, nodata=nodata), 
-                xx_data, 
-                drop_axis=0, 
-                meta=np.array([], dtype=xx.dtype),
-                name=f"{name}-{tk}",
-            )
-            
+            if dask.is_dask_collection(xx_data):
+                yy = da.map_blocks(
+                    partial(np_percentile, percentile=percentile, nodata=nodata), 
+                    xx_data, 
+                    drop_axis=0, 
+                    meta=np.array([], dtype=xx.dtype),
+                    name=f"{name}-{tk}",
+                )
+            else:
+                yy = np_percentile(xx_data, percentile=percentile, nodata=nodata)
             data_vars[name] = (xx.dims[1:], yy)
 
     coords = dict((dim, src.coords[dim]) for dim in xx.dims[1:])
