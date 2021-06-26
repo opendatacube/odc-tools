@@ -12,7 +12,7 @@ from datacube.index.hl import Doc2Dataset
 from odc.index.stac import stac_transform, stac_transform_absolute
 from satsearch import Search
 
-from odc.apps.dc_tools.utils import index_update_datasets
+from odc.apps.dc_tools.utils import index_update_dataset
 
 
 def guess_location(metadata: dict) -> Tuple[str, bool]:
@@ -54,16 +54,9 @@ def get_items(
     # Workaround bug in STAC Search that doesn't stop at the limit
     for count, metadata in enumerate(items.geojson()["features"]):
         # Stop at the limit if it's set
-        if (limit is not None) and (count > limit):
+        if (limit is not None) and (count >= limit):
             break
         uri, relative = guess_location(metadata)
-        yield (metadata, uri, relative)
-
-
-def transform_items(
-    doc2ds: Doc2Dataset, items: Iterable[Tuple[Dict[str, Any], str, bool]]
-) -> Generator[Tuple[dict, str], None, None]:
-    for metadata, uri, relative in items:
         try:
             if relative:
                 metadata = stac_transform(metadata)
@@ -73,33 +66,21 @@ def transform_items(
             logging.error(
                 f"Failed to handle item with KeyError: '{e}'\n The URI was {uri}"
             )
-            yield None, uri
             continue
 
-        try:
-            ds, err = doc2ds(metadata, uri)
-        except ValueError as e:
-            logging.error(
-                f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
-            )
-        if ds is not None:
-            yield ds, uri
-        else:
-            logging.error(
-                f"Failed to create dataset with error {err}\n The URI was {uri}"
-            )
-            yield None, uri
+        yield (metadata, uri)
 
 
 def stac_api_to_odc(
     dc: Datacube,
-    products: list,
     limit: int,
     update: bool,
     allow_unsafe: bool,
     config: dict,
     **kwargs,
 ) -> Tuple[int, int]:
+    doc2ds = Doc2Dataset(dc.index)
+
     # QA the BBOX
     if config.get("bbox") and len(config["bbox"]) != 4:
         raise ValueError(
@@ -120,14 +101,21 @@ def stac_api_to_odc(
         return 0, 0
 
     # Get a generator of (stac, uri, relative_uri) tuples
-    potential_items = get_items(srch, limit)
-
-    # Get a generator of (dataset, uri)
-    doc2ds = Doc2Dataset(dc.index, **kwargs)
-    datasets = transform_items(doc2ds, potential_items)
+    datasets = get_items(srch, limit)
 
     # Do the indexing of all the things
-    return index_update_datasets(dc, datasets, update, allow_unsafe)
+    success = 0
+    failure = 0
+
+    for dataset, uri in datasets:
+        try:
+            index_update_dataset(dataset, uri, dc, doc2ds, update, allow_unsafe=allow_unsafe)
+            success += 1
+        except Exception as e:
+            logging.warning(f"Failed to handle dataset: {uri} with exception {e}")
+            failure += 1
+
+    return success, failure
 
 
 @click.command("stac-to-dc")
@@ -183,8 +171,6 @@ def cli(
     something like https://earth-search.aws.element84.com/v0/
     """
 
-    candidate_products = product.split()
-
     config = {}
 
     # Format the search terms
@@ -200,7 +186,7 @@ def cli(
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, candidate_products, limit, update, allow_unsafe, config
+        dc, limit, update, allow_unsafe, config
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
