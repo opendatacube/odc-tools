@@ -112,7 +112,7 @@ esri-lc-to-dc --add-product
 
 Extended usage:
 
-Index all the data, add the product, set a limie and update scenes that already are indexed.
+Index all the data, add the product, set a limit and update scenes that already are indexed.
 
 ``` bash
 esri-lc-to-dc --add-product --limit 1000 --update
