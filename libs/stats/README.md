@@ -59,6 +59,11 @@ GeoJSON files are useful when selecting test regions as well as for debugging sp
 
 <img src="docs/auxiliary/screenshot-L8-2015.png" alt="Screenshot GeoJSON" width="1000"/>
 
+Optionally two products can be fused using the following syntax:
+
+```
+odc-stats save-tasks --frequency annual --grid au-30 --year 2017 ga_ls_fc_3+ga_ls_wo_3
+```
 
 ### 2 - Run Statistician
 
