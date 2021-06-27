@@ -1,6 +1,6 @@
 import logging
-from pathlib import Path
 
+import pkg_resources
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
@@ -15,10 +15,10 @@ class IndexingException(Exception):
 
 
 def get_esri_list():
-    path = Path(__file__).parent / "./esri-lc-tiles-list.txt"
-    with path.open() as f:
+    stream = pkg_resources.resource_stream(__name__, "./esri-lc-tiles-list.txt")
+    with stream as f:
         for line in f.readlines():
-            yield line.rstrip('\n')
+            yield line.decode().rstrip('\n')
 
 
 def index_update_dataset(
