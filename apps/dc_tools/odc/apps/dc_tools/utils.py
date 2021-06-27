@@ -1,9 +1,9 @@
-from datacube import Datacube
-from datacube.utils import changes
-
-from datacube.index.hl import Doc2Dataset
-
 import logging
+from pathlib import Path
+
+from datacube import Datacube
+from datacube.index.hl import Doc2Dataset
+from datacube.utils import changes
 
 
 class IndexingException(Exception):
@@ -12,6 +12,13 @@ class IndexingException(Exception):
     """
 
     pass
+
+
+def get_esri_list():
+    path = Path(__file__).parent / "./esri-lc-tiles-list.txt"
+    with path.open() as f:
+        for line in f.readlines():
+            yield line.rstrip('\n')
 
 
 def index_update_dataset(
