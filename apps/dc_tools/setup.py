@@ -25,7 +25,7 @@ setup(
         "odc_io",
         "odc_aws",
         "odc_aio",
-        "pystac"
+        "pystac",
     ],
     extras_require={
         "tests": TEST_REQUIREMENTS,
@@ -46,4 +46,6 @@ setup(
     },
     packages=["odc.apps.dc_tools"],
     zip_safe=False,
+    include_package_data=True,
+    package_data={"": ["*.txt"]},
 )
