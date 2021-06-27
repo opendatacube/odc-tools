@@ -14,10 +14,22 @@ import pystac
 import rasterio
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from datacube.utils.aws import configure_s3_access
+from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import get_esri_list, index_update_dataset
 from odc.index.stac import stac_transform
 from pyproj import Transformer
+
+ESRI_LANDCOVER_PRODUCT = (
+    "https://raw.githubusercontent.com/opendatacube/"
+    "datacube-dataset-config/master/products/esri_land_cover.yaml"
+)
+
+
+def add_esri_lc_product(dc: Datacube):
+    """ Add the ESRI Land Cover product definition"""
+    for path, doc in read_documents(ESRI_LANDCOVER_PRODUCT):
+        dc.index.products.add_document(doc)
+    print("Product definition added.")
 
 
 def bbox_to_geom(bbox: Tuple[float, float, float, float], crs=str) -> Dict:
@@ -51,7 +63,7 @@ def bbox_to_geom(bbox: Tuple[float, float, float, float], crs=str) -> Dict:
 def get_items(uri: str) -> Generator[Tuple[dict, str], None, None]:
     path = Path(uri)
 
-    with rasterio.open(uri, GEOREF_SOURCES='INTERNAL') as opened_asset:
+    with rasterio.open(uri, GEOREF_SOURCES="INTERNAL") as opened_asset:
         shape = opened_asset.shape
         transform = opened_asset.transform
         crs = opened_asset.crs.to_epsg()
@@ -101,7 +113,9 @@ def esri_lc_to_dc(dc: Datacube, limit: int, update: bool) -> Tuple[int, int]:
     for item, uri in items_uris:
         dataset = stac_transform(item.to_dict(), relative=False)
         try:
-            index_update_dataset(dataset, uri, dc, doc2ds, update_if_exists=update, allow_unsafe=True)
+            index_update_dataset(
+                dataset, uri, dc, doc2ds, update_if_exists=update, allow_unsafe=True
+            )
             success += 1
         except Exception as e:
             logging.warning(f"Failed to index {uri} with exception {e}")
@@ -123,18 +137,25 @@ def esri_lc_to_dc(dc: Datacube, limit: int, update: bool) -> Tuple[int, int]:
     default=False,
     help="If set, update instead of add datasets",
 )
-def cli(
-    limit,
-    update,
-):
+@click.option(
+    "--add-product",
+    is_flag=True,
+    default=False,
+    help="If set, add the product too",
+)
+def cli(limit, update, add_product):
     """
-    Iterate through STAC items from a STAC API and add them to datacube
-    Note that you need to set the STAC_API_URL environment variable to
-    something like https://earth-search.aws.element84.com/v0/
+    Add all of the ESRI Land Cover scenes to an ODC Database.
+    Optionally add the product definition with `--add-product`.
+    Default is to index all 700 scenes, but you can limit it for testing purposes with `--limit 1`.
+
+    Add all the scenes in a new database with `esri-lc-to-dc --add-product`.
     """
 
     dc = Datacube()
-    configure_s3_access(cloud_defaults=True, aws_unsigned=True)
+
+    if add_product:
+        add_esri_lc_product(dc)
 
     added, failed = esri_lc_to_dc(dc, limit, update)
 
