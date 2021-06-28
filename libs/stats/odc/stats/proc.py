@@ -29,7 +29,7 @@ Future = Any
 
 class TaskRunner:
     def __init__(
-        self, cfg: TaskRunnerConfig, resolution: Optional[Tuple[float, float]] = None
+        self, cfg: TaskRunnerConfig, resolution: Optional[Tuple[float, float]] = None, from_sqs: str
     ):
         """
 
@@ -47,21 +47,14 @@ class TaskRunner:
         self.product = self.proc.product(cfg.output_location, **cfg.product)
         _log.info(f"Output product: {self.product}")
 
-        _log.info(f"Constructing task reader: {cfg.filedb}")
-        self.rdr = TaskReader(cfg.filedb, self.product)
-        _log.info(f"Will read from {self.rdr}")
-        if resolution is not None:
-            _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
-            if self.rdr.is_compatible_resolution(resolution):
-                self.rdr.change_resolution(resolution)
-            else:
-                _log.error(
-                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
-                )
-                raise ValueError(
-                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
-                )
-
+        if not from_sqs:
+            _log.info(f"Constructing task reader: {cfg.filedb}")
+            self.rdr = TaskReader(cfg.filedb, self.product)
+            _log.info(f"Will read from {self.rdr}")
+        else:  # skip rdr and resolution compatible init
+            _log.info(f"Skip rdr init for run from sqs: {cfg.filedb}")
+            self.rdr = TaskReader("", self.product)
+            
         self._client = None
 
     def _init_dask(self) -> Client:
@@ -260,7 +253,7 @@ class TaskRunner:
                 f"Processing from SQS: {sqs}, T:{cfg.job_queue_max_lease} M:{cfg.renew_safety_margin} seconds"
             )
             return self._run(
-                self.rdr.stream_from_sqs(
+                self.rdr.stream_from_sqs
                     sqs, visibility_timeout=cfg.job_queue_max_lease
                 )
             )
