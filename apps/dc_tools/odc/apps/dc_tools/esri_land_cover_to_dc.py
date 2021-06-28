@@ -60,7 +60,7 @@ def bbox_to_geom(bbox: Tuple[float, float, float, float], crs=str) -> Dict:
     }
 
 
-def get_items(uri: str) -> Generator[Tuple[dict, str], None, None]:
+def get_item(uri: str) -> Tuple[pystac.Item, str]:
     path = Path(uri)
 
     with rasterio.open(uri, GEOREF_SOURCES="INTERNAL") as opened_asset:
@@ -69,12 +69,17 @@ def get_items(uri: str) -> Generator[Tuple[dict, str], None, None]:
         crs = opened_asset.crs.to_epsg()
         bbox = opened_asset.bounds
 
+    region, date_range = path.stem.split("_")
+    start_date, end_date = date_range.split("-")
     item = pystac.Item(
         id=path.name,
         geometry=bbox_to_geom(bbox, crs),
         bbox=bbox,
-        datetime=datetime.datetime(2020, 1, 1),
-        properties={"odc:product": "esri_land_cover"},
+        datetime=datetime.datetime.strptime(start_date, "%Y%m%d"),
+        properties={
+            "odc:product": "esri_land_cover",
+            "odc:region_code": region.strip(),
+        },
         stac_extensions=["projection"],
     )
 
@@ -91,9 +96,7 @@ def get_items(uri: str) -> Generator[Tuple[dict, str], None, None]:
     item.ext.projection.set_transform(transform, asset=asset)
     item.ext.projection.set_shape(shape, asset=asset)
 
-    item
-
-    return [item, uri]
+    return item, uri
 
 
 def esri_lc_to_dc(dc: Datacube, limit: int, update: bool) -> Tuple[int, int]:
@@ -104,7 +107,7 @@ def esri_lc_to_dc(dc: Datacube, limit: int, update: bool) -> Tuple[int, int]:
         docs = list(docs)[0:limit]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        items_uris = executor.map(get_items, docs)
+        items_uris = executor.map(get_item, docs)
 
     # Do the indexing of all the things
     success = 0
