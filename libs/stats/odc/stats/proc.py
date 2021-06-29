@@ -29,7 +29,7 @@ Future = Any
 
 class TaskRunner:
     def __init__(
-        self, cfg: TaskRunnerConfig, resolution: Optional[Tuple[float, float]] = None, from_sqs: Optional[str]
+        self, cfg: TaskRunnerConfig, resolution: Optional[Tuple[float, float]] = None, from_sqs: Optional[str] = ""
     ):
         """
 
