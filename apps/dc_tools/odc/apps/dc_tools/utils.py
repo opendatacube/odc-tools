@@ -5,6 +5,11 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
 
+ESRI_LANDCOVER_BASE_URI = (
+    "https://ai4edataeuwest.blob.core.windows.net/io-lulc/"
+    "io-lulc-model-001-v01-composite-v03-supercell-v02-clip-v01/{id}_20200101-20210101.tif"
+)
+
 
 class IndexingException(Exception):
     """
@@ -17,8 +22,9 @@ class IndexingException(Exception):
 def get_esri_list():
     stream = pkg_resources.resource_stream(__name__, "./esri-lc-tiles-list.txt")
     with stream as f:
-        for line in f.readlines():
-            yield line.decode().rstrip('\n')
+        for tile in f.readlines():
+            id = tile.decode().rstrip('\n')
+            yield ESRI_LANDCOVER_BASE_URI.format(id=id)
 
 
 def index_update_dataset(
