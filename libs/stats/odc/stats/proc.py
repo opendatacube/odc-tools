@@ -253,7 +253,7 @@ class TaskRunner:
                 f"Processing from SQS: {sqs}, T:{cfg.job_queue_max_lease} M:{cfg.renew_safety_margin} seconds"
             )
             return self._run(
-                self.rdr.stream_from_sqs
+                self.rdr.stream_from_sqs(
                     sqs, visibility_timeout=cfg.job_queue_max_lease
                 )
             )
