@@ -15,24 +15,14 @@ import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
+from odc.apps.dc_tools.utils import IndexingException, index_update_dataset
 from odc.aws.queue import get_messages
 from odc.index.stac import stac_transform
 from toolz import dicttoolz
 from yaml import load
 
-from odc.apps.dc_tools.utils import index_update_dataset
-
-
 # Added log handler
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
-
-
-class SQStoDCException(Exception):
-    """
-    Exception to raise for error during SQS to DC indexing/archiving
-    """
-
-    pass
 
 
 def extract_metadata_from_message(message):
@@ -40,14 +30,14 @@ def extract_metadata_from_message(message):
         body = json.loads(message.body)
         metadata = json.loads(body["Message"])
     except (KeyError, json.JSONDecodeError) as e:
-        raise SQStoDCException(
+        raise IndexingException(
             f"Failed to load metadata from the SQS message due to error: {e}"
         )
 
     if metadata:
         return metadata
     else:
-        raise SQStoDCException("Failed to load metadata from the SQS message")
+        raise IndexingException("Failed to load metadata from the SQS message")
 
 
 def handle_json_message(metadata, transform, odc_metadata_link):
@@ -69,22 +59,17 @@ def handle_json_message(metadata, transform, odc_metadata_link):
                 metadata = documents.parse_yaml(content)
                 uri = odc_yaml_uri
             except requests.RequestException as err:
-                raise SQStoDCException(
+                raise IndexingException(
                     f"Failed to load metadata from the link provided -  {err}"
                 )
         else:
-            raise SQStoDCException("ODC EO3 metadata link not found")
+            raise IndexingException("ODC EO3 metadata link not found")
     else:
         # if no odc_metadata_link provided, it will look for metadata dict "href" value with "rel==self"
         uri = get_uri(metadata, "self")
 
     if transform:
-        try:
-            metadata = transform(metadata)
-        except KeyError as err:
-            raise SQStoDCException(
-                f"Failed to transform metadata from {uri} with error - {err}"
-            )
+        metadata = transform(metadata)
 
     return metadata, uri
 
@@ -100,7 +85,7 @@ def handle_bucket_notification_message(
         record_path (tuple): [PATH for selectingthe s3 key path from the JSON message document]
 
     Raises:
-        SQStoDCException: [Catch s3 ]
+        IndexingException: [Catch s3 ]
 
     Returns:
         Tuple[dict, str]: [description]
@@ -116,7 +101,7 @@ def handle_bucket_notification_message(
             # Check for bucket name and key, and fail if there isn't one
             if not (bucket_name and key):
                 # Not deleting this message, as it's non-conforming. Check this logic
-                raise SQStoDCException(
+                raise IndexingException(
                     "No bucket name or key in message, are you sure this is a bucket notification?"
                 )
 
@@ -138,11 +123,11 @@ def handle_bucket_notification_message(
                 data = load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
             except Exception as e:
-                raise SQStoDCException(
+                raise IndexingException(
                     f"Exception thrown when trying to load s3 object: '{e}'\n"
                 )
     else:
-        raise SQStoDCException(
+        raise IndexingException(
             "Attempted to get metadata from record when no record key exists in message."
         )
 
@@ -163,7 +148,7 @@ def do_archiving(metadata, dc: Datacube):
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
     else:
-        raise SQStoDCException("Failed to get an ID from the message, can't archive.")
+        raise IndexingException("Failed to get an ID from the message, can't archive.")
 
 
 def queue_to_odc(
@@ -194,7 +179,7 @@ def queue_to_odc(
         except FileNotFoundError as e:
             logging.error(f"Could not find region_code file with error: {e}")
         if len(region_codes) == 0:
-            raise SQStoDCException(
+            raise IndexingException(
                 f"Region code list is empty, please check the list at: {region_code_list_uri}"
             )
 
@@ -233,7 +218,7 @@ def queue_to_odc(
                         # We  don't want to keep this one, so delete the message
                         message.delete()
                         # And fail it...
-                        raise SQStoDCException(
+                        raise IndexingException(
                             f"Region code {region_code} not in list of allowed region codes, ignoring this dataset."
                         )
 
@@ -250,7 +235,7 @@ def queue_to_odc(
             ds_success += 1
             # Success, so delete the message.
             message.delete()
-        except SQStoDCException as err:
+        except (IndexingException, ValueError) as err:
             logging.error(err)
             ds_failed += 1
 
