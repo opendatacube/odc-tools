@@ -8,9 +8,9 @@ from typing import Tuple
 
 import click
 from datacube import Datacube
-from datacube.utils import changes
+from datacube.index.hl import Doc2Dataset
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.index import from_yaml_doc_stream
+from odc.apps.dc_tools.utils import IndexingException, index_update_dataset
 from odc.index.stac import stac_transform
 
 
@@ -20,39 +20,25 @@ def dump_to_odc(
     products: list,
     transform=None,
     update=False,
+    update_if_exists=False,
     allow_unsafe=False,
     **kwargs,
 ) -> Tuple[int, int]:
-    # TODO: Get right combination of flags for **kwargs in low validation/no-lineage mode
-    expand_stream = ((d.url, d.data) for d in data_stream if d.data is not None)
+    doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
-    ds_stream = from_yaml_doc_stream(
-        expand_stream, dc.index, products=products, transform=transform, **kwargs
-    )
     ds_added = 0
     ds_failed = 0
-    # Consume chained streams to DB
-    for result in ds_stream:
-        ds, err = result
-        if err is not None:
-            logging.error(err)
+    for data in data_stream:
+        metadata = data.data
+        uri = data.url
+        try:
+            if transform:
+                transform(metadata)
+            index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
+            ds_added += 1
+        except (IndexingException, ValueError) as e:
+            logging.error(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
-        else:
-            logging.info(ds)
-            # TODO: Potentially wrap this in transactions and batch to DB
-            # TODO: Capture UUID's from dataset doc and perform a bulk has
-            try:
-                if update:
-                    updates = {}
-                    if allow_unsafe:
-                        updates = {tuple(): changes.allow_any}
-                    dc.index.datasets.update(ds, updates_allowed=updates)
-                else:
-                    dc.index.datasets.add(ds)
-                ds_added += 1
-            except Exception as e:
-                logging.error(e)
-                ds_failed += 1
 
     return ds_added, ds_failed
 
@@ -92,6 +78,12 @@ def dump_to_odc(
     help="If set, update instead of add datasets",
 )
 @click.option(
+    "--update-if-exists",
+    is_flag=True,
+    default=False,
+    help="If the dataset already exists, update it instead of skipping it.",
+)
+@click.option(
     "--allow-unsafe",
     is_flag=True,
     default=False,
@@ -120,6 +112,7 @@ def cli(
     verify_lineage,
     stac,
     update,
+    update_if_exists,
     allow_unsafe,
     skip_check,
     no_sign_request,
@@ -173,6 +166,7 @@ def cli(
         verify_lineage=verify_lineage,
         transform=transform,
         update=update,
+        update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
     )
 
