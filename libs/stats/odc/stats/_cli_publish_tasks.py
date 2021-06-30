@@ -1,5 +1,6 @@
 import sys
 import click
+import json
 
 from ._cli_common import main, parse_all_tasks
 

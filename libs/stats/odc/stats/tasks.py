@@ -365,7 +365,7 @@ class TaskReader:
     ):
         self._cache_path = None
 
-        if len(cache) != 0 and isinstance(cache, str): # if read from message, there is no filedb at beginning
+        if len(cache) != 0 and isinstance(cache, str): 
             if cache.startswith("s3://"):
                 self._cache_path = s3_download(cache)
                 cache = self._cache_path
@@ -375,6 +375,8 @@ class TaskReader:
             cfg = cache.get_info_dict("stats/config")
             grid = cfg["grid"]
             gridspec = cache.grids[grid]
+        else: # if read from message, there is no filedb at beginning
+            cfg = {}
 
         self._product = product
         self._dscache = cache
