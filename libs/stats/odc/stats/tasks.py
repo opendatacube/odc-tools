@@ -508,8 +508,11 @@ class TaskReader:
             token = SQSWorkToken(msg, visibility_timeout)
             tidx, filedb = parse_sqs(msg.body)
 
-            # avoid the download and update again
-            bucket, key = s3_url_parse(filedb)
+            # avoid the download and update again, how ever, we have to setup an exception to handle the unit test filedb
+            if filedb.split('/')[-1] != 'test_tiles.db':
+                bucket, key = s3_url_parse(filedb)
+            else: # if it is the test_tiles.db, we load it from local
+                key = filedb 
             local_cache_file = key.split("/")[-1]
             if not os.path.isfile(local_cache_file):  # use the download filedb from S3 as the init context flag
                 self.init_from_sqs(filedb)
