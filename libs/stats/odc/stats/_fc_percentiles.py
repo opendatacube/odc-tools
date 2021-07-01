@@ -78,7 +78,7 @@ class StatsFCP(StatsPluginInterface):
             bands=["water", "pv", "bs", "npv", "ue"],
             geobox=task.geobox,
             native_transform=self._native_tr,
-            fuser=self.fuser,
+            fuser=self._fuser,
             groupby="solar_day",
             resampling=self.resampling,
             chunks=chunks,
