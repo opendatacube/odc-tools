@@ -518,7 +518,7 @@ class TaskReader:
             if not os.path.isfile(local_cache_file):  # use the download filedb from S3 as the init context flag
                 self.init_from_sqs(filedb)
                 # first time to access the filedb, then it can do the resolution check
-                if resolution is not None:
+                if self.resolution is not None:
                     _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
                     if self.rdr.is_compatible_resolution(self.rdr.resolution):
                         self.rdr.change_resolution(resolution)
