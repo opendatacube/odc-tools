@@ -379,6 +379,7 @@ class TaskReader:
             cfg = {}
 
         self._product = product
+        self.resolution = None
         self._dscache = cache
         self._cfg = cfg
         self._grid = grid if cache else ""
@@ -516,5 +517,17 @@ class TaskReader:
             local_cache_file = key.split("/")[-1]
             if not os.path.isfile(local_cache_file):  # use the download filedb from S3 as the init context flag
                 self.init_from_sqs(filedb)
+                # first time to access the filedb, then it can do the resolution check
+                if resolution is not None:
+                    _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
+                    if self.rdr.is_compatible_resolution(self.rdr.resolution):
+                        self.rdr.change_resolution(resolution)
+                    else:
+                        _log.error(
+                            f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                        )
+                        raise ValueError(
+                            f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                        )
 
             yield self.load_task(tidx, product, source=token)

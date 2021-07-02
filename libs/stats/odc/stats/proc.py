@@ -51,6 +51,17 @@ class TaskRunner:
             _log.info(f"Constructing task reader: {cfg.filedb}")
             self.rdr = TaskReader(cfg.filedb, self.product)
             _log.info(f"Will read from {self.rdr}")
+            if resolution is not None:
+                _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
+                if self.rdr.is_compatible_resolution(resolution):
+                    self.rdr.change_resolution(resolution)
+                else:
+                    _log.error(
+                        f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                    )
+                    raise ValueError(
+                        f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                    )
         else:  # skip rdr and resolution compatible init
             _log.info(f"Skip rdr init for run from sqs: {cfg.filedb}")
             self.rdr = TaskReader("", self.product)
