@@ -105,6 +105,8 @@ class StatsFCP(StatsPluginInterface):
         for band in bands:
             all_bands_valid &= yy[band] != NODATA
 
+        all_bands_valid = all_bands_valid.astype(np.uint8)
+        is_ever_wet = is_ever_wet.astype(np.uint8)
         yy["qa"] = 1 + all_bands_valid - is_ever_wet * (1 - all_bands_valid)
         return yy
 
