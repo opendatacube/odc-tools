@@ -13,9 +13,23 @@ from odc.aio import S3Fetcher, s3_find_glob
 from odc.apps.dc_tools.utils import IndexingException, index_update_dataset
 from odc.index.stac import stac_transform
 
+from odc.index import parse_doc_stream
+
+
+# Grab the URL from the resulting S3 item
+def stream_urls(urls):
+    for url in urls:
+        yield url.url
+
+
+# Parse documents as they stream through from S3
+def stream_docs(documents):
+    for document in documents:
+        yield (document.url, document.data)
+
 
 def dump_to_odc(
-    data_stream,
+    document_stream,
     dc: Datacube,
     products: list,
     transform=None,
@@ -28,15 +42,13 @@ def dump_to_odc(
 
     ds_added = 0
     ds_failed = 0
-    for data in data_stream:
-        metadata = data.data
-        uri = data.url
+    uris_docs = parse_doc_stream(stream_docs(document_stream), dc.index, transform=transform)
+
+    for uri, metadata in uris_docs:
         try:
-            if transform:
-                transform(metadata)
             index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
             ds_added += 1
-        except (IndexingException, ValueError) as e:
+        except (IndexingException) as e:
             logging.error(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
 
@@ -132,18 +144,7 @@ def cli(
     if request_payer:
         opts["RequestPayer"] = "requester"
 
-    # Get a generator from supplied S3 Uri for metadata definitions
-    fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-
-    # TODO: Share Fetcher
-    s3_obj_stream = s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
-
-    # Extract URLs from output of iterator before passing to Fetcher
-    s3_url_stream = (o.url for o in s3_obj_stream)
-
-    # TODO: Capture S3 URL's in batches and perform bulk_location_has
-
-    # Consume generator and fetch YAML's
+    # Check datacube connection and products
     dc = Datacube()
     odc_products = dc.list_products().name.values
 
@@ -157,8 +158,12 @@ def cli(
         )
         sys.exit(1)
 
+    # Get a generator from supplied S3 Uri for candidate documents
+    fetcher = S3Fetcher(aws_unsigned=no_sign_request)
+    document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
+
     added, failed = dump_to_odc(
-        fetcher(s3_url_stream),
+        fetcher(document_stream),
         dc,
         candidate_products,
         skip_lineage=skip_lineage,
