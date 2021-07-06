@@ -110,10 +110,11 @@ def handle_bucket_notification_message(
             if record_path is not None and not any(
                 [PurePath(key).match(p) for p in record_path]
             ):
-                message.delete()
                 logging.warning(
                     f"Key: {key} not in specified list of record_paths, deleting message from the queue."
                 )
+                # This will return Nones, which will flag the message to be ignored
+                return None, None
 
             # We have enough information to proceed, get the key and extract
             # the contents...
@@ -215,24 +216,29 @@ def queue_to_odc(
                         ["properties", "odc:region_code"], metadata
                     )
                     if region_code not in region_codes:
-                        # We  don't want to keep this one, so delete the message
-                        message.delete()
-                        # And fail it...
-                        raise IndexingException(
+                        # We don't want to keep this one, so flag it so
+                        # it's not indexed by is still deleted.
+                        metadata = None
+                        uri = None
+                        logging.warning(
                             f"Region code {region_code} not in list of allowed region codes, ignoring this dataset."
                         )
 
                 # Index the dataset
-                index_update_dataset(
-                    metadata,
-                    uri,
-                    dc,
-                    doc2ds,
-                    update=update,
-                    update_if_exists=update_if_exists,
-                    allow_unsafe=allow_unsafe,
-                )
-            ds_success += 1
+                if metadata is not None and uri is not None:
+                    index_update_dataset(
+                        metadata,
+                        uri,
+                        dc,
+                        doc2ds,
+                        update=update,
+                        update_if_exists=update_if_exists,
+                        allow_unsafe=allow_unsafe,
+                    )
+                    ds_success += 1
+                else:
+                    logging.warning("Found None for metadata and uri, skipping")
+
             # Success, so delete the message.
             message.delete()
         except (IndexingException, ValueError) as err:
