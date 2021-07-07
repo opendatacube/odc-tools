@@ -125,7 +125,7 @@ def handle_bucket_notification_message(
                 uri = f"s3://{bucket_name}/{key}"
             except Exception as e:
                 raise IndexingException(
-                    f"Exception thrown when trying to load s3 object: '{e}'\n"
+                    f"Exception thrown when trying to load s3 object: {e}"
                 )
     else:
         raise IndexingException(
@@ -241,7 +241,7 @@ def queue_to_odc(
 
             # Success, so delete the message.
             message.delete()
-        except (IndexingException, ValueError) as err:
+        except (IndexingException) as err:
             logging.error(err)
             ds_failed += 1
 
