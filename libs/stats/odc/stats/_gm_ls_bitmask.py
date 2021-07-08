@@ -90,7 +90,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1000) == 0
         xx["cloud_mask"] = cloud_mask
 
-        # set no_data bitmask - True=no-data
+        # set no_data bitmask - True=data, False=no-data
         keeps = da.bitwise_and(mask_band, 0b0000_0000_0000_0001) == 0
 
         # drops nodata pixels
