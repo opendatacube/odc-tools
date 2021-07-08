@@ -7,6 +7,7 @@ import sys
 from typing import Tuple
 
 import click
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.aio import S3Fetcher, s3_find_glob
@@ -53,6 +54,52 @@ def dump_to_odc(
             ds_failed += 1
 
     return ds_added, ds_failed
+
+
+def dump_to_odc_thread(
+    document_stream,
+    dc: Datacube,
+    products: list,
+    transform=None,
+    update=False,
+    update_if_exists=False,
+    allow_unsafe=False,
+    **kwargs,
+) -> Tuple[int, int]:
+    doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
+
+    uris_docs = parse_doc_stream(stream_docs(document_stream), dc.index, transform=transform)
+
+    def execute_index_update_dataset(metadata, uri, datacube, doc_to_ds, updated, if_exists_update, unsafe):
+        try:
+            index_update_dataset(metadata, uri, datacube, doc_to_ds, updated, if_exists_update, unsafe)
+            return True
+        except IndexingException as index_exception:
+            logging.error(f"Failed to index dataset {uri} with error {index_exception}")
+            return False
+
+    # Limit number of threads
+    num_of_threads = 100
+    with ThreadPoolExecutor(max_workers=num_of_threads) as executor:
+        logging.info("Indexing datasets")
+
+        tasks = [
+            executor.submit(
+                execute_index_update_dataset,
+                metadata,
+                uri,
+                dc,
+                doc2ds,
+                update,
+                update_if_exists,
+                allow_unsafe,
+            )
+            for uri, metadata in uris_docs
+        ]
+
+        result = [future.result() for future in as_completed(tasks)]
+
+    return result.count(True), result.count(False)
 
 
 @click.command("s3-to-dc")
@@ -118,6 +165,12 @@ def dump_to_odc(
 )
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
+@click.option(
+    "--thread",
+    is_flag=True,
+    default=False,
+    help="Needed when using multithreading to perform better",
+)
 def cli(
     skip_lineage,
     fail_on_missing_lineage,
@@ -131,6 +184,7 @@ def cli(
     request_payer,
     uri,
     product,
+    thread
 ):
     """ Iterate through files in an S3 bucket and add them to datacube"""
 
@@ -162,18 +216,33 @@ def cli(
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
 
-    added, failed = dump_to_odc(
-        fetcher(document_stream),
-        dc,
-        candidate_products,
-        skip_lineage=skip_lineage,
-        fail_on_missing_lineage=fail_on_missing_lineage,
-        verify_lineage=verify_lineage,
-        transform=transform,
-        update=update,
-        update_if_exists=update_if_exists,
-        allow_unsafe=allow_unsafe,
-    )
+    if thread:
+        added, failed = dump_to_odc_thread(
+            fetcher(document_stream),
+            dc,
+            candidate_products,
+            skip_lineage=skip_lineage,
+            fail_on_missing_lineage=fail_on_missing_lineage,
+            verify_lineage=verify_lineage,
+            transform=transform,
+            update=update,
+            update_if_exists=update_if_exists,
+            allow_unsafe=allow_unsafe,
+            thread=thread
+        )
+    else:
+        added, failed = dump_to_odc(
+            fetcher(document_stream),
+            dc,
+            candidate_products,
+            skip_lineage=skip_lineage,
+            fail_on_missing_lineage=fail_on_missing_lineage,
+            verify_lineage=verify_lineage,
+            transform=transform,
+            update=update,
+            update_if_exists=update_if_exists,
+            allow_unsafe=allow_unsafe,
+        )
 
     print(f"Added {added} Datasets, Failed {failed} Datasets")
 
