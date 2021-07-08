@@ -1,5 +1,5 @@
 """
-Fractional Cover Percentiles
+Landsat QA Pixel Geomedian
 """
 from functools import partial
 from typing import Optional, Tuple
