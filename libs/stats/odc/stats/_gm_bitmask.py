@@ -15,8 +15,8 @@ from . import _plugins
 from .model import StatsPluginInterface
 
 
-class StatsGMLSBitMask(StatsPluginInterface):
-    NAME = "gm_ls_annual"
+class StatsGMLSBitmask(StatsPluginInterface):
+    NAME = "gm_ls_bitmask"
     SHORT_NAME = NAME
     VERSION = "3.0.0"
     PRODUCT_FAMILY = "geomedian"
@@ -64,26 +64,34 @@ class StatsGMLSBitMask(StatsPluginInterface):
         4. Drops nodata pixels
 
         .. bitmask::
-            7   6   5   4   3   2   1   0
-            |   |   |   |   |   |   |   |
-            |   |   |   |   |   |   |   x-----> nodata
-            |   |   |   |   |   |   o---------> dilated_cloud
-            |   |   |   |   |   x-------------> cirrus
-            |   |   |   |   o-----------------> cloud
-            |   |   |   x---------------------> cloud_shadow
-            |   |   o-------------------------> snow
-            |   x-----------------------------> clear
-            o---------------------------------> water
+            15  14  13  12  11  10  9   8   7   6   5   4   3   2   1   0
+            |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
+            |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   x-----> nodata
+            |   |   |   |   |   |   |   |   |   |   |   |   |   |   o---------> dilated_cloud
+            |   |   |   |   |   |   |   |   |   |   |   |   |   x-------------> cirrus
+            |   |   |   |   |   |   |   |   |   |   |   |   o-----------------> cloud
+            |   |   |   |   |   |   |   |   |   |   |   x---------------------> cloud_shadow
+            |   |   |   |   |   |   |   |   |   |   o-------------------------> snow
+            |   |   |   |   |   |   |   |   |   x-----------------------------> clear
+            |   |   |   |   |   |   |   |   o---------------------------------> water
+            |   |   |   |   |   |   |   x-------------------------------------> cloud_confidence
+            |   |   |   |   |   |   o-----------------------------------------> cloud_confidence
+            |   |   |   |   |   x---------------------------------------------> cloud_shadow_confidence
+            |   |   |   |   o-------------------------------------------------> cloud_shadow_confidence
+            |   |   |   x-----------------------------------------------------> snow_ice_confidence
+            |   |   o---------------------------------------------------------> snow_ice_confidence
+            |   x-------------------------------------------------------------> cirrus_confidence
+            0-----------------------------------------------------------------> cirrus_confidence
         """
         mask_band = xx[self.mask_band]
         xx = xx.drop_vars([self.mask_band])
 
-        # set cloud_mask (cloud + cloud_shadow) bitmask
-        cloud_mask = da.bitwise_and(mask_band, 0b00011000) == 0
+        # set cloud_mask (cloud + cloud_shadow) bitmask - True=non-cloud, False=cloud
+        cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1000) == 0
         xx["cloud_mask"] = cloud_mask
 
-        # set no_data bitmask
-        keeps = da.bitwise_and(mask_band, 0b00000001) == 0
+        # set no_data bitmask - True=no-data
+        keeps = da.bitwise_and(mask_band, 0b0000_0000_0000_0001) == 0
 
         # drops nodata pixels
         xx = keep_good_only(xx, keeps)
@@ -143,4 +151,4 @@ class StatsGMLSBitMask(StatsPluginInterface):
         return None
 
 
-_plugins.register("gm-ls-bit-mask", StatsGMLSBitMask)
+_plugins.register("gm-ls-bitmask", StatsGMLSBitmask)
