@@ -10,7 +10,7 @@ import numpy as np
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
-from odc.algo._percentile import xr_percentile
+from odc.algo._percentile import xr_quantile_bands
 from odc.algo._masking import _xr_fuse, _or_fuser, _first_valid_np, _fuse_or_np, _fuse_and_np
 from .model import StatsPluginInterface
 from . import _plugins
@@ -97,7 +97,7 @@ class StatsFCP(StatsPluginInterface):
         xx = xx.drop_vars(["dry", "wet"])
         xx = keep_good_only(xx, mask, nodata=NODATA)
 
-        yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=NODATA)
+        yy = xr_quantile_bands(xx, [0.1, 0.5, 0.9], nodata=NODATA)
         is_ever_wet = _or_fuser(wet).squeeze(wet.dims[0], drop=True)
 
         band, *bands = yy.data_vars.keys()
