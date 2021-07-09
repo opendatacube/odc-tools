@@ -130,9 +130,9 @@ def xr_quantile(
             data.append(yy)
 
         if dask.is_dask_collection(yy):
-            data_vars[name] = (out_dims, da.stack(data, axis=0))
+            data_vars[band] = (out_dims, da.stack(data, axis=0))
         else:
-            data_vars[name] = (out_dims, np.stack(data, axis=0))
+            data_vars[band] = (out_dims, np.stack(data, axis=0))
 
     coords = dict((dim, src.coords[dim]) for dim in xx.dims[1:])
     coords['quantile'] = np.array(quantiles)
