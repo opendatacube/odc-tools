@@ -86,8 +86,8 @@ def test_xr_quantile_bands(nodata, use_dask):
     dataset = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     output = xr_quantile_bands(dataset, [0.2, 0.6], nodata).compute()
 
-    for key in output.keys():
-        np.testing.assert_equal(output[key], true_results[key])
+    for band in output.keys():
+        np.testing.assert_equal(output[band], true_results[band])
 
 
 @pytest.mark.parametrize("nodata", [255, 200, np.nan, -1])
@@ -119,5 +119,5 @@ def test_xr_quantile(nodata, use_dask):
     dataset = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     output = xr_quantile(dataset, [0.2, 0.6], nodata).compute()
 
-    for key in output.keys():
-        np.testing.assert_equal(output[key], true_results[key])
+    for band in output.keys():
+        np.testing.assert_equal(output[band], true_results[band])
