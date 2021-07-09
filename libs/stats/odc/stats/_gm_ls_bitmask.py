@@ -60,8 +60,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         1. Loads pq bands
         2. Extract cloud_mask flags from bands
-        3. Add cloud_mask
-        4. Drops nodata pixels
+        3. Drops nodata pixels
+        4. Add cloud_mask
 
         .. bitmask::
             15  14  13  12  11  10  9   8   7   6   5   4   3   2   1   0
@@ -88,13 +88,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         # set cloud_mask (cloud + cloud_shadow) bitmask - True=non-cloud, False=cloud
         cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1000) == 0
-        xx["cloud_mask"] = cloud_mask
 
         # set no_data bitmask - True=data, False=no-data
         keeps = da.bitwise_and(mask_band, 0b0000_0000_0000_0001) == 0
 
-        # drops nodata pixels
+        # drops nodata pixels and add cloud_mask from xx
         xx = keep_good_only(xx, keeps)
+        xx["cloud_mask"] = cloud_mask
 
         return xx
 
