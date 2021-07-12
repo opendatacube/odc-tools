@@ -18,7 +18,7 @@ from .model import StatsPluginInterface
 class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"
     SHORT_NAME = NAME
-    VERSION = "3.0.0"
+    VERSION = "0.0.1"
     def __init__(
             self,
             bands: Optional[Tuple[str, ...]] = None,
