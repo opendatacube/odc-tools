@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod, abstractproperty
 import math
+from pathlib import Path
 from copy import deepcopy
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple, Union
@@ -12,8 +14,12 @@ import pandas as pd
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
+from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
+from eodatasets3.assemble import DatasetAssembler
+from eodatasets3.model import DatasetDoc, ProductDoc
+from eodatasets3.properties import StacPropertyView
 
 TileIdx_xy = Tuple[int, int]
 TileIdx_txy = Tuple[str, int, int]
@@ -283,6 +289,74 @@ class Task:
         else:
             return product.location + "/" + self.location + "/" + file_prefix
 
+    def _native_resolution(self) -> float:
+        geobox = native_geobox(
+            self.datasets[0], basis=list(self.datasets[0].measurements.keys())[0]
+        )
+        return geobox.affine[0]
+
+    def _convert_eo_plus(self, ds) -> DatasetDoc:
+        # Definitely need: # - 'datetime' # - 'eo:instrument' # - 'eo:platform' # - 'odc:region_code'
+        region_code = _guess_region_code(ds)
+        properties = StacPropertyView(
+            {
+                "odc:region_code": region_code,
+                "datetime": ds.center_time,
+                "eo:instrument": ds.metadata.instrument,
+                "eo:platform": ds.metadata.platform,
+                "landsat:landsat_scene_id": ds.metadata_doc.get(
+                    "tile_id", "??"
+                ),  # Used to find abbreviated instrument id
+                "sentinel:sentinel_tile_id": ds.metadata_doc.get("tile_id", "??"),
+            }
+        )
+        product = ProductDoc(name=ds.type.name)
+        return DatasetDoc(id=ds.id, product=product, crs=str(ds.crs), properties=properties)
+
+    def _convert_eo(self, ds) -> DatasetDoc:
+        # Definitely need: # - 'datetime' # - 'eo:instrument' # - 'eo:platform' # - 'odc:region_code'
+        region_code = _guess_region_code(ds)
+        properties = StacPropertyView(
+            {
+                "odc:region_code": region_code,
+                "datetime": ds.center_time,
+                "eo:instrument": ds.metadata.instrument,
+                "eo:platform": ds.metadata.platform,
+                "landsat:landsat_scene_id": ds.metadata.instrument,  # Used to find abbreviated instrument id
+            }
+        )
+        product = ProductDoc(name=ds.type.name)
+        return DatasetDoc(id=ds.id, product=product, crs=str(ds.crs), properties=properties)
+
+    def _munge_dataset_to_eo3(self) -> DatasetDoc:
+        """
+        Convert to the DatasetDoc format that eodatasets expects.
+        """
+
+        ds = self.datasets[0]
+
+        if ds.metadata_type.name in {"eo_plus", "eo_s2_nrt", "gqa_eo"}:
+            # Handle S2 NRT metadata identically to eo_plus files.
+            # gqa_eo is the S2 ARD with extra quality check fields.
+            return _convert_eo_plus(ds)
+
+        if ds.metadata_type.name == "eo":
+            return _convert_eo(ds)
+
+        # Else we have an already mostly eo3 style dataset
+        product = ProductDoc(name=ds.type.name)
+        # Wrap properties to avoid typos and the like
+        properties = StacPropertyView(ds.metadata_doc.get("properties", {}))
+        if properties.get("eo:gsd"):
+            del properties["eo:gsd"]
+        return DatasetDoc(
+            id=ds.id,
+            product=product,
+            crs=str(ds.crs),
+            properties=properties,
+            geometry=ds.extent,
+        )
+
     def paths(
         self, relative_to: str = "dataset", ext: str = EXT_TIFF
     ) -> Dict[str, str]:
@@ -313,11 +387,107 @@ class Task:
         prefix = self._prefix(relative_to)
         return f"{prefix}_{name}.{ext}"
 
-    def render_metadata(
+
+    def render_odc_metadata(
         self, ext: str = EXT_TIFF, processing_dt: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """
-        Put together STAC metadata document for the output of this task.
+        Put together ODC metadata document for the output of this task. 
+        """
+        # To the ODC metadata, it needs info
+        # 1) $schema: https://schemas.opendatacube.org/dataset (maybe hard-code in EO Dataset3) [?] -> hard-code source?
+        # 2) id: it is the uuid of this dataset [/]
+        # 3) label: output file name pattern [/]
+        # 4) product and href: from plug? [?] -> external source?
+        # 5) crs: [/]
+        # 6) gemoetry [/]
+        # 7) grids -> defualt -> shape -> transform [/]
+        # 8) properties [/]
+        # 9) accessories -> thumbnail -> checksum:sha1 -> metadata:processor [?] -> EO Dataset method
+        # 10) lineage [/]
+        
+        temp_metadata_path = Path(tempfile.gettempdir()) / f"{self.uuid}.yaml"
+
+        source_dataset = self._munge_dataset_to_eo3()
+
+        #for prepertie in source_dataset.properties:
+        #    print('prepertie', prepertie)
+
+        for k,v in source_dataset.grids:
+            print('Grid Spec', k, v)
+
+        with DatasetAssembler(
+            metadata_path=temp_metadata_path,
+            naming_conventions="dea_c3", # move to Config file
+            dataset_id=self.uuid,
+        ) as dataset_assembler:
+            dataset_assembler.add_source_dataset(
+                self._munge_dataset_to_eo3(), # because it is the summary, so we only grab the first input dataset to inherit the properties.
+                auto_inherit_properties=True,
+                inherit_geometry=True, # always inerit from input dataset
+                classifier="wo", # move to Config file
+            )
+
+            # Copy in metadata and properties
+            #for k, v in task.settings.output.metadata.items():
+            #    setattr(dataset_assembler, k, v)
+
+            #if task.settings.output.properties:
+            #    for k, v in task.settings.output.properties.items():
+            #        dataset_assembler.properties[k] = v
+
+            # I believe they should be inherited from input dataset?
+            outside_properties = {
+                'dea:dataset_maturity': 'final',
+                'odc:collection_number': '3',
+                'odc:dataset_version': '1.6.0',
+                'odc:producer': 'ga.gov.au',
+                'odc:product_family': 'wo' 
+            }
+
+            for k, v in outside_properties.items():
+                dataset_assembler.properties[k] = v
+
+            # Update the GSD
+            dataset_assembler.properties["eo:gsd"] = self._native_resolution()
+
+            if processing_dt is None:
+                processing_dt = datetime.utcnow()
+
+            dataset_assembler.processed = processing_dt
+    
+            # Write it all to a tempdir root, and then either shift or s3 sync it into place
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Set up a temporary directory
+                dataset_assembler.collection_location = Path(temp_dir)
+
+                 # Dodgy hack!
+                dataset_assembler._metadata_path = None
+
+                # Do all the deferred work from above
+                dataset_id, metadata_path = dataset_assembler.done()
+                log.info("Assembled dataset", metadata_path=metadata_path)
+
+                relative_path = dataset_assembler._dataset_location.relative_to(
+                    temp_dir
+                )
+
+                dest_directory = "/home/ubuntu/odc-stats-test-data"
+
+                log.info("Writing files to disk", location=dest_directory)
+                if dest_directory.exists():
+                    shutil.rmtree(dest_directory)
+                shutil.copytree(
+                    dataset_assembler._dataset_location, dest_directory
+                )
+                log.info("Task complete")
+
+    def render_stac_metadata(
+        self, ext: str = EXT_TIFF, processing_dt: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """
+        Put together STAC metadata document for the output of this task. It will be replaced by
+        dc_to_stac() in EO Datasets3.
         """
         if processing_dt is None:
             processing_dt = datetime.utcnow()

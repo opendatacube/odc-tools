@@ -217,7 +217,7 @@ class S3COGSink:
 
     def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
         json_url = task.metadata_path("absolute", ext=self._meta_ext)
-        meta = task.render_metadata(ext=self._band_ext) # say goodbye to the odc-stats internal stac processing, use the eo dataset approach
+        meta = task.render_odc_metadata(ext=self._band_ext)
         json_data = dump_json(meta).encode("utf8")
 
         # fake write result for metadata output, we want metadata file to be
