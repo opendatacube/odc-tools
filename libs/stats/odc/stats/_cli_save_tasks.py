@@ -173,7 +173,10 @@ def save_tasks(
 def _parse_products(dc, products, temporal_range):
         
     query = {"product": products}
-    query.update(temporal_range.dc_query(pad=0.6)) 
+
+    if temporal_range:
+        query.update(temporal_range.dc_query(pad=0.6)) 
+    
     dss = ordered_dss(dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query)
     paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
     
