@@ -64,6 +64,7 @@ def dump_to_odc_thread(
     update=False,
     update_if_exists=False,
     allow_unsafe=False,
+    n_threads=100,
     **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
@@ -78,9 +79,7 @@ def dump_to_odc_thread(
             logging.error(f"Failed to index dataset {uri} with error {index_exception}")
             return False
 
-    # Limit number of threads
-    num_of_threads = 100
-    with ThreadPoolExecutor(max_workers=num_of_threads) as executor:
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
         logging.info("Indexing datasets")
 
         tasks = [
@@ -163,14 +162,9 @@ def dump_to_odc_thread(
     default=False,
     help="Needed when accessing requester pays public buckets",
 )
+@click.option('--n-threads', default=100, help='Needed when using multithreading to perform better')
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
-@click.option(
-    "--thread",
-    is_flag=True,
-    default=False,
-    help="Needed when using multithreading to perform better",
-)
 def cli(
     skip_lineage,
     fail_on_missing_lineage,
@@ -182,9 +176,9 @@ def cli(
     skip_check,
     no_sign_request,
     request_payer,
+    n_threads,
     uri,
     product,
-    thread
 ):
     """ Iterate through files in an S3 bucket and add them to datacube"""
 
@@ -216,7 +210,7 @@ def cli(
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
 
-    if thread:
+    if n_threads:
         added, failed = dump_to_odc_thread(
             fetcher(document_stream),
             dc,
@@ -228,7 +222,7 @@ def cli(
             update=update,
             update_if_exists=update_if_exists,
             allow_unsafe=allow_unsafe,
-            thread=thread
+            n_threads=n_threads
         )
     else:
         added, failed = dump_to_odc(
