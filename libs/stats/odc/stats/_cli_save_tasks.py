@@ -182,7 +182,11 @@ def _parse_products(dc, products, temporal_range):
     
     error_logger = ErrorLogger(products)
     paired_dss = error_logger.filter(paired_dss)
-    n_dss = min(dataset_count(dc.index, time=query["time"], product=product) for product in products)
+
+    if temporal_range:
+        n_dss = min(dataset_count(dc.index, time=query["time"], product=product) for product in products)
+    else:
+        n_dss = min(dataset_count(dc.index, product=product) for product in products)
 
     products = [dc.index.products.get_by_name(product) for product in products]
     fused_product = fuse_products(*products)
