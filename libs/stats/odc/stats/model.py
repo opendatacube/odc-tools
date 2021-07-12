@@ -18,7 +18,8 @@ from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
 from eodatasets3.assemble import DatasetAssembler
-from eodatasets3.model import DatasetDoc, ProductDoc
+from eodatasets3.images import GridSpec
+from eodatasets3.model import DatasetDoc, ProductDoc, GridDoc
 from eodatasets3.properties import StacPropertyView
 
 TileIdx_xy = Tuple[int, int]
@@ -413,9 +414,6 @@ class Task:
         #for prepertie in source_dataset.properties:
         #    print('prepertie', prepertie)
 
-        for k,v in source_dataset.grids:
-            print('Grid Spec', k, v)
-
         with DatasetAssembler(
             metadata_path=temp_metadata_path,
             naming_conventions="dea_c3", # move to Config file
@@ -427,6 +425,19 @@ class Task:
                 inherit_geometry=True, # always inerit from input dataset
                 classifier="wo", # move to Config file
             )
+
+            #source_doc = self._munge_dataset_to_eo3()
+            #source_doc.grids = {'default': GridDoc(shape=self.geobox.shape, transform=self.geobox.transform)}
+
+            #dataset_assembler.add_source_dataset(
+            #    source_doc, # because it is the summary, so we only grab the first input dataset to inherit the properties.
+            #    auto_inherit_properties=True,
+            #    inherit_geometry=True, # always inerit from input dataset
+            #    classifier="wo", # move to Config file
+            #)
+
+            # dataset_assembler.grids = {'default': GridDoc(shape=self.geobox.shape, transform=self.geobox.transform)}
+            print()
 
             # Copy in metadata and properties
             #for k, v in task.settings.output.metadata.items():
@@ -455,32 +466,33 @@ class Task:
                 processing_dt = datetime.utcnow()
 
             dataset_assembler.processed = processing_dt
+            dataset_id, metadata_path = dataset_assembler.done()
     
             # Write it all to a tempdir root, and then either shift or s3 sync it into place
-            with tempfile.TemporaryDirectory() as temp_dir:
+            #with tempfile.TemporaryDirectory() as temp_dir:
                 # Set up a temporary directory
-                dataset_assembler.collection_location = Path(temp_dir)
+                #dataset_assembler.collection_location = Path(temp_dir)
 
                  # Dodgy hack!
-                dataset_assembler._metadata_path = None
+                #dataset_assembler._metadata_path = None
 
                 # Do all the deferred work from above
-                dataset_id, metadata_path = dataset_assembler.done()
-                log.info("Assembled dataset", metadata_path=metadata_path)
+                #dataset_id, metadata_path = dataset_assembler.done()
+                #log.info("Assembled dataset", metadata_path=metadata_path)
 
-                relative_path = dataset_assembler._dataset_location.relative_to(
-                    temp_dir
-                )
+                #relative_path = dataset_assembler._dataset_location.relative_to(
+                #    temp_dir
+                #)
 
-                dest_directory = "/home/ubuntu/odc-stats-test-data"
+                #dest_directory = "/home/ubuntu/odc-stats-test-data"
 
-                log.info("Writing files to disk", location=dest_directory)
-                if dest_directory.exists():
-                    shutil.rmtree(dest_directory)
-                shutil.copytree(
-                    dataset_assembler._dataset_location, dest_directory
-                )
-                log.info("Task complete")
+                #log.info("Writing files to disk", location=dest_directory)
+                #if dest_directory.exists():
+                #    shutil.rmtree(dest_directory)
+                #shutil.copytree(
+                #    dataset_assembler._dataset_location, dest_directory
+                #)
+                #log.info("Task complete")
 
     def render_stac_metadata(
         self, ext: str = EXT_TIFF, processing_dt: Optional[datetime] = None
