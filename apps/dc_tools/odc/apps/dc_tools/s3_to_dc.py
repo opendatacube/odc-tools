@@ -26,7 +26,7 @@ def stream_urls(urls):
 # Parse documents as they stream through from S3
 def stream_docs(documents):
     for document in documents:
-        yield (document.url, document.data)
+        yield document.url, document.data
 
 
 def dump_to_odc(
@@ -49,7 +49,7 @@ def dump_to_odc(
         try:
             index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
             ds_added += 1
-        except (IndexingException) as e:
+        except IndexingException as e:
             logging.error(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
 
