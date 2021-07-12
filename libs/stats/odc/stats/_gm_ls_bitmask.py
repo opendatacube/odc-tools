@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 import dask.array as da
 import xarray as xr
 from odc.algo import geomedian_with_mads, keep_good_only
-from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_and_np
+from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_and_np, mask_cleanup
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
@@ -19,12 +19,11 @@ class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"
     SHORT_NAME = NAME
     VERSION = "3.0.0"
-    PRODUCT_FAMILY = "geomedian"
-
     def __init__(
             self,
             bands: Optional[Tuple[str, ...]] = None,
             mask_band: str = "QA_PIXEL",
+            filters: Optional[Tuple[int, int]] = None,
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
             rgb_bands=None,
             resampling: str = "bilinear",
@@ -34,6 +33,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.mask_band = mask_band
         self.resampling = resampling
         self.bands = bands
+        self.filters = filters
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
@@ -141,9 +141,15 @@ class StatsGMLSBitmask(StatsPluginInterface):
         return gm
 
     def _fuser(self, xx):
+        """
+        Fuse cloud_mask with AND, and apply mask_cleanup if requested
+        """
         cloud_mask = xx["cloud_mask"]
         xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=0), '')
         xx["cloud_mask"] = _xr_fuse(cloud_mask, _fuse_and_np, cloud_mask.name)
+
+        if self.filters is not None:
+            xx["cloud_mask"] = mask_cleanup(xx["cloud_mask"], self.filters)
 
         return xx
 
