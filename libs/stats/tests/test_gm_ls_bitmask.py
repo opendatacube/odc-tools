@@ -78,6 +78,7 @@ def test_fuser(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
+
 def test_filters(dataset):
     gm = StatsGMLSBitmask(["band_red"], "QA_PIXEL", [0, 0])
 
@@ -101,8 +102,10 @@ def test_filters(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-def test_reduce(dataset):
-    gm = StatsGMLSBitmask(["band_red"])
+
+@pytest.mark.parametrize("use_hdstats", [True, False])
+def test_reduce(dataset, use_hdstats):
+    gm = StatsGMLSBitmask(["band_red"], use_hdstats=use_hdstats)
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
@@ -111,13 +114,23 @@ def test_reduce(dataset):
         ["band_red", "sdev", "edev", "bcdev", "count"]
     )
 
+    yy = xx.compute()
     # it's a complex calculation so we copied the result
-    expected_result = np.array(
-        [[138, 54],
-         [43, 78]],
-    )
-    result = xx.compute()["band_red"].data
-    assert (result == expected_result).all()
+    red = yy["band_red"].data
+    assert red[0, 0] == 138
+    assert red[1, 0] == 43
+
+    emad = yy["edev"].data
+    assert emad[0, 0] == 115.0
+    assert emad[1, 0] == 25.0
+
+    bcmad = yy["bcdev"].data
+    assert np.isclose(bcmad[0, 0], 0.49907118, atol=1e-7)
+    assert np.isclose(bcmad[1, 0], 0.30903214, atol=1e-7)
+    
+    smad = yy["sdev"].data
+    assert np.isclose(smad[0, 0], 0.0, atol=1e-7)
+    assert np.isclose(smad[1, 0], 0.0, atol=1e-7)
 
     expected_result = np.array(
         [[2, 1],

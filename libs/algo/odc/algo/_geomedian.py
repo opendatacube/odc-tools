@@ -274,10 +274,6 @@ def _gm_mads_compute_f32(
     """
     if yxbt.dtype.kind != "f":
         yxbt = to_float_np(yxbt, scale=scale, offset=offset, nodata=nodata)
-    
-    if compute_count:
-        nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
-        count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
 
     stats_bands = []
     if use_hdstats:
@@ -293,9 +289,6 @@ def _gm_mads_compute_f32(
                     op(yxbt, gm, num_threads=kw.get("num_threads", 1))
                 )
 
-        if compute_count:
-            stats_bands.append(count)
-
         stats_bands = [a[..., np.newaxis] for a in stats_bands]
 
     else:
@@ -303,8 +296,11 @@ def _gm_mads_compute_f32(
         gm, mads = datacube_compute.geomedian(yxbt, **kw)
         if compute_mads:
             stats_bands.extend([mads[..., 1:2], mads[..., 0:1], mads[..., 2:]])
-        if compute_count:
-            stats_bands.append(count[..., np.newaxis])
+
+    if compute_count:
+        nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
+        count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
+        stats_bands.append(count[..., np.newaxis])
 
     if len(stats_bands) == 0:
         return gm
