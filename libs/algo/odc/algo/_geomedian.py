@@ -259,7 +259,7 @@ def int_geomedian(ds, scale=1, offset=0, wk_rows=-1, as_array=False, **kw):
 
 
 def _gm_mads_compute_f32(
-    yxbt, compute_mads=True, compute_count=True, nodata=None, scale=1, offset=0, **kw
+    yxbt, compute_mads=True, compute_count=True, nodata=None, scale=1, offset=0, use_hdstats=True, **kw
 ):
     """
     output axis order is:
@@ -272,35 +272,44 @@ def _gm_mads_compute_f32(
     note that when supplying non-float input, it is scaled according to scale/offset/nodata parameters,
     output is however returned in that scaled range.
     """
-    import hdstats
-
     if yxbt.dtype.kind != "f":
         yxbt = to_float_np(yxbt, scale=scale, offset=offset, nodata=nodata)
-
-    gm = hdstats.nangeomedian_pcm(yxbt, nocheck=True, **kw)
+        if compute_count:
+            nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
+            count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
 
     stats_bands = []
+    if use_hdstats:
+        import hdstats
 
-    if compute_mads:
-        mads = [hdstats.smad_pcm, hdstats.emad_pcm, hdstats.bcmad_pcm]
+        gm = hdstats.nangeomedian_pcm(yxbt, nocheck=True, **kw)
 
-        for i, op in enumerate(mads):
-            stats_bands.append(
-                op(yxbt, gm, num_threads=kw.get("num_threads", 1))
-            )
+        if compute_mads:
+            mads = [hdstats.smad_pcm, hdstats.emad_pcm, hdstats.bcmad_pcm]
 
-    if compute_count:
-        nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
-        count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
-        stats_bands.append(count)
+            for i, op in enumerate(mads):
+                stats_bands.append(
+                    op(yxbt, gm, num_threads=kw.get("num_threads", 1))
+                )
 
-    if len(stats_bands) == 0:
-        return gm
+        if compute_count:
+            stats_bands.append(count)
 
-    stats_bands = [a[..., np.newaxis] for a in stats_bands]
+        if len(stats_bands) == 0:
+            return gm
+
+        stats_bands = [a[..., np.newaxis] for a in stats_bands]
+
+    else:
+        import datacube_compute
+        gm, mads = datacube_compute.geomedian(yxbt, **kw)
+        if compute_mads:
+            stats_bands.extend([mads[..., 1:2], mads[..., 0:1], mads[..., 2:]])
+        if compute_count:
+            stats_bands.append(count[..., np.newaxis])
 
     return np.concatenate([gm, *stats_bands], axis=2)
-
+        
 
 def geomedian_with_mads(
     src: Union[xr.Dataset, xr.DataArray],
@@ -391,12 +400,6 @@ def geomedian_with_mads(
     if eps is None:
         eps = 1e-4 if is_float else 0.1 * scale
 
-    if use_hdstats:
-        _gm_func = _gm_mads_compute_f32
-    else:
-        from datacube_compute import geomedian
-        _gm_func = geomedian
-        
     op = functools.partial(
         _gm_mads_compute_f32,
         compute_mads=compute_mads,
@@ -404,6 +407,7 @@ def geomedian_with_mads(
         nodata=nodata,
         scale=scale,
         offset=offset,
+        use_hdstats=use_hdstats,
         eps=eps,
         maxiters=maxiters,
         num_threads=num_threads,

@@ -12,7 +12,8 @@ def dataset():
         [[255, 57], [20, 50]],
         [[30, 0], [70, 80]],
         [[25, 52], [0, 0]],
-    ])
+    ], dtype=np.uint16
+    )
     cloud_mask = 0b0000_0000_0001_1000
     no_data = 0b0000_0000_0000_0001
     band_pq = np.array([
@@ -98,6 +99,9 @@ def test_reduce(dataset):
     xx = gm.reduce(xx)
 
     xx = xx.compute()
+
+    print(xx.data_vars.keys())
+    raise RuntimeError
 #     print(xx["band_red"].data)
 #
 #     # result = xx.compute()["band_1_pc_10"].data
