@@ -274,9 +274,10 @@ def _gm_mads_compute_f32(
     """
     if yxbt.dtype.kind != "f":
         yxbt = to_float_np(yxbt, scale=scale, offset=offset, nodata=nodata)
-        if compute_count:
-            nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
-            count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
+    
+    if compute_count:
+        nbads = np.isnan(yxbt).sum(axis=2, dtype="bool").sum(axis=2, dtype="uint16")
+        count = yxbt.dtype.type(yxbt.shape[-1]) - nbads
 
     stats_bands = []
     if use_hdstats:
@@ -295,9 +296,6 @@ def _gm_mads_compute_f32(
         if compute_count:
             stats_bands.append(count)
 
-        if len(stats_bands) == 0:
-            return gm
-
         stats_bands = [a[..., np.newaxis] for a in stats_bands]
 
     else:
@@ -308,6 +306,9 @@ def _gm_mads_compute_f32(
         if compute_count:
             stats_bands.append(count[..., np.newaxis])
 
+    if len(stats_bands) == 0:
+        return gm
+    
     return np.concatenate([gm, *stats_bands], axis=2)
         
 
