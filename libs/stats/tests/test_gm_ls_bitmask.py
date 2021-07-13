@@ -115,7 +115,11 @@ def test_reduce(dataset, use_hdstats):
     )
 
     yy = xx.compute()
-    # it's a complex calculation so we copied the result
+    
+    # we can only test pixels that have a count > 1
+    # the rust gm returns nans for count <= 1
+    # but hdstats behaviour depends on version
+
     red = yy["band_red"].data
     assert red[0, 0] == 138
     assert red[1, 0] == 43
