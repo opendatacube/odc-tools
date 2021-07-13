@@ -135,7 +135,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         # keeping only non cloud pixels
         xx = keep_good_only(xx, cloud_mask)
 
-        gm = geomedian_with_mads(xx, **cfg)
+        gm = geomedian_with_mads(xx, use_hdstats=False, **cfg)
         gm = gm.rename(self.renames)
 
         return gm
