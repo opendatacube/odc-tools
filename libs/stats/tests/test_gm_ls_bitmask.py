@@ -98,8 +98,6 @@ def test_reduce(dataset):
     xx = gm.reduce(xx)
 
     xx = xx.compute()
-    print(xx['band_red'])
-
 #     print(xx["band_red"].data)
 #
 #     # result = xx.compute()["band_1_pc_10"].data
