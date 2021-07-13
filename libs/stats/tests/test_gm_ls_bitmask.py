@@ -36,7 +36,7 @@ def dataset():
     data_vars = {"band_red": (("spec", "y", "x"), band_red), "QA_PIXEL": (("spec", "y", "x"), band_pq)}
     attrs = dict(crs="epsg:32633", grid_mapping="spatial_ref")
     xx = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-    xx['band_red'].attrs['nodata'] = 0 
+    geomad-bitmask
     return xx
 
 
@@ -54,9 +54,9 @@ def test_native_transform(dataset):
     assert (result == expected_result).all()
 
     expected_result = np.array([
-        [[True, True], [True, True]],
-        [[True, True], [True, True]],
-        [[True, False], [True, True]],
+        [[False, False], [False, False]],
+        [[False, False], [False, False]],
+        [[False, True], [False, False]],
     ])
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
@@ -74,12 +74,23 @@ def test_fuser(dataset):
     assert (result == expected_result).all()
 
     expected_result = np.array(
-        [[True, False], [True, True]],
+        [[False, True], [False, False]],
     )
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-    # test fuser with filters
+def test_filters(dataset):
+    gm = StatsGMLSBitmask(["band_red"], "QA_PIXEL", [0, 0])
+
+    xx = gm._native_tr(dataset)
+    xx = xx.groupby("solar_day").map(gm._fuser)
+
+    expected_result = np.array(
+        [[False, True], [False, False]],
+    )
+    result = xx.compute()["cloud_mask"].data
+    assert (result == expected_result).all()
+
     gm = StatsGMLSBitmask(["band_red"], "QA_PIXEL", [0, 2])
 
     xx = gm._native_tr(dataset)
@@ -91,29 +102,28 @@ def test_fuser(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-# TODO: add test for reduce - failing due to hdstats
 def test_reduce(dataset):
-    gm = StatsGMLSBitmask(["band_red"], "QA_PIXEL")
+    gm = StatsGMLSBitmask(["band_red"])
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
 
-    xx = xx.compute()
 
-    print(xx.data_vars.keys())
-    raise RuntimeError
-#     print(xx["band_red"].data)
-#
-#     # result = xx.compute()["band_1_pc_10"].data
-#     # assert (result[0, :] == 255).all()
-#     # assert (result[1, :] != 255).all()
-#     #
-#     # expected_result = np.array(
-#     #     [[1, 0], [2, 2]],
-#     # )
-#     # result = xx.compute()["qa"].data
-#     # assert (result == expected_result).all()
-#     #
-#     # assert set(xx.data_vars.keys()) == set(
-#     #     ["band_1_pc_10", "band_1_pc_50", "band_1_pc_90", "qa"]
-#     # )
+    assert set(xx.data_vars.keys()) == set(
+        ["band_red", "sdev", "edev", "bcdev", "count"]
+    )
+
+    # it's a complex calculation so we copied the result
+    expected_result = np.array(
+        [[138, 54],
+         [43, 78]],
+    )
+    result = xx.compute()["band_red"].data
+    assert (result == expected_result).all()
+
+    expected_result = np.array(
+        [[2, 1],
+         [2, 1]],
+    )
+    result = xx.compute()["count"].data
+    assert (result == expected_result).all()

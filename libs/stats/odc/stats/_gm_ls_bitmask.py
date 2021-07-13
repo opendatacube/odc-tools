@@ -6,8 +6,8 @@ from typing import Optional, Tuple
 
 import dask.array as da
 import xarray as xr
-from odc.algo import geomedian_with_mads, keep_good_only
-from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_and_np, mask_cleanup
+from odc.algo import geomedian_with_mads, keep_good_only, erase_bad, to_rgba
+from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
@@ -18,14 +18,13 @@ from .model import StatsPluginInterface
 class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"
     SHORT_NAME = NAME
-    VERSION = "3.0.0"
+    VERSION = "0.0.1"
     def __init__(
             self,
             bands: Optional[Tuple[str, ...]] = None,
             mask_band: str = "QA_PIXEL",
             filters: Optional[Tuple[int, int]] = None,
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
-            rgb_bands=None,
             resampling: str = "bilinear",
             work_chunks: Tuple[int, int] = (400, 400),
             **other,
@@ -38,8 +37,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
 
-        if bands is None:
-            bands = (
+        if self.bands is None:
+            self.bands = (
                 "red",
                 "green",
                 "blue",
@@ -47,8 +46,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
                 "swir1",
                 "swir2",
             )
-            if rgb_bands is None:
-                rgb_bands = ("red", "green", "blue")
 
     @property
     def measurements(self) -> Tuple[str, ...]:
@@ -86,8 +83,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         mask_band = xx[self.mask_band]
         xx = xx.drop_vars([self.mask_band])
 
-        # set cloud_mask (cloud + cloud_shadow) bitmask - True=non-cloud, False=cloud
-        cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1000) == 0
+        # set cloud_mask (cloud + cloud_shadow) bitmask - True=cloud, False=non-cloud
+        cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1000) != 0
 
         # set no_data bitmask - True=data, False=no-data
         keeps = da.bitwise_and(mask_band, 0b0000_0000_0000_0001) == 0
@@ -132,8 +129,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         cloud_mask = xx["cloud_mask"]
         xx = xx.drop_vars(["cloud_mask"])
 
-        # keeping only non cloud pixels
-        xx = keep_good_only(xx, cloud_mask)
+        # erase pixels with cloud
+        xx = erase_bad(xx, cloud_mask)
 
         gm = geomedian_with_mads(xx, use_hdstats=False, **cfg)
         gm = gm.rename(self.renames)
@@ -142,12 +139,15 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
     def _fuser(self, xx):
         """
-        Fuse cloud_mask with AND, and apply mask_cleanup if requested
+        Fuse cloud_mask with OR, and apply mask_cleanup if requested
         """
         cloud_mask = xx["cloud_mask"]
         xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=0), '')
-        xx["cloud_mask"] = _xr_fuse(cloud_mask, _fuse_and_np, cloud_mask.name)
+        xx["cloud_mask"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
 
+        # apply filters - [r1, r2]
+        # r1 = shrinks away small areas of the mask
+        # r2 = adds padding to the mask
         if self.filters is not None:
             xx["cloud_mask"] = mask_cleanup(xx["cloud_mask"], self.filters)
 
