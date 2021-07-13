@@ -313,6 +313,7 @@ def geomedian_with_mads(
     eps: Optional[float] = None,
     maxiters: int = 1000,
     num_threads: int = 1,
+    use_hdstats: bool = True,
     **kw,
 ) -> xr.Dataset:
     """
@@ -390,6 +391,12 @@ def geomedian_with_mads(
     if eps is None:
         eps = 1e-4 if is_float else 0.1 * scale
 
+    if use_hdstats:
+        _gm_func = _gm_mads_compute_f32
+    else:
+        from datacube_compute import geomedian
+        _gm_func = geomedian
+        
     op = functools.partial(
         _gm_mads_compute_f32,
         compute_mads=compute_mads,
