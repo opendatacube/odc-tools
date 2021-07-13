@@ -78,7 +78,6 @@ def test_fuser(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-
 def test_filters(dataset):
     gm = StatsGMLSBitmask(["band_red"], "QA_PIXEL", [0, 0])
 
@@ -102,7 +101,6 @@ def test_filters(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-
 @pytest.mark.parametrize("use_hdstats", [True, False])
 def test_reduce(dataset, use_hdstats):
     gm = StatsGMLSBitmask(["band_red"], use_hdstats=use_hdstats)
@@ -115,7 +113,7 @@ def test_reduce(dataset, use_hdstats):
     )
 
     yy = xx.compute()
-    
+
     # we can only test pixels that have a count > 1
     # the rust gm returns nans for count <= 1
     # but hdstats behaviour depends on version
@@ -131,14 +129,13 @@ def test_reduce(dataset, use_hdstats):
     bcmad = yy["bcdev"].data
     assert np.isclose(bcmad[0, 0], 0.49907118, atol=1e-7)
     assert np.isclose(bcmad[1, 0], 0.30903214, atol=1e-7)
-    
+
     smad = yy["sdev"].data
     assert np.isclose(smad[0, 0], 0.0, atol=1e-7)
     assert np.isclose(smad[1, 0], 0.0, atol=1e-7)
 
     expected_result = np.array(
-        [[2, 1],
-         [2, 1]],
+        [[2, 1], [2, 1]],
     )
-    result = xx.compute()["count"].data
-    assert (result == expected_result).all()
+    count = yy["count"].data
+    assert (count == expected_result).all()

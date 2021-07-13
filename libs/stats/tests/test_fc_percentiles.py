@@ -12,13 +12,13 @@ def dataset():
         [[255, 57], [20, 50]],
         [[30, 40], [70, 80]], 
         [[25, 52], [73, 98]], 
-    ])
+    ]).astype(np.uint8)
 
     band_2 = np.array([
         [[0, 128], [0, 0]],
         [[0, 0], [0, 0]], 
         [[0, 0], [0, 0]], 
-    ])
+    ]).astype(np.uint8)
 
     band_1 = da.from_array(band_1, chunks=(3, -1, -1))
     band_2 = da.from_array(band_2, chunks=(3, -1, 20))
@@ -106,3 +106,7 @@ def test_reduce(dataset):
     assert set(xx.data_vars.keys()) == set(
         ["band_1_pc_10", "band_1_pc_50", "band_1_pc_90", "qa"]
     )
+
+    for band_name in xx.data_vars.keys():
+        assert xx.data_vars[band_name].dtype == np.uint8
+    

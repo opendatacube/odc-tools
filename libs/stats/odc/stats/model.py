@@ -269,7 +269,18 @@ class Task:
         return "/".join([p1, p2, self.short_time])
 
     def _lineage(self) -> Tuple[UUID, ...]:
-        return tuple(ds.id for ds in self.datasets)
+        ds, *_ = self.datasets
+
+        # TODO: replace this and test
+        # if 'fused' in ds.metadata._doc['properties'].keys():
+        if 'fused' in ds.type.name:
+            lineage = tuple(set(
+                x for ds in self.datasets for y in ds.metadata.sources.values() for x in y.values()
+            ))
+        else:
+            lineage = tuple(ds.id for ds in self.datasets)
+            
+        return lineage
 
     def _prefix(self, relative_to: str = "dataset") -> str:
         product = self.product
