@@ -174,19 +174,19 @@ def _parse_products(dc, products, temporal_range):
         
     query = {"product": products}
 
+    # TODO: find time range
     if temporal_range:
         query.update(temporal_range.dc_query(pad=0.6)) 
-    
-    dss = ordered_dss(dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query)
-    paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
-    
-    error_logger = ErrorLogger(products)
-    paired_dss = error_logger.filter(paired_dss)
-
-    if temporal_range:
+        dss = ordered_dss(dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query)
         n_dss = min(dataset_count(dc.index, time=query["time"], product=product) for product in products)
     else:
+        dss = dc.find_datasets(**query)
+        dss.sort(key=lambda ds: (ds.center_time, ds.metadata.region_code))
         n_dss = min(dataset_count(dc.index, product=product) for product in products)
+
+    paired_dss = groupby(dss, key=lambda ds: (ds.center_time, ds.metadata.region_code))
+    error_logger = ErrorLogger(products)
+    paired_dss = error_logger.filter(paired_dss)
 
     products = [dc.index.products.get_by_name(product) for product in products]
     fused_product = fuse_products(*products)
