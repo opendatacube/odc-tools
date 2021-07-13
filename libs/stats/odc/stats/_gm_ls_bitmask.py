@@ -27,6 +27,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
             resampling: str = "bilinear",
             work_chunks: Tuple[int, int] = (400, 400),
+            use_hdstats: bool = True,
             **other,
     ):
         self.mask_band = mask_band
@@ -36,6 +37,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
+        self.use_hdstats = use_hdstats
 
         if self.bands is None:
             self.bands = (
@@ -132,7 +134,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         # erase pixels with cloud
         xx = erase_bad(xx, cloud_mask)
 
-        gm = geomedian_with_mads(xx, use_hdstats=False, **cfg)
+        gm = geomedian_with_mads(xx, use_hdstats=self.use_hdstats, **cfg)
         gm = gm.rename(self.renames)
 
         return gm
