@@ -101,7 +101,6 @@ def test_filters(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-@pytest.mark.skip(reason="missing hdstats from docker image")
 def test_reduce(dataset):
     gm = StatsGMLSBitmask(["band_red"])
 
