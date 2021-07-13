@@ -6,7 +6,6 @@ docker
 deepdiff
 pip-tools
 rio-cogeo
-hdstats
 
 
 -e /code/apps/dc_tools[AZURE,THREDDS]
