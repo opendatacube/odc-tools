@@ -36,7 +36,7 @@ def dataset():
     data_vars = {"band_red": (("spec", "y", "x"), band_red), "QA_PIXEL": (("spec", "y", "x"), band_pq)}
     attrs = dict(crs="epsg:32633", grid_mapping="spatial_ref")
     xx = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-    geomad-bitmask
+    xx['band_red'].attrs['nodata'] = 0
     return xx
 
 
@@ -107,7 +107,6 @@ def test_reduce(dataset):
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
-
 
     assert set(xx.data_vars.keys()) == set(
         ["band_red", "sdev", "edev", "bcdev", "count"]
