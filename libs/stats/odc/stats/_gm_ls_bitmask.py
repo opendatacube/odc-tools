@@ -136,6 +136,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
+        # TODO: add scaling on produce gm again?
+
         return gm
 
     def _fuser(self, xx):
