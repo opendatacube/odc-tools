@@ -107,21 +107,33 @@ def test_reduce(dataset):
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
 
+    result = xx.compute()
+
     assert set(xx.data_vars.keys()) == set(
         ["band_red", "sdev", "edev", "bcdev", "count"]
     )
 
     # it's a complex calculation so we copied the result
     expected_result = np.array(
-        [[-14405, -14488],
-         [-14500, -14465]]
+        [[-14405, -14488], [-14500, -14465]]
     )
-    result = xx.compute()["band_red"].data
-    assert (result == expected_result).all()
+    red = result["band_red"].data
+    assert (red == expected_result).all()
+
+    edev = result["edev"].data
+    assert np.isclose(edev[0, 0], 115.00012, atol=1e-6)
+    assert np.isclose(edev[1, 0], 25.000084, atol=1e-6)
+
+    bcdev = result["bcdev"].data
+    assert np.isclose(bcdev[0, 0], 0.008061964, atol=1e-6)
+    assert np.isclose(bcdev[1, 0], 0.0017294621, atol=1e-6)
+
+    sdev = result["sdev"].data
+    assert np.isclose(sdev[0, 0], 0.0, atol=1e-6)
+    assert np.isclose(sdev[1, 0], 0.0, atol=1e-6)
 
     expected_result = np.array(
-        [[2, 1],
-         [2, 1]],
+        [[2, 1], [2, 1]],
     )
-    result = xx.compute()["count"].data
-    assert (result == expected_result).all()
+    count = result.compute()["count"].data
+    assert (count == expected_result).all()
