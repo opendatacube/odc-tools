@@ -113,12 +113,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
         return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
-        scale = 1 / 10_000
+        scale = 0.0000275
+        offset = -0.2
         cfg = dict(
             maxiters=1000,
             num_threads=1,
             scale=scale,
-            offset=-1 * scale,
+            offset=offset,
             reshape_strategy="mem",
             out_chunks=(-1, -1, -1),
             work_chunks=self.work_chunks,
