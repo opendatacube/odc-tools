@@ -11,16 +11,22 @@ from toolz import dicttoolz
 import pystac
 import xarray as xr
 import pandas as pd
+from rasterio.crs import CRS
+import json
+
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
 from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
-from eodatasets3.assemble import DatasetAssembler
+
+from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.images import GridSpec
 from eodatasets3.model import DatasetDoc, ProductDoc, GridDoc
 from eodatasets3.properties import StacPropertyView
+from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
+from eodatasets3.verify import PackageChecksum
 
 TileIdx_xy = Tuple[int, int]
 TileIdx_txy = Tuple[str, int, int]
@@ -320,12 +326,12 @@ class Task:
         prefix = self._prefix(relative_to)
         return f"{prefix}_{name}.{ext}"
 
-    def render_stac_metadata(
-        self, ext: str = EXT_TIFF, processing_dt: Optional[datetime] = None
-    ) -> Dict[str, Any]:
+    def render_metadata(
+        self, ext: str = EXT_TIFF, output_dataset: xr.Dataset = None, processing_dt: Optional[datetime] = None
+    ) -> DatasetDoc:
         """
-        Put together STAC metadata document for the output of this task. It will be replaced by
-        dc_to_stac() in EO Datasets3.
+        Put together metadata document for the output of this task. It needs the source_dataset to inherit
+        several properties and lineages. It also needs the output_dataset to get the measurement information.
         """
         if processing_dt is None:
             processing_dt = datetime.utcnow()
@@ -337,64 +343,92 @@ class Task:
 
         properties: Dict[str, Any] = deepcopy(product.properties)
 
-        properties["dtr:start_datetime"] = format_datetime(self.time_range.start)
-        properties["dtr:end_datetime"] = format_datetime(self.time_range.end)
-        properties["odc:processing_datetime"] = format_datetime(
-            processing_dt, timespec="seconds"
-        )
-        properties["odc:region_code"] = region_code
-        properties["odc:product"] = product.name
-        properties["odc:dataset_version"] = product.version
+        #properties["dtr:start_datetime"] = format_datetime(self.time_range.start)
+        #properties["dtr:end_datetime"] = format_datetime(self.time_range.end)
+        #properties["odc:processing_datetime"] = format_datetime(
+        #    processing_dt, timespec="seconds"
+        #)
+
 
         geobox_wgs84 = geobox.extent.to_crs(
             "epsg:4326", resolution=math.inf, wrapdateline=True
         )
+
         bbox = geobox_wgs84.boundingbox
 
-        item = pystac.Item(
-            id=str(self.uuid),
-            geometry=geobox_wgs84.json,
-            bbox=[bbox.left, bbox.bottom, bbox.right, bbox.top],
-            datetime=self.time_range.start.replace(tzinfo=timezone.utc),
-            properties=properties,
-            stac_extensions=["projection"],
-        )
+        # TODO: save this in the task (pass by CONFIG file)
+        naming_conventions_values = "dea_c3"
+        output_location = "/home/ubuntu/odc-stats-test-data/output"
 
-        item.ext.projection.epsg = geobox.crs.epsg
-        # Lineage last
-        item.properties["odc:lineage"] = dict(inputs=inputs)
+        with DatasetAssembler(
+            collection_location=Path(output_location),
+            naming_conventions=naming_conventions_values) as dataset_assembler:
+            # self.datasets (e.g. s3://dea-public-data/derivative/ga_ls_wo_3/1-6-0/115/079/2000/01/01/ga_ls_wo_3_115079_2000-01-01_final.stac-item.json)
+            # has the platform and instrument relative information. 
+            # Applying add_source_path() to inherit_properties from self.datasets[0]
 
-        # Add all the assets
-        for band, path in self.paths(ext=ext).items():
-            asset = pystac.Asset(
-                href=path,
-                media_type="image/tiff; application=geotiff",
-                roles=["data"],
-                title=band,
+            #p.add_source_path(
+            #    Path(self.datasets[0].uris[0]), # TODO: it only accept local yaml format path :( now. I have to add the odc-metadata.yml to task, and copy to local
+            #    or try to for loop the self.datasets[0].metadata_doc
+            #    auto_inherit_properties=True,
+            #    inherit_geometry=True
+            #)
+
+            dataset_assembler.product_family = product.properties['odc:product_family']
+            dataset_assembler.product_name = product.name
+            dataset_assembler.dataset_version = product.version
+            dataset_assembler.producer = product.properties['odc:producer']
+            dataset_assembler.region_code = region_code
+            dataset_assembler.processed_now()
+
+            dataset_assembler.maturity = 'final'
+            dataset_assembler.platform = 'LANDSAT_5,LANDSAT_7,LANDSAT_8'
+            dataset_assembler.collection_number = 3
+            dataset_assembler.datetime = "1990-09-17 00:09:32.077031Z"
+
+            for lineage in self._lineage():
+                dataset_assembler.note_source_datasets('level1', lineage)
+
+            # Write measurements.
+
+            for band, path in self.paths(ext=ext).items():
+                dataset_assembler.write_measurement_numpy(band,
+                                          output_dataset[band].values.reshape([geobox.shape[0], geobox.shape[1]]),
+                                          GridSpec(shape=geobox.shape,
+                                                   transform=geobox.transform,
+                                                   crs=CRS.from_epsg(3577))
+                                        )
+
+            _, odc_metadata_path = dataset_assembler.done()
+
+            dataset = serialise.from_path(odc_metadata_path)
+
+            name = odc_metadata_path.stem.replace(".odc-metadata", "")
+            stac_path = odc_metadata_path.with_name(f"{name}.stac-item.json")
+            checksum_file = odc_metadata_path.with_name(f"{name}.sha1")
+
+            # Create STAC dict
+            item_doc = dc_to_stac(
+                dataset,
+                odc_metadata_path,
+                stac_path,
+                output_location,
+                "",
+                do_validate=False,
             )
-            item.add_asset(band, asset)
 
-            item.ext.projection.set_transform(geobox.transform, asset=asset)
-            item.ext.projection.set_shape(geobox.shape, asset=asset)
+            with stac_path.open("w") as f:
+                json.dump(item_doc, f, default=json_fallback)
+            dataset_assembler.add_accessory_file("metadata:stac", stac_path)
 
-        # Add links
-        item.links.append(
-            pystac.Link(
-                rel="product_overview",
-                media_type="application/json",
-                target=product.href,
-            )
-        )
-        item.links.append(
-            pystac.Link(
-                rel="self",
-                media_type="application/json",
-                target=self.metadata_path("absolute", ext="json"),
-            )
-        )
+            # dataset_assembler._checksum.write(dataset_assembler._accessories["checksum:sha1"])
+            # Need a new checksummer because EODatasets is insane
+            checksummer = PackageChecksum()
+            checksummer.read(checksum_file)
+            checksummer.add_file(stac_path)
+            checksummer.write(checksum_file)
 
-        return item.to_dict()
-
+            return {}
 
 class StatsPluginInterface(ABC):
     NAME = "*unset*"

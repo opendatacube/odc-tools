@@ -33,7 +33,7 @@ def test_stac(test_db_path):
     reader = TaskReader(test_db_path, product)
     task = reader.load_task(reader.all_tiles[0])
 
-    stac_meta = task.render_stac_metadata()
+    stac_meta = task.render_metadata()
     odc_meta = stac_transform(stac_meta)
 
     # TODO: actually test content of odc_meta?
