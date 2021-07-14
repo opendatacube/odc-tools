@@ -83,8 +83,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         mask_band = xx[self.mask_band]
         xx = xx.drop_vars([self.mask_band])
 
-        # set cloud_mask (cloud + cloud_shadow) bitmask - True=cloud, False=non-cloud
-        cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1000) != 0
+        # set cloud_mask (dilated_cloud + cloud + cloud_shadow) bitmask - True=cloud, False=non-cloud
+        cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1010) != 0
 
         # set no_data bitmask - True=data, False=no-data
         keeps = da.bitwise_and(mask_band, 0b0000_0000_0000_0001) == 0

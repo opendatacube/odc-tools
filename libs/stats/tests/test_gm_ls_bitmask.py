@@ -13,7 +13,7 @@ def dataset():
         [[30, 0], [70, 80]],
         [[25, 52], [0, 0]],
     ])
-    cloud_mask = 0b0000_0000_0001_1000
+    cloud_mask = 0b0000_0000_0001_1010
     no_data = 0b0000_0000_0000_0001
     band_pq = np.array([
         [[0, 0], [0, no_data]],
@@ -113,8 +113,8 @@ def test_reduce(dataset):
 
     # it's a complex calculation so we copied the result
     expected_result = np.array(
-        [[138, 54],
-         [43, 78]],
+        [[-14405, -14488],
+         [-14500, -14465]]
     )
     result = xx.compute()["band_red"].data
     assert (result == expected_result).all()
