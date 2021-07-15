@@ -236,9 +236,6 @@ def cli(
     """ Iterate through files in an S3 bucket and add them to datacube"""
     # Time the process
     s = time.perf_counter()
-    # Finding bottlenecks
-    profile = cProfile.Profile()
-    profile.enable()
 
     transform = None
     if stac:
@@ -249,6 +246,10 @@ def cli(
     opts = {}
     if request_payer:
         opts["RequestPayer"] = "requester"
+
+    # Finding bottlenecks
+    profile = cProfile.Profile()
+    profile.enable()
 
     # Check datacube connection and products
     dc = Datacube()
@@ -267,7 +268,14 @@ def cli(
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
-
+    # PRINTING STATUS
+    profile.disable()
+    ps = pstats.Stats(profile).sort_stats('tottime').strip_dirs()
+    ps.print_stats()
+    print('***************************************************************************************************')
+    # Finding bottlenecks
+    profile = cProfile.Profile()
+    profile.enable()
     if n_threads:
         added, failed = dump_to_odc_thread(
             fetcher(document_stream),
@@ -311,14 +319,19 @@ def cli(
             allow_unsafe=allow_unsafe,
         )
 
+    # PRINTING STATUS
+    profile.disable()
+    ps = pstats.Stats(profile).sort_stats('tottime').strip_dirs()
+    ps.print_stats()
+
     print(f"Added {added} Datasets, Failed {failed} Datasets")
     elapsed = time.perf_counter() - s
     print(f"{__file__} executed in {elapsed:0.2f} seconds.")
 
     # PRINTING STATUS
-    profile.disable()
-    ps = pstats.Stats(profile)
-    ps.print_stats()
+    # profile.disable()
+    # ps = pstats.Stats(profile).sort_stats('ncalls').strip_dirs()
+    # ps.print_stats()
 
     if failed > 0:
         sys.exit(failed)
