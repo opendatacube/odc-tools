@@ -139,14 +139,14 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
-        # Rescale USGS Landsat bands into surface reflectance
+        # Scale USGS Landsat bands into surface reflectance
         if return_SR:
-            sr_bands = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2']
             for band in gm.data_vars:
-                if band in sr_bands:
+                if band in self.bands:
                     #convert to surface reflectance (0-1)
                     ds[band] = 2.75e-5 * ds[band] - 0.2
-                    # match Sentinel-2 scaling for consistency
+                    # match Sentinel-2 scaling for 
+                    # consistency across gm products
                     ds[band] = ds[band] * 10000
                     #force dtype back to int
                     ds[band] = ds[band].astype(np.uint16)
