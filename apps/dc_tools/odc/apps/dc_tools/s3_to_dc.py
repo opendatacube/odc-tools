@@ -279,7 +279,7 @@ def cli(
             update=update,
             update_if_exists=update_if_exists,
             allow_unsafe=allow_unsafe,
-            n_threads=n_threads
+            n_threads=int(n_threads)
         )
     elif asynk:
         added, failed = asyncio.run(
