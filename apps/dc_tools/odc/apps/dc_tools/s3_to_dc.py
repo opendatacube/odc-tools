@@ -2,6 +2,7 @@
 """Build S3 iterators using odc-tools
 and index datasets found into RDS
 """
+from functools import partial
 import logging
 import sys
 from typing import Tuple
@@ -12,7 +13,7 @@ from datacube.index.hl import Doc2Dataset
 from odc.aio import S3Fetcher, s3_find_glob
 from odc.apps.dc_tools.utils import IndexingException, index_update_dataset
 from odc.index.stac import stac_transform
-
+import concurrent
 from odc.index import parse_doc_stream
 
 
@@ -28,6 +29,25 @@ def stream_docs(documents):
         yield (document.url, document.data)
 
 
+def thread_function(doc_uri, dc, doc2ds, update, update_if_exists, allow_unsafe):
+    print(doc_uri[0])
+    print(doc_uri[1])
+    try:
+        index_update_dataset(
+            doc_uri[0],
+            doc_uri[1],
+            dc,
+            doc2ds,
+            update,
+            update_if_exists,
+            allow_unsafe,
+        )
+        return True
+    except Exception as e:
+        logging.error(f"Failed to index dataset {doc_uri[1]} with error {e}")
+        return False
+
+
 def dump_to_odc(
     document_stream,
     dc: Datacube,
@@ -36,21 +56,53 @@ def dump_to_odc(
     update=False,
     update_if_exists=False,
     allow_unsafe=False,
+    n_threads=None,
     **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
     ds_added = 0
     ds_failed = 0
-    uris_docs = parse_doc_stream(stream_docs(document_stream), dc.index, transform=transform)
 
-    for uri, metadata in uris_docs:
-        try:
-            index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
-            ds_added += 1
-        except (IndexingException) as e:
-            logging.error(f"Failed to index dataset {uri} with error {e}")
-            ds_failed += 1
+    uris_docs = parse_doc_stream(
+        stream_docs(document_stream), dc.index, transform=transform
+    )
+
+    if n_threads:
+        print("Starting threaded")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
+            future_to_index = {
+                executor.submit(
+                    index_update_dataset,
+                    metadata,
+                    uri,
+                    dc,
+                    doc2ds,
+                    update,
+                    update_if_exists,
+                    allow_unsafe,
+                ): uri for uri, metadata in uris_docs
+            }
+            for future in concurrent.futures.as_completed(future_to_index):
+                uri = future_to_index[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    logging.error(f"Failed to index dataset {uri} with error {e}")
+                    ds_failed += 1
+                else:
+                    ds_added += 1
+    else:
+        print("Starting without threading")
+        for uri, metadata in uris_docs:
+            try:
+                index_update_dataset(
+                    metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe
+                )
+                ds_added += 1
+            except (IndexingException) as e:
+                logging.error(f"Failed to index dataset {uri} with error {e}")
+                ds_failed += 1
 
     return ds_added, ds_failed
 
@@ -108,13 +160,22 @@ def dump_to_odc(
     help="Assume file exists when listing exact file rather than wildcard.",
 )
 @click.option(
-    "--no-sign-request", is_flag=True, default=False, help="Do not sign AWS S3 requests"
+    "--no-sign-request",
+    is_flag=True,
+    default=False,
+    help="Do not sign AWS S3 requests.",
 )
 @click.option(
     "--request-payer",
     is_flag=True,
     default=False,
-    help="Needed when accessing requester pays public buckets",
+    help="Needed when accessing requester pays public buckets.",
+)
+@click.option(
+    "--n-threads",
+    type=int,
+    default=None,
+    help="Set as n to use n threads when indexing.",
 )
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
@@ -129,6 +190,7 @@ def cli(
     skip_check,
     no_sign_request,
     request_payer,
+    n_threads,
     uri,
     product,
 ):
@@ -160,7 +222,9 @@ def cli(
 
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-    document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
+    document_stream = stream_urls(
+        s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
+    )
 
     added, failed = dump_to_odc(
         fetcher(document_stream),
@@ -173,6 +237,7 @@ def cli(
         update=update,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
+        n_threads=n_threads,
     )
 
     print(f"Added {added} Datasets, Failed {failed} Datasets")
