@@ -70,6 +70,7 @@ def dump_to_odc_thread(
     n_threads=100,
     **kwargs,
 ) -> Tuple[int, int]:
+    print("Threads call started")
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
     uris_docs = parse_doc_stream(stream_docs(document_stream), dc.index, transform=transform)
