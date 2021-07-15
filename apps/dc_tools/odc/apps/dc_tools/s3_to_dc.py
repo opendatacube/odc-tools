@@ -5,9 +5,11 @@ and index datasets found into RDS
 import logging
 import sys
 from typing import Tuple
-
+import time
 import click
 import asyncio
+import cProfile
+import pstats
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
@@ -232,6 +234,11 @@ def cli(
     product,
 ):
     """ Iterate through files in an S3 bucket and add them to datacube"""
+    # Time the process
+    s = time.perf_counter()
+    # Finding bottlenecks
+    profile = cProfile.Profile()
+    profile.enable()
 
     transform = None
     if stac:
@@ -306,6 +313,13 @@ def cli(
         )
 
     print(f"Added {added} Datasets, Failed {failed} Datasets")
+    elapsed = time.perf_counter() - s
+    print(f"{__file__} executed in {elapsed:0.2f} seconds.")
+
+    # PRINTING STATUS
+    profile.disable()
+    ps = pstats.Stats(profile)
+    ps.print_stats()
 
     if failed > 0:
         sys.exit(failed)
