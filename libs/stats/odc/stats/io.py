@@ -20,7 +20,8 @@ from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF
 from hashlib import sha1
 from collections import namedtuple
-
+from eodatasets3.assemble import DatasetAssembler, serialise
+from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
 
 WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
 
@@ -222,7 +223,19 @@ class S3COGSink:
         # 1) the source_dataset - several properties and lineage
         # 2) the output dataset Xarray dataset - measurments 
         meta = task.render_metadata(ext=self._band_ext, output_dataset=ds)
-        json_data = dump_json(meta).encode("utf8")
+
+        # this meta is the DatasetDoc, which can convert to odc-metadata and stac-metadata directly
+        stac_meta_dict = dc_to_stac(dataset=meta, 
+                                    input_metadata= Path('/home/ubuntu/odc-stats-test-data/output/test.odc-metadata.yaml'),
+                                    stac_base_url = '/home/ubuntu/odc-stats-test-data/output/test.stac-item.json',
+                                    output_path = Path('/home/ubuntu/odc-stats-test-data/output/'),
+                                    explorer_base_url = "test",
+                                    do_validate=True)
+
+        with Path("/home/ubuntu/odc-stats-test-data/output/test.stac-item.json").open("w") as f:
+            json.dump(stac_meta_dict, f, default=json_fallback)
+
+        json_data = dump_json(stac_meta_dict).encode("utf8")
 
         # fake write result for metadata output, we want metadata file to be
         # the last file written, so need to delay it until after sha1 is
