@@ -114,7 +114,6 @@ async def dump_to_odc_asyncio(
         update=False,
         update_if_exists=False,
         allow_unsafe=False,
-        n_threads=100,
         **kwargs,
 ) -> Tuple[int, int]:
 
@@ -295,7 +294,6 @@ def cli(
                 update=update,
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
-                n_threads=n_threads
             )
         )
     else:
