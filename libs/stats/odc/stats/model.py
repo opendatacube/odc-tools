@@ -338,7 +338,8 @@ class Task:
         naming_conventions_values = "dea_c3"
         output_location = "/home/ubuntu/odc-stats-test-data/output"
 
-        dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values, dataset_location=Path(self.metadata_path("absolute", ext='stac-item.json')))
+        dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values, 
+                                            dataset_location=Path(self.metadata_path("absolute", ext='stac-item.json')))
 
         # The self.datasets (odc-stats input datasets) has metadata_doc, which are Python Dict
         # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
@@ -370,17 +371,17 @@ class Task:
                                                  # we do not have the odc-stats repo
                                                 "https://github.com/opendatacube/odc-tools",
                                                 # Just realized the odc-stats does not have version. 
-                                                # It only has version in https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
+                                                # TODO: It only has version in https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
                                                 "0.3.31") 
 
         for band, path in self.paths(ext=ext).items():
             dataset_assembler.note_measurement(band, 
                                                path,
-                                               # if I don't pass the pixel here, the mask validation will fail when we call to_dataset_doc()
+                                               # if don't pass the pixel here, the mask validation will fail in to_dataset_doc() TODO: it would be a bug?
                                                pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
                                                grid=GridSpec(shape=self.geobox.shape,
-                                               transform=self.geobox.transform,
-                                               crs=CRS.from_epsg(3577)), # TODO: Fix the hard-code value later
+                                                            transform=self.geobox.transform,
+                                                            crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
                                                nodata=-999)
 
         return dataset_assembler.to_dataset_doc()

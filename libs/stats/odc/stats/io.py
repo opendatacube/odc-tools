@@ -230,12 +230,19 @@ class S3COGSink:
                                 explorer_base_url = "",
                                 do_validate=True)
         
-        odc_meta = serialise.to_formatted_doc(meta)
+        # odc_mtadata is Python dict
+        odc_meta = serialise.to_doc(meta)
+        
+        print("sha1", task.metadata_path("absolute", ext="sha1"))
+        print("odc", task.metadata_path("absolute", ext="odc-metadata.yaml"))
+        print("stac", task.metadata_path("absolute", ext="stac-item.json"))
 
-        with Path("/home/ubuntu/odc-stats-test-data/output/test.stac-item.json").open("w") as f:
-            json.dump(stac_meta, f, default=json_fallback)
+        #serialise.to_path(Path("/home/ubuntu/odc-stats-test-data/output/test.odc-metadata.yaml"), meta)
 
-        json_data = dump_json(stac_meta).encode("utf8")
+        #with Path("/home/ubuntu/odc-stats-test-data/output/test.stac-item.json").open("w") as f:
+        #    json.dump(stac_meta, f, default=json_fallback)
+
+        #json_data = dump_json(stac_meta).encode("utf8")
 
         # fake write result for metadata output, we want metadata file to be
         # the last file written, so need to delay it until after sha1 is
