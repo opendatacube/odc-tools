@@ -2,7 +2,6 @@
 """Build S3 iterators using odc-tools
 and index datasets found into RDS
 """
-from functools import partial
 import logging
 import sys
 from typing import Tuple
@@ -29,25 +28,6 @@ def stream_docs(documents):
         yield (document.url, document.data)
 
 
-def thread_function(doc_uri, dc, doc2ds, update, update_if_exists, allow_unsafe):
-    print(doc_uri[0])
-    print(doc_uri[1])
-    try:
-        index_update_dataset(
-            doc_uri[0],
-            doc_uri[1],
-            dc,
-            doc2ds,
-            update,
-            update_if_exists,
-            allow_unsafe,
-        )
-        return True
-    except Exception as e:
-        logging.error(f"Failed to index dataset {doc_uri[1]} with error {e}")
-        return False
-
-
 def dump_to_odc(
     document_stream,
     dc: Datacube,
@@ -69,7 +49,7 @@ def dump_to_odc(
     )
 
     if n_threads:
-        print("Starting threaded")
+        logging.info("Starting with {n_threads} threads")
         with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
             future_to_index = {
                 executor.submit(
@@ -93,7 +73,7 @@ def dump_to_odc(
                 else:
                     ds_added += 1
     else:
-        print("Starting without threading")
+        logging.info("Starting without threading")
         for uri, metadata in uris_docs:
             try:
                 index_update_dataset(
