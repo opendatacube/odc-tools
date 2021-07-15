@@ -7,6 +7,7 @@ import sys
 from typing import Tuple
 
 import click
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
@@ -80,7 +81,7 @@ def dump_to_odc_thread(
             return False
 
     with ThreadPoolExecutor(max_workers=n_threads) as executor:
-        logging.info("Indexing datasets")
+        print(f"Indexing datasets over {n_threads} threads")
 
         tasks = [
             executor.submit(
@@ -95,8 +96,56 @@ def dump_to_odc_thread(
             )
             for uri, metadata in uris_docs
         ]
-
+        
         result = [future.result() for future in as_completed(tasks)]
+        
+        print("Finished indexing")
+        
+    return result.count(True), result.count(False)
+
+
+async def dump_to_odc_asyncio(
+        document_stream,
+        dc: Datacube,
+        products: list,
+        transform=None,
+        update=False,
+        update_if_exists=False,
+        allow_unsafe=False,
+        n_threads=100,
+        **kwargs,
+) -> Tuple[int, int]:
+
+    print("Async call started")
+
+    doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
+
+    uris_docs = parse_doc_stream(stream_docs(document_stream), dc.index, transform=transform)
+
+    async def execute_index_update_dataset(metadata, uri, datacube, doc_to_ds, updated, if_exists_update, unsafe):
+        try:
+            index_update_dataset(metadata, uri, datacube, doc_to_ds, updated, if_exists_update, unsafe)
+            return True
+        except IndexingException as index_exception:
+            logging.error(f"Failed to index dataset {uri} with error {index_exception}")
+            return False
+
+    result = await asyncio.gather(
+        *(
+            execute_index_update_dataset(
+                metadata,
+                uri,
+                dc,
+                doc2ds,
+                update,
+                update_if_exists,
+                allow_unsafe
+            )
+            for uri, metadata in uris_docs
+        )
+    )
+
+    print("Finished indexing")
 
     return result.count(True), result.count(False)
 
@@ -162,7 +211,8 @@ def dump_to_odc_thread(
     default=False,
     help="Needed when accessing requester pays public buckets",
 )
-@click.option('--n-threads', default=100, help='Needed when using multithreading to perform better')
+@click.option('--n-threads', help='Needed when using multithreading to perform better')
+@click.option('--asynk', default=False, help='Test')
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -177,6 +227,7 @@ def cli(
     no_sign_request,
     request_payer,
     n_threads,
+    asynk,
     uri,
     product,
 ):
@@ -223,6 +274,22 @@ def cli(
             update_if_exists=update_if_exists,
             allow_unsafe=allow_unsafe,
             n_threads=n_threads
+        )
+    elif asynk:
+        added, failed = asyncio.run(
+            dump_to_odc_asyncio(
+                fetcher(document_stream),
+                dc,
+                candidate_products,
+                skip_lineage=skip_lineage,
+                fail_on_missing_lineage=fail_on_missing_lineage,
+                verify_lineage=verify_lineage,
+                transform=transform,
+                update=update,
+                update_if_exists=update_if_exists,
+                allow_unsafe=allow_unsafe,
+                n_threads=n_threads
+            )
         )
     else:
         added, failed = dump_to_odc(
