@@ -6,7 +6,6 @@ from typing import Optional, Tuple
 
 import dask.array as da
 import xarray as xr
-import numpy as np
 from odc.algo import geomedian_with_mads, keep_good_only, erase_bad, to_rgba
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
 from odc.algo.io import load_with_native_transform
@@ -143,13 +142,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         if return_SR:
             for band in gm.data_vars:
                 if band in self.bands:
-                    #convert to surface reflectance (0-1)
-                    ds[band] = 2.75e-5 * ds[band] - 0.2
-                    # match Sentinel-2 scaling for 
-                    # consistency across gm products
-                    ds[band] = ds[band] * 10000
-                    #force dtype back to int
-                    ds[band] = ds[band].astype(np.uint16)
+                    gm[band] = (scale*10000 * gm[band]+offset*10000).astype(gm[band].dtype)
         
         # TODO: handle edev scaling correctly
         # need to investigate what stats is doing 
