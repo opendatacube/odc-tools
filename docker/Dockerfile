@@ -30,12 +30,12 @@ RUN groupadd --gid 1000 odc \
     && true
 
 
-COPY ./with_bootstrap /usr/local/bin
+COPY docker/with_bootstrap /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/with_bootstrap"]
 VOLUME ["/code"]
 WORKDIR /code
 
-COPY ./rr-odc-tools.in ./constraints.txt ./requirements.txt /conf
+COPY docker/rr-odc-tools.in docker/constraints.txt docker/requirements.txt /conf
 USER odc
 RUN --mount=type=bind,target=/src \
     --mount=type=cache,target=/home/odc/.cache/pip,uid=1000,gid=1000 \
