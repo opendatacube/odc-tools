@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 
 import dask.array as da
 import xarray as xr
+import numpy as np
 from odc.algo import geomedian_with_mads, keep_good_only, erase_bad, to_rgba
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
 from odc.algo.io import load_with_native_transform
@@ -115,11 +116,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         scale = 0.0000275
         offset = -0.2
+        return_SR = False
         cfg = dict(
             maxiters=1000,
             num_threads=1,
             scale=scale,
             offset=offset,
+            return_SR=return_SR,
             reshape_strategy="mem",
             out_chunks=(-1, -1, -1),
             work_chunks=self.work_chunks,
@@ -136,8 +139,21 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
-        # TODO: add scaling on produce gm again?
-
+        # Rescale USGS Landsat bands into surface reflectance
+        if return_SR:
+            sr_bands = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2']
+            for band in gm.data_vars:
+                if band in sr_bands:
+                    #convert to surface reflectance (0-1)
+                    ds[band] = 2.75e-5 * ds[band] - 0.2
+                    # match Sentinel-2 scaling for consistency
+                    ds[band] = ds[band] * 10000
+                    #force dtype back to int
+                    ds[band] = ds[band].astype(np.uint16)
+        
+        # TODO: handle edev scaling correctly
+        # need to investigate what stats is doing 
+        
         return gm
 
     def _fuser(self, xx):
