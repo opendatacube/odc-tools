@@ -219,25 +219,23 @@ class S3COGSink:
     def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
         json_url = task.metadata_path("absolute", ext=self._meta_ext)
 
-        # generate the metadata needs
-        # 1) the source_dataset - several properties and lineage
-        # 2) the output dataset Xarray dataset - measurments 
+        # the meta is EO Dataset3:DatasetDoc, which can convert to odc-metadata and stac-metadata
         meta = task.render_metadata(ext=self._band_ext, output_dataset=ds)
 
-        # this meta is the DatasetDoc, which can convert to odc-metadata and stac-metadata directly
-        stac_meta_dict = dc_to_stac(dataset=meta, 
-                                    input_metadata= Path('/home/ubuntu/odc-stats-test-data/output/test.odc-metadata.yaml'),
-                                    stac_base_url = '/home/ubuntu/odc-stats-test-data/output/test.stac-item.json',
-                                    output_path = Path('/home/ubuntu/odc-stats-test-data/output/'),
-                                    explorer_base_url = "test",
-                                    do_validate=True)
+        # stac_meta is Python dict
+        stac_meta = dc_to_stac(dataset=meta, 
+                                input_metadata= Path(""),
+                                stac_base_url = "",
+                                output_path = Path(""),
+                                explorer_base_url = "",
+                                do_validate=True)
         
-        serialise.to_path(Path("/home/ubuntu/odc-stats-test-data/output/test.odc-metadata.yaml"), meta)
+        odc_meta = serialise.to_formatted_doc(meta)
 
         with Path("/home/ubuntu/odc-stats-test-data/output/test.stac-item.json").open("w") as f:
-            json.dump(stac_meta_dict, f, default=json_fallback)
+            json.dump(stac_meta, f, default=json_fallback)
 
-        json_data = dump_json(stac_meta_dict).encode("utf8")
+        json_data = dump_json(stac_meta).encode("utf8")
 
         # fake write result for metadata output, we want metadata file to be
         # the last file written, so need to delay it until after sha1 is

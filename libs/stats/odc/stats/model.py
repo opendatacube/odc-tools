@@ -344,6 +344,8 @@ class Task:
         # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
         # can be the source dataset to dataset_assembler.add_source_dataset()
         for dataset in self.datasets:
+            
+            # TODO: Add a layer to filter some properties which cannot be passed to output product. E.g gqa
             source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
             dataset_assembler.add_source_dataset(source_datasetdoc, 
                                                  classifier='level3', 
@@ -363,21 +365,25 @@ class Task:
         dataset_assembler.maturity = 'final'
         dataset_assembler.collection_number = 3
 
-        # add the WOfS and stats plug-ins?
+        # should be plug-ins version or odc-stats version?
         dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier", 
-                                                "https://github.com/GeoscienceAustralia/wofs/",
-                                                '1.6.1')
+                                                 # we do not have the odc-stats repo
+                                                "https://github.com/opendatacube/odc-tools",
+                                                # Just realized the odc-stats does not have version. 
+                                                # It only has version in https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
+                                                "0.3.31") 
 
         for band, path in self.paths(ext=ext).items():
             dataset_assembler.note_measurement(band, 
                                                path,
+                                               # if I don't pass the pixel here, the mask validation will fail when we call to_dataset_doc()
                                                pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
                                                grid=GridSpec(shape=self.geobox.shape,
                                                transform=self.geobox.transform,
-                                               crs=CRS.from_epsg(3577)),
+                                               crs=CRS.from_epsg(3577)), # TODO: Fix the hard-code value later
                                                nodata=-999)
 
-        return dataset_assembler.to_dataset_doc(sort_measurements=False)
+        return dataset_assembler.to_dataset_doc()
 
 class StatsPluginInterface(ABC):
     NAME = "*unset*"
