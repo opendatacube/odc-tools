@@ -231,6 +231,8 @@ class S3COGSink:
                                     output_path = Path('/home/ubuntu/odc-stats-test-data/output/'),
                                     explorer_base_url = "test",
                                     do_validate=True)
+        
+        serialise.to_path(Path("/home/ubuntu/odc-stats-test-data/output/test.odc-metadata.yaml"), meta)
 
         with Path("/home/ubuntu/odc-stats-test-data/output/test.stac-item.json").open("w") as f:
             json.dump(stac_meta_dict, f, default=json_fallback)

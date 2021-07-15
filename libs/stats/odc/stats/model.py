@@ -13,6 +13,7 @@ import xarray as xr
 import pandas as pd
 from rasterio.crs import CRS
 import json
+import time
 
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
@@ -21,11 +22,10 @@ from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
 
-from eodatasets3.assemble import DatasetAssembler
+from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.images import GridSpec
 from eodatasets3.model import DatasetDoc, ProductDoc, GridDoc
 from eodatasets3.properties import StacPropertyView
-from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
 from eodatasets3.verify import PackageChecksum
 
 TileIdx_xy = Tuple[int, int]
@@ -334,57 +334,46 @@ class Task:
         several properties and lineages. It also needs the output_dataset to get the measurement information.
         """
 
-        if processing_dt is None:
-            processing_dt = datetime.utcnow()
-
-        product = self.product
-        geobox = self.geobox
-        region_code = product.region_code(self.tile_index)
-        inputs = list(map(str, self._lineage()))
-
         # TODO: save this in the task (pass by CONFIG file)
         naming_conventions_values = "dea_c3"
         output_location = "/home/ubuntu/odc-stats-test-data/output"
 
         dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values, dataset_location=Path(self.metadata_path("absolute", ext='stac-item.json')))
-        # self.datasets (e.g. s3://dea-public-data/derivative/ga_ls_wo_3/1-6-0/115/079/2000/01/01/ga_ls_wo_3_115079_2000-01-01_final.stac-item.json)
-        # has the platform and instrument relative information. 
-        # Applying add_source_path() to inherit_properties from self.datasets[0]
 
-        #p.add_source_path(
-        #    Path(self.datasets[0].uris[0]), # TODO: it only accept local yaml format path :( now. I have to add the odc-metadata.yml to task, and copy to local
-        #    or try to for loop the self.datasets[0].metadata_doc
-        #    auto_inherit_properties=True,
-        #    inherit_geometry=True
-        #)
+        # The self.datasets (odc-stats input datasets) has metadata_doc, which are Python Dict
+        # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
+        # can be the source dataset to dataset_assembler.add_source_dataset()
+        for dataset in self.datasets:
+            source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
+            dataset_assembler.add_source_dataset(source_datasetdoc, 
+                                                 classifier='level3', 
+                                                 auto_inherit_properties=True, # it will grab all useful input dataset preperties
+                                                 inherit_geometry=True)
 
-        dataset_assembler.product_family = product.properties['odc:product_family']
-        dataset_assembler.product_name = product.name
-        dataset_assembler.dataset_version = product.version
-        dataset_assembler.producer = product.properties['odc:producer']
-        dataset_assembler.region_code = region_code
-        dataset_assembler.processed_now()
+        dataset_assembler.product_family = self.product.properties['odc:product_family']
+        dataset_assembler.product_name = self.product.name
+        dataset_assembler.dataset_version = self.product.version
+        dataset_assembler.producer = self.product.properties['odc:producer']
+        dataset_assembler.region_code = self.product.region_code(self.tile_index)
+
+        if processing_dt is None:
+            processing_dt = datetime.utcnow()
+        dataset_assembler.processed = processing_dt
 
         dataset_assembler.maturity = 'final'
-        dataset_assembler.platform = 'LANDSAT_5,LANDSAT_7,LANDSAT_8'
         dataset_assembler.collection_number = 3
-        dataset_assembler.datetime = "1990-09-17 00:09:32.077031Z"
-
-        for lineage in self._lineage():
-            dataset_assembler.note_source_datasets('level1', lineage)
 
         # add the WOfS and stats plug-ins?
         dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier", 
                                                 "https://github.com/GeoscienceAustralia/wofs/",
                                                 '1.6.1')
 
-        # Write measurements.
         for band, path in self.paths(ext=ext).items():
             dataset_assembler.note_measurement(band, 
                                                path,
-                                               pixels=output_dataset[band].values.reshape([geobox.shape[0], geobox.shape[1]]),
-                                               grid=GridSpec(shape=geobox.shape,
-                                               transform=geobox.transform,
+                                               pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
+                                               grid=GridSpec(shape=self.geobox.shape,
+                                               transform=self.geobox.transform,
                                                crs=CRS.from_epsg(3577)),
                                                nodata=-999)
 
