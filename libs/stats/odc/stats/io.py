@@ -128,13 +128,15 @@ class S3COGSink:
         self._creds = creds
         self._cog_opts = cog_opts
         self._cog_opts_per_band = cog_opts_per_band
-        self._meta_ext = "stac-item.json"
-        self._meta_contentype = "application/json"
+        self._stac_meta_ext = "stac-item.json"
+        self._odc_meta_ext = "odc-metadata.yaml"
+        self._stac_meta_contentype = "application/json"
+        self._odc_meta_contentype = "text/yaml"
         self._band_ext = EXT_TIFF
         self._acl = acl
 
     def uri(self, task: Task) -> str:
-        return task.metadata_path("absolute", ext=self._meta_ext)
+        return task.metadata_path("absolute", ext=self._stac_meta_ext)
 
     def _get_creds(self) -> ReadOnlyCredentials:
         if self._creds is None:
@@ -221,31 +223,31 @@ class S3COGSink:
 
     def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
 
-        #print("sha1", task.metadata_path("absolute", ext="sha1"))
-        stac_item = task.metadata_path("absolute", ext="stac-item.json")
-        odc_item = task.metadata_path("absolute", ext="odc-metadata.yaml")
+        stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
+        odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
 
         # the meta is EO Dataset3:DatasetDoc, which can convert to odc-metadata and stac-metadata
         meta = task.render_metadata(ext=self._band_ext, output_dataset=ds)
 
         # STAC metda is Python dict, please use json_fallback() to format it
         stac_meta = eo3stac.to_stac_item(dataset=meta,
-                                        stac_item_destination_url=stac_item,
-                                        odc_dataset_metadata_url =odc_item,
+                                        stac_item_destination_url=stac_file_path,
+                                        odc_dataset_metadata_url =odc_file_path,
                                         explorer_base_url = "explorer_base_url" # TODO: should come from config
                                         )
-        # now the stac meta is Python str, but content is 'Dict format'
-        stac_meta = json.dumps(stac_meta, default=json_fallback)
+        stac_meta = json.dumps(stac_meta, default=json_fallback) # stac_meta is Python str, but content is 'Dict format'
 
         odc_meta_stream = io.StringIO("")
         serialise.to_stream(odc_meta_stream, meta)
+        odc_meta = odc_meta_stream.getvalue() # odc_meta is Python str
 
-        # now the odc meta is Python str
-        odc_meta = odc_meta_stream.getvalue()
+        # TODO: add the proc and thumnail files
 
-        
-
-        meta_sha1 = dask.delayed(WriteResult(json_url, mk_sha1(json_data), None))
+        # fake write result for metadata output, we want metadata file to be
+        # the last file written, so need to delay it until after sha1 files is
+        # written.
+        stac_meta_sha1 = dask.delayed(WriteResult(stac_file_path, mk_sha1(stac_meta), None))
+        odc_meta_sha1 = dask.delayed(WriteResult(odc_file_path, mk_sha1(odc_meta), None))
 
         paths = task.paths("absolute", ext=self._band_ext)
         cogs = self._ds_to_cog(ds, paths)
@@ -259,10 +261,15 @@ class S3COGSink:
 
         # this will raise IOError if any write failed, hence preventing json
         # from being written
-        sha1_digest = _sha1_digest(meta_sha1, *cogs)
+        sha1_digest = _sha1_digest(stac_meta_sha1, odc_meta_sha1, *cogs)
         sha1_url = task.metadata_path("absolute", ext="sha1")
         sha1_done = self._write_blob(sha1_digest, sha1_url, ContentType="text/plain")
 
+        odc_meta_done = self._write_blob(odc_meta, odc_file_path, ContentType=self._odc_meta_contentype, with_deps=sha1_done)
+
+        # The final DAG is:
+        # sha1_done -> odc_meta_done -> stac_meta_done
+
         return self._write_blob(
-            json_data, json_url, ContentType=self._meta_contentype, with_deps=sha1_done,
+            stac_meta, stac_file_path, ContentType=self._stac_meta_contentype, with_deps=odc_meta_done,
         )
