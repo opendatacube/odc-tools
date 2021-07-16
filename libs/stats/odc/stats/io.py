@@ -230,7 +230,7 @@ class S3COGSink:
         dataset_assembler = task.render_metadata(ext=self._band_ext, output_dataset=ds)
 
         # we have to 'write' thumbnail file here, because the native one does not support write to data stream
-        # TODO: add the save thumbnail to stream feature in EO Dataset3, 
+        # TODO: add the save thumbnail to stream feature in EO Dataset3
         # what is more, the EO Datasets display add a not-existing file as accessory
 
         meta = dataset_assembler.to_dataset_doc()

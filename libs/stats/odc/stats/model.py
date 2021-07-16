@@ -339,8 +339,8 @@ class Task:
         naming_conventions_values = "dea_c3"
         output_location = "/home/ubuntu/odc-stats-test-data/output"
 
-        dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values, 
-                                            dataset_location=Path(self.metadata_path("absolute", ext='stac-item.json')))
+        dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values,
+                                            dataset_location=Path(""))
 
         # The self.datasets (odc-stats input datasets) has metadata_doc, which are Python Dict
         # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
