@@ -10,10 +10,14 @@ import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.apps.dc_tools.utils import IndexingException, index_update_dataset
-from odc.index.stac import stac_transform
-
+from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe,
+                                     fail_on_missing_lineage,
+                                     index_update_dataset, no_sign_request,
+                                     request_payer, skip_check, skip_lineage,
+                                     transform_stac, transform_stac_absolute,
+                                     update, update_if_exists, verify_lineage)
 from odc.index import parse_doc_stream
+from odc.index.stac import stac_transform, stac_transform_absolute
 
 
 # Grab the URL from the resulting S3 item
@@ -56,66 +60,17 @@ def dump_to_odc(
 
 
 @click.command("s3-to-dc")
-@click.option(
-    "--skip-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is not to skip lineage. Set to skip lineage altogether.",
-)
-@click.option(
-    "--fail-on-missing-lineage/--auto-add-lineage",
-    is_flag=True,
-    default=True,
-    help=(
-        "Default is to fail if lineage documents not present in the database. "
-        "Set auto add to try to index lineage documents."
-    ),
-)
-@click.option(
-    "--verify-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is no verification. Set to verify parent dataset definitions.",
-)
-@click.option(
-    "--stac",
-    is_flag=True,
-    default=False,
-    help="Expect STAC 1.0 metadata and attempt to transform to ODC EO3 metadata",
-)
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="If set, update instead of add datasets",
-)
-@click.option(
-    "--update-if-exists",
-    is_flag=True,
-    default=False,
-    help="If the dataset already exists, update it instead of skipping it.",
-)
-@click.option(
-    "--allow-unsafe",
-    is_flag=True,
-    default=False,
-    help="Allow unsafe changes to a dataset. Take care!",
-)
-@click.option(
-    "--skip-check",
-    is_flag=True,
-    default=False,
-    help="Assume file exists when listing exact file rather than wildcard.",
-)
-@click.option(
-    "--no-sign-request", is_flag=True, default=False, help="Do not sign AWS S3 requests"
-)
-@click.option(
-    "--request-payer",
-    is_flag=True,
-    default=False,
-    help="Needed when accessing requester pays public buckets",
-)
+@skip_lineage
+@fail_on_missing_lineage
+@verify_lineage
+@transform_stac
+@transform_stac_absolute
+@update
+@update_if_exists
+@allow_unsafe
+@skip_check
+@no_sign_request
+@request_payer
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -123,6 +78,7 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
     stac,
+    absolute,
     update,
     update_if_exists,
     allow_unsafe,
@@ -136,7 +92,10 @@ def cli(
 
     transform = None
     if stac:
-        transform = stac_transform
+        if absolute:
+            transform = stac_transform_absolute
+        else:
+            transform = stac_transform
 
     candidate_products = product.split()
 
