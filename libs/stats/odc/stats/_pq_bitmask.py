@@ -37,6 +37,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
     @property
     def measurements(self) -> Tuple[str, ...]:
         band = [
+            "total",
             "clear",
             *[f"clear_{r1:d}_{r2:d}" for (r1, r2) in self.filters],
         ]
@@ -65,16 +66,21 @@ class StatsPQLSBitmask(StatsPluginInterface):
         return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
+        total_pixels = xx.keeps
+        total = total_pixels.sum(axis=0, dtype="uint16")
+        pq = xr.Dataset(dict(total=total))
+
+        # collect all bands starts with clear and calculate its count
         clear_bands = [str(n) for n in xx.data_vars if str(n).startswith("clear")]
-
         for band in clear_bands:
-            pass
+            pixel_count = xx[band].sum(axis=0, dtype="uint16")
+            pq[band] = pixel_count
 
-        return xx
+        return pq
 
     def _native_tr(self, xx: xr.Dataset) -> xr.Dataset:
         """
-        Loads in the data in the native projection and perform transform
+        Loads the data in the native projection and perform transform
         """
         pq_band = xx[self.pq_band]
         xx = xx.drop_vars(pq_band)
@@ -89,9 +95,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
             aerosol_level = da.bitwise_and(aerosol_band, 0b1100_0000)/64
             clear_aerosol_mask = aerosol_level != 3
 
-        # drops nodata pixels
-        xx = keep_good_only(xx, keeps)
-
+        xx["keeps"] = keeps
         xx["clear"] = clear_mask
         if self.aerosol_band is not None:
             xx["clear_aerosol"] = clear_aerosol_mask
