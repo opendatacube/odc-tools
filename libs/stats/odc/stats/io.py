@@ -234,23 +234,17 @@ class S3COGSink:
                                         odc_dataset_metadata_url =odc_item,
                                         explorer_base_url = "explorer_base_url" # TODO: should come from config
                                         )
+        # now the stac meta is Python str, but content is 'Dict format'
+        stac_meta = json.dumps(stac_meta, default=json_fallback)
 
-        # odc_meta_stream is io write stream 
         odc_meta_stream = io.StringIO("")
         serialise.to_stream(odc_meta_stream, meta)
 
-        content = odc_meta_stream.getvalue()
-        print(content)
+        # now the odc meta is Python str
+        odc_meta = odc_meta_stream.getvalue()
 
-        #serialise.to_path(Path(odc_item), meta)
+        
 
-        #with Path(stac_item).open("w") as f:
-        #    json.dump(stac_meta, f, default=json_fallback)
-
-
-        # fake write result for metadata output, we want metadata file to be
-        # the last file written, so need to delay it until after sha1 is
-        # written.
         meta_sha1 = dask.delayed(WriteResult(json_url, mk_sha1(json_data), None))
 
         paths = task.paths("absolute", ext=self._band_ext)

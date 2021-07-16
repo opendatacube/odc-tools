@@ -22,6 +22,7 @@ from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
 
+import eodatasets3
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.images import GridSpec
 from eodatasets3.model import DatasetDoc, ProductDoc, GridDoc
@@ -345,11 +346,10 @@ class Task:
         # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
         # can be the source dataset to dataset_assembler.add_source_dataset()
         for dataset in self.datasets:
-            
             # TODO: Add a layer to filter some properties which cannot be passed to output product. E.g gqa
             source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
-            dataset_assembler.add_source_dataset(source_datasetdoc, 
-                                                 classifier='level3', 
+            dataset_assembler.add_source_dataset(source_datasetdoc,
+                                                 classifier='level3',
                                                  auto_inherit_properties=True, # it will grab all useful input dataset preperties
                                                  inherit_geometry=True)
 
@@ -367,15 +367,18 @@ class Task:
         dataset_assembler.collection_number = 3
 
         # should be plug-ins version or odc-stats version?
-        dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier", 
-                                                 # we do not have the odc-stats repo
+        dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier",
                                                 "https://github.com/opendatacube/odc-tools",
-                                                # Just realized the odc-stats does not have version. 
-                                                # TODO: It only has version in https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
-                                                "0.3.31") 
+                                                # Just realized the odc-stats does not have version.
+                                                # TODO: https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
+                                                "0.3.31")
+
+        dataset_assembler.note_software_version("eodatasets3",
+                                                "https://github.com/GeoscienceAustralia/eo-datasets",
+                                                eodatasets3.__version__,)
 
         for band, path in self.paths(ext=ext).items():
-            dataset_assembler.note_measurement(band, 
+            dataset_assembler.note_measurement(band,
                                                path,
                                                # if don't pass the pixel here, the mask validation will fail in to_dataset_doc() TODO: it would be a bug?
                                                pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
