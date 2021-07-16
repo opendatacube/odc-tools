@@ -32,6 +32,11 @@ def stream_docs(documents):
         yield (document.url, document.data)
 
 
+# Raise an exception that we like.
+def doc_error(uri, doc, e):
+    logging.error(f"Failed to parse doc {uri} with error {e}")
+
+
 def dump_to_odc(
     document_stream,
     dc: Datacube,
@@ -46,7 +51,7 @@ def dump_to_odc(
 
     ds_added = 0
     ds_failed = 0
-    uris_docs = parse_doc_stream(stream_docs(document_stream), dc.index, transform=transform)
+    uris_docs = parse_doc_stream(stream_docs(document_stream), on_error=doc_error, transform=transform)
 
     for uri, metadata in uris_docs:
         try:
