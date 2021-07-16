@@ -329,7 +329,7 @@ class Task:
 
     def render_metadata(
         self, ext: str = EXT_TIFF, output_dataset: xr.Dataset = None, processing_dt: Optional[datetime] = None
-    ) -> DatasetDoc:
+    ) -> DatasetAssembler:
         """
         Put together metadata document for the output of this task. It needs the source_dataset to inherit
         several properties and lineages. It also needs the output_dataset to get the measurement information.
@@ -369,7 +369,7 @@ class Task:
         # should be plug-ins version or odc-stats version?
         dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier",
                                                 "https://github.com/opendatacube/odc-tools",
-                                                # Just realized the odc-stats does not have version.
+                                             # Just realized the odc-stats does not have version.
                                                 # TODO: https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
                                                 "0.3.31")
 
@@ -387,7 +387,7 @@ class Task:
                                                             crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
                                                nodata=-999)
 
-        return dataset_assembler.to_dataset_doc()
+        return dataset_assembler
 
 class StatsPluginInterface(ABC):
     NAME = "*unset*"

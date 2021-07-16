@@ -226,8 +226,14 @@ class S3COGSink:
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
 
-        # the meta is EO Dataset3:DatasetDoc, which can convert to odc-metadata and stac-metadata
-        meta = task.render_metadata(ext=self._band_ext, output_dataset=ds)
+        # the meta is EO Dataset3:DatasetAssembler, which can convert to odc-metadata and stac-metadata
+        dataset_assembler = task.render_metadata(ext=self._band_ext, output_dataset=ds)
+
+        # we have to 'write' thumbnail file here, because the native one does not support write to data stream
+        # TODO: add the save thumbnail to stream feature in EO Dataset3, 
+        # what is more, the EO Datasets display add a not-existing file as accessory
+
+        meta = dataset_assembler.to_dataset_doc()
 
         # STAC metda is Python dict, please use json_fallback() to format it
         stac_meta = eo3stac.to_stac_item(dataset=meta,
@@ -240,8 +246,6 @@ class S3COGSink:
         odc_meta_stream = io.StringIO("")
         serialise.to_stream(odc_meta_stream, meta)
         odc_meta = odc_meta_stream.getvalue() # odc_meta is Python str
-
-        # TODO: add the proc and thumnail files
 
         # fake write result for metadata output, we want metadata file to be
         # the last file written, so need to delay it until after sha1 files is
