@@ -10,6 +10,8 @@ import dask
 from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
+import io
+import ruamel.yaml
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -22,6 +24,7 @@ from hashlib import sha1
 from collections import namedtuple
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
+import eodatasets3.stac as eo3stac
 
 WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
 
@@ -217,32 +220,33 @@ class S3COGSink:
             raise ValueError(f"Can't handle url: {uri}")
 
     def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
-        json_url = task.metadata_path("absolute", ext=self._meta_ext)
+
+        #print("sha1", task.metadata_path("absolute", ext="sha1"))
+        stac_item = task.metadata_path("absolute", ext="stac-item.json")
+        odc_item = task.metadata_path("absolute", ext="odc-metadata.yaml")
 
         # the meta is EO Dataset3:DatasetDoc, which can convert to odc-metadata and stac-metadata
         meta = task.render_metadata(ext=self._band_ext, output_dataset=ds)
 
-        # stac_meta is Python dict
-        stac_meta = dc_to_stac(dataset=meta, 
-                                input_metadata= Path(""),
-                                stac_base_url = "",
-                                output_path = Path(""),
-                                explorer_base_url = "",
-                                do_validate=True)
-        
-        # odc_mtadata is Python dict
-        odc_meta = serialise.to_doc(meta)
-        
-        print("sha1", task.metadata_path("absolute", ext="sha1"))
-        print("odc", task.metadata_path("absolute", ext="odc-metadata.yaml"))
-        print("stac", task.metadata_path("absolute", ext="stac-item.json"))
+        # STAC metda is Python dict, please use json_fallback() to format it
+        stac_meta = eo3stac.to_stac_item(dataset=meta,
+                                        stac_item_destination_url=stac_item,
+                                        odc_dataset_metadata_url =odc_item,
+                                        explorer_base_url = "explorer_base_url" # TODO: should come from config
+                                        )
 
-        #serialise.to_path(Path("/home/ubuntu/odc-stats-test-data/output/test.odc-metadata.yaml"), meta)
+        # odc_meta_stream is io write stream 
+        odc_meta_stream = io.StringIO("")
+        serialise.to_stream(odc_meta_stream, meta)
 
-        #with Path("/home/ubuntu/odc-stats-test-data/output/test.stac-item.json").open("w") as f:
+        content = odc_meta_stream.getvalue()
+        print(content)
+
+        #serialise.to_path(Path(odc_item), meta)
+
+        #with Path(stac_item).open("w") as f:
         #    json.dump(stac_meta, f, default=json_fallback)
 
-        #json_data = dump_json(stac_meta).encode("utf8")
 
         # fake write result for metadata output, we want metadata file to be
         # the last file written, so need to delay it until after sha1 is
