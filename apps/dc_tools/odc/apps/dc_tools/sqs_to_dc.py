@@ -15,13 +15,11 @@ import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe,
+from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
                                      fail_on_missing_lineage,
-                                     index_update_dataset, no_sign_request,
-                                     request_payer, skip_lineage,
+                                     index_update_dataset, limit, skip_lineage,
                                      transform_stac, transform_stac_absolute,
-                                     update, update_if_exists, verify_lineage,
-                                     archive, limit)
+                                     update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
 from odc.index.stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
@@ -263,8 +261,6 @@ def queue_to_odc(
 @update
 @update_if_exists
 @allow_unsafe
-@no_sign_request
-@request_payer
 @archive
 @limit
 @click.option(
