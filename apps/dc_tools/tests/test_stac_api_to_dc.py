@@ -1,0 +1,1 @@
+# Tests using the Click framework the stac_api-to-dc CLI tool
