@@ -1,6 +1,7 @@
 name : Run integration tests on dc_tools
 
 on:
+  pull_request:
   push:
 
 jobs:
