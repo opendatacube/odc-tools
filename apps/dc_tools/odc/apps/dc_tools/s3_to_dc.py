@@ -32,7 +32,7 @@ def stream_docs(documents):
         yield (document.url, document.data)
 
 
-# Raise an exception that we like.
+# Log the internal errors parsing docs
 def doc_error(uri, doc, e):
     logging.error(f"Failed to parse doc {uri} with error {e}")
 
