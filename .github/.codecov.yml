@@ -6,8 +6,8 @@ coverage:
     project:
       default: # This can be anything, but it needs to exist as the name
         # basic settings
-        target: auto
-        threshold: 50%
+        target: 50%
+        threshold: 20%
     precision: 2
     round: down
     range: "20...100"
