@@ -47,10 +47,13 @@ class StatsPQLSBitmask(StatsPluginInterface):
         return tuple(_measurements)
 
     def input_data(self, task: Task) -> xr.Dataset:
+        bands = [self.pq_band]
+        if self.aerosol_band is not None:
+            bands.append(self.aerosol_band)
 
         return load_with_native_transform(
             task.datasets,
-            bands=self.measurements,
+            bands=bands,
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
