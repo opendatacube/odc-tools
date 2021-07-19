@@ -36,6 +36,9 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
+        """
+        Output product measurements
+        """
         _measurements = [
             "total",
             "clear",
@@ -53,7 +56,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
         return load_with_native_transform(
             task.datasets,
-            bands=bands,
+            bands=bands,  # measurements to load
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
@@ -109,7 +112,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
     def _fuser(self, xx: xr.Dataset) -> xr.Dataset:
         """
-        Fuser masking bands with OR, and apply mask_cleanup if requested
+        Fuser masking bands with OR
         """
         clear_mask = xx["clear"]
         xx = xx.drop_vars(["clear"])
