@@ -38,7 +38,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
-        self.return_SR = False  # Flag to scale USGS Landsat bands into surface reflectance
+        self.sr_scale = 10000  # scale USGS Landsat bands into surface reflectance
 
         if self.bands is None:
             self.bands = (
@@ -119,12 +119,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
         scale = 0.0000275
         offset = -0.2
         cloud_mask = xx["cloud_mask"]
+        sr_scale = self.sr_scale
         cfg = dict(
             maxiters=1000,
             num_threads=1,
             scale=scale,
             offset=offset,
-            return_SR=self.return_SR,
+            sr_scale=self.sr_scale,
             reshape_strategy="mem",
             out_chunks=(-1, -1, -1),
             work_chunks=self.work_chunks,
@@ -146,14 +147,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = gm.rename(self.renames)
 
         # Scale USGS Landsat bands into surface reflectance
-        if self.return_SR:
-            for band in gm.data_vars:
-                if band in self.bands:
-                    gm[band] = scale * 10000 * gm[band] + offset * 10000
-                    gm[band] = gm[band].round().astype(np.uint16)
+        for band in gm.data_vars:
+            if band in self.bands:
+                gm[band] = scale * sr_scale * gm[band] + offset * sr_scale
+                gm[band] = gm[band].round().astype(np.uint16)
 
-        # Rescale edev to 0-10,000
-        gm['edev'] = 10000 * scale * gm['edev']
+        # Rescale edev to sr_scale
+        gm['edev'] = scale * sr_scale * gm['edev']
         gm['edev'] = gm['edev'].round().astype(np.uint16)
 
         return gm

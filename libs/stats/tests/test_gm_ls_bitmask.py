@@ -78,10 +78,8 @@ def test_fuser(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-@pytest.mark.parametrize("return_SR", [True, False])
 def test_reduce(dataset, return_SR):
     gm = StatsGMLSBitmask(["band_red"])
-    gm.return_SR = return_SR
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
@@ -93,18 +91,11 @@ def test_reduce(dataset, return_SR):
     )
 
     # it's a complex calculation so we copied the result
-    if return_SR:
-        expected_result = np.array(
-            [[59575, 59552], [59548, 59558]]
-        )
-        red = result["band_red"].data
-        assert (red == expected_result).all()
-    else:
-        expected_result = np.array(
-            [[-14405, -14488], [-14500, -14465]]
-        )
-        red = result["band_red"].data
-        assert (red == expected_result).all()
+    expected_result = np.array(
+        [[59575, 59552], [59548, 59558]]
+    )
+    red = result["band_red"].data
+    assert (red == expected_result).all()
 
     edev = result["edev"].data
     assert np.isclose(edev[0, 0], 32, atol=1e-6)
