@@ -20,6 +20,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"
     SHORT_NAME = NAME
     VERSION = "0.0.1"
+
     def __init__(
             self,
             bands: Optional[Tuple[str, ...]] = None,
@@ -28,6 +29,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
             resampling: str = "bilinear",
             work_chunks: Tuple[int, int] = (400, 400),
+            return_SR: bool = False,  # Flag to scale USGS Landsat bands into surface reflectance
             **other,
     ):
         self.mask_band = mask_band
@@ -37,6 +39,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
+        self.return_SR = return_SR
 
         if self.bands is None:
             self.bands = (
@@ -116,14 +119,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         scale = 0.0000275
         offset = -0.2
-        return_SR = False
         cloud_mask = xx["cloud_mask"]
         cfg = dict(
             maxiters=1000,
             num_threads=1,
             scale=scale,
             offset=offset,
-            return_SR=return_SR,
+            return_SR=self.return_SR,
             reshape_strategy="mem",
             out_chunks=(-1, -1, -1),
             work_chunks=self.work_chunks,
@@ -145,10 +147,10 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = gm.rename(self.renames)
 
         # Scale USGS Landsat bands into surface reflectance
-        if return_SR:
+        if self.return_SR:
             for band in gm.data_vars:
                 if band in self.bands:
-                    gm[band] = scale*10000 * gm[band]+offset*10000
+                    gm[band] = scale * 10000 * gm[band] + offset * 10000
                     gm[band] = gm[band].round().astype(np.uint16)
 
         # Rescale edev to 0-10,000
