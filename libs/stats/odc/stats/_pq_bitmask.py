@@ -76,9 +76,10 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
         # calculate pq - total, clear, clear_<filter>, clear_aerosol(if applicable) pixel counts
         clear_bands = [str(n) for n in xx.data_vars if str(n).startswith("clear")]
-        pq["total"] = xx.keeps.sum(axis=0, dtype="uint16")
+        keeps_band = xx["keeps"]  # band with nodata mask
+        pq["total"] = keeps_band.sum(axis=0, dtype="uint16")
         for band in clear_bands:
-            pq[band] = xx[band].sum(axis=0, dtype="uint16")
+            pq[band] = (xx[band] & keeps_band).sum(axis=0, dtype="uint16")
 
         return pq
 
