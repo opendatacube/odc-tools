@@ -15,9 +15,13 @@ import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from odc.apps.dc_tools.utils import IndexingException, index_update_dataset
+from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
+                                     fail_on_missing_lineage,
+                                     index_update_dataset, limit, skip_lineage,
+                                     transform_stac, transform_stac_absolute,
+                                     update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
-from odc.index.stac import stac_transform
+from odc.index.stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
 from yaml import load
 
@@ -249,33 +253,16 @@ def queue_to_odc(
 
 
 @click.command("sqs-to-dc")
-@click.option(
-    "--skip-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is not to skip lineage. Set to skip lineage altogether.",
-)
-@click.option(
-    "--fail-on-missing-lineage/--auto-add-lineage",
-    is_flag=True,
-    default=True,
-    help=(
-        "Default is to fail if lineage documents not present in the database. "
-        "Set auto add to try to index lineage documents."
-    ),
-)
-@click.option(
-    "--verify-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is no verification. Set to verify parent dataset definitions.",
-)
-@click.option(
-    "--stac",
-    is_flag=True,
-    default=False,
-    help="Expect STAC 1.0 metadata and attempt to transform to ODC EO3 metadata",
-)
+@skip_lineage
+@fail_on_missing_lineage
+@verify_lineage
+@transform_stac
+@transform_stac_absolute
+@update
+@update_if_exists
+@allow_unsafe
+@archive
+@limit
 @click.option(
     "--odc-metadata-link",
     default=None,
@@ -284,36 +271,6 @@ def queue_to_odc(
     "metadata doc e.g. 'foo/bar/link', or if metadata doc is STAC, "
     "provide 'rel' value of the 'links' object having "
     "metadata link. e.g. 'STAC-LINKS-REL:odc_yaml'",
-)
-@click.option(
-    "--limit",
-    default=None,
-    type=int,
-    help="Stop indexing after n datasets have been indexed.",
-)
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="If set, update instead of add datasets",
-)
-@click.option(
-    "--update-if-exists",
-    is_flag=True,
-    default=False,
-    help="If the dataset already exists, update it instead of skipping it.",
-)
-@click.option(
-    "--archive",
-    is_flag=True,
-    default=False,
-    help="If set, archive datasets",
-)
-@click.option(
-    "--allow-unsafe",
-    is_flag=True,
-    default=False,
-    help="Allow unsafe changes to a dataset. Take care!",
 )
 @click.option(
     "--record-path",
@@ -326,12 +283,6 @@ def queue_to_odc(
     default=None,
     help="A path to a list (one item per line, in txt or gzip format) of valide region_codes to include",
 )
-@click.option(
-    "--absolute",
-    is_flag=True,
-    default=False,
-    help="Use absolute paths when converting from stac",
-)
 @click.argument("queue_name", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -339,15 +290,15 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
     stac,
-    odc_metadata_link,
-    limit,
+    absolute,
     update,
     update_if_exists,
-    archive,
     allow_unsafe,
+    archive,
+    limit,
+    odc_metadata_link,
     record_path,
     region_code_list_uri,
-    absolute,
     queue_name,
     product,
 ):
@@ -355,7 +306,10 @@ def cli(
 
     transform = None
     if stac:
-        transform = lambda stat_doc: stac_transform(stat_doc, relative=not absolute)
+        if absolute:
+            transform = stac_transform_absolute
+        else:
+            transform = stac_transform
 
     candidate_products = product.split()
 
