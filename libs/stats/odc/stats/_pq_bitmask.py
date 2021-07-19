@@ -36,13 +36,13 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        band = [
+        measurements = [
             "total",
             "clear",
             *[f"clear_{r1:d}_{r2:d}" for (r1, r2) in self.filters],
         ]
         if self.aerosol_band is not None:
-            band.append("clear_aerosol")
+            measurements.append("clear_aerosol")
 
         return tuple(band)
 
