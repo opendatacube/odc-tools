@@ -148,7 +148,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         
         # Rescale edev to 0-10,000
         gm['edev'] = 10000 * scale * gm['edev']
-        gm['edev'] = gm['edev'].round().astype(gm['edev'].dtype)
+        gm['edev'] = gm['edev'].round().astype(np.uint16)
         
         return gm
 
