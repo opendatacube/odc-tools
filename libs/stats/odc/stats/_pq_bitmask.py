@@ -25,7 +25,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
     def __init__(
             self,
             pq_band: str = "QA_PIXEL",
-            aerosol_band: str = None,
+            aerosol_band: Optional[str] = None,
             filters: Optional[List[Tuple[int, int]]] = [(1, 2)],
             resampling: str = "nearest",
     ):
