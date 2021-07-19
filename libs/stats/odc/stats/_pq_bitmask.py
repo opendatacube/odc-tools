@@ -36,34 +36,28 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        measurements = [
+        _measurements = [
             "total",
             "clear",
             *[f"clear_{r1:d}_{r2:d}" for (r1, r2) in self.filters],
         ]
         if self.aerosol_band is not None:
-            measurements.append("clear_aerosol")
+            _measurements.append("clear_aerosol")
 
-        return tuple(band)
+        return tuple(_measurements)
 
     def input_data(self, task: Task) -> xr.Dataset:
-        chunks = {"y": -1, "x": -1}
-        bands = [self.pq_band]
-        if self.aerosol_band is not None:
-            bands.append(self.aerosol_band)
 
-        xx = load_with_native_transform(
+        return load_with_native_transform(
             task.datasets,
-            bands=bands,
+            bands=self.measurements,
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
             groupby="solar_day",
             resampling=self.resampling,
-            chunks=chunks,
+            chunks={"x": -1, "y": -1},
         )
-
-        return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         pq = xr.Dataset()
