@@ -78,7 +78,7 @@ def test_fuser(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-def test_reduce(dataset, return_SR):
+def test_reduce(dataset):
     gm = StatsGMLSBitmask(["band_red"])
 
     xx = gm._native_tr(dataset)
