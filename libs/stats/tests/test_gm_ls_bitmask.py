@@ -78,29 +78,6 @@ def test_fuser(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-def test_filters(dataset):
-    gm = StatsGMLSBitmask(["band_red"], "QA_PIXEL", [0, 0])
-
-    xx = gm._native_tr(dataset)
-    xx = xx.groupby("solar_day").map(gm._fuser)
-
-    expected_result = np.array(
-        [[False, True], [False, False]],
-    )
-    result = xx.compute()["cloud_mask"].data
-    assert (result == expected_result).all()
-
-    gm = StatsGMLSBitmask(["band_red"], "QA_PIXEL", [0, 2])
-
-    xx = gm._native_tr(dataset)
-    xx = xx.groupby("solar_day").map(gm._fuser)
-
-    expected_result = np.array(
-        [[True, True], [True, True]],
-    )
-    result = xx.compute()["cloud_mask"].data
-    assert (result == expected_result).all()
-
 def test_reduce(dataset):
     gm = StatsGMLSBitmask(["band_red"])
 
@@ -121,8 +98,8 @@ def test_reduce(dataset):
     assert (red == expected_result).all()
 
     edev = result["edev"].data
-    assert np.isclose(edev[0, 0], 115.00012, atol=1e-6)
-    assert np.isclose(edev[1, 0], 25.000084, atol=1e-6)
+    assert np.isclose(edev[0, 0], 32, atol=1e-6)
+    assert np.isclose(edev[1, 0], 7, atol=1e-6)
 
     bcdev = result["bcdev"].data
     assert np.isclose(bcdev[0, 0], 0.008061964, atol=1e-6)

@@ -24,7 +24,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             self,
             bands: Optional[Tuple[str, ...]] = None,
             mask_band: str = "QA_PIXEL",
-            filters: Optional[Tuple[int, int]] = None,
+            filter: Optional[Tuple[int, int]] = None,
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
             resampling: str = "bilinear",
             work_chunks: Tuple[int, int] = (400, 400),
@@ -33,7 +33,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.mask_band = mask_band
         self.resampling = resampling
         self.bands = bands
-        self.filters = filters
+        self.filter = filter
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
@@ -117,6 +117,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         scale = 0.0000275
         offset = -0.2
         return_SR = False
+        cloud_mask = xx["cloud_mask"]
         cfg = dict(
             maxiters=1000,
             num_threads=1,
@@ -130,10 +131,14 @@ class StatsGMLSBitmask(StatsPluginInterface):
             compute_mads=True,
         )
 
-        cloud_mask = xx["cloud_mask"]
-        xx = xx.drop_vars(["cloud_mask"])
+        # apply filter - [r1, r2]
+        # r1 = shrinks away small areas of the mask
+        # r2 = adds padding to the mask
+        if self.filter is not None:
+            xx["cloud_mask"] = mask_cleanup(cloud_mask, self.filter)
 
         # erase pixels with cloud
+        xx = xx.drop_vars(["cloud_mask"])
         xx = erase_bad(xx, cloud_mask)
 
         gm = geomedian_with_mads(xx, **cfg)
@@ -145,26 +150,20 @@ class StatsGMLSBitmask(StatsPluginInterface):
                 if band in self.bands:
                     gm[band] = scale*10000 * gm[band]+offset*10000
                     gm[band] = gm[band].round().astype(np.uint16)
-        
+
         # Rescale edev to 0-10,000
         gm['edev'] = 10000 * scale * gm['edev']
         gm['edev'] = gm['edev'].round().astype(np.uint16)
-        
+
         return gm
 
     def _fuser(self, xx):
         """
-        Fuse cloud_mask with OR, and apply mask_cleanup if requested
+        Fuse cloud_mask with OR
         """
         cloud_mask = xx["cloud_mask"]
         xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=0), '')
         xx["cloud_mask"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
-
-        # apply filters - [r1, r2]
-        # r1 = shrinks away small areas of the mask
-        # r2 = adds padding to the mask
-        if self.filters is not None:
-            xx["cloud_mask"] = mask_cleanup(xx["cloud_mask"], self.filters)
 
         return xx
 
