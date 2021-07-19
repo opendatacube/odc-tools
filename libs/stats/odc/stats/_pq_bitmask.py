@@ -2,13 +2,13 @@
 Landsat pixel quality
 """
 from functools import partial
-from typing import List, Optional, Tuple, cast
+from typing import List, Optional, Tuple
 
 import dask.array as da
 import xarray as xr
 
-from odc.algo import enum_to_bool, mask_cleanup
-from odc.algo._masking import _or_fuser, keep_good_only, _xr_fuse, _first_valid_np, _fuse_or_np, _fuse_and_np
+from odc.algo import mask_cleanup, keep_good_only
+from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_or_np
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
@@ -23,11 +23,11 @@ class StatsPQLSBitmask(StatsPluginInterface):
     PRODUCT_FAMILY = "pixel_quality_statistics"
 
     def __init__(
-        self,
-        pq_band: str = "QA_PIXEL",
-        aerosol_band: str = None,
-        filters: Optional[List[Tuple[int, int]]] = [(1, 2)],
-        resampling: str = "nearest",
+            self,
+            pq_band: str = "QA_PIXEL",
+            aerosol_band: str = None,
+            filters: Optional[List[Tuple[int, int]]] = [(1, 2)],
+            resampling: str = "nearest",
     ):
         self.filters = filters
         self.pq_band = pq_band
@@ -54,7 +54,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
         xx = load_with_native_transform(
             task.datasets,
-            bands = bands,
+            bands=bands,
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
@@ -66,15 +66,19 @@ class StatsPQLSBitmask(StatsPluginInterface):
         return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
-        total_pixels = xx.keeps
-        total = total_pixels.sum(axis=0, dtype="uint16")
-        pq = xr.Dataset(dict(total=total))
+        pq = xr.Dataset()
 
-        # collect all bands starts with clear and calculate its count
+        # apply filters to clear mask - [(r1, r2)]
+        #  r1 = shrinks away small areas of the mask
+        #  r2 = adds padding to the mask
+        for r1, r2 in self.filters:
+            xx[f"clear_{r1:d}_{r2:d}"] = mask_cleanup(xx["clear"], (r1, r2))
+
+        # calculate pq - total, clear, clear_<filter>, clear_aerosol(if applicable) pixel counts
         clear_bands = [str(n) for n in xx.data_vars if str(n).startswith("clear")]
+        pq["total"] = xx.keeps.sum(axis=0, dtype="uint16")
         for band in clear_bands:
-            pixel_count = xx[band].sum(axis=0, dtype="uint16")
-            pq[band] = pixel_count
+            pq[band] = xx[band].sum(axis=0, dtype="uint16")
 
         return pq
 
@@ -85,15 +89,18 @@ class StatsPQLSBitmask(StatsPluginInterface):
         pq_band = xx[self.pq_band]
         xx = xx.drop_vars(pq_band)
 
-        clear_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) == 0 # True=clear
-        keeps = da.bitwise_and(pq_band, 0b0000_0000_0000_0001) == 0 # True=data
+        clear_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) == 0  # True=clear
+        keeps = da.bitwise_and(pq_band, 0b0000_0000_0000_0001) == 0  # True=data
 
         if self.aerosol_band is not None:
             aerosol_band = xx[self.aerosol_band]
             xx = xx.drop_vars(aerosol_band)
 
-            aerosol_level = da.bitwise_and(aerosol_band, 0b1100_0000)/64
+            aerosol_level = da.bitwise_and(aerosol_band, 0b1100_0000) / 64
             clear_aerosol_mask = aerosol_level != 3
+
+        # drops nodata pixels
+        xx = keep_good_only(xx, keeps)
 
         xx["keeps"] = keeps
         xx["clear"] = clear_mask
@@ -116,12 +123,6 @@ class StatsPQLSBitmask(StatsPluginInterface):
         fuser_result["clear"] = _xr_fuse(clear_mask, _fuse_or_np, clear_mask.name)
         if self.aerosol_band is not None:
             fuser_result["clear_aerosol"] = _xr_fuse(clear_aerosol_mask, _fuse_or_np, clear_aerosol_mask.name)
-
-        # apply filters - [r1, r2]
-        # r1 = shrinks away small areas of the mask
-        # r2 = adds padding to the mask
-        for r1, r2 in self.filters:
-            fuser_result[f"clear_{r1:d}_{r2:d}"] = mask_cleanup(clear_mask, (r1,r2))
 
         return fuser_result
 
