@@ -1,5 +1,5 @@
 """
-Landsat pixel quality
+USGS Landsat pixel quality
 """
 from functools import partial
 from typing import List, Optional, Tuple

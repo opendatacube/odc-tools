@@ -4,15 +4,19 @@
 import logging
 import os
 import sys
-from typing import Any, Dict, Generator, Iterable, Tuple, Optional
+from typing import Generator, Optional, Tuple
 
 import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from odc.apps.dc_tools.utils import (
+    allow_unsafe,
+    index_update_dataset,
+    limit,
+    update_if_exists,
+)
 from odc.index.stac import stac_transform, stac_transform_absolute
 from satsearch import Search
-
-from odc.apps.dc_tools.utils import index_update_dataset
 
 
 def guess_location(metadata: dict) -> Tuple[str, bool]:
@@ -74,9 +78,9 @@ def get_items(
 def stac_api_to_odc(
     dc: Datacube,
     limit: int,
-    update: bool,
-    allow_unsafe: bool,
+    update_if_exists: bool,
     config: dict,
+    allow_unsafe_changes: bool = True,
     **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
@@ -109,7 +113,14 @@ def stac_api_to_odc(
 
     for dataset, uri in datasets:
         try:
-            index_update_dataset(dataset, uri, dc, doc2ds, update, allow_unsafe=allow_unsafe)
+            index_update_dataset(
+                dataset,
+                uri,
+                dc,
+                doc2ds,
+                update_if_exists=update_if_exists,
+                allow_unsafe=allow_unsafe_changes,
+            )
             success += 1
         except Exception as e:
             logging.warning(f"Failed to handle dataset: {uri} with exception {e}")
@@ -119,24 +130,9 @@ def stac_api_to_odc(
 
 
 @click.command("stac-to-dc")
-@click.option(
-    "--limit",
-    default=None,
-    type=int,
-    help="Stop indexing after n datasets have been indexed.",
-)
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="If set, update instead of add datasets",
-)
-@click.option(
-    "--allow-unsafe",
-    is_flag=True,
-    default=False,
-    help="Allow unsafe changes to a dataset. Take care!",
-)
+@limit
+@update_if_exists
+@allow_unsafe
 @click.option(
     "--collections",
     type=str,
@@ -155,16 +151,7 @@ def stac_api_to_odc(
     default=None,
     help="Dates to search, either one day or an inclusive range, e.g. 2020-01-01 or 2020-01-01/2020-01-02",
 )
-@click.argument("product", type=str, nargs=1)
-def cli(
-    limit,
-    update,
-    allow_unsafe,
-    collections,
-    bbox,
-    datetime,
-    product,
-):
+def cli(limit, update_if_exists, allow_unsafe, collections, bbox, datetime):
     """
     Iterate through STAC items from a STAC API and add them to datacube
     Note that you need to set the STAC_API_URL environment variable to
@@ -186,7 +173,7 @@ def cli(
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, limit, update, allow_unsafe, config
+        dc, limit, update_if_exists, config, allow_unsafe_changes=allow_unsafe
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")

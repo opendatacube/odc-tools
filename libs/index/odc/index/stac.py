@@ -1,9 +1,8 @@
 import math
 from pathlib import Path
-from typing import Dict, Tuple, Any, Optional
+from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
-import dateutil.parser
 from datacube.utils.geometry import Geometry
 from odc.index import odc_uuid
 from toolz import get_in
@@ -275,7 +274,7 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     geometry = Geometry(input_stac["geometry"], "epsg:4326")
     if native_crs != "epsg:4326":
         # Arbitrary precisions, but should be fine
-        pixel_size = get_in(["default", "transform", 0], grids)
+        pixel_size = get_in(["default", "transform", 0], grids, no_default=True)
         precision = 0
         if pixel_size < 0:
             precision = 6
