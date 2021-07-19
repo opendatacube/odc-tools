@@ -29,7 +29,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
             resampling: str = "bilinear",
             work_chunks: Tuple[int, int] = (400, 400),
-            return_SR: bool = False,  # Flag to scale USGS Landsat bands into surface reflectance
             **other,
     ):
         self.mask_band = mask_band
@@ -39,7 +38,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
-        self.return_SR = return_SR
+        self.return_SR = False  # Flag to scale USGS Landsat bands into surface reflectance
 
         if self.bands is None:
             self.bands = (
