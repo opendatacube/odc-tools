@@ -27,4 +27,10 @@ jobs:
         docker-compose up -d
         docker-compose exec -T tools-tester bash -c "pip install wget && /code/apps/dc_tools/assets/bootstrap-odc.sh \$PRODUCT_CATALOG \$METADATA_CATALOG" || true
         docker-compose exec -T tools-tester datacube product add https://raw.githubusercontent.com/digitalearthafrica/config/78dfc5a1895b48225803cb0891b99eb01feb9f2e/products/esa_s2_l2a.odc-product.yaml
-        docker-compose exec -T tools-tester pytest --cov=/code/ --timeout=30
+        docker-compose exec -T tools-tester pytest --cov=/code/ --cov-report xml:coverage.xml --timeout=30
+
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v1
+      with:
+        fail_ci_if_error: false
+        verbose: false
