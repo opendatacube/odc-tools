@@ -128,4 +128,4 @@ class StatsPQLSBitmask(StatsPluginInterface):
         return fuser_result
 
 
-_plugins.register("pq", StatsPQLSBitmask)
+_plugins.register("pq-ls-bitmask", StatsPQLSBitmask)
