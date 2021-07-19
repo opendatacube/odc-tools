@@ -80,7 +80,8 @@ def test_fuser(dataset):
 
 @pytest.mark.parametrize("return_SR", [True, False])
 def test_reduce(dataset, return_SR):
-    gm = StatsGMLSBitmask(["band_red"], return_SR=return_SR)
+    gm = StatsGMLSBitmask(["band_red"])
+    gm.return_SR = return_SR
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
