@@ -27,7 +27,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             mask_band: str = "QA_PIXEL",
             filter: Optional[Tuple[int, int]] = None,
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
-            resampling: str = "bilinear",
+            resampling: str = "nearest",
             work_chunks: Tuple[int, int] = (400, 400),
             **other,
     ):
