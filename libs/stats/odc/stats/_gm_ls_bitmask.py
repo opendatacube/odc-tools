@@ -144,7 +144,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             for band in gm.data_vars:
                 if band in self.bands:
                     gm[band] = scale*10000 * gm[band]+offset*10000
-                    gm[band] = gm[band].round().astype(gm[band].dtype)
+                    gm[band] = gm[band].round().astype(np.uint16)
         
         # Rescale edev to 0-10,000
         gm['edev'] = 10000 * scale * gm['edev']
