@@ -65,10 +65,11 @@ def list_inventory(manifest, s3=None, prefix: str = '', suffix: str = '', contai
         ]
 
         for future in as_completed(tasks):
-            for key in future.result():
+            for namespace in future.result():
+                key = namespace.Key
                 if (
                     key.startswith(prefix) and
                     key.endswith(suffix) and
                     contains in key
                 ):
-                    yield key
+                    yield namespace
