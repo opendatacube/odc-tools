@@ -337,21 +337,27 @@ class Task:
 
         # TODO: save this in the task (pass by CONFIG file)
         naming_conventions_values = "dea_c3"
-        output_location = "/home/ubuntu/odc-stats-test-data/output"
 
         dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values,
-                                            dataset_location=Path(""))
+                                            dataset_location=Path("https://explorer.dea.ga.gov.au"),
+                                            allow_absolute_paths=True)
+        
+        # add a feature to 'add_source_dataset' can ignore sproperties. Some properties (e.g. gqa:mean_x) should not be 
+        # inherited from the ource datasets.
+        # No regex now
+        inherit_skip_properties = ["gqa:mean_x", "gqa:mean_xy", "gqa:mean_y", "gqa:stddev_x", "gqa:stddev_xy", "gqa:stddev_y", 
+                                    "gqa:iterative_mean_xy", "gqa:iterative_stddev_x"] 
 
         # The self.datasets (odc-stats input datasets) has metadata_doc, which are Python Dict
         # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
         # can be the source dataset to dataset_assembler.add_source_dataset()
         for dataset in self.datasets:
-            # TODO: Add a layer to filter some properties which cannot be passed to output product. E.g gqa
             source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
             dataset_assembler.add_source_dataset(source_datasetdoc,
                                                  classifier='level3',
                                                  auto_inherit_properties=True, # it will grab all useful input dataset preperties
-                                                 inherit_geometry=True)
+                                                 inherit_geometry=True,
+                                                 inherit_skip_properties=inherit_skip_properties)
 
         dataset_assembler.product_family = self.product.properties['odc:product_family']
         dataset_assembler.product_name = self.product.name
@@ -369,7 +375,7 @@ class Task:
         # should be plug-ins version or odc-stats version?
         dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier",
                                                 "https://github.com/opendatacube/odc-tools",
-                                             # Just realized the odc-stats does not have version.
+                                                # Just realized the odc-stats does not have version.
                                                 # TODO: https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
                                                 "0.3.31")
 

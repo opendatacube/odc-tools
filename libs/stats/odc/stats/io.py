@@ -11,7 +11,6 @@ from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
 import io
-import ruamel.yaml
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -132,6 +131,7 @@ class S3COGSink:
         self._odc_meta_ext = "odc-metadata.yaml"
         self._stac_meta_contentype = "application/json"
         self._odc_meta_contentype = "text/yaml"
+        self._prod_info_meta_contentype = "text/yaml"
         self._band_ext = EXT_TIFF
         self._acl = acl
 
@@ -225,13 +225,20 @@ class S3COGSink:
 
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
+        sha1_url = task.metadata_path("absolute", ext="sha1")
+        proc_info_url = task.metadata_path("absolute", ext="proc-info.yaml")
 
         # the meta is EO Dataset3:DatasetAssembler, which can convert to odc-metadata and stac-metadata
         dataset_assembler = task.render_metadata(ext=self._band_ext, output_dataset=ds)
 
-        # we have to 'write' thumbnail file here, because the native one does not support write to data stream
-        # TODO: add the save thumbnail to stream feature in EO Dataset3
-        # what is more, the EO Datasets display add a not-existing file as accessory
+        for band, _ in task.paths(ext="tif").items():
+            thumbnail_path = task.metadata_path("absolute", ext=f"_{band}.jpg")
+            #print(band, thumbnail_path)
+            #thumbnail_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
+
+        # add accessories files
+        dataset_assembler._accessories["checksum:sha1"] = sha1_url
+        dataset_assembler._accessories["metadata:processor"] = proc_info_url
 
         meta = dataset_assembler.to_dataset_doc()
 
@@ -247,11 +254,16 @@ class S3COGSink:
         serialise.to_stream(odc_meta_stream, meta)
         odc_meta = odc_meta_stream.getvalue() # odc_meta is Python str
 
+        proc_info_meta_stream = io.StringIO("")
+        serialise._init_yaml().dump({**dataset_assembler._user_metadata, "software_versions": dataset_assembler._software_versions}, proc_info_meta_stream)
+        proc_info_meta = proc_info_meta_stream.getvalue()
+
         # fake write result for metadata output, we want metadata file to be
         # the last file written, so need to delay it until after sha1 files is
         # written.
         stac_meta_sha1 = dask.delayed(WriteResult(stac_file_path, mk_sha1(stac_meta), None))
         odc_meta_sha1 = dask.delayed(WriteResult(odc_file_path, mk_sha1(odc_meta), None))
+        proc_info_sha1 = dask.delayed(WriteResult(proc_info_url, mk_sha1(proc_info_meta), None))
 
         paths = task.paths("absolute", ext=self._band_ext)
         cogs = self._ds_to_cog(ds, paths)
@@ -265,14 +277,14 @@ class S3COGSink:
 
         # this will raise IOError if any write failed, hence preventing json
         # from being written
-        sha1_digest = _sha1_digest(stac_meta_sha1, odc_meta_sha1, *cogs)
-        sha1_url = task.metadata_path("absolute", ext="sha1")
+        sha1_digest = _sha1_digest(stac_meta_sha1, odc_meta_sha1, proc_info_sha1, *cogs)
         sha1_done = self._write_blob(sha1_digest, sha1_url, ContentType="text/plain")
 
-        odc_meta_done = self._write_blob(odc_meta, odc_file_path, ContentType=self._odc_meta_contentype, with_deps=sha1_done)
+        proc_info_done = self._write_blob(proc_info_meta, proc_info_url, ContentType=self._prod_info_meta_contentype, with_deps=sha1_done)
+        odc_meta_done = self._write_blob(odc_meta, odc_file_path, ContentType=self._odc_meta_contentype, with_deps=proc_info_done)
 
-        # The final DAG is:
-        # sha1_done -> odc_meta_done -> stac_meta_done
+        # The uploading DAG is:
+        # sha1_done -> proc_info_done -> odc_meta_done -> stac_meta_done
 
         return self._write_blob(
             stac_meta, stac_file_path, ContentType=self._stac_meta_contentype, with_deps=odc_meta_done,
