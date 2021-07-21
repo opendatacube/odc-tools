@@ -1,6 +1,14 @@
 """
 USGS Landsat pixel quality
+
+pq_band = input band for cloud masking
+aerosol_band = input band for aerosol masking
+filters to clear cloud mask - [[r1, r2, r3], ...]
+    r1 = shrinks away small areas of the mask
+    r2 = adds padding to the mask
+    r3 = remove small holes in cloud - morphological closing
 """
+
 from functools import partial
 from typing import List, Optional, Tuple
 
@@ -8,7 +16,7 @@ import dask.array as da
 import xarray as xr
 
 from odc.algo import mask_cleanup, keep_good_only
-from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_or_np
+from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_or_np, binary_closing
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
@@ -26,7 +34,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
             self,
             pq_band: str = "QA_PIXEL",
             aerosol_band: Optional[str] = None,
-            filters: Optional[List[Tuple[int, int]]] = [(1, 2)],
+            filters: Optional[List[Tuple[int, int, int]]] = [[1, 2, 2]],
             resampling: str = "nearest",
     ):
         self.filters = filters
@@ -42,7 +50,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
         _measurements = [
             "total",
             "clear",
-            *[f"clear_{r1:d}_{r2:d}" for (r1, r2) in self.filters],
+            *[f"clear_{r1:d}_{r2:d}_{r3:d}" for (r1, r2, r3) in self.filters],
         ]
         if self.aerosol_band is not None:
             _measurements.append("clear_aerosol")
@@ -68,18 +76,18 @@ class StatsPQLSBitmask(StatsPluginInterface):
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         pq = xr.Dataset()
 
-        # apply filters to clear mask - [(r1, r2)]
-        #  r1 = shrinks away small areas of the mask
-        #  r2 = adds padding to the mask
-        for r1, r2 in self.filters:
-            xx[f"clear_{r1:d}_{r2:d}"] = mask_cleanup(xx["clear"], (r1, r2))
+        for r1, r2, r3 in self.filters:
+            # Close mask to remove small holes in cloud,
+            # open mask to remove narrow false positive cloud, then dilate
+            mask = binary_closing(xx["clear"], r3)
+            xx[f"clear_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(mask, (r1, r2))
 
         # calculate pq - total, clear, clear_<filter>, clear_aerosol(if applicable) pixel counts
         clear_bands = [str(n) for n in xx.data_vars if str(n).startswith("clear")]
-        keeps_band = xx["keeps"]  # band with nodata mask
-        pq["total"] = keeps_band.sum(axis=0, dtype="uint16")
+        keeps_band_name = "keeps"  # band with nodata mask
+        pq["total"] = xx[keeps_band_name].sum(axis=0, dtype="uint16")
         for band in clear_bands:
-            pq[band] = (xx[band] & keeps_band).sum(axis=0, dtype="uint16")
+            pq[band] = (xx[band] & xx[keeps_band_name]).sum(axis=0, dtype="uint16")
 
         return pq
 
@@ -88,14 +96,14 @@ class StatsPQLSBitmask(StatsPluginInterface):
         Loads the data in the native projection and perform transform
         """
         pq_band = xx[self.pq_band]
-        xx = xx.drop_vars(pq_band)
+        xx = xx.drop_vars([self.pq_band])
 
         clear_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) == 0  # True=clear
         keeps = da.bitwise_and(pq_band, 0b0000_0000_0000_0001) == 0  # True=data
 
         if self.aerosol_band is not None:
             aerosol_band = xx[self.aerosol_band]
-            xx = xx.drop_vars(aerosol_band)
+            xx = xx.drop_vars([self.aerosol_band])
 
             aerosol_level = da.bitwise_and(aerosol_band, 0b1100_0000) / 64
             clear_aerosol_mask = aerosol_level != 3
