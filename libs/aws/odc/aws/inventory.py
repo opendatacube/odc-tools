@@ -18,6 +18,16 @@ def find_latest_manifest(prefix, s3, **kw):
                 return d + "manifest.json"
 
 
+def retrieve_manifest_files(key: str, s3, schema, **kw):
+
+    bb = s3_fetch(key, s3=s3, **kw)
+    gz = GzipFile(fileobj=BytesIO(bb), mode="r")
+    csv_rdr = csv.reader(l.decode("utf8") for l in gz)
+    for rec in csv_rdr:
+        rec = SimpleNamespace(**{k: v for k, v in zip(schema, rec)})
+        yield rec
+
+
 def list_inventory(manifest, s3=None, prefix: str = '', suffix: str = '', contains: str = '', **kw):
     """Returns a generator of inventory records
 
@@ -36,8 +46,7 @@ def list_inventory(manifest, s3=None, prefix: str = '', suffix: str = '', contai
     if missing_keys:
         raise ValueError("Manifest file haven't parsed correctly")
 
-    fileFormat = info["fileFormat"]
-    if fileFormat.upper() != "CSV":
+    if info["fileFormat"].upper() != "CSV":
         raise ValueError("Data is not in CSV format")
 
     s3_prefix = "s3://" + info["destinationBucket"].split(":")[-1] + "/"
@@ -63,13 +72,3 @@ def list_inventory(manifest, s3=None, prefix: str = '', suffix: str = '', contai
                     contains in key
                 ):
                     yield key
-
-
-def retrieve_manifest_files(key: str, s3, schema, **kw):
-
-    bb = s3_fetch(key, s3=s3, **kw)
-    gz = GzipFile(fileobj=BytesIO(bb), mode="r")
-    csv_rdr = csv.reader(l.decode("utf8") for l in gz)
-    for rec in csv_rdr:
-        rec = SimpleNamespace(**{k: v for k, v in zip(schema, rec)})
-        yield rec
