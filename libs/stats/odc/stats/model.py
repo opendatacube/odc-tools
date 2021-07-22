@@ -14,6 +14,7 @@ import pandas as pd
 from rasterio.crs import CRS
 import json
 import time
+import os
 
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
@@ -339,14 +340,14 @@ class Task:
         naming_conventions_values = "dea_c3"
 
         dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values,
+                                            collection_location=Path("/home/ubuntu/odc-stats-test-data/output"),
                                             dataset_location=Path("https://explorer.dea.ga.gov.au"),
                                             allow_absolute_paths=True)
-        
-        # add a feature to 'add_source_dataset' can ignore sproperties. Some properties (e.g. gqa:mean_x) should not be 
-        # inherited from the ource datasets.
-        # No regex now
-        inherit_skip_properties = ["gqa:mean_x", "gqa:mean_xy", "gqa:mean_y", "gqa:stddev_x", "gqa:stddev_xy", "gqa:stddev_y", 
-                                    "gqa:iterative_mean_xy", "gqa:iterative_stddev_x"] 
+        # add a feature to 'add_source_dataset' can ignore sproperties. Some properties (e.g. gqa:mean_x) should not be
+        # inherited from the ource datasets. Not support regex now.
+        inherit_skip_properties = ["gqa:mean_x", "gqa:mean_xy", "gqa:mean_y", "gqa:stddev_x",
+                                    "gqa:stddev_xy", "gqa:stddev_y", "gqa:iterative_mean_xy",
+                                    "gqa:iterative_stddev_x"] 
 
         # The self.datasets (odc-stats input datasets) has metadata_doc, which are Python Dict
         # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
@@ -355,7 +356,7 @@ class Task:
             source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
             dataset_assembler.add_source_dataset(source_datasetdoc,
                                                  classifier='level3',
-                                                 auto_inherit_properties=True, # it will grab all useful input dataset preperties
+                                                 auto_inherit_properties=True,
                                                  inherit_geometry=True,
                                                  inherit_skip_properties=inherit_skip_properties)
 
@@ -384,6 +385,20 @@ class Task:
                                                 eodatasets3.__version__,)
 
         for band, path in self.paths(ext=ext).items():
+            thumbnail_path = path.split('.')[0] + f"_{band}_thumbnail.jpg"
+            dataset_assembler.write_measurement_numpy(name=band,
+                                                      # if don't pass the pixel here, the mask validation will fail in to_dataset_doc() TODO: it would be a bug?
+                                                      array=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
+                                                      grid_spec=GridSpec(shape=self.geobox.shape,
+                                                                    transform=self.geobox.transform,
+                                                                    crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
+                                                      nodata=-999,
+                                                      path=Path(path).name) # make sure dump to local tif)
+
+            dataset_assembler.write_thumbnail(red=band, green=band, blue=band, path=Path(thumbnail_path).name)
+
+            # overwrite the tif and thumbnail file locations to full path
+            dataset_assembler._accessories[f"thumbnail:{band}"] = thumbnail_path
             dataset_assembler.note_measurement(band,
                                                path,
                                                # if don't pass the pixel here, the mask validation will fail in to_dataset_doc() TODO: it would be a bug?
@@ -392,6 +407,7 @@ class Task:
                                                             transform=self.geobox.transform,
                                                             crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
                                                nodata=-999)
+
 
         return dataset_assembler
 
