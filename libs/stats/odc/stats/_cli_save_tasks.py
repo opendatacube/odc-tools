@@ -68,7 +68,7 @@ from itertools import groupby
     "--dataset-filter",
     type=str,
     default=None,
-    help='Filter to apply on dataset - {"collection_category": "T1"}'
+    help='Filter to apply on datasets - {"collection_category": "T1"}'
 )
 @click.argument("products", type=str, nargs=1)
 @click.argument("output", type=str, nargs=1, default="")
@@ -102,6 +102,10 @@ def save_tasks(
     from .tasks import SaveTasks
     from .model import DateTimeRange
 
+    filter = {}
+    if dataset_filter:
+        filter = json.loads(dataset_filter)
+
     if temporal_range is not None and year is not None:
         print("Can only supply one of --year or --temporal_range", file=sys.stderr)
         sys.exit(1)
@@ -128,7 +132,7 @@ def save_tasks(
         dss = None
         n_dss = None
     else:
-        dss, n_dss, product, error_logger = _parse_products(dc, products, temporal_range, dataset_filter)
+        dss, n_dss, product, error_logger = _parse_products(dc, products, filter, temporal_range)
 
     if output == "":
         if temporal_range is not None:
@@ -158,7 +162,7 @@ def save_tasks(
         ok = tasks.save(
             dc,
             product,
-            dataset_filter=dataset_filter,
+            dataset_filter=filter,
             temporal_range=temporal_range,
             tiles=tiles,
             predicate=predicate,
@@ -180,12 +184,9 @@ def save_tasks(
         sys.exit(3)
 
 
-def _parse_products(dc, products, temporal_range, dataset_filter):
+def _parse_products(dc, products, dataset_filter, temporal_range):
 
-    filter = {}
-    if dataset_filter:
-        filter = json.loads(dataset_filter)
-    query = dict(product=products, **filter)
+    query = dict(product=products, **dataset_filter)
 
     # TODO: find time range
     if temporal_range:
