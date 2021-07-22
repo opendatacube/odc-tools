@@ -11,7 +11,10 @@ from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
 import io
-from bitstream import BitStream
+import matplotlib.pyplot as plt
+from PIL import Image
+import io
+import copy
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -222,12 +225,6 @@ class S3COGSink:
         else:
             raise ValueError(f"Can't handle url: {uri}")
 
-    def get_thumbnail_bit_stream() -> BitStream:
-        """
-        Copy the code from: https://github.com/GeoscienceAustralia/eo-datasets/blob/eodatasets3/eodatasets3/images.py#L735
-        """
-        pass
-
     def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
 
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
@@ -242,9 +239,7 @@ class S3COGSink:
 
         for band, _ in task.paths(ext="tif").items():
             thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-            # Not not use note_thumbnail(). It will run thumbnail_path exist check
             dataset_assembler._accessories[f"thumbnail:{band}"] = thumbnail_path
-            # thumbnail_collection[thumbnail_path] = 
 
         # add accessories files
         dataset_assembler._accessories["checksum:sha1"] = sha1_url
@@ -292,10 +287,21 @@ class S3COGSink:
 
         proc_info_done = self._write_blob(proc_info_meta, proc_info_url, ContentType=self._prod_info_meta_contentype, with_deps=sha1_done)
         odc_meta_done = self._write_blob(odc_meta, odc_file_path, ContentType=self._odc_meta_contentype, with_deps=proc_info_done)
+        cog_done = self._write_blob(stac_meta, stac_file_path, ContentType=self._stac_meta_contentype, with_deps=odc_meta_done)
 
         # The uploading DAG is:
         # sha1_done -> proc_info_done -> odc_meta_done -> stac_meta_done
+        for band, _ in task.paths(ext="tif").items():
+            thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
+            # TODO: Need extra process on pixels
+            pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+            plt.imshow(pixels)
+            plt.savefig(Path(thumbnail_path).name)
+            im = Image.open(Path(thumbnail_path).name)
+            fp = io.BytesIO()
+            img_format = Image.registered_extensions()['.jpg']
+            im.save(fp, img_format)
+            image_data = fp.getvalue()
+            cog_done = self._write_blob(image_data, thumbnail_path, ContentType="image/jpeg", with_deps=copy.deepcopy(cog_done))
 
-        return self._write_blob(
-            stac_meta, stac_file_path, ContentType=self._stac_meta_contentype, with_deps=odc_meta_done,
-        )
+        return cog_done

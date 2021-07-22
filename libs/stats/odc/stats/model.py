@@ -341,12 +341,12 @@ class Task:
         dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values,
                                             dataset_location=Path("https://explorer.dea.ga.gov.au"),
                                             allow_absolute_paths=True)
-        
         # add a feature to 'add_source_dataset' can ignore sproperties. Some properties (e.g. gqa:mean_x) should not be 
         # inherited from the ource datasets.
         # No regex now
-        inherit_skip_properties = ["gqa:mean_x", "gqa:mean_xy", "gqa:mean_y", "gqa:stddev_x", "gqa:stddev_xy", "gqa:stddev_y", 
-                                    "gqa:iterative_mean_xy", "gqa:iterative_stddev_x"] 
+        inherit_skip_properties = ["gqa:mean_x", "gqa:mean_xy", "gqa:mean_y", "gqa:stddev_x",
+                                    "gqa:stddev_xy", "gqa:stddev_y", "gqa:iterative_mean_xy", 
+                                    "gqa:iterative_stddev_x"] 
 
         # The self.datasets (odc-stats input datasets) has metadata_doc, which are Python Dict
         # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
