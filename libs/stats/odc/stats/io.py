@@ -13,8 +13,8 @@ import xarray as xr
 import io
 import matplotlib.pyplot as plt
 from PIL import Image
-import io
 import copy
+import os
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -251,7 +251,7 @@ class S3COGSink:
         stac_meta = eo3stac.to_stac_item(dataset=meta,
                                         stac_item_destination_url=stac_file_path,
                                         odc_dataset_metadata_url =odc_file_path,
-                                        explorer_base_url = "explorer_base_url" # TODO: should come from config
+                                        explorer_base_url = "https://explorer.dea.ga.gov.au/"
                                         )
         stac_meta = json.dumps(stac_meta, default=json_fallback) # stac_meta is Python str, but content is 'Dict format'
 
@@ -302,6 +302,7 @@ class S3COGSink:
             img_format = Image.registered_extensions()['.jpg']
             im.save(fp, img_format)
             image_data = fp.getvalue()
+            os.remove(Path(thumbnail_path).name)
             cog_done = self._write_blob(image_data, thumbnail_path, ContentType="image/jpeg", with_deps=copy.deepcopy(cog_done))
 
         return cog_done
