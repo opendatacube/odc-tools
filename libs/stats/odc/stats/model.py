@@ -5,7 +5,7 @@ from copy import deepcopy
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, List
 from uuid import UUID
 from toolz import dicttoolz
 import pystac
@@ -157,6 +157,12 @@ class OutputProduct:
     href: str = ""
     region_code_format: str = "x{x:02d}y{y:02d}"
     cfg: Any = None
+    naming_conventions_values: str = "dea_c3"
+    explorer_path: str = "https://explorer.dea.ga.gov.au/"
+    inherit_skip_properties: Optional[List[str]] = None
+    classifier: str = "level3"
+    maturity: str = "final"
+    collection_number: int = 3
 
     def __post_init__(self):
         if self.href == "":
@@ -334,30 +340,17 @@ class Task:
         Put together metadata document for the output of this task. It needs the source_dataset to inherit
         several properties and lineages. It also needs the output_dataset to get the measurement information.
         """
-
-        # TODO: save this in the task (pass by CONFIG file)
-        naming_conventions_values = "dea_c3"
-
-        dataset_assembler = DatasetAssembler(naming_conventions=naming_conventions_values,
-                                            dataset_location=Path("https://explorer.dea.ga.gov.au"),
+        dataset_assembler = DatasetAssembler(naming_conventions=self.product.naming_conventions_values,
+                                            dataset_location=Path(self.product.explorer_path),
                                             allow_absolute_paths=True)
-        # add a feature to 'add_source_dataset' can ignore sproperties. Some properties (e.g. gqa:mean_x) should not be
-        # inherited from the ource datasets.
-        # No regex now
-        inherit_skip_properties = ["gqa:mean_x", "gqa:mean_xy", "gqa:mean_y", "gqa:stddev_x",
-                                    "gqa:stddev_xy", "gqa:stddev_y", "gqa:iterative_mean_xy",
-                                    "gqa:iterative_stddev_x"] 
 
-        # The self.datasets (odc-stats input datasets) has metadata_doc, which are Python Dict
-        # In the EO Dataset3, it has API about: Python Dict -> DatasetDoc. The DatasetDoc format data
-        # can be the source dataset to dataset_assembler.add_source_dataset()
         for dataset in self.datasets:
             source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
             dataset_assembler.add_source_dataset(source_datasetdoc,
-                                                 classifier='level3',
+                                                 classifier=self.product.classifier,
                                                  auto_inherit_properties=True, # it will grab all useful input dataset preperties
                                                  inherit_geometry=True,
-                                                 inherit_skip_properties=inherit_skip_properties)
+                                                 inherit_skip_properties=self.product.inherit_skip_properties)
 
         dataset_assembler.product_family = self.product.properties['odc:product_family']
         dataset_assembler.product_name = self.product.name
@@ -369,8 +362,8 @@ class Task:
             processing_dt = datetime.utcnow()
         dataset_assembler.processed = processing_dt
 
-        dataset_assembler.maturity = 'final'
-        dataset_assembler.collection_number = 3
+        dataset_assembler.maturity = self.product.maturity
+        dataset_assembler.collection_number = self.product.collection_number
 
         # should be plug-ins version or odc-stats version?
         dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier",
@@ -431,6 +424,12 @@ class StatsPluginInterface(ABC):
         producer: str = "ga.gov.au",
         properties: Dict[str, Any] = dict(),
         region_code_format: str = "x{x:02d}y{y:02d}",
+        naming_conventions_values: str = "dea_c3",
+        explorer_path: str = "https://explorer.dea.ga.gov.au",
+        inherit_skip_properties: Optional[List[str]] = None,
+        classifier: str = "level3",
+        maturity: str = "final",
+        collection_number: int = 3,
     ) -> OutputProduct:
         """
         :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
@@ -441,6 +440,12 @@ class StatsPluginInterface(ABC):
         :param collections_site: href=f"https://{collections_site}/product/{name}"
         :param producer: Producer ``ga.gov.au``
         :param region_code_format: Change region code formatting, default ``"x{x:02d}y{y:02d}"``
+        :param naming_conventions_values: default ``dea_c3``
+        :param explorer_path: default ``https://explorer.dea.ga.gov.au``
+        :param inherit_skip_properties: block properties from source datasets.
+        :param classifier: default ``level3``
+        :param maturity: default ``final``
+        :param collection_number: default ``3``
         """
         if name is None:
             name = self.NAME
@@ -481,6 +486,12 @@ class StatsPluginInterface(ABC):
             measurements=self.measurements,
             href=f"https://{collections_site}/product/{name}",
             region_code_format=region_code_format,
+            naming_conventions_values=naming_conventions_values,
+            explorer_path=explorer_path,
+            inherit_skip_properties=inherit_skip_properties,
+            classifier=classifier,
+            maturity=maturity,
+            collection_number=collection_number,
         )
 
 

@@ -133,6 +133,7 @@ class S3COGSink:
         self._cog_opts_per_band = cog_opts_per_band
         self._stac_meta_ext = "stac-item.json"
         self._odc_meta_ext = "odc-metadata.yaml"
+        self._proc_info_ext = "proc-info.yaml"
         self._stac_meta_contentype = "application/json"
         self._odc_meta_contentype = "text/yaml"
         self._prod_info_meta_contentype = "text/yaml"
@@ -230,7 +231,7 @@ class S3COGSink:
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
         sha1_url = task.metadata_path("absolute", ext="sha1")
-        proc_info_url = task.metadata_path("absolute", ext="proc-info.yaml")
+        proc_info_url = task.metadata_path("absolute", ext=self._proc_info_ext)
 
         # the meta is EO Dataset3:DatasetAssembler, which can convert to odc-metadata and stac-metadata
         dataset_assembler = task.render_metadata(ext=self._band_ext, output_dataset=ds)
@@ -249,9 +250,9 @@ class S3COGSink:
 
         # STAC metda is Python dict, please use json_fallback() to format it
         stac_meta = eo3stac.to_stac_item(dataset=meta,
-                                        stac_item_destination_url=stac_file_path,
-                                        odc_dataset_metadata_url =odc_file_path,
-                                        explorer_base_url = "https://explorer.dea.ga.gov.au/"
+                                            stac_item_destination_url=stac_file_path,
+                                            odc_dataset_metadata_url =odc_file_path,
+                                            explorer_base_url = task.product.explorer_path
                                         )
         stac_meta = json.dumps(stac_meta, default=json_fallback) # stac_meta is Python str, but content is 'Dict format'
 
