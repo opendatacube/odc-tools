@@ -1,3 +1,5 @@
+import json
+
 import click
 import sys
 from odc.io.text import click_range2d
@@ -62,6 +64,12 @@ from itertools import groupby
     type=float,
     help="Only save datasets that pass `gqa_iterative_mean_xy <= gqa` test",
 )
+@click.option(
+    "--dataset-filter",
+    type=str,
+    default=None,
+    help='Filter to apply on datasets - {"collection_category": "T1"}'
+)
 @click.argument("products", type=str, nargs=1)
 @click.argument("output", type=str, nargs=1, default="")
 def save_tasks(
@@ -71,6 +79,7 @@ def save_tasks(
     frequency,
     output,
     products,
+    dataset_filter,
     env,
     complevel,
     overwrite=False,
@@ -93,6 +102,10 @@ def save_tasks(
     from .tasks import SaveTasks
     from .model import DateTimeRange
 
+    filter = {}
+    if dataset_filter:
+        filter = json.loads(dataset_filter)
+
     if temporal_range is not None and year is not None:
         print("Can only supply one of --year or --temporal_range", file=sys.stderr)
         sys.exit(1)
@@ -114,13 +127,13 @@ def save_tasks(
 
     dc = Datacube(env=env)
     products = products.split("+")
-    if len(products) == 1: 
+    if len(products) == 1:
         product = products[0]
         dss = None
         n_dss = None
     else:
-        dss, n_dss, product, error_logger = _parse_products(dc, products, temporal_range)
-        
+        dss, n_dss, product, error_logger = _parse_products(dc, products, filter, temporal_range)
+
     if output == "":
         if temporal_range is not None:
             output = f"{product}_{temporal_range.short}.db"
@@ -149,12 +162,13 @@ def save_tasks(
         ok = tasks.save(
             dc,
             product,
+            dataset_filter=filter,
             temporal_range=temporal_range,
             tiles=tiles,
             predicate=predicate,
             debug=debug,
             msg=on_message,
-            dss=dss, 
+            dss=dss,
             n_dss=n_dss,
         )
     except ValueError as e:
@@ -170,13 +184,13 @@ def save_tasks(
         sys.exit(3)
 
 
-def _parse_products(dc, products, temporal_range):
-        
-    query = {"product": products}
+def _parse_products(dc, products, dataset_filter, temporal_range):
+
+    query = dict(product=products, **dataset_filter)
 
     # TODO: find time range
     if temporal_range:
-        query.update(temporal_range.dc_query(pad=0.6)) 
+        query.update(temporal_range.dc_query(pad=0.6))
         dss = ordered_dss(dc, key=lambda ds: (ds.center_time, ds.metadata.region_code), **query)
         n_dss = min(dataset_count(dc.index, time=query["time"], product=product) for product in products)
     else:
@@ -208,7 +222,7 @@ class ErrorLogger:
         for product in self.products:
             if product not in product_group:
                 self.missing_counts[product] += 1
-    
+
     def check(self, ds_group):
         return len(ds_group) == len(self.products)
 
@@ -219,4 +233,4 @@ class ErrorLogger:
                 self.append(ds_group)
             else:
                 yield ds_group
-        
+
