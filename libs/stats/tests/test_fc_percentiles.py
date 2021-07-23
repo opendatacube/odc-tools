@@ -36,9 +36,12 @@ def dataset():
     return xx
 
 
-def test_native_transform(dataset):
+@pytest.mark.parametrize("bits", [0b0000_0000, 0b0000_0001, 0b0001_0000, 0b0001_0001])
+def test_native_transform(dataset, bits):
     
-    xx = StatsFCP._native_tr(dataset)
+    xx = dataset.copy()
+    xx['water'] = da.bitwise_or(xx['water'], bits)
+    xx = StatsFCP._native_tr(xx)
     
     expected_result = np.array([
         [[255, 57], [20, 50]],

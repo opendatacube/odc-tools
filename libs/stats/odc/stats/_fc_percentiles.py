@@ -44,15 +44,23 @@ class StatsFCP(StatsPluginInterface):
         Loads in the data in the native projection. It performs the following:
 
         1. Loads all the fc and WOfS bands
-        2. Set high slope terrain flag to 0
+        2. Set high slope terrain flag and nodata wofs to 0
         3. Extracts the clear dry and clear wet flags from WOfS
         4. Drops the WOfS band
         5. Masks out all pixels that are not clear and dry to a nodata value of 255
         6. Discards the clear dry flags
         """
 
-        # set terrain flag to zero
-        water = da.bitwise_and(xx["water"], 0b11101111)
+        # Set terrain and nodata flag to zero
+        #
+        # Leaving the nodata flag causes any pixel that has a nodata value for
+        # one or more wofs scenes on a given day to be set to nodata for that day
+        #
+        # This a particular issue because large areas on the edges of scenes 
+        # are nodata. This causes any pixel that overlaps with the nodata edge region
+        # of another scene to always be set to nodata
+
+        water = da.bitwise_and(xx["water"], 0b1110_1110)
         xx = xx.drop_vars(["water"])
 
         xx["dry"] = water == 0
