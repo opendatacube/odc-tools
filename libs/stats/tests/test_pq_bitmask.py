@@ -38,6 +38,20 @@ def dataset():
     xx['band_red'].attrs['nodata'] = 0
     return xx
 
+@pytest.fixture
+def dataset_with_aerosol_band(dataset):
+    aerosol_mask = 0b1100_0000
+    no_data = 0b0000_0001
+    band_aerosol = np.array([
+        [[0, 0], [aerosol_mask, no_data]],
+        [[no_data, 0], [0, 0]],
+        [[aerosol_mask, 0], [0, 0]],
+    ])
+
+    band_aerosol = da.from_array(band_aerosol, chunks=(3, -1, -1))
+
+    dataset["SR_QA_AEROSOL"] = (("spec", "y", "x"), band_aerosol)
+    return dataset
 
 def test_native_transform(dataset):
     pq = StatsPQLSBitmask()
@@ -61,7 +75,6 @@ def test_native_transform(dataset):
     clear = tr_result["clear"].data
     assert (clear == expected_result).all()
 
-
 def test_fuser(dataset):
     pq = StatsPQLSBitmask()
 
@@ -72,8 +85,8 @@ def test_fuser(dataset):
     expected_result = np.array(
         [[True, True], [True, True]],
     )
-    result = fuser_result["clear"].data
-    assert (result == expected_result).all()
+    clear = fuser_result["clear"].data
+    assert (clear == expected_result).all()
 
 def test_reduce(dataset):
     pq = StatsPQLSBitmask(filters=[[1,1,0]])
@@ -81,7 +94,6 @@ def test_reduce(dataset):
     xx = pq._native_tr(dataset)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
-    print(reduce_result)
 
     assert set(reduce_result.data_vars.keys()) == set(
         ["total", "clear", "clear_1_1_0"]
@@ -104,3 +116,47 @@ def test_reduce(dataset):
     )
     clear_1_1_0 = reduce_result["clear_1_1_0"].data
     assert (clear_1_1_0 == expected_result).all()
+
+def test_native_transform_for_clear_aerosol(dataset_with_aerosol_band):
+    pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL")
+
+    xx = pq._native_tr(dataset_with_aerosol_band)
+    tr_result = xx.compute()
+
+    expected_result = np.array([
+        [[True, True], [False, True]],
+        [[True, True], [True, True]],
+        [[False, True], [True, True]],
+    ])
+    clear_aerosol = tr_result["clear_aerosol"].data
+    assert (clear_aerosol == expected_result).all()
+
+def test_fuse_for_clear_aerosol(dataset_with_aerosol_band):
+    pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL")
+
+    xx = pq._native_tr(dataset_with_aerosol_band)
+    xx = xx.groupby("solar_day").map(pq._fuser)
+    fuser_result = xx.compute()
+
+    expected_result = np.array(
+        [[True, True], [True, True]],
+    )
+    clear_aerosol = fuser_result["clear_aerosol"].data
+    assert (clear_aerosol == expected_result).all()
+
+def test_reduce_for_clear_aerosol(dataset_with_aerosol_band):
+    pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=[[1,1,0]])
+
+    xx = pq._native_tr(dataset_with_aerosol_band)
+    xx = pq.reduce(xx)
+    reduce_result = xx.compute()
+
+    assert set(reduce_result.data_vars.keys()) == set(
+        ["total", "clear", "clear_1_1_0", "clear_aerosol"]
+    )
+
+    expected_result = np.array(
+        [[1, 3], [2, 2]]
+    )
+    clear_aerosol = reduce_result["clear_aerosol"].data
+    assert (clear_aerosol == expected_result).all()
