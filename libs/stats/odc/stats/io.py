@@ -238,19 +238,21 @@ class S3COGSink:
 
         thumbnail_collection = {}
 
+        # add accessories files. we add the filename because odc-metadata need the filename, not full path.
         for band, _ in task.paths(ext="tif").items():
             thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-            dataset_assembler._accessories[f"thumbnail:{band}"] = thumbnail_path
+            dataset_assembler._accessories[f"thumbnail:{band}"] = Path(urlparse(thumbnail_path).path).name
 
-        # add accessories files
-        dataset_assembler._accessories["checksum:sha1"] = sha1_url
-        dataset_assembler._accessories["metadata:processor"] = proc_info_url
+        dataset_assembler._accessories["checksum:sha1"] = Path(urlparse(sha1_url).path).name
+        dataset_assembler._accessories["metadata:processor"] = Path(urlparse(proc_info_url).path).name
 
         meta = dataset_assembler.to_dataset_doc()
 
-        # STAC metda is Python dict, please use json_fallback() to format it
+        # STAC metda is Python dict, please use json_fallback() to format it. Also pass dataset_location
+        # to convert all accessories to full url.
         stac_meta = eo3stac.to_stac_item(dataset=meta,
                                             stac_item_destination_url=stac_file_path,
+                                            dataset_location=str(Path(urlparse(stac_file_path).path).parent),
                                             odc_dataset_metadata_url =odc_file_path,
                                             explorer_base_url = task.product.explorer_path
                                         )
