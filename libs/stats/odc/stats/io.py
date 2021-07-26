@@ -283,17 +283,9 @@ class S3COGSink:
             }
             cogs.extend(self._ds_to_cog(aux, aux_paths))
 
-        # this will raise IOError if any write failed, hence preventing json
-        # from being written
-        sha1_digest = _sha1_digest(stac_meta_sha1, odc_meta_sha1, proc_info_sha1, *cogs)
-        sha1_done = self._write_blob(sha1_digest, sha1_url, ContentType="text/plain")
+        thumbnail_cogs = []
 
-        proc_info_done = self._write_blob(proc_info_meta, proc_info_url, ContentType=self._prod_info_meta_contentype, with_deps=sha1_done)
-        odc_meta_done = self._write_blob(odc_meta, odc_file_path, ContentType=self._odc_meta_contentype, with_deps=proc_info_done)
-        cog_done = self._write_blob(stac_meta, stac_file_path, ContentType=self._stac_meta_contentype, with_deps=odc_meta_done)
-
-        # The uploading DAG is:
-        # sha1_done -> proc_info_done -> odc_meta_done -> stac_meta_done
+        # add the thumbnail images
         for band, _ in task.paths(ext="tif").items():
             thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
             # TODO: Need extra process on pixels
@@ -306,6 +298,17 @@ class S3COGSink:
             im.save(fp, img_format)
             image_data = fp.getvalue()
             os.remove(Path(thumbnail_path).name)
-            cog_done = self._write_blob(image_data, thumbnail_path, ContentType="image/jpeg", with_deps=copy.deepcopy(cog_done))
+            thumbnail_cogs.append(self._write_blob(image_data, thumbnail_path, ContentType="image/jpeg"))
 
+        # this will raise IOError if any write failed, hence preventing json
+        # from being written
+        sha1_digest = _sha1_digest(stac_meta_sha1, odc_meta_sha1, proc_info_sha1, *cogs, *thumbnail_cogs)
+        sha1_done = self._write_blob(sha1_digest, sha1_url, ContentType="text/plain")
+
+        proc_info_done = self._write_blob(proc_info_meta, proc_info_url, ContentType=self._prod_info_meta_contentype, with_deps=sha1_done)
+        odc_meta_done = self._write_blob(odc_meta, odc_file_path, ContentType=self._odc_meta_contentype, with_deps=proc_info_done)
+        cog_done = self._write_blob(stac_meta, stac_file_path, ContentType=self._stac_meta_contentype, with_deps=odc_meta_done)
+
+        # The uploading DAG is:
+        # sha1_done -> proc_info_done -> odc_meta_done -> stac_meta_done
         return cog_done
