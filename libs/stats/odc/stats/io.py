@@ -29,6 +29,7 @@ from collections import namedtuple
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
 from eodatasets3.model import DatasetDoc
+from eodatasets3.images import FileWrite
 import eodatasets3.stac as eo3stac
 
 WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
@@ -301,16 +302,18 @@ class S3COGSink:
         # add the thumbnail images
         for band, _ in task.paths(ext="tif").items():
             thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-            # TODO: Need extra process on pixels
+            
+            # just a flag to make sure something happen
+            lookup_table = {0: [150, 150, 110], 1: [0, 0, 0]}
             pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
-            plt.imshow(pixels)
-            plt.savefig(Path(thumbnail_path).name)
-            im = Image.open(Path(thumbnail_path).name)
+            writer = FileWrite()
+            pixels = writer.filter_singleband_data(data=pixels, lookup_table=lookup_table)
+
+            # Warnning: the pixels shape change from [x, y] to [3, x, y]
+            im = Image.fromarray(pixels[0]).convert('RGB')
             fp = io.BytesIO()
-            img_format = Image.registered_extensions()['.jpg']
-            im.save(fp, img_format)
+            im.save(fp, "JPEG")
             image_data = fp.getvalue()
-            os.remove(Path(thumbnail_path).name)
             thumbnail_cogs.append(self._write_blob(image_data, thumbnail_path, ContentType="image/jpeg"))
 
         # this will raise IOError if any write failed, hence preventing json
