@@ -16,7 +16,7 @@ import dask.array as da
 import xarray as xr
 
 from odc.algo import mask_cleanup, keep_good_only
-from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_or_np, binary_closing
+from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_or_np, _fuse_and_np, binary_closing
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
@@ -120,7 +120,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
     def _fuser(self, xx: xr.Dataset) -> xr.Dataset:
         """
-        Fuser masking bands with OR
+        Fuser masking bands with AND - pixel is considered cloudy if it is ever cloudy on the day
         """
         clear_mask = xx["clear"]
         xx = xx.drop_vars(["clear"])
@@ -129,9 +129,9 @@ class StatsPQLSBitmask(StatsPluginInterface):
             xx = xx.drop_vars(["clear_aerosol"])
 
         fuser_result = _xr_fuse(xx, partial(_first_valid_np, nodata=0), '')
-        fuser_result["clear"] = _xr_fuse(clear_mask, _fuse_or_np, clear_mask.name)
+        fuser_result["clear"] = _xr_fuse(clear_mask, _fuse_and_np, clear_mask.name)
         if self.aerosol_band is not None:
-            fuser_result["clear_aerosol"] = _xr_fuse(clear_aerosol_mask, _fuse_or_np, clear_aerosol_mask.name)
+            fuser_result["clear_aerosol"] = _xr_fuse(clear_aerosol_mask, _fuse_and_np, clear_aerosol_mask.name)
 
         return fuser_result
 

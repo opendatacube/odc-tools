@@ -83,7 +83,7 @@ def test_fuser(dataset):
     fuser_result = xx.compute()
 
     expected_result = np.array(
-        [[True, True], [True, True]],
+        [[True, False], [False, True]],
     )
     clear = fuser_result["clear"].data
     assert (clear == expected_result).all()
@@ -139,7 +139,7 @@ def test_fuse_for_clear_aerosol(dataset_with_aerosol_band):
     fuser_result = xx.compute()
 
     expected_result = np.array(
-        [[True, True], [True, True]],
+        [[False, True], [False, True]],
     )
     clear_aerosol = fuser_result["clear_aerosol"].data
     assert (clear_aerosol == expected_result).all()
