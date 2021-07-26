@@ -25,8 +25,10 @@ from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF
 from hashlib import sha1
 from collections import namedtuple
+
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
+from eodatasets3.model import DatasetDoc
 import eodatasets3.stac as eo3stac
 
 WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
@@ -226,17 +228,35 @@ class S3COGSink:
         else:
             raise ValueError(f"Can't handle url: {uri}")
 
+    def get_stac_meta(self, task: Task, meta: DatasetDoc, stac_file_path: str, odc_file_path: str) -> str:
+        """
+        Convert the DatasetDoc to stac meta format string.
+        The stac_meta is Python dict, please use json_fallback() to format it. Also pass dataset_location
+        to convert all accessories to full url. The S3 and local dir will use different ways to extract.
+        """
+        _u = urlparse(stac_file_path)
+
+        if _u.scheme == "s3":
+            dataset_location = f"{_u.scheme}://{_u.netloc}/{'/'.join(_u.path.split('/')[:-1])}"
+        else:
+            dataset_location = str(Path(_u.path).parent)
+
+        stac_meta = eo3stac.to_stac_item(dataset=meta,
+                                         stac_item_destination_url=stac_file_path,
+                                         dataset_location=dataset_location,
+                                         odc_dataset_metadata_url =odc_file_path,
+                                         explorer_base_url = task.product.explorer_path
+                                        )
+
+        return json.dumps(stac_meta, default=json_fallback) # stac_meta is Python str, but content is 'Dict format'
+
     def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
 
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
         sha1_url = task.metadata_path("absolute", ext="sha1")
         proc_info_url = task.metadata_path("absolute", ext=self._proc_info_ext)
-
-        # the meta is EO Dataset3:DatasetAssembler, which can convert to odc-metadata and stac-metadata
         dataset_assembler = task.render_metadata(ext=self._band_ext, output_dataset=ds)
-
-        thumbnail_collection = {}
 
         # add accessories files. we add the filename because odc-metadata need the filename, not full path.
         for band, _ in task.paths(ext="tif").items():
@@ -247,18 +267,11 @@ class S3COGSink:
         dataset_assembler._accessories["metadata:processor"] = Path(urlparse(proc_info_url).path).name
 
         meta = dataset_assembler.to_dataset_doc()
+        # already add all information to dataset_assembler, now convert to odc and stac metadata format
 
-        # STAC metda is Python dict, please use json_fallback() to format it. Also pass dataset_location
-        # to convert all accessories to full url.
-        stac_meta = eo3stac.to_stac_item(dataset=meta,
-                                            stac_item_destination_url=stac_file_path,
-                                            dataset_location=str(Path(urlparse(stac_file_path).path).parent),
-                                            odc_dataset_metadata_url =odc_file_path,
-                                            explorer_base_url = task.product.explorer_path
-                                        )
-        stac_meta = json.dumps(stac_meta, default=json_fallback) # stac_meta is Python str, but content is 'Dict format'
+        stac_meta = self.get_stac_meta(task, meta, stac_file_path, odc_file_path)
 
-        odc_meta_stream = io.StringIO("")
+        odc_meta_stream = io.StringIO("") # too short, not worth to use another method.
         serialise.to_stream(odc_meta_stream, meta)
         odc_meta = odc_meta_stream.getvalue() # odc_meta is Python str
 
