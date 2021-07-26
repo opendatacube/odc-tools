@@ -352,10 +352,12 @@ class Task:
                                                  inherit_geometry=True,
                                                  inherit_skip_properties=self.product.inherit_skip_properties)
 
-        dataset_assembler.product_family = self.product.properties['odc:product_family']
+        # several fix values in self.product.properties (e.g. "odc:file_format": "GeoTIFF")
+        for product_property_name, product_property_value in self.product.properties.items():
+            dataset_assembler.properties[product_property_name] = product_property_value
+
         dataset_assembler.product_name = self.product.name
         dataset_assembler.dataset_version = self.product.version
-        dataset_assembler.producer = self.product.properties['odc:producer']
         dataset_assembler.region_code = self.product.region_code(self.tile_index)
 
         if processing_dt is None:
