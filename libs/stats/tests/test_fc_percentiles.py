@@ -79,7 +79,7 @@ def test_fusing(dataset):
     assert (result == expected_result).all()
 
     expected_result = np.array(
-        [[False, True], [False, False]],
+        [[False, False], [False, False]],
     )
     result = xx.compute()["wet"].data
     assert (result == expected_result).all()
