@@ -15,6 +15,8 @@ from PIL import Image
 import os
 import numpy
 from rasterio.crs import CRS
+from rasterio.enums import Resampling
+import rasterio
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -315,15 +317,35 @@ class S3COGSink:
             writer = FileWrite()
 
             # note: the pixel is a list with three numpy.array == R, G, B values
-            pixels, thumb_args = writer.create_thumbnail_singleband_from_numpy(input_data=pixels, lookup_table=lookup_table, input_geobox=input_geobox, nodata=-999)
+            numpy_array_list, thumb_args, thumb_width, thumb_height, ql_write_args = writer.create_thumbnail_singleband_from_numpy(input_data=pixels, lookup_table=lookup_table, input_geobox=input_geobox, nodata=-999)
 
-            print(thumb_args)
+            # need more time to search rasterio library, use temp file right now
+            temp_tif_file = f"temp_{band}.tif"
+            temp_file_jpg = f"temp_{band}.jpg"
 
-            #im = Image.fromarray(pixels).convert('RGB')
-            #fp = io.BytesIO()
-            #im.save(fp, "JPEG")
-            #image_data = fp.getvalue()
-            image_data = ""
+            with rasterio.open(temp_tif_file, "w", **ql_write_args) as ql_ds:
+                ql_ds: DatasetWriter
+                for i, data in enumerate(numpy_array_list):
+                    ql_ds.write(data, i+1)
+            
+            with rasterio.open(temp_tif_file, "r") as ql_ds:
+                ql_ds: DatasetReader
+                with rasterio.open(temp_file_jpg, "w", **thumb_args) as thumb_ds:
+                    thumb_ds: DatasetWriter
+                    for index in thumb_ds.indexes:
+                        thumb_ds.write(
+                            ql_ds.read(
+                                index,
+                                out_shape=(thumb_height, thumb_width),
+                                resampling=Resampling.average,
+                            ),
+                            index,
+                        )
+
+            im = Image.open(temp_file_jpg)
+            fp = io.BytesIO()
+            im.save(fp, "JPEG")
+            image_data = fp.getvalue()
             thumbnail_cogs.append(self._write_blob(image_data, thumbnail_path, ContentType="image/jpeg"))
 
         # this will raise IOError if any write failed, hence preventing json
