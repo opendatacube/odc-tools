@@ -384,8 +384,8 @@ class Task:
                                                # if don't pass the pixel here, the mask validation will fail in to_dataset_doc() TODO: it would be a bug?
                                                pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
                                                grid=GridSpec(shape=self.geobox.shape,
-                                                            transform=self.geobox.transform,
-                                                            crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
+                                                             transform=self.geobox.transform,
+                                                             crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
                                                nodata=-999)
 
         return dataset_assembler

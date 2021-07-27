@@ -11,10 +11,10 @@ from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
 import io
-import matplotlib.pyplot as plt
 from PIL import Image
-import copy
 import os
+import numpy
+from rasterio.crs import CRS
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -29,7 +29,7 @@ from collections import namedtuple
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
 from eodatasets3.model import DatasetDoc
-from eodatasets3.images import FileWrite
+from eodatasets3.images import FileWrite, GridSpec
 import eodatasets3.stac as eo3stac
 
 WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
@@ -299,21 +299,31 @@ class S3COGSink:
 
         thumbnail_cogs = []
 
+        input_geobox = GridSpec(shape=task.geobox.shape, transform=task.geobox.transform,  crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
+
         # add the thumbnail images
         for band, _ in task.paths(ext="tif").items():
             thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
             
             # just a flag to make sure something happen
-            lookup_table = {0: [150, 150, 110], 1: [0, 0, 0]}
+            lookup_table = {0: [150, 150, 110], 
+                            1: [0, 0, 0]}
+            
+            # the pixel here is a single layer numpy.array
             pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+            
             writer = FileWrite()
-            pixels = writer.filter_singleband_data(data=pixels, lookup_table=lookup_table)
 
-            # Warnning: the pixels shape change from [x, y] to [3, x, y]
-            im = Image.fromarray(pixels[0]).convert('RGB')
-            fp = io.BytesIO()
-            im.save(fp, "JPEG")
-            image_data = fp.getvalue()
+            # note: the pixel is a list with three numpy.array == R, G, B values
+            pixels, thumb_args = writer.create_thumbnail_singleband_from_numpy(input_data=pixels, lookup_table=lookup_table, input_geobox=input_geobox, nodata=-999)
+
+            print(thumb_args)
+
+            #im = Image.fromarray(pixels).convert('RGB')
+            #fp = io.BytesIO()
+            #im.save(fp, "JPEG")
+            #image_data = fp.getvalue()
+            image_data = ""
             thumbnail_cogs.append(self._write_blob(image_data, thumbnail_path, ContentType="image/jpeg"))
 
         # this will raise IOError if any write failed, hence preventing json
