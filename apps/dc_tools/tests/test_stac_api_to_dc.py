@@ -1,12 +1,13 @@
 # Tests using the Click framework the stac_api-to-dc CLI tool
+import pytest
 from click.testing import CliRunner
 from odc.apps.dc_tools.stac_api_to_dc import cli
-import pytest
 
 
 @pytest.mark.skip(
     reason="Don't run this, because it needs version 0.3.0 of sat-search, which breaks the build."
 )
+@pytest.mark.depends(on=['add_products'])
 def test_s3_to_dc_stac():
     runner = CliRunner()
     # This will fail if requester pays is enabled

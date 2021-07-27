@@ -1,10 +1,11 @@
 # Tests using the Click framework the s3-to-dc CLI tool
 
+import pytest
 from click.testing import CliRunner
-
 from odc.apps.dc_tools.s3_to_dc import cli
 
 
+@pytest.mark.depends(on=['add_products'])
 def test_s3_to_dc_yaml():
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -20,6 +21,7 @@ def test_s3_to_dc_yaml():
     assert result.output == "Added 25 Datasets, Failed 0 Datasets\n"
 
 
+@pytest.mark.depends(on=['add_products'])
 def test_s3_to_dc_stac():
     runner = CliRunner()
     # This will fail if requester pays is enabled
