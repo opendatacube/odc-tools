@@ -9,7 +9,7 @@ import xarray as xr
 import numpy as np
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import keep_good_only
+from odc.algo import keep_good_only, apply_numexpr
 from odc.algo._percentile import xr_percentile
 from odc.algo._masking import _xr_fuse, _or_fuser, _first_valid_np, _fuse_or_np, _fuse_and_np
 from .model import StatsPluginInterface
@@ -63,8 +63,9 @@ class StatsFCP(StatsPluginInterface):
         water = da.bitwise_and(xx["water"], 0b1110_1110)
         xx = xx.drop_vars(["water"])
 
-        xx["dry"] = water == 0
-        xx["wet"] = water == 128
+        xx["bad"] = (xx.water & 0b0111_1110) > 0
+        xx["dry"] = xx.water == 0
+        xx["wet"] = xx.water == 128
         return xx
 
     @staticmethod
@@ -72,9 +73,15 @@ class StatsFCP(StatsPluginInterface):
 
         wet = xx.wet
         dry = xx.dry
-        xx = _xr_fuse(xx.drop_vars(["wet", "dry"]), partial(_first_valid_np, nodata=NODATA), '')
-        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name)
-        xx["dry"] = _xr_fuse(dry, _fuse_and_np, wet.name)
+        bad = xx.bad
+
+        xx = _xr_fuse(xx.drop_vars(["wet", "dry", "bad"]), partial(_first_valid_np, nodata=NODATA), '')
+        wet = _xr_fuse(wet, _fuse_or_np, wet.name)
+        dry = _xr_fuse(dry, _fuse_or_np, dry.name)
+        
+        xx["wet"] = apply_numexpr("wet & (~dry) & (~bad)", xx, dtype="bool")
+        xx["dry"] = apply_numexpr("dry & (~wet) & (~bad)", xx, dtype="bool")
+
         return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
