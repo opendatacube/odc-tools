@@ -3,10 +3,15 @@ USGS Landsat pixel quality
 
 pq_band = input band for cloud masking
 aerosol_band = input band for aerosol masking
-filters to clear cloud mask - [[r1, r2, r3], ...]
+filters = filters to apply on cloud mask - [[r1, r2, r3], ...]
     r1 = shrinks away small areas of the mask
     r2 = adds padding to the mask
     r3 = remove small holes in cloud - morphological closing
+aerosol_filters = filters to apply on high aerosol mask - [[r1, r2, r3], ...]
+    r1 = shrinks away small areas of the mask
+    r2 = adds padding to the mask
+    r3 = remove small aerosol holes - morphological closing
+resampling = "nearest"
 """
 
 from functools import partial
@@ -34,12 +39,14 @@ class StatsPQLSBitmask(StatsPluginInterface):
             self,
             pq_band: str = "QA_PIXEL",
             aerosol_band: Optional[str] = None,
-            filters: Optional[List[Tuple[int, int, int]]] = [[1, 2, 2]],
+            filters: Optional[List[Tuple[int, int, int]]] = [[2, 2, 2]],
+            aerosol_filters: Optional[List[Tuple[int, int, int]]] = [[2, 2, 2]],
             resampling: str = "nearest",
     ):
-        self.filters = filters
         self.pq_band = pq_band
         self.aerosol_band = aerosol_band
+        self.filters = filters
+        self.aerosol_filters = aerosol_filters
         self.resampling = resampling
 
     @property
@@ -53,7 +60,11 @@ class StatsPQLSBitmask(StatsPluginInterface):
             *[f"clear_{r1:d}_{r2:d}_{r3:d}" for (r1, r2, r3) in self.filters],
         ]
         if self.aerosol_band is not None:
-            _measurements.append("clear_aerosol")
+            aerosol_measurements = [
+                "clear_aerosol",
+                *[f"clear_aerosol_{r1:d}_{r2:d}_{r3:d}" for (r1, r2, r3) in self.aerosol_filters],
+            ]
+            _measurements.extend(aerosol_measurements)
 
         return tuple(_measurements)
 
@@ -74,6 +85,15 @@ class StatsPQLSBitmask(StatsPluginInterface):
         )
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
+        """
+        calculate pixel count:
+        pq bands:
+            total                  -> total pixel count (valid data)
+            clear                  -> clear pixel count (pixels without cloud)
+            clear_<filter>         -> apply filter on erased_mask (cloud mask) and then count clear
+            clear_aerosol          -> count pixels with low aerosol levels
+            clear_aerosol_<filter> -> apply filter on erased_aerosol mask and then count clear
+        """
         pq = xr.Dataset()
 
         for r1, r2, r3 in self.filters:
@@ -82,7 +102,11 @@ class StatsPQLSBitmask(StatsPluginInterface):
             cloud_mask = binary_closing(xx["erased"], r3)
             xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(cloud_mask, (r1, r2))
 
-        # calculate pq - total, clear, clear_<filter>, clear_aerosol(if applicable) pixel counts
+        if self.aerosol_band is not None:
+            for r1, r2, r3 in self.aerosol_filters:
+                high_aerosol_mask = binary_closing(xx["erased_aerosol"], r3)
+                xx[f"erased_aerosol_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(high_aerosol_mask, (r1, r2))
+
         erased_bands = [str(n) for n in xx.data_vars if str(n).startswith("erased")]
         valid = xx["keeps"]
         pq["total"] = valid.sum(axis=0, dtype="uint16")

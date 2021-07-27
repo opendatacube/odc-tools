@@ -152,7 +152,7 @@ def test_reduce_for_clear_aerosol(dataset_with_aerosol_band):
     reduce_result = xx.compute()
 
     assert set(reduce_result.data_vars.keys()) == set(
-        ["total", "clear", "clear_1_1_0", "clear_aerosol"]
+        ["total", "clear", "clear_1_1_0", "clear_aerosol", "clear_aerosol_2_2_2"]
     )
 
     expected_result = np.array(
