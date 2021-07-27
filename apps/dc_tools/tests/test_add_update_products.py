@@ -33,7 +33,8 @@ def test_load_product_def(remote_product):
     assert product["name"] == "s2_l2a"
 
 
-def test_s3_to_dc_stac(local_csv):
+@pytest.mark.depends(name='add_products')
+def test_add_products(local_csv):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
