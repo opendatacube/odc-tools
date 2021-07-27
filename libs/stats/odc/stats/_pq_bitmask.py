@@ -7,10 +7,7 @@ filters = filters to apply on cloud mask - [[r1, r2, r3], ...]
     r1 = shrinks away small areas of the mask
     r2 = adds padding to the mask
     r3 = remove small holes in cloud - morphological closing
-aerosol_filters = filters to apply on high aerosol mask - [[r1, r2, r3], ...]
-    r1 = shrinks away small areas of the mask
-    r2 = adds padding to the mask
-    r3 = remove small aerosol holes - morphological closing
+aerosol_filters = filters to apply on cloud mask - [[r1, r2, r3], ...] and then calculate clear_aerosol
 resampling = "nearest"
 """
 
@@ -39,8 +36,8 @@ class StatsPQLSBitmask(StatsPluginInterface):
             self,
             pq_band: str = "QA_PIXEL",
             aerosol_band: Optional[str] = None,
-            filters: Optional[List[Tuple[int, int, int]]] = [[2, 2, 2]],
-            aerosol_filters: Optional[List[Tuple[int, int, int]]] = [[2, 2, 2]],
+            filters: Optional[List[Tuple[int, int, int]]] = [],
+            aerosol_filters: Optional[List[Tuple[int, int, int]]] = [],
             resampling: str = "nearest",
     ):
         self.pq_band = pq_band
@@ -62,7 +59,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
         if self.aerosol_band is not None:
             aerosol_measurements = [
                 "clear_aerosol",
-                *[f"clear_aerosol_{r1:d}_{r2:d}_{r3:d}" for (r1, r2, r3) in self.aerosol_filters],
+                *[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol" for (r1, r2, r3) in self.aerosol_filters if self.aerosol_filters],
             ]
             _measurements.extend(aerosol_measurements)
 
@@ -89,30 +86,35 @@ class StatsPQLSBitmask(StatsPluginInterface):
         calculate pixel count:
         pq bands:
             total                  -> total pixel count (valid data)
-            clear                  -> clear pixel count (pixels without cloud)
-            clear_<filter>         -> apply filter on erased_mask (cloud mask) and then count clear
-            clear_aerosol          -> count pixels with low aerosol levels
-            clear_aerosol_<filter> -> apply filter on erased_aerosol mask and then count clear
+            clear                  -> count clear_cloud (pixels without cloud)
+            clear_<filter>         -> apply filter on erased_mask (cloud mask) and then count clear_cloud
+            clear_aerosol          -> count clear_cloud + clear_aerosol
+            clear_<filter>_aerosol -> count clear_cloud_filter + clear_aerosol
         """
         pq = xr.Dataset()
 
-        for r1, r2, r3 in self.filters:
-            # close mask to remove small holes in cloud,
-            # open mask to remove narrow false positive cloud, then dilate
+        for r1, r2, r3 in self.filters or []:
             cloud_mask = binary_closing(xx["erased"], r3)
             xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(cloud_mask, (r1, r2))
-
-        if self.aerosol_band is not None:
-            for r1, r2, r3 in self.aerosol_filters:
-                high_aerosol_mask = binary_closing(xx["erased_aerosol"], r3)
-                xx[f"erased_aerosol_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(high_aerosol_mask, (r1, r2))
 
         erased_bands = [str(n) for n in xx.data_vars if str(n).startswith("erased")]
         valid = xx["keeps"]
         pq["total"] = valid.sum(axis=0, dtype="uint16")
         for band in erased_bands:
             clear_name = band.replace("erased", "clear")
-            pq[clear_name] = (valid & (~xx[band])).sum(axis=0, dtype="uint16")
+            if "aerosol" in band:
+                pq[clear_name] = (valid & (~xx[band] * ~xx["erased"])).sum(axis=0, dtype="uint16")
+            else:
+                pq[clear_name] = (valid & (~xx[band])).sum(axis=0, dtype="uint16")
+
+        if self.aerosol_band is not None:
+            for r1, r2, r3 in self.aerosol_filters or []:
+                # apply filter on cloud_mask if not exists
+                if f"erased_{r1:d}_{r2:d}_{r3:d}" not in xx:
+                    cloud_mask = binary_closing(xx["erased"], r3)
+                    xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(cloud_mask, (r1, r2))
+
+                pq[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol"] = (valid & (~xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] & ~xx["erased_aerosol"])).sum(axis=0, dtype="uint16")
 
         return pq
 

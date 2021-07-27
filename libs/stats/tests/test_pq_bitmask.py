@@ -152,11 +152,40 @@ def test_reduce_for_clear_aerosol(dataset_with_aerosol_band):
     reduce_result = xx.compute()
 
     assert set(reduce_result.data_vars.keys()) == set(
-        ["total", "clear", "clear_1_1_0", "clear_aerosol", "clear_aerosol_2_2_2"]
+        ["total", "clear", "clear_1_1_0", "clear_aerosol"]
     )
+
+    expected_result = np.array(
+        [[2, 2], [1, 2]]
+    )
+    clear = reduce_result["clear"].data
+    assert (clear == expected_result).all()
+
+    expected_result = np.array(
+        [[1, 2], [1, 2]]
+    )
+    clear_aerosol = reduce_result["clear_aerosol"].data
+    assert (clear_aerosol == expected_result).all()
+
+def test_reduce_for_clear_aerosol_with_filter(dataset_with_aerosol_band):
+    pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=[[1,1,0]], aerosol_filters=[[1,1,0]])
+
+    xx = pq._native_tr(dataset_with_aerosol_band)
+    xx = pq.reduce(xx)
+    reduce_result = xx.compute()
+
+    assert set(reduce_result.data_vars.keys()) == set(
+        ["total", "clear", "clear_1_1_0", "clear_aerosol", "clear_1_1_0_aerosol"]
+    )
+
+    expected_result = np.array(
+        [[2, 3], [3, 2]]
+    )
+    clear_1_1_0 = reduce_result["clear_1_1_0"].data
+    assert (clear_1_1_0 == expected_result).all()
 
     expected_result = np.array(
         [[1, 3], [2, 2]]
     )
-    clear_aerosol = reduce_result["clear_aerosol"].data
+    clear_aerosol = reduce_result["clear_1_1_0_aerosol"].data
     assert (clear_aerosol == expected_result).all()
