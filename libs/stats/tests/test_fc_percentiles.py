@@ -36,7 +36,7 @@ def dataset():
     return xx
 
 
-@pytest.mark.parametrize("bits", [0b0000_0000, 0b0000_0001, 0b0001_0000, 0b0001_0001])
+@pytest.mark.parametrize("bits", [0b0000_0000, 0b0001_0000])
 def test_native_transform(dataset, bits):
     
     xx = dataset.copy()
