@@ -77,61 +77,67 @@ class StatsPQLSBitmask(StatsPluginInterface):
         pq = xr.Dataset()
 
         for r1, r2, r3 in self.filters:
-            # Close mask to remove small holes in cloud,
+            # close mask to remove small holes in cloud,
             # open mask to remove narrow false positive cloud, then dilate
-            mask = binary_closing(xx["clear"], r3)
-            xx[f"clear_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(mask, (r1, r2))
+            cloud_mask = binary_closing(xx["erased"], r3)
+            xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(cloud_mask, (r1, r2))
 
         # calculate pq - total, clear, clear_<filter>, clear_aerosol(if applicable) pixel counts
-        clear_bands = [str(n) for n in xx.data_vars if str(n).startswith("clear")]
-        keeps_band_name = "keeps"  # band with nodata mask
-        pq["total"] = xx[keeps_band_name].sum(axis=0, dtype="uint16")
-        for band in clear_bands:
-            pq[band] = (xx[band] & xx[keeps_band_name]).sum(axis=0, dtype="uint16")
+        erased_bands = [str(n) for n in xx.data_vars if str(n).startswith("erased")]
+        valid = xx["keeps"]
+        pq["total"] = valid.sum(axis=0, dtype="uint16")
+        for band in erased_bands:
+            clear_name = band.replace("erased", "clear")
+            pq[clear_name] = (valid & (~xx[band])).sum(axis=0, dtype="uint16")
 
         return pq
 
     def _native_tr(self, xx: xr.Dataset) -> xr.Dataset:
         """
         Loads the data in the native projection and perform transform
+        bands:
+            keeps          -> anything but nodata (valid pixels)
+            erased         -> cloudy pixels
+            erased_aerosol -> high aerosol pixels
         """
         pq_band = xx[self.pq_band]
         xx = xx.drop_vars([self.pq_band])
 
-        clear_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) == 0  # True=clear
+        # set bitmask
+        cloud_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) != 0   # True=cloud
         keeps = da.bitwise_and(pq_band, 0b0000_0000_0000_0001) == 0  # True=data
 
         if self.aerosol_band is not None:
             aerosol_band = xx[self.aerosol_band]
             xx = xx.drop_vars([self.aerosol_band])
 
+            # set aerosol_level
             aerosol_level = da.bitwise_and(aerosol_band, 0b1100_0000) / 64
-            clear_aerosol_mask = aerosol_level != 3
 
         # drops nodata pixels
         xx = keep_good_only(xx, keeps)
 
         xx["keeps"] = keeps
-        xx["clear"] = clear_mask
+        xx["erased"] = cloud_mask
         if self.aerosol_band is not None:
-            xx["clear_aerosol"] = clear_aerosol_mask
+            xx["erased_aerosol"] = aerosol_level == 3
 
         return xx
 
     def _fuser(self, xx: xr.Dataset) -> xr.Dataset:
         """
-        Fuser masking bands with AND - pixel is considered cloudy if it is ever cloudy on the day
+        Fuser cloud and aerosol masking bands with OR
         """
-        clear_mask = xx["clear"]
-        xx = xx.drop_vars(["clear"])
+        cloud_mask = xx["erased"]
+        xx = xx.drop_vars(["erased"])
         if self.aerosol_band is not None:
-            clear_aerosol_mask = xx["clear_aerosol"]
-            xx = xx.drop_vars(["clear_aerosol"])
+            high_aerosol_mask = xx["erased_aerosol"]
+            xx = xx.drop_vars(["erased_aerosol"])
 
         fuser_result = _xr_fuse(xx, partial(_first_valid_np, nodata=0), '')
-        fuser_result["clear"] = _xr_fuse(clear_mask, _fuse_and_np, clear_mask.name)
+        fuser_result["erased"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
         if self.aerosol_band is not None:
-            fuser_result["clear_aerosol"] = _xr_fuse(clear_aerosol_mask, _fuse_and_np, clear_aerosol_mask.name)
+            fuser_result["erased_aerosol"] = _xr_fuse(high_aerosol_mask, _fuse_or_np, high_aerosol_mask.name)
 
         return fuser_result
 
