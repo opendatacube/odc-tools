@@ -76,12 +76,14 @@ class StatsFCP(StatsPluginInterface):
         bad = xx.bad
 
         xx = _xr_fuse(xx.drop_vars(["wet", "dry", "bad"]), partial(_first_valid_np, nodata=NODATA), '')
-        wet = _xr_fuse(wet, _fuse_or_np, wet.name)
-        dry = _xr_fuse(dry, _fuse_or_np, dry.name)
+        
+        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name)
+        xx["dry"] = _xr_fuse(dry, _fuse_or_np, dry.name)
+        xx["bad"] = _xr_fuse(bad, _fuse_or_np, dry.name)
         
         xx["wet"] = apply_numexpr("wet & (~dry) & (~bad)", xx, dtype="bool")
         xx["dry"] = apply_numexpr("dry & (~wet) & (~bad)", xx, dtype="bool")
-
+        xx = xx.drop_vars(["bad"])
         return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
