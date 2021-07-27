@@ -59,8 +59,7 @@ class StatsFCP(StatsPluginInterface):
         # This a particular issue because large areas on the edges of scenes 
         # are nodata. This causes any pixel that overlaps with the nodata edge region
         # of another scene to always be set to nodata
-
-    
+        
         xx["bad"] = (xx.water & 0b0110_1110) > 0
         xx["dry"] = xx.water == 0
         xx["wet"] = xx.water == 128
