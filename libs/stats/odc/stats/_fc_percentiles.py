@@ -60,9 +60,8 @@ class StatsFCP(StatsPluginInterface):
         # are nodata. This causes any pixel that overlaps with the nodata edge region
         # of another scene to always be set to nodata
 
-        # water = da.bitwise_and(xx["water"], 0b1110_1110)
     
-        xx["bad"] = (xx.water & 0b0111_1110) > 0
+        xx["bad"] = (xx.water & 0b0110_1110) > 0
         xx["dry"] = xx.water == 0
         xx["wet"] = xx.water == 128
         xx = xx.drop_vars(["water"])
