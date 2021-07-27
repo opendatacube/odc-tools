@@ -155,6 +155,7 @@ responses==0.13.3
 rio-cogeo==2.1.4
 rsa==4.7.2
 s3transfer==0.3.7
+# This is pinned to the wrong version, and it fails. Refactor stac_api_to_dc to remove dep.
 sat-search==0.1.0
 scikit-image==0.18.1
 scipy==1.6.3

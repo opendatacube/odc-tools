@@ -13,11 +13,10 @@ set -o nounset
 product_catalog=$1
 metadata_catalog=$2
 
+echo "BOOTSTRAP: Initialising DB."
 datacube system init --no-default-types --no-init-users
 # Created using : datacube metadata list | awk '{print $1}' | xargs datacube metadata show
+echo "BOOTSTRAP: Adding metadata types."
 datacube metadata add "$metadata_catalog"
-python -m wget "$product_catalog" -o product_list.csv
-tail -n+2 product_list.csv | awk -F, '{print $2}' | xargs datacube -v product add
-
-# Clean up
-rm product_list.csv
+echo "BOOTSTRAP: Adding products."
+dc-sync-products "$product_catalog"

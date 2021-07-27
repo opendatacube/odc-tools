@@ -34,6 +34,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
+            "dc-sync-products = odc.apps.dc_tools.add_update_products:cli",
             "dc-index-from-tar = odc.apps.dc_tools.index_from_tar:cli",
             "dc-index-export-md = odc.apps.dc_tools.export_md:cli",
             "s3-to-dc = odc.apps.dc_tools.s3_to_dc:cli",
