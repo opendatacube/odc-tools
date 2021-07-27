@@ -44,14 +44,16 @@ class StatsFCP(StatsPluginInterface):
         Loads data in its native projection. It performs the following:
 
         1. Load all the fc and WOfS bands
-        2. Find bad WOfS pixels ignoring the high slope terrain and nodata flags
-        3. Extracts the clear dry and clear wet WoFS pixels
-        4. Drops the WOfS band
+        2. Set the high terrain slope flag to 0
+        3. Find bad WOfS pixels ignoring the nodata flags
+        4. Extracts the clear dry and clear wet WoFS pixels
+        5. Drops the WOfS band
         """
-
-        xx["bad"] = (xx.water & 0b0110_1110) > 0
-        xx["dry"] = xx.water == 0
-        xx["wet"] = xx.water == 128
+        
+        water = xx.water& 0b1110_1111
+        xx["bad"] = (water & 0b0111_1110) > 0
+        xx["dry"] = water == 0
+        xx["wet"] = water == 128
         xx = xx.drop_vars(["water"])
         return xx
 
@@ -64,13 +66,13 @@ class StatsFCP(StatsPluginInterface):
 
         xx = _xr_fuse(xx.drop_vars(["wet", "dry", "bad"]), partial(_first_valid_np, nodata=NODATA), '')
         
-        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name)
-        xx["dry"] = _xr_fuse(dry, _fuse_or_np, dry.name)
-        xx["bad"] = _xr_fuse(bad, _fuse_or_np, dry.name)
+        wet = _xr_fuse(wet, _fuse_or_np, wet.name)
+        dry = _xr_fuse(dry, _fuse_or_np, dry.name)
+        bad = _xr_fuse(bad, _fuse_or_np, dry.name)
         
-        xx["wet"] = apply_numexpr("wet & (~dry) & (~bad)", xx, dtype="bool")
-        xx["dry"] = apply_numexpr("dry & (~wet) & (~bad)", xx, dtype="bool")
-        xx = xx.drop_vars(["bad"])
+        xx["wet"] = wet & (~dry) & (~bad)
+        xx["dry"] = dry & (~wet) & (~bad)
+        xx["bad"] = bad
         return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
@@ -98,7 +100,7 @@ class StatsFCP(StatsPluginInterface):
 
         mask = xx["dry"]
         wet = xx["wet"]
-        xx = xx.drop_vars(["dry", "wet"])
+        xx = xx.drop_vars(["dry", "wet", "bad"])
         xx = keep_good_only(xx, mask, nodata=NODATA)
 
         yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=NODATA)
