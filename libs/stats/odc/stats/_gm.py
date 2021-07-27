@@ -1,5 +1,5 @@
 """
-Sentinel-2 Geomedian
+Geomedian
 """
 from typing import Optional, Tuple
 import xarray as xr
