@@ -71,7 +71,7 @@ update_if_exists = click.option(
     "--update-if-exists",
     is_flag=True,
     default=False,
-    help="If the dataset already exists, update it instead of skipping it.",
+    help="If the dataset or product already exists, update it instead of skipping it.",
 )
 
 allow_unsafe = click.option(

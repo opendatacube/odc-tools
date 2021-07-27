@@ -21,12 +21,17 @@ jobs:
     - name: Run Dockerized Tests
       timeout-minutes: 20
       shell: bash
-      # TODO: Fix superlong line below
       run: |
         cd tests
         docker-compose up -d
-        docker-compose exec -T tools-tester bash -c "pip install wget && /code/apps/dc_tools/assets/bootstrap-odc.sh \$PRODUCT_CATALOG \$METADATA_CATALOG" || true
-        docker-compose exec -T tools-tester datacube product add https://raw.githubusercontent.com/digitalearthafrica/config/78dfc5a1895b48225803cb0891b99eb01feb9f2e/products/esa_s2_l2a.odc-product.yaml
+        # Manually install over the top
+        docker-compose exec -T tools-tester pip install -r /code/docker/rr-odc-tools.in
+        # Prove that worked ^
+        dc-sync-products --help
+        # Now set up some metadata and products
+        docker-compose exec -T tools-tester bash -c \
+          "/code/apps/dc_tools/assets/bootstrap-odc.sh \$PRODUCT_CATALOG \$METADATA_CATALOG"
+        # And run the real tests
         docker-compose exec -T tools-tester pytest --cov=/code/ --cov-report xml:coverage.xml --timeout=30
 
     - name: Upload Coverage
