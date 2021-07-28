@@ -344,13 +344,22 @@ class Task:
                                             dataset_location=Path(self.product.explorer_path),
                                             allow_absolute_paths=True)
 
+        platforms = [] # platforms are the concat value in stats
+
         for dataset in self.datasets:
             source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
+            print('source_datasetdoc', source_datasetdoc)
             dataset_assembler.add_source_dataset(source_datasetdoc,
                                                  classifier=self.product.classifier,
                                                  auto_inherit_properties=True, # it will grab all useful input dataset preperties
                                                  inherit_geometry=True,
                                                  inherit_skip_properties=self.product.inherit_skip_properties)
+
+            if 'eo:platform' in source_datasetdoc.properties:
+                platforms.append(source_datasetdoc.properties['eo:platform'])
+
+        if len(platforms) > 0:
+            dataset_assembler.platform = ','.join(sorted(set(platforms)))
 
         # several fix values in self.product.properties (e.g. "odc:file_format": "GeoTIFF")
         for product_property_name, product_property_value in self.product.properties.items():
