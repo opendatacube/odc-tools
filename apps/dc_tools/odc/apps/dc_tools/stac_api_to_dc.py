@@ -46,10 +46,7 @@ def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
             self_link = link.target
 
     for name, asset in item.assets.items():
-        if asset.media_type in [
-            pystac.MediaType.COG,
-            "image/tiff; application=geotiff",
-        ]:
+        if "geotiff" in asset.media_type:
             asset_link = os.path.dirname(asset.href)
             break
 
