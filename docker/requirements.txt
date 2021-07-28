@@ -32,10 +32,10 @@ numexpr
 numpy
 pyproj
 pystac
+pystac-client
 pyyaml
 rasterio
 requests
-sat-search
 scikit-image
 thredds-crawler
 toolz

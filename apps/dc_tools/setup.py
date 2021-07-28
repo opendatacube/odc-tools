@@ -18,7 +18,7 @@ setup(
     install_requires=[
         "click",
         "fsspec",
-        "sat-search",
+        "pystac-client",
         "toolz",
         "pyyaml",
         "datacube",

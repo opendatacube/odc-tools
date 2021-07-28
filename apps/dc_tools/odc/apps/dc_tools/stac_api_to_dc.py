@@ -4,38 +4,54 @@
 import logging
 import os
 import sys
-from typing import Generator, Optional, Tuple
+from typing import Any, Dict, Generator, Optional, Tuple
 
 import click
+import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from odc.apps.dc_tools.utils import (
-    allow_unsafe,
-    index_update_dataset,
-    limit,
-    update_if_exists,
-)
+from odc.apps.dc_tools.utils import (allow_unsafe, index_update_dataset, limit,
+                                     update_if_exists)
 from odc.index.stac import stac_transform, stac_transform_absolute
-from satsearch import Search
+from pystac_client import Client
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
 
 
-def guess_location(metadata: dict) -> Tuple[str, bool]:
+def _parse_options(options: Optional[str]) -> Dict[str, Any]:
+    parsed_options = {}
+
+    if options is not None:
+        for option in options.split("#"):
+            try:
+                key, value = option.split("=")
+                parsed_options[key] = value
+            except Exception as e:
+                logging.warning(f"Couldn't parse option {option}, format is key=value, exception was {e}")
+
+    return parsed_options
+
+
+def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
     self_link = None
     asset_link = None
     relative = True
 
-    for link in metadata.get("links"):
-        rel = link.get("rel")
-        if rel and rel == "self":
-            self_link = link.get("href")
+    for link in item.links:
+        if link.rel == "self":
+            self_link = link.target
 
-    if metadata.get("assets"):
-        for asset in metadata["assets"].values():
-            if asset.get("type") in [
-                "image/tiff; application=geotiff; profile=cloud-optimized",
-                "image/tiff; application=geotiff",
-            ]:
-                asset_link = os.path.dirname(asset["href"])
+        # Override self with canonical
+        if link.rel == "canonical":
+            self_link = link.target
+
+    for name, asset in item.assets.items():
+        if asset.media_type in [
+            pystac.MediaType.COG,
+            "image/tiff; application=geotiff",
+        ]:
+            asset_link = os.path.dirname(asset.href)
+            break
 
     # If the metadata and the document are not on the same path,
     # we need to use absolute links and not relative ones.
@@ -48,20 +64,21 @@ def guess_location(metadata: dict) -> Tuple[str, bool]:
 
 
 def get_items(
-    srch: Search, limit: Optional[int]
+    client: Client, limit: Optional[int]
 ) -> Generator[Tuple[dict, str, bool], None, None]:
-    if limit:
-        items = srch.items(limit=limit)
-    else:
-        items = srch.items()
+    try:
+        items = client.get_items()
+    except AttributeError:
+        items = client.items()
 
     # Workaround bug in STAC Search that doesn't stop at the limit
-    for count, metadata in enumerate(items.geojson()["features"]):
+    for count, item in enumerate(items):
         # Stop at the limit if it's set
         if (limit is not None) and (count >= limit):
             break
-        uri, relative = guess_location(metadata)
+        uri, relative = _guess_location(item)
         try:
+            metadata = item.to_dict()
             if relative:
                 metadata = stac_transform(metadata)
             else:
@@ -80,6 +97,7 @@ def stac_api_to_odc(
     limit: int,
     update_if_exists: bool,
     config: dict,
+    catalog_href: str,
     allow_unsafe_changes: bool = True,
     **kwargs,
 ) -> Tuple[int, int]:
@@ -92,8 +110,9 @@ def stac_api_to_odc(
         )
 
     # QA the search
-    srch = Search().search(**config)
-    n_items = srch.found()
+    client = Client.open(catalog_href)
+    search = client.search(**config)
+    n_items = search.matched()
     logging.info("Found {} items to index".format(n_items))
     if n_items > 10000:
         logging.warning(
@@ -105,13 +124,13 @@ def stac_api_to_odc(
         return 0, 0
 
     # Get a generator of (stac, uri, relative_uri) tuples
-    datasets = get_items(srch, limit)
+    datasets_uris = get_items(search, limit)
 
     # Do the indexing of all the things
     success = 0
     failure = 0
 
-    for dataset, uri in datasets:
+    for dataset, uri in datasets_uris:
         try:
             index_update_dataset(
                 dataset,
@@ -134,6 +153,12 @@ def stac_api_to_odc(
 @update_if_exists
 @allow_unsafe
 @click.option(
+    "--catalog-href",
+    type=str,
+    default="https://earth-search.aws.element84.com/v0/",
+    help="URL to the catalog to search",
+)
+@click.option(
     "--collections",
     type=str,
     default=None,
@@ -151,14 +176,17 @@ def stac_api_to_odc(
     default=None,
     help="Dates to search, either one day or an inclusive range, e.g. 2020-01-01 or 2020-01-01/2020-01-02",
 )
-def cli(limit, update_if_exists, allow_unsafe, collections, bbox, datetime):
+@click.option(
+    "--options",
+    type=str,
+    default=None,
+    help="Other search terms, as a # separated list, i.e., --options=cloud_cover=0,100#sky=green",
+)
+def cli(limit, update_if_exists, allow_unsafe, catalog_href, collections, bbox, datetime, options):
     """
-    Iterate through STAC items from a STAC API and add them to datacube
-    Note that you need to set the STAC_API_URL environment variable to
-    something like https://earth-search.aws.element84.com/v0/
+    Iterate through STAC items from a STAC API and add them to datacube.
     """
-
-    config = {}
+    config = _parse_options(options)
 
     # Format the search terms
     if bbox:
@@ -173,7 +201,7 @@ def cli(limit, update_if_exists, allow_unsafe, collections, bbox, datetime):
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, limit, update_if_exists, config, allow_unsafe_changes=allow_unsafe
+        dc, limit, update_if_exists, config, catalog_href, allow_unsafe_changes=allow_unsafe
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")

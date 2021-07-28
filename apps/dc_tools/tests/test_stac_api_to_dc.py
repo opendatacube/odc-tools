@@ -4,19 +4,34 @@ from click.testing import CliRunner
 from odc.apps.dc_tools.stac_api_to_dc import cli
 
 
-@pytest.mark.skip(
-    reason="Don't run this, because it needs version 0.3.0 of sat-search, which breaks the build."
-)
 @pytest.mark.depends(on=['add_products'])
-def test_s3_to_dc_stac():
+def test_stac_to_dc_s2():
     runner = CliRunner()
-    # This will fail if requester pays is enabled
     result = runner.invoke(
         cli,
         [
+            "--catalog-href=https://earth-search.aws.element84.com/v0/",
             "--bbox=5,15,10,20",
             "--limit=10",
             "--collections=sentinel-s2-l2a-cogs",
+            "--datetime=2020-08-01/2020-08-31",
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.output == "Added 10 Datasets, failed 0 Datasets\n"
+
+
+@pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
+@pytest.mark.depends(on=['add_products'])
+def test_stac_to_dc_ls():
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "--catalog-href=https://ibhoyw8md9.execute-api.us-west-2.amazonaws.com/prod",
+            "--bbox=5,15,10,20",
+            "--limit=10",
+            "--collections=landsat-c2l2-sr",
             "--datetime=2020-08-01/2020-08-31",
         ],
     )

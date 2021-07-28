@@ -121,7 +121,7 @@ def cli(csv_path: str, update_if_exists: bool):
     # TODO: Add in some QA/QC checks
     added, updated, failed = add_update_products(dc, csv_path, update_if_exists)
 
-    logging.info(f"Added: {added}, Updated: {updated} and Failed: {failed}")
+    print(f"Added: {added}, Updated: {updated} and Failed: {failed}")
 
     # If nothing failed then this exists with success code 0
     sys.exit(failed)

@@ -20,7 +20,6 @@ services:
       - DB_DATABASE=postgres
       - DB_PORT=5432
       - AWS_DEFAULT_REGION=ap-southeast-2
-      - STAC_API_URL=https://earth-search.aws.element84.com/v0/
     depends_on:
       - postgres
     volumes:
