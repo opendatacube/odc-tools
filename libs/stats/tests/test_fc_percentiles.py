@@ -44,7 +44,7 @@ def test_native_transform(dataset, bits):
     xx = StatsFCP._native_tr(xx)
     
     expected_result = np.array([
-        [[255, 57], [20, 50]],
+        [[255, 255], [20, 50]],
         [[30, 40], [70, 80]], 
         [[25, 52], [73, 98]],
     ])
@@ -59,35 +59,21 @@ def test_native_transform(dataset, bits):
     result = xx.compute()["wet"].data
     assert (result == expected_result).all()
 
-    expected_result = np.array([
-        [[True, False], [True, True]],
-        [[True, True], [True, True]], 
-        [[True, True], [True, True]],
-    ])
-    result = xx.compute()["dry"].data
-    assert (result == expected_result).all()
-
 
 def test_fusing(dataset):
     xx = StatsFCP._native_tr(dataset)
     xx = xx.groupby("solar_day").map(StatsFCP._fuser)
 
     expected_result = np.array(
-        [[30, 57], [20, 50]],
+        [[30, 40], [20, 50]],
     )
     result = xx.compute()["band_1"].data
     assert (result == expected_result).all()
 
     expected_result = np.array(
-        [[False, False], [False, False]],
+        [[False, True], [False, False]],
     )
     result = xx.compute()["wet"].data
-    assert (result == expected_result).all()
-
-    expected_result = np.array(
-        [[True, False], [True, True]],
-    )
-    result = xx.compute()["dry"].data
     assert (result == expected_result).all()
 
 
