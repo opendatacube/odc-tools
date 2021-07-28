@@ -17,6 +17,7 @@ setup(
     tests_require=TEST_REQUIREMENTS,
     install_requires=[
         "click",
+        "fsspec",
         "sat-search",
         "toolz",
         "pyyaml",
