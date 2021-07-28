@@ -9,9 +9,9 @@ import xarray as xr
 import numpy as np
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
-from odc.algo import keep_good_only, apply_numexpr
+from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _xr_fuse, _or_fuser, _first_valid_np, _fuse_or_np, _fuse_and_np
+from odc.algo._masking import _xr_fuse, _or_fuser, fuse_mean_np, _fuse_or_np, _fuse_and_np
 from .model import StatsPluginInterface
 from . import _plugins
 
@@ -61,7 +61,7 @@ class StatsFCP(StatsPluginInterface):
     def _fuser(xx):
 
         wet = xx["wet"]
-        xx = _xr_fuse(xx.drop_vars(["wet"]), partial(_first_valid_np, nodata=NODATA), '')
+        xx = _xr_fuse(xx.drop_vars(["wet"]), partial(fuse_mean_np, nodata=NODATA), '')
 
         band, *bands = xx.data_vars.keys()
         all_bands_invalid = xx[band] == NODATA
@@ -70,7 +70,7 @@ class StatsFCP(StatsPluginInterface):
 
         xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name) & all_bands_invalid
         return xx
-
+    
     def input_data(self, task: Task) -> xr.Dataset:
 
         chunks = {"y": -1, "x": -1}

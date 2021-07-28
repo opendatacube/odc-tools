@@ -65,9 +65,11 @@ def test_fusing(dataset):
     xx = xx.groupby("solar_day").map(StatsFCP._fuser)
 
     expected_result = np.array(
-        [[30, 40], [255, 50]],
+        [[28, 46], [255, 76]],
     )
     result = xx.compute()["band_1"].data
+
+    print(result.shape)
     assert (result == expected_result).all()
 
     expected_result = np.array(
