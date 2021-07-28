@@ -348,7 +348,6 @@ class Task:
 
         for dataset in self.datasets:
             source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
-            print('source_datasetdoc', source_datasetdoc)
             dataset_assembler.add_source_dataset(source_datasetdoc,
                                                  classifier=self.product.classifier,
                                                  auto_inherit_properties=True, # it will grab all useful input dataset preperties
