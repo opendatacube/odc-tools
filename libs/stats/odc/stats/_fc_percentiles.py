@@ -43,36 +43,26 @@ class StatsFCP(StatsPluginInterface):
         """
         Loads data in its native projection. It performs the following:
 
-        1. Load all the fc and WOfS bands
+        1. Load all fc and WOfS bands
         2. Set the high terrain slope flag to 0
-        3. Find bad WOfS pixels ignoring the nodata flags
-        4. Extracts the clear dry and clear wet WoFS pixels
-        5. Drops the WOfS band
+        3. Set all pixels that are not clear and dry to NODATA
+        4. Calculate the clear wet pixels
+        5. Drop the WOfS band
         """
         
-        water = xx.water& 0b1110_1111
-        xx["bad"] = (water & 0b0111_1110) > 0
-        xx["dry"] = water == 0
-        xx["wet"] = water == 128
+        water = xx.water & 0b1110_1111
+        dry = water == 0
         xx = xx.drop_vars(["water"])
+        xx = keep_good_only(xx, dry, nodata=NODATA)
+        xx["wet"] = water == 128
         return xx
 
     @staticmethod
     def _fuser(xx):
 
-        wet = xx.wet
-        dry = xx.dry
-        bad = xx.bad
-
-        xx = _xr_fuse(xx.drop_vars(["wet", "dry", "bad"]), partial(_first_valid_np, nodata=NODATA), '')
-        
-        wet = _xr_fuse(wet, _fuse_or_np, wet.name)
-        dry = _xr_fuse(dry, _fuse_or_np, dry.name)
-        bad = _xr_fuse(bad, _fuse_or_np, dry.name)
-        
-        xx["wet"] = wet & (~dry) & (~bad)
-        xx["dry"] = dry & (~wet) & (~bad)
-        xx["bad"] = bad
+        wet = xx["wet"]
+        xx = _xr_fuse(xx.drop_vars(["wet"]), partial(_first_valid_np, nodata=NODATA), '')
+        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name)
         return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
@@ -98,10 +88,8 @@ class StatsFCP(StatsPluginInterface):
         # (!all_bands_valid) & (!is_ever_wet) => 1
         # all_bands_valid => 2  
 
-        mask = xx["dry"]
         wet = xx["wet"]
-        xx = xx.drop_vars(["dry", "wet", "bad"])
-        xx = keep_good_only(xx, mask, nodata=NODATA)
+        xx = xx.drop_vars(["wet"])
 
         yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=NODATA)
         is_ever_wet = _or_fuser(wet).squeeze(wet.dims[0], drop=True)
