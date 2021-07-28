@@ -17,7 +17,6 @@ import numpy
 from rasterio.crs import CRS
 from rasterio.enums import Resampling
 import rasterio
-from rasterio.io import MemoryFile
 import tempfile
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
@@ -315,30 +314,10 @@ class S3COGSink:
             
             # the pixel here is a single layer numpy.array
             pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
-            
-            writer = FileWrite()
 
             # note: the pixel is a list with three numpy.array == R, G, B values
-            numpy_array_list, thumb_args, thumb_width, thumb_height, ql_write_args = writer.create_thumbnail_singleband_from_numpy(input_data=pixels, lookup_table=lookup_table, input_geobox=input_geobox, nodata=-999)
-
-            with MemoryFile() as mem_tif_file:
-                with mem_tif_file.open(**ql_write_args) as dataset:
-                    for i, data in enumerate(numpy_array_list):
-                        dataset.write(data, i+1)
-
-                    with MemoryFile() as mem_jpg_file:
-                        with mem_jpg_file.open(**thumb_args) as thumbnail:
-                            for index in thumbnail.indexes:
-                                thumbnail.write( # write the data from temp_tif to temp_jpg
-                                    dataset.read(
-                                        index,
-                                        out_shape=(thumb_height, thumb_width),
-                                        resampling=Resampling.average,
-                                    ),
-                                    index,
-                                )
-
-                        thumbnail_cogs.append(self._write_blob(mem_jpg_file.read(), thumbnail_path, ContentType="image/jpeg"))
+            thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels, lookup_table=lookup_table, input_geobox=input_geobox, nodata=-999)
+            thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
 
         # this will raise IOError if any write failed, hence preventing json
         # from being written
