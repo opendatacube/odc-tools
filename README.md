@@ -1,6 +1,6 @@
 [![Build Status](https://github.com/opendatacube/odc-tools/workflows/build/badge.svg)](https://github.com/opendatacube/odc-tools/actions)
 [![Test Status](https://github.com/opendatacube/odc-tools/actions/workflows/test-dc-tools.yml/badge.svg)](https://github.com/opendatacube/odc-tools/actions/workflows/test-dc-tools.yml)
-[![codecov](https://codecov.io/gh/opendatacube/odc-tools/branch/master/graph/badge.svg?token=PovpVLRFwn)](https://codecov.io/gh/opendatacube/odc-tools)
+[![codecov](https://codecov.io/gh/opendatacube/odc-tools/branch/develop/graph/badge.svg?token=PovpVLRFwn)](https://codecov.io/gh/opendatacube/odc-tools)
 
 DEA Prototype Code
 ==================
