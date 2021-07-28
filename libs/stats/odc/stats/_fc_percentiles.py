@@ -62,7 +62,7 @@ class StatsFCP(StatsPluginInterface):
 
         wet = xx["wet"]
         xx = _xr_fuse(xx.drop_vars(["wet"]), partial(_first_valid_np, nodata=NODATA), '')
-        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name)
+        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name) & (xx['bs'] == 255)
         return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
