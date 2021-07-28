@@ -15,9 +15,9 @@ def dataset():
     ]).astype(np.uint8)
 
     band_2 = np.array([
-        [[0, 128], [0, 0]],
-        [[0, 0], [0, 0]], 
-        [[0, 0], [0, 0]], 
+        [[0, 128], [128, 0]],
+        [[0, 0], [128, 0]], 
+        [[0, 0], [0b0110_1110, 0]], 
     ]).astype(np.uint8)
 
     band_1 = da.from_array(band_1, chunks=(3, -1, -1))
@@ -36,7 +36,7 @@ def dataset():
     return xx
 
 
-@pytest.mark.parametrize("bits", [0b0000_0000, 0b0000_0001, 0b0001_0000, 0b0001_0001])
+@pytest.mark.parametrize("bits", [0b0000_0000, 0b0001_0000])
 def test_native_transform(dataset, bits):
     
     xx = dataset.copy()
@@ -44,27 +44,19 @@ def test_native_transform(dataset, bits):
     xx = StatsFCP._native_tr(xx)
     
     expected_result = np.array([
-        [[255, 57], [20, 50]],
-        [[30, 40], [70, 80]], 
-        [[25, 52], [73, 98]],
+        [[255, 255], [255, 50]],
+        [[30, 40], [255, 80]], 
+        [[25, 52], [255, 98]],
     ])
     result = xx.compute()["band_1"].data
     assert (result == expected_result).all()
 
     expected_result = np.array([
-        [[False, True], [False, False]],
-        [[False, False], [False, False]], 
+        [[False, True], [True, False]],
+        [[False, False], [True, False]], 
         [[False, False], [False, False]],
     ])
     result = xx.compute()["wet"].data
-    assert (result == expected_result).all()
-
-    expected_result = np.array([
-        [[True, False], [True, True]],
-        [[True, True], [True, True]], 
-        [[True, True], [True, True]],
-    ])
-    result = xx.compute()["dry"].data
     assert (result == expected_result).all()
 
 
@@ -73,21 +65,17 @@ def test_fusing(dataset):
     xx = xx.groupby("solar_day").map(StatsFCP._fuser)
 
     expected_result = np.array(
-        [[30, 57], [20, 50]],
+        [[28, 46], [255, 76]],
     )
     result = xx.compute()["band_1"].data
+
+    print(result.shape)
     assert (result == expected_result).all()
 
     expected_result = np.array(
-        [[False, True], [False, False]],
+        [[False, False], [True, False]],
     )
     result = xx.compute()["wet"].data
-    assert (result == expected_result).all()
-
-    expected_result = np.array(
-        [[True, False], [True, True]],
-    )
-    result = xx.compute()["dry"].data
     assert (result == expected_result).all()
 
 
@@ -98,10 +86,11 @@ def test_reduce(dataset):
 
     result = xx.compute()["band_1_pc_10"].data
     assert (result[0, :] == 255).all()
-    assert (result[1, :] != 255).all()
+    assert (result[1, 0] == 255).all()
+    assert (result[1, 1] != 255).all()
 
     expected_result = np.array(
-        [[1, 0], [2, 2]],
+        [[1, 0], [0, 2]],
     )
     result = xx.compute()["qa"].data
     assert (result == expected_result).all()

@@ -11,6 +11,7 @@ from odc.algo._masking import (
     enum_to_bool,
     _get_enum_values,
     _enum_to_mask_numexpr,
+    _fuse_mean_np,
 )
 
 
@@ -212,3 +213,16 @@ def test_enum_to_mask_numexpr():
         _enum_to_mask_numexpr(mm, elements, dtype="uint8", value_true=255) == 255,
         np.isin(mm, elements),
     )
+
+
+def test_fuse_mean_np():
+    data = np.array([
+        [[255, 255], [255, 50]],
+        [[30, 40], [255, 80]], 
+        [[25, 52], [255, 98]],
+    ]).astype(np.uint8)
+
+    slices = [data[i:i+1] for i in range(data.shape[0])]
+    out = _fuse_mean_np(*slices, nodata=255)
+    assert (out == np.array([[28, 46], [255, 76]])).all()
+

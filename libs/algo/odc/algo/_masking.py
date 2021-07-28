@@ -725,3 +725,18 @@ def _nodata_fuser(xx, **kw):
     if xx.shape[0] <= 1:
         return xx
     return choose_first_valid(xx, **kw)
+
+
+def _fuse_mean_np(*aa, nodata):
+    assert len(aa) > 0
+    
+    out = aa[0].astype(np.float32)
+    count = (aa[0] != nodata).astype(np.float32)
+    for a in aa[1:]:
+        out += a.astype(np.float32)
+        count += (a != nodata)
+
+    out -= (len(aa) - count) * nodata
+    out = np.round(out / count).astype(aa[0].dtype)
+    out[count == 0] = nodata
+    return out
