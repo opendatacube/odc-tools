@@ -11,7 +11,7 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _xr_fuse, _or_fuser, fuse_mean_np, _fuse_or_np, _fuse_and_np
+from odc.algo._masking import _xr_fuse, _or_fuser, _fuse_mean_np, _fuse_or_np, _fuse_and_np
 from .model import StatsPluginInterface
 from . import _plugins
 
@@ -61,7 +61,7 @@ class StatsFCP(StatsPluginInterface):
     def _fuser(xx):
 
         wet = xx["wet"]
-        xx = _xr_fuse(xx.drop_vars(["wet"]), partial(fuse_mean_np, nodata=NODATA), '')
+        xx = _xr_fuse(xx.drop_vars(["wet"]), partial(_fuse_mean_np, nodata=NODATA), '')
 
         band, *bands = xx.data_vars.keys()
         all_bands_invalid = xx[band] == NODATA
