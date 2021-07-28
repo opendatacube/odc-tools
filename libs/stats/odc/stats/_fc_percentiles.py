@@ -62,7 +62,13 @@ class StatsFCP(StatsPluginInterface):
 
         wet = xx["wet"]
         xx = _xr_fuse(xx.drop_vars(["wet"]), partial(_first_valid_np, nodata=NODATA), '')
-        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name) & (xx['bs'] == 255)
+
+        band, *bands = xx.data_vars.keys()
+        all_bands_invalid = xx[band] == NODATA
+        for band in bands:
+            all_bands_invalid &= xx[band] == NODATA
+
+        xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name) & all_bands_invalid
         return xx
 
     def input_data(self, task: Task) -> xr.Dataset:
