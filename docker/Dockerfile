@@ -7,8 +7,6 @@ ENV PATH="/env/bin:${PATH}"
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends --allow-change-held-packages \
-    # to become test user
-    sudo \
     # git is needed for sdist|bdist_wheel
     git \
     # for docs

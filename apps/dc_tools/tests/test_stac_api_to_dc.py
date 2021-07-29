@@ -5,7 +5,7 @@ from odc.apps.dc_tools.stac_api_to_dc import cli
 
 
 @pytest.mark.depends(on=['add_products'])
-def test_stac_to_dc_s2():
+def test_stac_to_dc_earthsearch():
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -23,7 +23,7 @@ def test_stac_to_dc_s2():
 
 @pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
 @pytest.mark.depends(on=['add_products'])
-def test_stac_to_dc_ls():
+def test_stac_to_dc_usgs():
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -37,3 +37,18 @@ def test_stac_to_dc_ls():
     )
     assert result.exit_code == 0
     assert result.output == "Added 10 Datasets, failed 0 Datasets\n"
+
+
+@pytest.mark.depends(on=['add_products'])
+def test__to_dc_planetarycomputer():
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "--catalog-href=https://planetarycomputer.microsoft.com/api/stac/v1/",
+            "--limit=1",
+            "--collections=nasadem",
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.output == "Added 1 Datasets, failed 0 Datasets\n"

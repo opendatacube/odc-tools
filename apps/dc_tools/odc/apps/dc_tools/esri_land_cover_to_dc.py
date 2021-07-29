@@ -15,14 +15,11 @@ import rasterio
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
-from odc.apps.dc_tools.utils import (
-    get_esri_list,
-    index_update_dataset,
-    limit,
-    update_if_exists,
-)
+from odc.apps.dc_tools.utils import (get_esri_list, index_update_dataset,
+                                     limit, update_if_exists)
 from odc.index.stac import stac_transform
 from pyproj import Transformer
+from pystac.extensions.projection import ProjectionExtension
 
 ESRI_LANDCOVER_PRODUCT = (
     "https://raw.githubusercontent.com/opendatacube/"
@@ -84,11 +81,11 @@ def get_item(uri: str) -> Tuple[pystac.Item, str]:
         properties={
             "odc:product": "esri_land_cover",
             "odc:region_code": region.strip(),
-        },
-        stac_extensions=["projection"],
+        }
     )
-
-    item.ext.projection.epsg = crs
+    ProjectionExtension.add_to(item)
+    proj_ext = ProjectionExtension.ext(item)
+    proj_ext.apply(crs, transform=transform, shape=shape)
 
     asset = pystac.Asset(
         href=uri,
@@ -97,9 +94,6 @@ def get_item(uri: str) -> Tuple[pystac.Item, str]:
         title="classification",
     )
     item.add_asset("classification", asset)
-
-    item.ext.projection.set_transform(transform, asset=asset)
-    item.ext.projection.set_shape(shape, asset=asset)
 
     return item, uri
 
