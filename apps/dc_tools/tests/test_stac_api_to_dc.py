@@ -11,30 +11,33 @@ from pystac_client import Client
 
 def test_get_items_threaded(benchmark):
     client = Client.open(MICROSOFT_PC_STAC_URI)
-    search = client.search(collections="io-lulc", limit=10)
+    search = client.search(collections="io-lulc", limit=100)
 
     items = [x for x in benchmark(get_items, search, threaded=True)]
 
-    assert len(items) == 10
+    assert len(items) == 100
 
 
 def test_get_items(benchmark):
     client = Client.open(MICROSOFT_PC_STAC_URI)
-    search = client.search(collections="io-lulc", limit=10)
+    search = client.search(collections="io-lulc", limit=100)
 
     items = [x for x in benchmark(get_items, search, threaded=False)]
 
-    assert len(items) == 10
+    assert len(items) == 100
 
 
 def test_process_item(one_item):
     metadata, uri = _process_item(one_item)
 
-    assert uri == "https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc/items/60U-2020"
+    assert (
+        uri
+        == "https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc/items/60U-2020"
+    )
     assert type(metadata) == dict
 
 
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_stac_to_dc_earthsearch():
     runner = CliRunner()
     result = runner.invoke(
@@ -52,7 +55,7 @@ def test_stac_to_dc_earthsearch():
 
 
 @pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_stac_to_dc_usgs():
     runner = CliRunner()
     result = runner.invoke(
@@ -69,7 +72,7 @@ def test_stac_to_dc_usgs():
     assert result.output == "Added 10 Datasets, failed 0 Datasets\n"
 
 
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test__to_dc_planetarycomputer():
     runner = CliRunner()
     result = runner.invoke(
@@ -86,4 +89,6 @@ def test__to_dc_planetarycomputer():
 
 @pytest.fixture
 def one_item():
-    return pystac.Item.from_file("https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc/items/60U-2020")
+    return pystac.Item.from_file(
+        "https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc/items/60U-2020"
+    )

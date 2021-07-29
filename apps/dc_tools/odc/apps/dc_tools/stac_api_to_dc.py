@@ -76,12 +76,12 @@ def _process_item(item):
 
 
 def get_items(
-    client: ItemSearch, threaded: Optional[bool] = True
+    search: ItemSearch, threaded: Optional[bool] = False
 ) -> Generator[Tuple[dict, str, bool], None, None]:
     try:
-        items = client.get_items()
+        items = search.get_all_items()
     except AttributeError:
-        items = client.items()
+        items = search.items()
 
     if threaded:
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
