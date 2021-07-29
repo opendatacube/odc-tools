@@ -40,6 +40,8 @@ def _stac_product_lookup(
     if product_name is None:
         # If there's no odc:product, platform and collection, then fail.
         product_name = get_in(["collection"], item, no_default=True)
+    product_name = product_name.replace("-", "_")
+
     region_code = get_in(["odc:region_code"], properties, None)
     default_grid = None
 
@@ -259,6 +261,7 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     properties = input_stac["properties"]
     proj_shape = properties.get("proj:shape")
     proj_transform = properties.get("proj:transform")
+
     # TODO: handle old STAC that doesn't have grid information here...
     bands, grids, accessories = _get_stac_bands(
         input_stac,
