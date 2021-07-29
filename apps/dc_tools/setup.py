@@ -1,6 +1,6 @@
 from setuptools import setup
 
-TEST_REQUIREMENTS = ["pytest", "deepdiff", "pytest-depends"]
+TEST_REQUIREMENTS = ["pytest", "deepdiff", "pytest-depends", "pytest-benchmark"]
 
 setup(
     name="odc_apps_dc_tools",

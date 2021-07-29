@@ -2,6 +2,7 @@ datacube[dev]
 moto
 mock
 pytest
+pytest-benchmark
 pytest-depends
 docker
 deepdiff

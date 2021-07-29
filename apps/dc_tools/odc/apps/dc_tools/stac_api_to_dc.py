@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from typing import Any, Dict, Generator, Optional, Tuple
-
+import concurrent.futures
 import click
 import pystac
 from datacube import Datacube
@@ -13,7 +13,7 @@ from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools.utils import (allow_unsafe, index_update_dataset, limit,
                                      update_if_exists)
 from odc.index.stac import stac_transform, stac_transform_absolute
-from pystac_client import Client
+from pystac_client import Client, ItemSearch
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
 
@@ -60,37 +60,47 @@ def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
     return self_link, relative
 
 
+def _process_item(item):
+    uri, relative = _guess_location(item)
+    try:
+        metadata = item.to_dict()
+        if relative:
+            metadata = stac_transform(metadata)
+        else:
+            metadata = stac_transform_absolute(metadata)
+        return (metadata, uri)
+    except KeyError as e:
+        logging.error(
+            f"Failed to handle item with KeyError: '{e}'\n The URI was {uri}"
+        )
+
+
 def get_items(
-    client: Client, limit: Optional[int]
+    client: ItemSearch, threaded: Optional[bool] = True
 ) -> Generator[Tuple[dict, str, bool], None, None]:
     try:
         items = client.get_items()
     except AttributeError:
         items = client.items()
 
-    for count, item in enumerate(items):
-        # Stop at the limit if it's set
-        if (limit is not None) and (count >= limit):
-            break
-        uri, relative = _guess_location(item)
-        try:
-            metadata = item.to_dict()
-            if relative:
-                metadata = stac_transform(metadata)
-            else:
-                metadata = stac_transform_absolute(metadata)
-        except KeyError as e:
-            logging.error(
-                f"Failed to handle item with KeyError: '{e}'\n The URI was {uri}"
-            )
-            continue
-
-        yield (metadata, uri)
+    if threaded:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_item = {executor.submit(_process_item, item): item for item in items}
+            for future in concurrent.futures.as_completed(future_to_item):
+                item = future_to_item[future]
+                try:
+                    result = future.result()
+                except Exception as e:
+                    logging.error(f'Failed to handle item {item} with exception {e}')
+                else:
+                    yield result
+    else:
+        for item in items:
+            yield _process_item(item)
 
 
 def stac_api_to_odc(
     dc: Datacube,
-    limit: int,
     update_if_exists: bool,
     config: dict,
     catalog_href: str,
@@ -123,7 +133,7 @@ def stac_api_to_odc(
         logging.warning("API did not return the number of items.")
 
     # Get a generator of (stac, uri, relative_uri) tuples
-    datasets_uris = get_items(search, limit)
+    datasets_uris = get_items(search)
 
     # Do the indexing of all the things
     success = 0
@@ -197,10 +207,13 @@ def cli(limit, update_if_exists, allow_unsafe, catalog_href, collections, bbox, 
     if datetime:
         config["datetime"] = datetime
 
+    if limit is not None:
+        config["limit"] = limit
+
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, limit, update_if_exists, config, catalog_href, allow_unsafe_changes=allow_unsafe
+        dc, update_if_exists, config, catalog_href, allow_unsafe_changes=allow_unsafe
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")

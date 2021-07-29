@@ -1,7 +1,37 @@
 # Tests using the Click framework the stac_api-to-dc CLI tool
+import pystac
 import pytest
 from click.testing import CliRunner
-from odc.apps.dc_tools.stac_api_to_dc import cli
+from odc.apps.dc_tools.stac_api_to_dc import cli, get_items, _process_item
+
+from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
+
+from pystac_client import Client
+
+
+def test_get_items_threaded(benchmark):
+    client = Client.open(MICROSOFT_PC_STAC_URI)
+    search = client.search(collections="io-lulc", limit=10)
+
+    items = [x for x in benchmark(get_items, search, threaded=True)]
+
+    assert len(items) == 10
+
+
+def test_get_items(benchmark):
+    client = Client.open(MICROSOFT_PC_STAC_URI)
+    search = client.search(collections="io-lulc", limit=10)
+
+    items = [x for x in benchmark(get_items, search, threaded=False)]
+
+    assert len(items) == 10
+
+
+def test_process_item(one_item):
+    metadata, uri = _process_item(one_item)
+
+    assert uri == "https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc/items/60U-2020"
+    assert type(metadata) == dict
 
 
 @pytest.mark.depends(on=['add_products'])
@@ -45,10 +75,15 @@ def test__to_dc_planetarycomputer():
     result = runner.invoke(
         cli,
         [
-            "--catalog-href=https://planetarycomputer.microsoft.com/api/stac/v1/",
+            f"--catalog-href={MICROSOFT_PC_STAC_URI}",
             "--limit=1",
             "--collections=nasadem",
         ],
     )
     assert result.exit_code == 0
     assert result.output == "Added 1 Datasets, failed 0 Datasets\n"
+
+
+@pytest.fixture
+def one_item():
+    return pystac.Item.from_file("https://planetarycomputer.microsoft.com/api/stac/v1/collections/io-lulc/items/60U-2020")

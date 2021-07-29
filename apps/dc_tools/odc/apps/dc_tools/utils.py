@@ -12,6 +12,8 @@ ESRI_LANDCOVER_BASE_URI = (
     "io-lulc-model-001-v01-composite-v03-supercell-v02-clip-v01/{id}_20200101-20210101.tif"
 )
 
+MICROSOFT_PC_STAC_URI = "https://planetarycomputer.microsoft.com/api/stac/v1/"
+
 
 class IndexingException(Exception):
     """
