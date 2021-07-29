@@ -68,7 +68,6 @@ def get_items(
     except AttributeError:
         items = client.items()
 
-    # Workaround bug in STAC Search that doesn't stop at the limit
     for count, item in enumerate(items):
         # Stop at the limit if it's set
         if (limit is not None) and (count >= limit):
@@ -110,15 +109,18 @@ def stac_api_to_odc(
     client = Client.open(catalog_href)
     search = client.search(**config)
     n_items = search.matched()
-    logging.info("Found {} items to index".format(n_items))
-    if n_items > 10000:
-        logging.warning(
-            "More than 10,000 items were returned by your query, which is greater than the API limit"
-        )
+    if n_items is not None:
+        logging.info("Found {} items to index".format(n_items))
+        if n_items > 10000:
+            logging.warning(
+                "More than 10,000 items were returned by your query, which is greater than the API limit"
+            )
 
-    if n_items == 0:
-        logging.warning("Didn't find any items, finishing.")
-        return 0, 0
+        if n_items == 0:
+            logging.warning("Didn't find any items, finishing.")
+            return 0, 0
+    else:
+        logging.warning("API did not return the number of items.")
 
     # Get a generator of (stac, uri, relative_uri) tuples
     datasets_uris = get_items(search, limit)

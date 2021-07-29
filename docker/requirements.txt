@@ -32,7 +32,8 @@ numexpr
 numpy
 pyproj
 pystac
-pystac-client
+# Change when this is released next.
+git+https://github.com/stac-utils/pystac-client/
 pyyaml
 rasterio
 requests
@@ -46,3 +47,7 @@ zstandard
 wheel
 setuptools
 pip
+
+# Alex can't find how to install this for only tests
+# But really, this is all tests! haha
+pytest-depends
