@@ -304,19 +304,32 @@ class S3COGSink:
 
         input_geobox = GridSpec(shape=task.geobox.shape, transform=task.geobox.transform,  crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
 
+        # the lookup_table is band base.
+        # e.g. the count_wet/count_clear the scale-up will different from frequency in WOfS summary.
+        band_visal_table = {
+            'count_clear': {'lookup_table': {0: [255, 255, 255]}},
+            'count_wet':   {'lookup_table': {0: [255, 255, 255]}},
+            'frequency':   {'bit': 0},
+        }
+
         # add the thumbnail images
         for band, _ in task.paths(ext="tif").items():
             thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
             
-            # just a flag to make sure something happen
-            lookup_table = {0: [150, 150, 110], 
-                            1: [0, 0, 0]}
-            
             # the pixel here is a single layer numpy.array
             pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
 
-            # note: the pixel is a list with three numpy.array == R, G, B values
-            thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels, lookup_table=lookup_table, input_geobox=input_geobox, nodata=-999)
+            if 'bit' in band_visal_table[band].keys():
+                thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels, 
+                                                                                     bit=band_visal_table[band]['bit'], 
+                                                                                     input_geobox=input_geobox, 
+                                                                                     nodata=-999)
+            else:
+                thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels, 
+                                                                                     lookup_table=band_visal_table[band]['lookup_table'], 
+                                                                                     input_geobox=input_geobox, 
+                                                                                     nodata=-999)
+            
             thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
 
         # this will raise IOError if any write failed, hence preventing json

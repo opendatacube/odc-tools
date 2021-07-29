@@ -201,13 +201,6 @@ class TaskRunner:
             _log.debug("Building Dask Graph")
             ds = proc.reduce(proc.input_data(task))
 
-            ## The ds here is the xr.Dataset, which same as LCCS situation, generate the EO3 and STAC values here.
-            # with DatasetAssembler(Path(task.location), naming_conventions='default') as p:
-            #    for varname, da in ds.data_vars.items(): # for loop to add measurments to EO3
-            #        print(varname, da.attrs)
-            #        print(ds[varname])
-            #    p.done()
-
             _log.debug(f"Submitting to Dask ({task.location})")
             ds = client.persist(ds, fifo_timeout="1ms")
 
