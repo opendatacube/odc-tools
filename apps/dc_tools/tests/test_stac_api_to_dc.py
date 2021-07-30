@@ -19,7 +19,6 @@ def test_stac_to_dc_earthsearch():
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 10 Datasets, failed 0 Datasets\n"
 
 
 @pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
@@ -37,7 +36,6 @@ def test_stac_to_dc_usgs():
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 10 Datasets, failed 0 Datasets\n"
 
 
 @pytest.mark.depends(on=['add_products'])
@@ -52,4 +50,3 @@ def test__to_dc_planetarycomputer():
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 Datasets, failed 0 Datasets\n"
