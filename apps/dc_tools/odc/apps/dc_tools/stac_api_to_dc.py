@@ -21,7 +21,7 @@ from pystac.item import Item
 from pystac_client import Client
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s: %(levelname)s: %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S",
 )
@@ -129,6 +129,7 @@ def stac_api_to_odc(
     success = 0
     failure = 0
 
+    sys.stdout.write("\rIndexing from STAC API...\n")
     with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
         future_to_item = {
             executor.submit(
@@ -146,9 +147,12 @@ def stac_api_to_odc(
             try:
                 _ = future.result()
                 success += 1
+                if success % 10 == 0:
+                    sys.stdout.write(f"\rAdded {success} datasets...")
             except Exception as e:
                 logging.error(f"Failed to handle item {item} with exception {e}")
                 failure += 1
+    sys.stdout.write("\r")
 
     return success, failure
 
