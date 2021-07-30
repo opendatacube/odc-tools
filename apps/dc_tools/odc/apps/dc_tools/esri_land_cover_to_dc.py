@@ -120,7 +120,7 @@ def esri_lc_to_dc(dc: Datacube, limit: int, update: bool) -> Tuple[int, int]:
             )
             success += 1
         except Exception as e:
-            logging.warning(f"Failed to index {uri} with exception {e}")
+            logging.exception(f"Failed to index {uri} with exception {e}")
             failure += 1
 
     return success, failure
