@@ -10,12 +10,23 @@ import click
 import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from odc.apps.dc_tools.utils import (allow_unsafe, index_update_dataset, limit,
-                                     update_if_exists)
+from odc.apps.dc_tools.utils import (
+    allow_unsafe,
+    index_update_dataset,
+    limit,
+    update_if_exists,
+)
 from odc.index.stac import stac_transform, stac_transform_absolute
-from pystac_client import Client, ItemSearch
+from pystac.item import Item
+from pystac_client import Client
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s: %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
+
+import concurrent
 
 
 def _parse_options(options: Optional[str]) -> Dict[str, Any]:
@@ -27,7 +38,9 @@ def _parse_options(options: Optional[str]) -> Dict[str, Any]:
                 key, value = option.split("=")
                 parsed_options[key] = value
             except Exception as e:
-                logging.warning(f"Couldn't parse option {option}, format is key=value, exception was {e}")
+                logging.warning(
+                    f"Couldn't parse option {option}, format is key=value, exception was {e}"
+                )
 
     return parsed_options
 
@@ -60,26 +73,36 @@ def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
     return self_link, relative
 
 
-def get_items(
-    search: ItemSearch
-) -> Generator[Tuple[dict, str, bool], None, None]:
-    items = search.get_all_items()
+def item_to_meta_uri(item: Item) -> Generator[Tuple[dict, str, bool], None, None]:
+    uri, relative = _guess_location(item)
+    try:
+        metadata = item.to_dict()
+        if relative:
+            metadata = stac_transform(metadata)
+        else:
+            metadata = stac_transform_absolute(metadata)
+    except KeyError as e:
+        logging.error(f"Failed to handle item with KeyError: '{e}'\n The URI was {uri}")
 
-    for item in items:
-        uri, relative = _guess_location(item)
-        try:
-            metadata = item.to_dict()
-            if relative:
-                metadata = stac_transform(metadata)
-            else:
-                metadata = stac_transform_absolute(metadata)
-        except KeyError as e:
-            logging.error(
-                f"Failed to handle item with KeyError: '{e}'\n The URI was {uri}"
-            )
-            continue
+    return (metadata, uri)
 
-        yield (metadata, uri)
+
+def process_item(
+    item: Item,
+    dc: Datacube,
+    doc2ds: Doc2Dataset,
+    update_if_exists: bool,
+    allow_unsafe: bool,
+):
+    meta, uri = item_to_meta_uri(item)
+    index_update_dataset(
+        meta,
+        uri,
+        dc,
+        doc2ds,
+        update_if_exists=update_if_exists,
+        allow_unsafe=allow_unsafe,
+    )
 
 
 def stac_api_to_odc(
@@ -102,27 +125,30 @@ def stac_api_to_odc(
     else:
         logging.warning("API did not return the number of items.")
 
-    # Get a generator of (stac, uri, relative_uri) tuples
-    datasets_uris = get_items(search)
-
     # Do the indexing of all the things
     success = 0
     failure = 0
 
-    for dataset, uri in datasets_uris:
-        try:
-            index_update_dataset(
-                dataset,
-                uri,
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        future_to_item = {
+            executor.submit(
+                process_item,
+                item,
                 dc,
                 doc2ds,
                 update_if_exists=update_if_exists,
-                allow_unsafe=allow_unsafe_changes,
-            )
-            success += 1
-        except Exception as e:
-            logging.warning(f"Failed to handle dataset: {uri} with exception {e}")
-            failure += 1
+                allow_unsafe=allow_unsafe,
+            ): item.id
+            for item in search.get_all_items()
+        }
+        for future in concurrent.futures.as_completed(future_to_item):
+            item = future_to_item[future]
+            try:
+                _ = future.result()
+                success += 1
+            except Exception as e:
+                logging.error(f"Failed to handle item {item} with exception {e}")
+                failure += 1
 
     return success, failure
 
@@ -161,7 +187,16 @@ def stac_api_to_odc(
     default=None,
     help="Other search terms, as a # separated list, i.e., --options=cloud_cover=0,100#sky=green",
 )
-def cli(limit, update_if_exists, allow_unsafe, catalog_href, collections, bbox, datetime, options):
+def cli(
+    limit,
+    update_if_exists,
+    allow_unsafe,
+    catalog_href,
+    collections,
+    bbox,
+    datetime,
+    options,
+):
     """
     Iterate through STAC items from a STAC API and add them to datacube.
     """
