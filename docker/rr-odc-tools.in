@@ -8,9 +8,8 @@ deepdiff
 pip-tools
 rio-cogeo
 hdstats
-git+https://github.com/stac-utils/pystac-client/
 
--e /code/apps/dc_tools[AZURE,THREDDS]
+-e /code/apps/dc_tools[AZURE,THREDDS,tests]
 -e /code/apps/cloud[AZURE,THREDDS,GCP]
 -e /code/libs/geom
 -e /code/libs/dtools

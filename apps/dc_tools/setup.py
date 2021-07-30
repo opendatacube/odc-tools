@@ -18,7 +18,7 @@ setup(
     install_requires=[
         "click",
         "fsspec",
-        "pystac-client",
+        "pystac-client>=0.2.0b2",
         "toolz",
         "pyyaml",
         "datacube",
@@ -26,7 +26,7 @@ setup(
         "odc_io",
         "odc_aws",
         "odc_aio",
-        "pystac",
+        "pystac>=1.0.0",
     ],
     extras_require={
         "tests": TEST_REQUIREMENTS,

@@ -21,7 +21,7 @@ setup(
         "odc_aio",
         "dataclasses; python_version<'3.7'",
         "tqdm",
-        "pystac"
+        "pystac>=1.0.0",
     ],
     packages=["odc.stats"],
     zip_safe=False,
