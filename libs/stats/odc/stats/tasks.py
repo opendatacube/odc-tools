@@ -421,7 +421,7 @@ class TaskReader:
         product = self._resolve_product(product)
 
         dss = self.datasets(tile_index)
-        if ds_filter is not None:
+        if ds_filters is not None:
             ds_checker = DatasetChecker(ds_filters)
             dss = tuple(ds for ds in dss if ds_checker.check_dataset(ds))
         tidx_xy = _xy(tile_index)
@@ -465,33 +465,31 @@ class TaskReader:
             yield self.load_task(tidx, product, source=token, ds_filters=ds_filters)
 
 
-def DatasetChecker:
+class DatasetChecker:
     
-    def __init__(ds_filters):
-        ds_filters = dataset_filters.split('|')
-        self.ds_filter = tuple(json.loads(ds_filter) for ds_filter in ds_filters)
+    def __init__(self, ds_filters):
+        ds_filters = ds_filters.split('|')
+        self.ds_filters = tuple(json.loads(ds_filter) for ds_filter in ds_filters)
     
     @staticmethod
     def check_dt(ds_filter, datetime_str):
         time_range = DateTimeRange(ds_filter["datetime"])
-        dt = datetime.strptime(ds.metadata_doc["properties"]["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        dt = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
         return dt in time_range
 
-    @staticmethod
-    def check_dataset_1(ds_filter, ds):
+    def check_ds_1(self, ds_filter, ds):
         valid = True
         for key in ds_filter.keys():
             if key == 'datetime':
-                valid &= parse_datetime_filter(ds_filter, ds.metadata_doc["properties"][key])
+                valid &= self.check_dt(ds_filter, ds.metadata_doc["properties"][key])
             else:
                 valid &= ds_filter[key] == ds.metadata_doc["properties"][key]
 
         return valid
 
-
     def check_dataset(self, ds):
         valid = False
         for ds_filter in self.ds_filters:
-            valid |= check_ds_1(ds_filter, ds)
+            valid |= self.check_ds_1(ds_filter, ds)
 
         return valid
