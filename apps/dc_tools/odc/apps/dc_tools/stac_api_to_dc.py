@@ -13,7 +13,7 @@ from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools.utils import (allow_unsafe, index_update_dataset, limit,
                                      update_if_exists)
 from odc.index.stac import stac_transform, stac_transform_absolute
-from pystac_client import Client
+from pystac_client import Client, ItemSearch
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
 
@@ -61,17 +61,11 @@ def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
 
 
 def get_items(
-    client: Client, limit: Optional[int]
+    search: ItemSearch
 ) -> Generator[Tuple[dict, str, bool], None, None]:
-    try:
-        items = client.get_items()
-    except AttributeError:
-        items = client.items()
+    items = search.get_all_items()
 
-    for count, item in enumerate(items):
-        # Stop at the limit if it's set
-        if (limit is not None) and (count >= limit):
-            break
+    for item in items:
         uri, relative = _guess_location(item)
         try:
             metadata = item.to_dict()
@@ -90,32 +84,18 @@ def get_items(
 
 def stac_api_to_odc(
     dc: Datacube,
-    limit: int,
     update_if_exists: bool,
     config: dict,
     catalog_href: str,
     allow_unsafe_changes: bool = True,
-    **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
-
-    # QA the BBOX
-    if config.get("bbox") and len(config["bbox"]) != 4:
-        raise ValueError(
-            "Bounding box must be of the form lon-min,lat-min,lon-max,lat-max"
-        )
-
-    # QA the search
     client = Client.open(catalog_href)
+
     search = client.search(**config)
     n_items = search.matched()
     if n_items is not None:
         logging.info("Found {} items to index".format(n_items))
-        if n_items > 10000:
-            logging.warning(
-                "More than 10,000 items were returned by your query, which is greater than the API limit"
-            )
-
         if n_items == 0:
             logging.warning("Didn't find any items, finishing.")
             return 0, 0
@@ -123,7 +103,7 @@ def stac_api_to_odc(
         logging.warning("API did not return the number of items.")
 
     # Get a generator of (stac, uri, relative_uri) tuples
-    datasets_uris = get_items(search, limit)
+    datasets_uris = get_items(search)
 
     # Do the indexing of all the things
     success = 0
@@ -197,10 +177,13 @@ def cli(limit, update_if_exists, allow_unsafe, catalog_href, collections, bbox, 
     if datetime:
         config["datetime"] = datetime
 
+    if limit is not None:
+        config["max_items"] = limit
+
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, limit, update_if_exists, config, catalog_href, allow_unsafe_changes=allow_unsafe
+        dc, update_if_exists, config, catalog_href, allow_unsafe_changes=allow_unsafe
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
