@@ -75,14 +75,11 @@ def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
 
 def item_to_meta_uri(item: Item) -> Generator[Tuple[dict, str, bool], None, None]:
     uri, relative = _guess_location(item)
-    try:
-        metadata = item.to_dict()
-        if relative:
-            metadata = stac_transform(metadata)
-        else:
-            metadata = stac_transform_absolute(metadata)
-    except KeyError as e:
-        logging.error(f"Failed to handle item with KeyError: '{e}'\n The URI was {uri}")
+    metadata = item.to_dict()
+    if relative:
+        metadata = stac_transform(metadata)
+    else:
+        metadata = stac_transform_absolute(metadata)
 
     return (metadata, uri)
 
