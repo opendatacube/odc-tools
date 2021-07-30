@@ -26,7 +26,7 @@ from toolz import dicttoolz
 from yaml import load
 
 # Added log handler
-logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
+logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
 
 
 def extract_metadata_from_message(message):
