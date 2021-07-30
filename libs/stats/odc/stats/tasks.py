@@ -416,10 +416,14 @@ class TaskReader:
         tile_index: TileIdx_txy,
         product: Optional[OutputProduct] = None,
         source: Any = None,
+        ds_filters: Optional[str] = None,
     ) -> Task:
         product = self._resolve_product(product)
 
         dss = self.datasets(tile_index)
+        if ds_filter is not None:
+            ds_checker = DatasetChecker(ds_filters)
+            dss = tuple(ds for ds in dss if ds_checker.check_dataset(ds))
         tidx_xy = _xy(tile_index)
 
         return Task(
@@ -432,17 +436,18 @@ class TaskReader:
         )
 
     def stream(
-        self, tiles: Iterable[TileIdx_txy], product: Optional[OutputProduct] = None
+        self, tiles: Iterable[TileIdx_txy], product: Optional[OutputProduct] = None, ds_filters: Optional[str] = None,
     ) -> Iterator[Task]:
         product = self._resolve_product(product)
         for tidx in tiles:
-            yield self.load_task(tidx, product)
+            yield self.load_task(tidx, product, ds_filters=ds_filters)
 
     def stream_from_sqs(
         self,
         sqs_queue,
         product: Optional[OutputProduct] = None,
         visibility_timeout: int = 300,
+        ds_filters: Optional[str] = None,
         **kw,
     ) -> Iterator[Task]:
         from odc.aws.queue import get_messages, get_queue
@@ -457,4 +462,36 @@ class TaskReader:
             # TODO: switch to JSON for SQS message body
             token = SQSWorkToken(msg, visibility_timeout)
             tidx = parse_task(msg.body)
-            yield self.load_task(tidx, product, source=token)
+            yield self.load_task(tidx, product, source=token, ds_filters=ds_filters)
+
+
+def DatasetChecker:
+    
+    def __init__(ds_filters):
+        ds_filters = dataset_filters.split('|')
+        self.ds_filter = tuple(json.loads(ds_filter) for ds_filter in ds_filters)
+    
+    @staticmethod
+    def check_dt(ds_filter, datetime_str):
+        time_range = DateTimeRange(ds_filter["datetime"])
+        dt = datetime.strptime(ds.metadata_doc["properties"]["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        return dt in time_range
+
+    @staticmethod
+    def check_dataset_1(ds_filter, ds):
+        valid = True
+        for key in ds_filter.keys():
+            if key == 'datetime':
+                valid &= parse_datetime_filter(ds_filter, ds.metadata_doc["properties"][key])
+            else:
+                valid &= ds_filter[key] == ds.metadata_doc["properties"][key]
+
+        return valid
+
+
+    def check_dataset(self, ds):
+        valid = False
+        for ds_filter in self.ds_filters:
+            valid |= check_ds_1(ds_filter, ds)
+
+        return valid
