@@ -2,6 +2,7 @@
 import pytest
 from click.testing import CliRunner
 from odc.apps.dc_tools.stac_api_to_dc import cli
+from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
 
 
 @pytest.mark.depends(on=['add_products'])
@@ -45,7 +46,7 @@ def test__to_dc_planetarycomputer():
     result = runner.invoke(
         cli,
         [
-            "--catalog-href=https://planetarycomputer.microsoft.com/api/stac/v1/",
+            f"--catalog-href={MICROSOFT_PC_STAC_URI}",
             "--limit=1",
             "--collections=nasadem",
         ],
