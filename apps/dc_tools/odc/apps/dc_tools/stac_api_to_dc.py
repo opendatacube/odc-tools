@@ -147,7 +147,7 @@ def stac_api_to_odc(
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
             except Exception as e:
-                logging.error(f"Failed to handle item {item} with exception {e}")
+                logging.exception(f"Failed to handle item {item} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 

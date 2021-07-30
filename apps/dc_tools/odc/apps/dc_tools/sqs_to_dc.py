@@ -246,7 +246,7 @@ def queue_to_odc(
             # Success, so delete the message.
             message.delete()
         except (IndexingException) as err:
-            logging.error(err)
+            logging.exception(f"Failed to handle message with exception: {err}")
             ds_failed += 1
 
     return ds_success, ds_failed
