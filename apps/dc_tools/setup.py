@@ -44,6 +44,7 @@ setup(
             "stac-to-dc = odc.apps.dc_tools.stac_api_to_dc:cli",
             "azure-to-dc = odc.apps.dc_tools.azure_to_dc:cli [AZURE]",
             "esri-lc-to-dc = odc.apps.dc_tools.esri_land_cover_to_dc:cli",
+            "fs-to-dc = odc.apps.dc_tools.fs_to_dc:cli",
         ]
     },
     packages=["odc.apps.dc_tools"],

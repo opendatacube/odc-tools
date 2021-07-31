@@ -25,7 +25,7 @@ def have_db():
 def test_parse_local_csv(local_csv):
     local_contents = [x for x in _parse_csv(local_csv)]
 
-    assert len(local_contents) == 6
+    assert len(local_contents) == 7
     assert local_contents[0].name == "s2_l2a"
 
 
