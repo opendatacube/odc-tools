@@ -18,7 +18,7 @@ def test_s3_to_dc_yaml():
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 25 Datasets, Failed 0 Datasets\n"
+    assert result.output == "Added 25 datasets and failed 0 datasets.\n"
 
 
 @pytest.mark.depends(on=['add_products'])
@@ -35,4 +35,4 @@ def test_s3_to_dc_stac():
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 Datasets, Failed 0 Datasets\n"
+    assert result.output == "Added 1 datasets and failed 0 datasets.\n"

@@ -139,7 +139,7 @@ def cli(
         allow_unsafe=allow_unsafe,
     )
 
-    print(f"Added {added} Datasets, Failed {failed} Datasets")
+    print(f"Added {added} datasets and failed {failed} datasets.")
 
     if failed > 0:
         sys.exit(failed)
