@@ -511,7 +511,7 @@ class TaskReader:
             tidx, filedb = parse_sqs(msg.body)
 
             # avoid the download and update again, how ever, we have to setup an exception to handle the unit test filedb
-            if urlparse(filedb).schema == 's3':
+            if urlparse(filedb).scheme == 's3':
                 bucket, key = s3_url_parse(filedb)
             else: # if it is the test_tiles.db, we load it from local
                 key = filedb 
