@@ -2,7 +2,16 @@
 USGS Landsat pixel quality
 
 pq_band = input band for cloud masking
-aerosol_band = input band for aerosol masking
+| Name | Units | Conversion | Description |
+|------|-------|------------|-------------|
+| QA_PIXEL | Bit Index | NA | Pixel quality; Bit: 0 = nodata; 1 = Dilated Cloud; 3 = cloud; 4 = cloud-shadow |
+
+aerosol_band = input band for aerosol masking; provide one of the band as an input measurements
+| Name | Units | Conversion | Description |
+|------|-------|------------|-------------|
+| SR_ATMOS_OPACITY | Unitless | 0.001 * DN | Atmospheric opacity; < 0.1 = clear; 0.1 - 0.3 = average; > 0.3 = hazy |
+| SR_QA_AEROSOL    | Bit Index | NA | Aerosol level; Bit(6-7): 00 = climatology; 01 = low; 10 = medium; 11 = high |
+
 filters = filters to apply on cloud mask - [[r1, r2, r3], ...]
     r1 = shrinks away small areas of the mask
     r2 = adds padding to the mask
@@ -56,10 +65,11 @@ class StatsPQLSBitmask(StatsPluginInterface):
             "clear",
             *[f"clear_{r1:d}_{r2:d}_{r3:d}" for (r1, r2, r3) in self.filters],
         ]
-        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
+        if self.aerosol_band and self.aerosol_band == "SR_QA_AEROSOL":
             aerosol_measurements = [
                 "clear_aerosol",
-                *[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol" for (r1, r2, r3) in self.aerosol_filters if self.aerosol_filters],
+                *[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol" for (r1, r2, r3) in self.aerosol_filters if
+                  self.aerosol_filters],
             ]
             _measurements.extend(aerosol_measurements)
 
@@ -103,18 +113,20 @@ class StatsPQLSBitmask(StatsPluginInterface):
         for band in erased_bands:
             clear_name = band.replace("erased", "clear")
             if "aerosol" in band:
-                pq[clear_name] = (valid & (~xx[band] * ~xx["erased"])).sum(axis=0, dtype="uint16")
+                pq[clear_name] = (valid & (~xx[band] & ~xx["erased"])).sum(axis=0, dtype="uint16")
             else:
                 pq[clear_name] = (valid & (~xx[band])).sum(axis=0, dtype="uint16")
 
-        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
+        if self.aerosol_band and self.aerosol_band == "SR_QA_AEROSOL":
             for r1, r2, r3 in self.aerosol_filters or []:
                 # apply filter on cloud_mask if not exists
                 if f"erased_{r1:d}_{r2:d}_{r3:d}" not in xx:
                     cloud_mask = binary_closing(xx["erased"], r3)
                     xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(cloud_mask, (r1, r2))
 
-                pq[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol"] = (valid & (~xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] & ~xx["erased_aerosol"])).sum(axis=0, dtype="uint16")
+                pq[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol"] = (
+                        valid & (~xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] & ~xx["erased_aerosol"])) \
+                            .sum(axis=0, dtype="uint16")
 
         return pq
 
@@ -130,15 +142,17 @@ class StatsPQLSBitmask(StatsPluginInterface):
         xx = xx.drop_vars([self.pq_band])
 
         # set bitmask
-        cloud_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) != 0   # True=cloud
+        cloud_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) != 0  # True=cloud
         keeps = da.bitwise_and(pq_band, 0b0000_0000_0000_0001) == 0  # True=data
 
-        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
+        if self.aerosol_band:
             aerosol_band = xx[self.aerosol_band]
             xx = xx.drop_vars([self.aerosol_band])
-
-            # set aerosol_level
-            aerosol_level = da.bitwise_and(aerosol_band, 0b1100_0000) / 64
+            # calculate aerosol_level or atmospheric opacity
+            if self.aerosol_band == "SR_QA_AEROSOL":
+                aerosol_level = da.bitwise_and(aerosol_band, 0b1100_0000) / 64
+            elif self.aerosol_band == "SR_ATMOS_OPACITY":
+                opacity = (aerosol_band.where(aerosol_band != -9999) * 0.001)
 
         # drops nodata pixels
         xx = keep_good_only(xx, keeps)
@@ -146,7 +160,10 @@ class StatsPQLSBitmask(StatsPluginInterface):
         xx["keeps"] = keeps
         xx["erased"] = cloud_mask
         if self.aerosol_band:
-            xx["erased_aerosol"] = aerosol_level == 3
+            if self.aerosol_band == "SR_QA_AEROSOL":
+                xx["erased_aerosol"] = aerosol_level == 3
+            elif self.aerosol_band and self.aerosol_band == "SR_ATMOS_OPACITY":
+                xx["erased_aerosol"] = opacity > 0.3
 
         return xx
 
@@ -156,13 +173,13 @@ class StatsPQLSBitmask(StatsPluginInterface):
         """
         cloud_mask = xx["erased"]
         xx = xx.drop_vars(["erased"])
-        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
+        if self.aerosol_band:
             high_aerosol_mask = xx["erased_aerosol"]
             xx = xx.drop_vars(["erased_aerosol"])
 
         fuser_result = _xr_fuse(xx, partial(_first_valid_np, nodata=0), '')
         fuser_result["erased"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
-        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
+        if self.aerosol_band:
             fuser_result["erased_aerosol"] = _xr_fuse(high_aerosol_mask, _fuse_or_np, high_aerosol_mask.name)
 
         return fuser_result
