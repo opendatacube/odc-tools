@@ -19,4 +19,4 @@ datacube system init --no-default-types --no-init-users
 echo "BOOTSTRAP: Adding metadata types."
 datacube metadata add "$metadata_catalog"
 echo "BOOTSTRAP: Adding products."
-dc-sync-products "$product_catalog"
+python -m odc.apps.dc_tools.add_update_products "$product_catalog"
