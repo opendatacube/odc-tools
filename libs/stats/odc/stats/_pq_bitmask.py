@@ -56,7 +56,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
             "clear",
             *[f"clear_{r1:d}_{r2:d}_{r3:d}" for (r1, r2, r3) in self.filters],
         ]
-        if self.aerosol_band is not None:
+        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
             aerosol_measurements = [
                 "clear_aerosol",
                 *[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol" for (r1, r2, r3) in self.aerosol_filters if self.aerosol_filters],
@@ -107,7 +107,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
             else:
                 pq[clear_name] = (valid & (~xx[band])).sum(axis=0, dtype="uint16")
 
-        if self.aerosol_band is not None:
+        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
             for r1, r2, r3 in self.aerosol_filters or []:
                 # apply filter on cloud_mask if not exists
                 if f"erased_{r1:d}_{r2:d}_{r3:d}" not in xx:
@@ -133,7 +133,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
         cloud_mask = da.bitwise_and(pq_band, 0b0000_0000_0001_1010) != 0   # True=cloud
         keeps = da.bitwise_and(pq_band, 0b0000_0000_0000_0001) == 0  # True=data
 
-        if self.aerosol_band is not None:
+        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
             aerosol_band = xx[self.aerosol_band]
             xx = xx.drop_vars([self.aerosol_band])
 
@@ -145,7 +145,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
         xx["keeps"] = keeps
         xx["erased"] = cloud_mask
-        if self.aerosol_band is not None:
+        if self.aerosol_band:
             xx["erased_aerosol"] = aerosol_level == 3
 
         return xx
@@ -156,13 +156,13 @@ class StatsPQLSBitmask(StatsPluginInterface):
         """
         cloud_mask = xx["erased"]
         xx = xx.drop_vars(["erased"])
-        if self.aerosol_band is not None:
+        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
             high_aerosol_mask = xx["erased_aerosol"]
             xx = xx.drop_vars(["erased_aerosol"])
 
         fuser_result = _xr_fuse(xx, partial(_first_valid_np, nodata=0), '')
         fuser_result["erased"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
-        if self.aerosol_band is not None:
+        if self.aerosol_band and self.aerosol_band=="SR_QA_AEROSOL":
             fuser_result["erased_aerosol"] = _xr_fuse(high_aerosol_mask, _fuse_or_np, high_aerosol_mask.name)
 
         return fuser_result
