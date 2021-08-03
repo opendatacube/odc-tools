@@ -5,7 +5,7 @@ from copy import deepcopy
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Any, Dict, Optional, Tuple, Union, List, Mapping
 from uuid import UUID
 from toolz import dicttoolz
 import pystac
@@ -160,6 +160,8 @@ class OutputProduct:
     naming_conventions_values: str = "dea_c3"
     explorer_path: str = "https://explorer.dea.ga.gov.au/"
     inherit_skip_properties: Optional[List[str]] = None
+    preview_image: Optional[List[Any]] = None
+    preview_image_singleband: Optional[List[Any]] = None
     classifier: str = "level3"
     maturity: str = "final"
     collection_number: int = 3
@@ -437,6 +439,8 @@ class StatsPluginInterface(ABC):
         naming_conventions_values: str = "dea_c3",
         explorer_path: str = "https://explorer.dea.ga.gov.au",
         inherit_skip_properties: Optional[List[str]] = None,
+        preview_image: Optional[List[Any]] = None,
+        preview_image_singleband: Optional[List[Any]] = None,
         classifier: str = "level3",
         maturity: str = "final",
         collection_number: int = 3,
@@ -453,6 +457,8 @@ class StatsPluginInterface(ABC):
         :param naming_conventions_values: default ``dea_c3``
         :param explorer_path: default ``https://explorer.dea.ga.gov.au``
         :param inherit_skip_properties: block properties from source datasets.
+        :param preview_image: three measurement display as a thumbnail setting. Three values map to green, red and blue.
+        :param preview_image_singleband: each measurment display as a thumbnail setting.
         :param classifier: default ``level3``
         :param maturity: default ``final``
         :param collection_number: default ``3``
@@ -499,6 +505,8 @@ class StatsPluginInterface(ABC):
             naming_conventions_values=naming_conventions_values,
             explorer_path=explorer_path,
             inherit_skip_properties=inherit_skip_properties,
+            preview_image=preview_image,
+            preview_image_singleband=preview_image_singleband,
             classifier=classifier,
             maturity=maturity,
             collection_number=collection_number,

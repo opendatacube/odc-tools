@@ -304,33 +304,45 @@ class S3COGSink:
 
         input_geobox = GridSpec(shape=task.geobox.shape, transform=task.geobox.transform,  crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
 
-        # the lookup_table is band base.
-        # e.g. the count_wet/count_clear the scale-up will different from frequency in WOfS summary.
-        band_visal_table = {
-            'count_clear': {'lookup_table': {0: [255, 255, 255]}},
-            'count_wet':   {'lookup_table': {0: [255, 255, 255]}},
-            'frequency':   {'bit': 0},
-        }
+        if task.product.preview_image_singleband:
+            # single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}} or
+            # single_band: {"measurement":'frequency', 'bit':0} 
+            for single_band in task.product.preview_image_singleband:
+                band = single_band['measurement']
+                thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
+                # the pixel here is a single layer numpy.array
+                pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
 
-        # add the thumbnail images
-        for band, _ in task.paths(ext="tif").items():
-            thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-            
-            # the pixel here is a single layer numpy.array
-            pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+                if 'bit' in single_band.keys():
+                    thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels,
+                                                                                        bit=single_band['bit'],
+                                                                                        input_geobox=input_geobox,
+                                                                                        nodata=-999)
+                else:
+                    thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels,
+                                                                                        lookup_table=single_band['lookup_table'],
+                                                                                        input_geobox=input_geobox,
+                                                                                        nodata=-999)
+                
+                thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
+        
+        elif task.product.preview_image:
+            # single_image: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'}}
+            for single_image in task.product.preview_image:
 
-            if 'bit' in band_visal_table[band].keys():
-                thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels, 
-                                                                                     bit=band_visal_table[band]['bit'], 
-                                                                                     input_geobox=input_geobox, 
-                                                                                     nodata=-999)
-            else:
-                thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels, 
-                                                                                     lookup_table=band_visal_table[band]['lookup_table'], 
-                                                                                     input_geobox=input_geobox, 
-                                                                                     nodata=-999)
-            
-            thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
+                r = pixels=ds[single_image['red']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+                g = pixels=ds[single_image['green']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+                b = pixels=ds[single_image['blue']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+
+                thumbnail_name = single_image['thumbnail_name']
+                thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
+
+                thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=[r, g, b],
+                                                                          input_geobox=input_geobox,
+                                                                          nodata=-999)
+
+                thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
+        
 
         # this will raise IOError if any write failed, hence preventing json
         # from being written
