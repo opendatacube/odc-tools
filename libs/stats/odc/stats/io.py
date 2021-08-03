@@ -25,7 +25,7 @@ from datacube.utils.dask import save_blob_to_s3, save_blob_to_file
 from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
-from .model import Task, EXT_TIFF
+from .model import Task, EXT_TIFF, StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
 
@@ -254,13 +254,18 @@ class S3COGSink:
 
         return json.dumps(stac_meta, default=json_fallback) # stac_meta is Python str, but content is 'Dict format'
 
-    def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
+    def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None, proc: StatsPluginInterface = None) -> Delayed:
 
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
         sha1_url = task.metadata_path("absolute", ext="sha1")
         proc_info_url = task.metadata_path("absolute", ext=self._proc_info_ext)
         dataset_assembler = task.render_metadata(ext=self._band_ext, output_dataset=ds)
+
+        dataset_assembler.note_software_version(proc.NAME,
+                                                "https://github.com/opendatacube/odc-tools",
+                                                # Just realized the odc-stats does not have version.
+                                                proc.VERSION)
 
         # add accessories files. we add the filename because odc-metadata need the filename, not full path.
         for band, _ in task.paths(ext="tif").items():

@@ -377,13 +377,6 @@ class Task:
         dataset_assembler.maturity = self.product.maturity
         dataset_assembler.collection_number = self.product.collection_number
 
-        # should be plug-ins version or odc-stats version?
-        dataset_assembler.note_software_version("wofs.virtualproduct.WOfSClassifier",
-                                                "https://github.com/opendatacube/odc-tools",
-                                                # Just realized the odc-stats does not have version.
-                                                # TODO: https://github.com/opendatacube/datacube-docker/blob/main/statistician/version.txt
-                                                "0.3.31")
-
         dataset_assembler.note_software_version("eodatasets3",
                                                 "https://github.com/GeoscienceAustralia/eo-datasets",
                                                 eodatasets3.__version__,)
