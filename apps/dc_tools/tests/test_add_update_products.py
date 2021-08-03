@@ -31,7 +31,7 @@ def test_parse_local_csv(local_csv):
 
 def test_parse_remote_csv(remote_csv):
     remote_contents = [x for x in _parse_csv(remote_csv)]
-    assert len(remote_contents) == 6
+    assert len(remote_contents) == 7
     assert remote_contents[0].name == "s2_l2a"
 
 
@@ -74,5 +74,5 @@ def local_csv():
 
 @pytest.fixture
 def remote_csv(httpserver, local_csv):
-    httpserver.expect_request(f'/some.csv').respond_with_data(open(local_csv).read())
+    httpserver.expect_request('/some.csv').respond_with_data(open(local_csv).read())
     yield httpserver.url_for('/some.csv')
