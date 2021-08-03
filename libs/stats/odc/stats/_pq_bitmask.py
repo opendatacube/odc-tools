@@ -65,11 +65,11 @@ class StatsPQLSBitmask(StatsPluginInterface):
             "clear",
             *[f"clear_{r1:d}_{r2:d}_{r3:d}" for (r1, r2, r3) in self.filters],
         ]
-        if self.aerosol_band and self.aerosol_band == "SR_QA_AEROSOL":
+        if self.aerosol_band:
             aerosol_measurements = [
                 "clear_aerosol",
                 *[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol" for (r1, r2, r3) in self.aerosol_filters if
-                  self.aerosol_filters],
+                  self.aerosol_band == "SR_QA_AEROSOL" and self.aerosol_filters],
             ]
             _measurements.extend(aerosol_measurements)
 
@@ -77,7 +77,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
     def input_data(self, task: Task) -> xr.Dataset:
         bands = [self.pq_band]
-        if self.aerosol_band is not None:
+        if self.aerosol_band:
             bands.append(self.aerosol_band)
 
         return load_with_native_transform(
@@ -162,7 +162,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
         if self.aerosol_band:
             if self.aerosol_band == "SR_QA_AEROSOL":
                 xx["erased_aerosol"] = aerosol_level == 3
-            elif self.aerosol_band and self.aerosol_band == "SR_ATMOS_OPACITY":
+            elif self.aerosol_band == "SR_ATMOS_OPACITY":
                 xx["erased_aerosol"] = opacity > 0.3
 
         return xx
