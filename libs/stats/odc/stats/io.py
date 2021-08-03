@@ -18,6 +18,7 @@ from rasterio.crs import CRS
 from rasterio.enums import Resampling
 import rasterio
 import tempfile
+import pkg_resources
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -261,6 +262,11 @@ class S3COGSink:
         sha1_url = task.metadata_path("absolute", ext="sha1")
         proc_info_url = task.metadata_path("absolute", ext=self._proc_info_ext)
         dataset_assembler = task.render_metadata(ext=self._band_ext, output_dataset=ds)
+
+        dataset_assembler.note_software_version('odc-stats',
+                                                "https://github.com/opendatacube/odc-tools",
+                                                # Just realized the odc-stats does not have version.
+                                                [e.version for e in pkg_resources.working_set if e.key == 'odc-stats'][0])
 
         dataset_assembler.note_software_version(proc.NAME,
                                                 "https://github.com/opendatacube/odc-tools",
