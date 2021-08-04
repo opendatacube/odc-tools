@@ -316,12 +316,12 @@ class S3COGSink:
         input_geobox = GridSpec(shape=task.geobox.shape, transform=task.geobox.transform,  crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
 
         if task.product.preview_image_singleband:
-            # single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}} or
-            # single_band: {"measurement":'frequency', 'bit':0} 
+            # single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}}, or
+            # single_band: {"measurement":'frequency', 'bit':1} 
             for single_band in task.product.preview_image_singleband:
                 band = single_band['measurement']
                 thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-                # the pixel here is a single layer numpy.array
+
                 pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
 
                 if 'bit' in single_band.keys():
@@ -337,13 +337,17 @@ class S3COGSink:
                 
                 thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
         
-        elif task.product.preview_image:
-            # single_image: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'}}
+        if task.product.preview_image: # change elif to if, so we can dump two kinds of thumbnail
+            # single_image: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'}}, or
+            # single_image: {'thumbnail_name': 'frequency', 'blue': 'frequency'}}
             for single_image in task.product.preview_image:
-
-                r = pixels=ds[single_image['red']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
-                g = pixels=ds[single_image['green']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
-                b = pixels=ds[single_image['blue']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+                
+                # if we do not define the r/g/b values, we will grab the first avaialble variable shape to generate full zero numpy
+                zero_band = numpy.zeros_like(ds[list(ds.keys())[0]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]))
+                
+                r = ds[single_image['red']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]) if 'red' in single_image else zero_band
+                g = ds[single_image['green']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]) if 'green' in single_image else zero_band
+                b = ds[single_image['blue']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]) if 'blue' in single_image else zero_band
 
                 thumbnail_name = single_image['thumbnail_name']
                 thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
