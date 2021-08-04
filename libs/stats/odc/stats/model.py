@@ -165,6 +165,7 @@ class OutputProduct:
     classifier: str = "level3"
     maturity: str = "final"
     collection_number: int = 3
+    nodata: int = -999
 
     def __post_init__(self):
         if self.href == "":
@@ -389,7 +390,7 @@ class Task:
                                                grid=GridSpec(shape=self.geobox.shape,
                                                              transform=self.geobox.transform,
                                                              crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
-                                               nodata=-999)
+                                               nodata=self.product.nodata)
 
         return dataset_assembler
 
@@ -437,6 +438,7 @@ class StatsPluginInterface(ABC):
         classifier: str = "level3",
         maturity: str = "final",
         collection_number: int = 3,
+        nodata: int = -999,
     ) -> OutputProduct:
         """
         :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
@@ -455,6 +457,7 @@ class StatsPluginInterface(ABC):
         :param classifier: default ``level3``
         :param maturity: default ``final``
         :param collection_number: default ``3``
+        :param nodata: default ``-999``
         """
         if name is None:
             name = self.NAME
@@ -503,6 +506,7 @@ class StatsPluginInterface(ABC):
             classifier=classifier,
             maturity=maturity,
             collection_number=collection_number,
+            nodata=nodata,
         )
 
 
