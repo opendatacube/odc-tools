@@ -2,12 +2,12 @@
 Landsat QA Pixel Geomedian
 """
 from functools import partial
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import dask.array as da
 import xarray as xr
 import numpy as np
-from odc.algo import geomedian_with_mads, keep_good_only, erase_bad, to_rgba
+from odc.algo import geomedian_with_mads, keep_good_only, erase_bad
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
@@ -25,7 +25,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             self,
             bands: Optional[Tuple[str, ...]] = None,
             mask_band: str = "QA_PIXEL",
-            filter: Optional[Tuple[int, int, int]] = None,
+            filter: Optional[Dict[str, int]] = None, # dict(closing=int,opening=int,dilation=int)
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
             resampling: str = "nearest",
             work_chunks: Tuple[int, int] = (400, 400),
@@ -133,10 +133,10 @@ class StatsGMLSBitmask(StatsPluginInterface):
             compute_mads=True,
         )
 
-        # apply filter in this order - [r1, r2, r3]
-        # r3 = remove small holes in cloud - morphological closing
-        # r1 = shrinks away small areas of the mask
-        # r2 = adds padding to the mask
+        # apply filter in this order
+        # closing = remove small holes in cloud - morphological closing
+        # opening = shrinks away small areas of the mask
+        # dilation = adds padding to the mask
         if self.filter is not None:
             xx["cloud_mask"] = mask_cleanup(cloud_mask, self.filter)
 

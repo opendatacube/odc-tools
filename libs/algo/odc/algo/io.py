@@ -307,7 +307,7 @@ def load_enum_filtered(
     band: str,
     geobox: GeoBox,
     categories: Iterable[Union[str, int]],
-    filters: Optional[Tuple[int, int]] = None,
+    filters: Optional[Dict[str, int]] = None,
     groupby: Optional[str] = None,
     resampling: str = "nearest",
     chunks: Optional[Dict[str, int]] = None,
@@ -331,9 +331,11 @@ def load_enum_filtered(
     :param geobox: GeoBox of the final output
     :param categories: Enum values or names
 
-    :param filters: Optional Tuple of (r1, r2), here r1 shrinks away small
-                    areas of the mask, and r2 adds padding. Units are in native
-                    pixels of the mask. Use ``0`` to skip filter step.
+    :param filters: dict(closing=int, opening=int, dilation=int), where
+                    closing(optional = remove small holes in cloud - morphological closing,
+                    opening = shrinks away small areas of the mask,
+                    dilation = adds padding to the mask.
+                    Use ``0`` to skip filter step.
     :param groupby: One of 'solar_day'|'time'|'idx'|None
     :param resampling: Any resampling mode supported by GDAL as a string:
                        nearest, bilinear, average, mode, cubic, etc...
@@ -378,7 +380,7 @@ def load_enum_filtered(
     pad = kw.pop("pad", None)
     if pad is None:
         if filters is not None:
-            pad = max(*filters)
+            pad = max(*filters.values())
 
     xx = load_with_native_transform(
         dss,
