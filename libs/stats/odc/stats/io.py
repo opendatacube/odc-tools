@@ -286,7 +286,7 @@ class S3COGSink:
 
         stac_meta = self.get_stac_meta(task, meta, stac_file_path, odc_file_path)
 
-        odc_meta_stream = io.StringIO("") # too short, not worth to use another method.
+        odc_meta_stream = io.StringIO("") # too short, not worth to move to another method.
         serialise.to_stream(odc_meta_stream, meta)
         odc_meta = odc_meta_stream.getvalue() # odc_meta is Python str
 
@@ -315,25 +315,34 @@ class S3COGSink:
 
         input_geobox = GridSpec(shape=task.geobox.shape, transform=task.geobox.transform,  crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
 
+        # if we do not define the r/g/b values, we will grab the first avaialble variable shape to generate full zero numpy
+        zero_band = numpy.zeros_like(ds[list(ds.keys())[0]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]))
+
         if task.product.preview_image_singleband:
             # single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}}, or
-            # single_band: {"measurement":'frequency', 'bit':1} 
+            # single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['blue']} or 
+            # single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['red', 'green', 'blue']}
             for single_band in task.product.preview_image_singleband:
                 band = single_band['measurement']
                 thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
 
-                pixels=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])
+                tuning_pixels, stretch = FileWrite().filter_singleband_data(data=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]),
+                                                                            bit=single_band['bit'] if 'bit' in single_band else None,
+                                                                            lookup_table=single_band['lookup_table'] if 'lookup_table' in single_band else None)
+                if 'bit' in single_band:
+                    # the bit operation return tuning_pixels is numapy.array
+                    if 'display_bands' not in single_band: # if no display_band, duplicate it as r,g,b
+                        tuning_pixels = [tuning_pixels, tuning_pixels, tuning_pixels]
+                    else:
+                        display_pixels = []
+                        for display_band in ["red", "green", "blue"]:
+                            display_pixels.append(tuning_pixels) if display_band in single_band["display_bands"] else display_pixels.append(zero_band)
+                        tuning_pixels = display_pixels # make sure the tuning_pixcels format is [numpy.array, numpy.array, numpy.array] == [r, g, b]
 
-                if 'bit' in single_band.keys():
-                    thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels,
-                                                                                        bit=single_band['bit'],
-                                                                                        input_geobox=input_geobox,
-                                                                                        nodata=task.product.nodata)
-                else:
-                    thumbnail_bytes = FileWrite().create_thumbnail_singleband_from_numpy(input_data=pixels,
-                                                                                        lookup_table=single_band['lookup_table'],
-                                                                                        input_geobox=input_geobox,
-                                                                                        nodata=task.product.nodata)
+                thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=tuning_pixels,
+                                                                          static_stretch=stretch,
+                                                                          input_geobox=input_geobox,
+                                                                          nodata=task.product.nodata)
                 
                 thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
         
@@ -341,18 +350,14 @@ class S3COGSink:
             # single_image: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'}}, or
             # single_image: {'thumbnail_name': 'frequency', 'blue': 'frequency'}}
             for single_image in task.product.preview_image:
-                
-                # if we do not define the r/g/b values, we will grab the first avaialble variable shape to generate full zero numpy
-                zero_band = numpy.zeros_like(ds[list(ds.keys())[0]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]))
-                
-                r = ds[single_image['red']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]) if 'red' in single_image else zero_band
-                g = ds[single_image['green']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]) if 'green' in single_image else zero_band
-                b = ds[single_image['blue']].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]) if 'blue' in single_image else zero_band
+                display_pixels = []
+                for display_band in ['red', 'green', 'blue']:
+                    display_pixels.append(ds[single_image[display_band]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])) if display_band in single_image else display_pixels.append(zero_band)
 
                 thumbnail_name = single_image['thumbnail_name']
                 thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
 
-                thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=[r, g, b],
+                thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
                                                                           input_geobox=input_geobox,
                                                                           nodata=task.product.nodata)
 
