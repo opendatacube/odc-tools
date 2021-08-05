@@ -12,7 +12,6 @@ from odc.algo._masking import (
     _get_enum_values,
     _enum_to_mask_numexpr,
     _fuse_mean_np,
-    mask_cleanup,
     mask_cleanup_np
 )
 
