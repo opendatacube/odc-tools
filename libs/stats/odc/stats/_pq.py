@@ -115,7 +115,7 @@ def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
 
 def _pq_fuser(
-    xx: xr.Dataset, filters: Optional[List[Dict]] = None
+    xx: xr.Dataset, filters: Optional[List[Dict[str, int]]] = None
 ) -> xr.Dataset:
     """
     Native:

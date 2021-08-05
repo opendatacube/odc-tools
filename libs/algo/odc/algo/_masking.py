@@ -385,7 +385,7 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
 
 def mask_cleanup_np(mask: np.ndarray, filter: Dict = dict(closing=0, opening=2, dilation=5)) -> np.ndarray:
     """
-    Given binary mask and apply morphological closing(>0) then opening(>0) followed by dilation(>0).
+    Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
 
     :param mask: Binary image to process
     :param filter: dict of integer (closing=int, opening=int, dilation=int), order of operation
@@ -418,14 +418,13 @@ def _compute_overlap_depth(r: Tuple[int, int, int], ndim: int) -> Tuple[int, ...
 
 
 def mask_cleanup(
-        mask: xr.DataArray, filter: Dict = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
+    mask: xr.DataArray, filter: Dict = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
 ) -> xr.DataArray:
     """
-    Given binary mask and apply morphological closing(>0) then opening(>0) followed by dilation(>0).
+    Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
 
-    This is bit-equivalent to ``mask |> morphological closing(r3) |> opening(r1) |> dilation(r2)``, but
-    could be faster when using Dask, as we fuse those operations into single
-    Dask task.
+    This is bit-equivalent to ``mask |> morphological closing |> opening |> dilation``, but
+    could be faster when using Dask, as we fuse those operations into single Dask task.
 
     :param mask: Binary image to process
     :param filter: dict of integer (closing=int, opening=int, dilation=int), order of operation
