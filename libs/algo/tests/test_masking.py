@@ -12,6 +12,7 @@ from odc.algo._masking import (
     _get_enum_values,
     _enum_to_mask_numexpr,
     _fuse_mean_np,
+    mask_cleanup_np
 )
 
 
@@ -218,7 +219,7 @@ def test_enum_to_mask_numexpr():
 def test_fuse_mean_np():
     data = np.array([
         [[255, 255], [255, 50]],
-        [[30, 40], [255, 80]], 
+        [[30, 40], [255, 80]],
         [[25, 52], [255, 98]],
     ]).astype(np.uint8)
 
@@ -226,3 +227,12 @@ def test_fuse_mean_np():
     out = _fuse_mean_np(*slices, nodata=255)
     assert (out == np.array([[28, 46], [255, 76]])).all()
 
+def test_mask_cleanup_np():
+    mask = np.ndarray(shape=(2,2), dtype=bool, buffer=np.array([[True, False], [False, True]]))
+    r = (1, 2, 1)
+
+    result = mask_cleanup_np(mask, r)
+    expected_result = np.array(
+        [[True, True], [True, True]],
+    )
+    assert (result == expected_result).all()

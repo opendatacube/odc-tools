@@ -104,8 +104,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
         pq = xr.Dataset()
 
         for r1, r2, r3 in self.filters or []:
-            cloud_mask = binary_closing(xx["erased"], r3)
-            xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(cloud_mask, (r1, r2))
+            xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(xx["erased"], (r1, r2, r3))
 
         erased_bands = [str(n) for n in xx.data_vars if str(n).startswith("erased")]
         valid = xx["keeps"]
@@ -121,8 +120,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
             for r1, r2, r3 in self.aerosol_filters or []:
                 # apply filter on cloud_mask if not exists
                 if f"erased_{r1:d}_{r2:d}_{r3:d}" not in xx:
-                    cloud_mask = binary_closing(xx["erased"], r3)
-                    xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(cloud_mask, (r1, r2))
+                    xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] = mask_cleanup(xx["erased"], (r1, r2, r3))
 
                 pq[f"clear_{r1:d}_{r2:d}_{r3:d}_aerosol"] = (
                         valid & (~xx[f"erased_{r1:d}_{r2:d}_{r3:d}"] & ~xx["erased_aerosol"])) \

@@ -25,7 +25,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             self,
             bands: Optional[Tuple[str, ...]] = None,
             mask_band: str = "QA_PIXEL",
-            filter: Optional[Tuple[int, int]] = None,
+            filter: Optional[Tuple[int, int, int]] = None,
             aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
             resampling: str = "nearest",
             work_chunks: Tuple[int, int] = (400, 400),
@@ -133,7 +133,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
             compute_mads=True,
         )
 
-        # apply filter - [r1, r2]
+        # apply filter in this order - [r1, r2, r3]
+        # r3 = remove small holes in cloud - morphological closing
         # r1 = shrinks away small areas of the mask
         # r2 = adds padding to the mask
         if self.filter is not None:

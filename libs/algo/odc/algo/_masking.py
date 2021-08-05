@@ -383,20 +383,27 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
     return xr_apply_morph_op(xx, "closing", radius, **kw)
 
 
-def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray:
+def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int, int] = (2, 5, 0)) -> np.ndarray:
     """
-    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
+    Given binary mask and (r1, r2, r3)
+    apply morphological closing with r3(if r3>0) then opening with r1(if r1>0) followed by dilation with r2(if r2>0).
 
     :param mask: Binary image to process
-    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    :param r: Tuple of (r1, r2, r3), here
+        r1 = shrinks away small areas of the mask
+        r2 = adds padding to the mask
+        r3 = remove small holes in cloud - morphological closing
     """
     import skimage.morphology as morph
 
     assert mask.dtype == "bool"
 
-    r1, r2 = r
-    if r1 == 0 and r2 == 0:
+    r1, r2, r3 = r
+    if r1 == 0 and r2 == 0 and r3 == 0:
         return mask
+
+    if r3 > 0:
+        mask = morph.binary_closing(mask, _disk(r3, mask.ndim))
 
     if r1 > 0:
         mask = morph.binary_opening(mask, _disk(r1, mask.ndim))
@@ -407,30 +414,34 @@ def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray
     return mask
 
 
-def _compute_overlap_depth(r: Tuple[int, int], ndim: int) -> Tuple[int, ...]:
+def _compute_overlap_depth(r: Tuple[int, int, int], ndim: int) -> Tuple[int, ...]:
     r = max(r)
     return (0,) * (ndim - 2) + (r, r)
 
 
 def mask_cleanup(
-    mask: xr.DataArray, r: Tuple[int, int] = (2, 5), name: Optional[str] = None
+        mask: xr.DataArray, r: Tuple[int, int, int] = (2, 5, 0), name: Optional[str] = None
 ) -> xr.DataArray:
     """
-    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
+    Given binary mask and (r1, r2, r3)
+    apply morphological closing with r3(if r3>0) then opening with r1(if r1>0) followed by dilation with r2(if r2>0).
 
-    This is bit-equivalent to ``mask |> opening(r1) |> dilation(r2)``, but
+    This is bit-equivalent to ``mask |> morphological closing(r3) |> opening(r1) |> dilation(r2)``, but
     could be faster when using Dask, as we fuse those operations into single
     Dask task.
 
     :param mask: Binary image to process
-    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    :param r: Tuple of (r1, r2, r3), here
+        r1 = shrinks away small areas of the mask
+        r2 = adds padding to the mask
+        r3 = remove small holes in cloud - morphological closing
     :param name: Used when building Dask graphs
     """
 
     data = mask.data
     if dask.is_dask_collection(data):
         if name is None:
-            name = f"mask_cleanup_{r[0]}_{r[1]}"
+            name = f"mask_cleanup_{r[0]}_{r[1]}_{r[2]}"
 
         depth = _compute_overlap_depth(r, data.ndim)
         data = data.map_overlap(
@@ -729,7 +740,7 @@ def _nodata_fuser(xx, **kw):
 
 def _fuse_mean_np(*aa, nodata):
     assert len(aa) > 0
-    
+
     out = aa[0].astype(np.float32)
     count = (aa[0] != nodata).astype(np.float32)
     for a in aa[1:]:
