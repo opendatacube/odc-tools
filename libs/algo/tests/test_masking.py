@@ -12,6 +12,7 @@ from odc.algo._masking import (
     _get_enum_values,
     _enum_to_mask_numexpr,
     _fuse_mean_np,
+    mask_cleanup_np
 )
 
 
@@ -218,7 +219,7 @@ def test_enum_to_mask_numexpr():
 def test_fuse_mean_np():
     data = np.array([
         [[255, 255], [255, 50]],
-        [[30, 40], [255, 80]], 
+        [[30, 40], [255, 80]],
         [[25, 52], [255, 98]],
     ]).astype(np.uint8)
 
@@ -226,3 +227,40 @@ def test_fuse_mean_np():
     out = _fuse_mean_np(*slices, nodata=255)
     assert (out == np.array([[28, 46], [255, 76]])).all()
 
+def test_mask_cleanup_np():
+    mask = np.ndarray(shape=(2,2), dtype=bool, buffer=np.array([[True, False], [False, True]]))
+
+    mask_filter_with_opening_dilation = dict(opening=1, dilation=1)
+    result = mask_cleanup_np(mask, mask_filter_with_opening_dilation)
+    expected_result = np.array(
+        [[False, False], [False, False]],
+    )
+    assert (result == expected_result).all()
+
+    mask_filter_opening = dict(opening=1, dilation=0)
+    result = mask_cleanup_np(mask, mask_filter_opening)
+    expected_result = np.array(
+        [[False, False], [False, False]],
+    )
+    assert (result == expected_result).all()
+
+    mask_filter_with_dilation = dict(opening=0, dilation=1)
+    result = mask_cleanup_np(mask, mask_filter_with_dilation)
+    expected_result = np.array(
+        [[True, True], [True, True]],
+    )
+    assert (result == expected_result).all()
+
+    mask_filter_with_closing = dict(closing=1, opening=1, dilation=1)
+    result = mask_cleanup_np(mask, mask_filter_with_closing)
+    expected_result = np.array(
+        [[True, True], [True, True]],
+    )
+    assert (result == expected_result).all()
+
+    mask_filter_with_all_zero = dict(closing=0, opening=0, dilation=0)
+    result = mask_cleanup_np(mask, mask_filter_with_all_zero)
+    expected_result = np.array(
+        [[True, False], [False, True]],
+    )
+    assert (result == expected_result).all()

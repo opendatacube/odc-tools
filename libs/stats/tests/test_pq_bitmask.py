@@ -66,6 +66,25 @@ def dataset_with_atmos_opacity_band(dataset):
     dataset["SR_ATMOS_OPACITY"] = (("spec", "y", "x"), band_atmos_opacity)
     return dataset
 
+def test_meaurements(dataset):
+    filters = [
+        dict(closing=0,opening=1,dilation=1),
+        dict(closing=1,opening=0,dilation=1),
+        dict(closing=1,opening=1,dilation=0),
+        dict(closing=1,opening=1,dilation=1)
+    ]
+    pq = StatsPQLSBitmask(filters=filters)
+    meaurements = pq.measurements
+    assert (meaurements == ("total", "clear", "clear_0_1_1", "clear_1_0_1", "clear_1_1_0", "clear_1_1_1"))
+
+    filters_without_closing = [
+        dict(opening=1,dilation=0),
+        dict(opening=1,dilation=1)
+    ]
+    pq = StatsPQLSBitmask(filters=filters_without_closing)
+    meaurements = pq.measurements
+    assert (meaurements == ("total", "clear", "clear_1_0", "clear_1_1"))
+
 def test_native_transform(dataset):
     pq = StatsPQLSBitmask()
 
@@ -102,14 +121,37 @@ def test_fuser(dataset):
     assert (erased_cloud == expected_result).all()
 
 def test_reduce(dataset):
-    pq = StatsPQLSBitmask(filters=[[1,1,0]])
+    pq = StatsPQLSBitmask()
 
     xx = pq._native_tr(dataset)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
 
     assert set(reduce_result.data_vars.keys()) == set(
-        ["total", "clear", "clear_1_1_0"]
+        ["total", "clear"]
+    )
+
+    expected_result = np.array(
+        [[2, 3], [3, 2]]
+    )
+    total = reduce_result["total"].data
+    assert (total == expected_result).all()
+
+    expected_result = np.array(
+        [[2, 2], [1, 2]]
+    )
+    clear = reduce_result["clear"].data
+    assert (clear == expected_result).all()
+
+def test_reduce_with_filter(dataset):
+    pq = StatsPQLSBitmask(filters=[dict(opening=1,dilation=1), dict(closing=2,opening=1,dilation=1)])
+
+    xx = pq._native_tr(dataset)
+    xx = pq.reduce(xx)
+    reduce_result = xx.compute()
+
+    assert set(reduce_result.data_vars.keys()) == set(
+        ["total", "clear", "clear_1_1", "clear_2_1_1"]
     )
 
     expected_result = np.array(
@@ -127,8 +169,14 @@ def test_reduce(dataset):
     expected_result = np.array(
         [[2, 3], [3, 2]]
     )
-    clear_1_1_0 = reduce_result["clear_1_1_0"].data
-    assert (clear_1_1_0 == expected_result).all()
+    clear_1_1 = reduce_result["clear_1_1"].data
+    assert (clear_1_1 == expected_result).all()
+
+    expected_result = np.array(
+        [[0, 1], [1, 1]]
+    )
+    clear_2_1_1 = reduce_result["clear_2_1_1"].data
+    assert (clear_2_1_1 == expected_result).all()
 
 def test_native_transform_for_aerosol(dataset_with_aerosol_band):
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL")
@@ -181,26 +229,28 @@ def test_reduce_for_aerosol(dataset_with_aerosol_band):
     assert (clear_aerosol == expected_result).all()
 
 def test_reduce_for_aerosol_with_filter(dataset_with_aerosol_band):
-    pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=[[1,1,0]], aerosol_filters=[[1,1,0]])
+    filters = [dict(closing=0,opening=1,dilation=1)]
+    aerosol_filters = [dict(closing=0,opening=1,dilation=1)]
+    pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=filters, aerosol_filters=aerosol_filters)
 
     xx = pq._native_tr(dataset_with_aerosol_band)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
 
     assert set(reduce_result.data_vars.keys()) == set(
-        ["total", "clear", "clear_1_1_0", "clear_aerosol", "clear_1_1_0_aerosol"]
+        ["total", "clear", "clear_0_1_1", "clear_aerosol", "clear_0_1_1_aerosol"]
     )
 
     expected_result = np.array(
         [[2, 3], [3, 2]]
     )
-    clear_1_1_0 = reduce_result["clear_1_1_0"].data
+    clear_1_1_0 = reduce_result["clear_0_1_1"].data
     assert (clear_1_1_0 == expected_result).all()
 
     expected_result = np.array(
         [[1, 3], [2, 2]]
     )
-    clear_aerosol = reduce_result["clear_1_1_0_aerosol"].data
+    clear_aerosol = reduce_result["clear_0_1_1_aerosol"].data
     assert (clear_aerosol == expected_result).all()
 
 def test_native_transform_for_atmos_opacity(dataset_with_atmos_opacity_band):

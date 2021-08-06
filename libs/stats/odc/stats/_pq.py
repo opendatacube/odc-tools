@@ -2,7 +2,7 @@
 Sentinel 2 pixel quality stats
 """
 from functools import partial
-from typing import List, Optional, Tuple, cast
+from typing import List, Dict, Optional, Tuple, cast
 
 import xarray as xr
 
@@ -21,15 +21,14 @@ cloud_classes = (
     "thin cirrus",
 )
 
-# Filters are a list of (r1: int, r2: int) tuples, where
-#
-#  ``r1=N`` - Shrink away clouds smaller than N pixels radius (0 -- do not shrink)
-#  ``r2=N`` - For clouds that remain after shrinking add that much padding in pixels
+# Filters are a list of dict(closing=int, opening=int, dilation=int), where
+# closing(Optional) = remove small holes in cloud - morphological closing
+# opening = shrinks away small areas of the mask
+# dilation = adds padding to the mask
 #
 # For each entry in the list an extra ``.clear_{r1}_{r2}`` band will be added to the output in addition to
 # ``.total`` and ``.clear`` bands that are always computed.
-default_filters = [(2, 5), (0, 5)]
-
+default_filters = [dict(opening=2,dilation=5), dict(opening=0,dilation=5)]
 
 class StatsPQ(StatsPluginInterface):
     NAME = "pc_s2_annual"
@@ -39,7 +38,7 @@ class StatsPQ(StatsPluginInterface):
 
     def __init__(
         self,
-        filters: Optional[List[Tuple[int, int]]] = None,
+        filters: Optional[List[Dict[str, int]]] = None,
         resampling: str = "nearest",
     ):
         if filters is None:
@@ -49,11 +48,14 @@ class StatsPQ(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        return (
-            "total",
-            "clear",
-            *[f"clear_{r1:d}_{r2:d}" for (r1, r2) in self.filters],
-        )
+        measurements = ["total", "clear"]
+        for filter in self.filters:
+            if "closing" in filter:
+                measurements.append(f"clear_{filter['closing']:d}_{filter['opening']:d}_{filter['dilation']:d}")
+            else:
+                measurements.append(f"clear_{filter['opening']:d}_{filter['dilation']:d}")
+
+        return tuple(measurements)
 
     def input_data(self, task: Task) -> xr.Dataset:
         """
@@ -113,7 +115,7 @@ def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
 
 def _pq_fuser(
-    xx: xr.Dataset, filters: Optional[List[Tuple[int, int]]] = None
+    xx: xr.Dataset, filters: Optional[List[Dict[str, int]]] = None
 ) -> xr.Dataset:
     """
     Native:
@@ -129,9 +131,12 @@ def _pq_fuser(
     xx.attrs.pop("native", None)
 
     if is_native:
-        if filters is not None:
-            for r1, r2 in filters:
-                xx[f"erased_{r1:d}_{r2:d}"] = mask_cleanup(xx.erased, (r1, r2))
+        for filter in filters:
+            if "closing" in filter:
+                erased_band_name = f"erased_{filter['closing']:d}_{filter['opening']:d}_{filter['dilation']:d}"
+            else:
+                erased_band_name = f"erased_{filter['opening']:d}_{filter['dilation']:d}"
+            xx[erased_band_name] = mask_cleanup(xx.erased, filter)
 
     return xx
 
