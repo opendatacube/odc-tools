@@ -12,14 +12,14 @@ def dataset():
         [[255, 57], [20, 50]],
         [[30, 0], [70, 80]],
         [[25, 52], [0, 0]],
-    ])
-    cloud_mask = 0b0000_0000_0001_1010
+    ]).astype(np.uint16)
+    cloud_mask = 0b0000_0000_0000_1100
     no_data = 0b0000_0000_0000_0001
     band_pq = np.array([
         [[0, 0], [0, no_data]],
-        [[no_data, 0], [0, 0]],
+        [[1, 0], [0, 0]],
         [[0, cloud_mask], [0, 0]],
-    ])
+    ]).astype(np.uint16)
 
     band_red = da.from_array(band_red, chunks=(3, -1, -1))
     band_pq = da.from_array(band_pq, chunks=(3, -1, -1))
@@ -31,10 +31,26 @@ def dataset():
         "y": np.linspace(0, 5, band_pq.shape[1]),
         "spec": index,
     }
+    pq_flags_definition = {'snow': {'bits': 5, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                        'clear': {'bits': 6, 'values': {'0': False, '1': True}},
+                        'cloud': {'bits': 3, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                        'water': {'bits': 7, 'values': {'0': 'land_or_cloud', '1': 'water'}},
+                        'cirrus': {'bits': 2, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                        'nodata': {'bits': 0, 'values': {'0': False, '1': True}},
+                        'cloud_shadow': {'bits': 4, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                        'dilated_cloud': {'bits': 1, 'values': {'0': 'not_dilated', '1': 'dilated'}},
+                        'cloud_confidence': {'bits': [8, 9],
+                                             'values': {'0': 'none', '1': 'low', '2': 'medium', '3': 'high'}},
+                        'cirrus_confidence': {'bits': [14, 15],
+                                              'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}},
+                        'snow_ice_confidence': {'bits': [12, 13],
+                                                'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}},
+                        'cloud_shadow_confidence': {'bits': [10, 11],
+                                                    'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}}}
+    attrs = dict(units="bit_index", nodata="1", crs="epsg:32633", grid_mapping="spatial_ref", flags_definition=pq_flags_definition)
 
-    data_vars = {"band_red": (("spec", "y", "x"), band_red), "QA_PIXEL": (("spec", "y", "x"), band_pq)}
-    attrs = dict(crs="epsg:32633", grid_mapping="spatial_ref")
-    xx = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+    data_vars = {"band_red": (("spec", "y", "x"), band_red), "QA_PIXEL": (("spec", "y", "x"), band_pq, attrs)}
+    xx = xr.Dataset(data_vars=data_vars, coords=coords)
     xx['band_red'].attrs['nodata'] = 0
     return xx
 
@@ -43,7 +59,6 @@ def test_native_transform(dataset):
     gm = StatsGMLSBitmask(["band_red"])
 
     xx = gm._native_tr(dataset)
-    print(gm)
     expected_result = np.array([
         [[255, 57], [20, 0]],
         [[0, 0], [70, 80]],
@@ -59,6 +74,7 @@ def test_native_transform(dataset):
     ])
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
+
 
 def test_fuser(dataset):
     gm = StatsGMLSBitmask(["band_red"])
@@ -77,6 +93,7 @@ def test_fuser(dataset):
     )
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
+
 
 def test_reduce(dataset):
     _ = pytest.importorskip("hdstats")
