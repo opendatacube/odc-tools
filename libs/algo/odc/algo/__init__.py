@@ -62,6 +62,8 @@ from ._warp import xr_reproject
 
 from ._tiff import save_cog
 
+from ._percentile import xr_quantile
+
 __all__ = (
     "apply_numexpr",
     "safe_div",
@@ -106,4 +108,5 @@ __all__ = (
     "colorize",
     "xr_reproject",
     "save_cog",
+    "xr_quantile",
 )
