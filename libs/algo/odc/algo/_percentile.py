@@ -71,8 +71,7 @@ def xr_percentile(
                 meta=np.array([], dtype=xx.dtype),
                 name=f"{name}-{tk}",
             )
+            data_vars[name] = xr.DataArray(yy, dims=xx.dims[1:], attrs=xx.attrs)
             
-            data_vars[name] = (xx.dims[1:], yy)
-
     coords = dict((dim, src.coords[dim]) for dim in xx.dims[1:])
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=src.attrs)

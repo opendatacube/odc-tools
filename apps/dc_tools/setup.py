@@ -1,6 +1,6 @@
 from setuptools import setup
 
-TEST_REQUIREMENTS = ["pytest", "deepdiff"]
+TEST_REQUIREMENTS = ["pytest", "deepdiff", "pytest-depends"]
 
 setup(
     name="odc_apps_dc_tools",
@@ -17,7 +17,8 @@ setup(
     tests_require=TEST_REQUIREMENTS,
     install_requires=[
         "click",
-        "sat-search",
+        "fsspec",
+        "pystac-client>=0.2.0b2",
         "toolz",
         "pyyaml",
         "datacube",
@@ -25,7 +26,7 @@ setup(
         "odc_io",
         "odc_aws",
         "odc_aio",
-        "pystac",
+        "pystac>=1.0.0",
     ],
     extras_require={
         "tests": TEST_REQUIREMENTS,
@@ -34,6 +35,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
+            "dc-sync-products = odc.apps.dc_tools.add_update_products:cli",
             "dc-index-from-tar = odc.apps.dc_tools.index_from_tar:cli",
             "dc-index-export-md = odc.apps.dc_tools.export_md:cli",
             "s3-to-dc = odc.apps.dc_tools.s3_to_dc:cli",
@@ -42,6 +44,7 @@ setup(
             "stac-to-dc = odc.apps.dc_tools.stac_api_to_dc:cli",
             "azure-to-dc = odc.apps.dc_tools.azure_to_dc:cli [AZURE]",
             "esri-lc-to-dc = odc.apps.dc_tools.esri_land_cover_to_dc:cli",
+            "fs-to-dc = odc.apps.dc_tools.fs_to_dc:cli",
         ]
     },
     packages=["odc.apps.dc_tools"],

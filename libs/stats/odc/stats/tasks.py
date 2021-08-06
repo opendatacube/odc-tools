@@ -106,6 +106,7 @@ class SaveTasks:
         dc: Datacube,
         product: str,
         msg: Callable[[str], Any],
+        dataset_filter: Optional[dict] = {},
         temporal_range: Optional[DateTimeRange] = None,
         tiles: Optional[TilesRange2d] = None,
     ):
@@ -121,7 +122,7 @@ class SaveTasks:
             freq=self._frequency,
         )
 
-        query = dict(product=product)
+        query = dict(product=product, **dataset_filter)
 
         if tiles is not None:
             (x0, x1), (y0, y1) = tiles
@@ -164,6 +165,7 @@ class SaveTasks:
         self,
         dc: Datacube,
         product: str,
+        dataset_filter: Optional[dict] = {},
         temporal_range: Union[str, DateTimeRange, None] = None,
         tiles: Optional[TilesRange2d] = None,
         predicate: Optional[Callable[[Dataset], bool]] = None,
@@ -174,6 +176,7 @@ class SaveTasks:
     ) -> bool:
         """
         :param product: Product name to consume
+        :param dataset_filter: Optionally apply search filter on Datasets
         :param temporal_range: Optionally  limit query in time
         :param tiles: Optionally limit query to a range of tiles
         :param predicate: If supplied filter Datasets as they come in with custom filter, Dataset->Bool
@@ -208,7 +211,7 @@ class SaveTasks:
             temporal_range = DateTimeRange(temporal_range)
 
         if dss is None:
-            dss, n_dss, cfg = self._get_dss(dc, product, msg, temporal_range, tiles)
+            dss, n_dss, cfg = self._get_dss(dc, product, msg, dataset_filter, temporal_range, tiles)
         else:
 
             cfg: Dict[str, Any] = dict(

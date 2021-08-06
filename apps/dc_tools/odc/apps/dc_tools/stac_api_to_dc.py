@@ -4,34 +4,64 @@
 import logging
 import os
 import sys
-from typing import Any, Dict, Generator, Iterable, Tuple, Optional
+from typing import Any, Dict, Generator, Optional, Tuple
 
 import click
+import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from odc.apps.dc_tools.utils import (
+    allow_unsafe,
+    index_update_dataset,
+    limit,
+    update_if_exists,
+)
 from odc.index.stac import stac_transform, stac_transform_absolute
-from satsearch import Search
+from pystac.item import Item
+from pystac_client import Client
 
-from odc.apps.dc_tools.utils import index_update_dataset
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s: %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
+
+import concurrent
 
 
-def guess_location(metadata: dict) -> Tuple[str, bool]:
+def _parse_options(options: Optional[str]) -> Dict[str, Any]:
+    parsed_options = {}
+
+    if options is not None:
+        for option in options.split("#"):
+            try:
+                key, value = option.split("=")
+                parsed_options[key] = value
+            except Exception as e:
+                logging.warning(
+                    f"Couldn't parse option {option}, format is key=value, exception was {e}"
+                )
+
+    return parsed_options
+
+
+def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
     self_link = None
     asset_link = None
     relative = True
 
-    for link in metadata.get("links"):
-        rel = link.get("rel")
-        if rel and rel == "self":
-            self_link = link.get("href")
+    for link in item.links:
+        if link.rel == "self":
+            self_link = link.target
 
-    if metadata.get("assets"):
-        for asset in metadata["assets"].values():
-            if asset.get("type") in [
-                "image/tiff; application=geotiff; profile=cloud-optimized",
-                "image/tiff; application=geotiff",
-            ]:
-                asset_link = os.path.dirname(asset["href"])
+        # Override self with canonical
+        if link.rel == "canonical":
+            self_link = link.target
+
+    for name, asset in item.assets.items():
+        if "geotiff" in asset.media_type:
+            asset_link = os.path.dirname(asset.href)
+            break
 
     # If the metadata and the document are not on the same path,
     # we need to use absolute links and not relative ones.
@@ -43,99 +73,96 @@ def guess_location(metadata: dict) -> Tuple[str, bool]:
     return self_link, relative
 
 
-def get_items(
-    srch: Search, limit: Optional[int]
-) -> Generator[Tuple[dict, str, bool], None, None]:
-    if limit:
-        items = srch.items(limit=limit)
+def item_to_meta_uri(item: Item) -> Generator[Tuple[dict, str, bool], None, None]:
+    uri, relative = _guess_location(item)
+    metadata = item.to_dict()
+    if relative:
+        metadata = stac_transform(metadata)
     else:
-        items = srch.items()
+        metadata = stac_transform_absolute(metadata)
 
-    # Workaround bug in STAC Search that doesn't stop at the limit
-    for count, metadata in enumerate(items.geojson()["features"]):
-        # Stop at the limit if it's set
-        if (limit is not None) and (count >= limit):
-            break
-        uri, relative = guess_location(metadata)
-        try:
-            if relative:
-                metadata = stac_transform(metadata)
-            else:
-                metadata = stac_transform_absolute(metadata)
-        except KeyError as e:
-            logging.error(
-                f"Failed to handle item with KeyError: '{e}'\n The URI was {uri}"
-            )
-            continue
+    return (metadata, uri)
 
-        yield (metadata, uri)
+
+def process_item(
+    item: Item,
+    dc: Datacube,
+    doc2ds: Doc2Dataset,
+    update_if_exists: bool,
+    allow_unsafe: bool,
+):
+    meta, uri = item_to_meta_uri(item)
+    index_update_dataset(
+        meta,
+        uri,
+        dc,
+        doc2ds,
+        update_if_exists=update_if_exists,
+        allow_unsafe=allow_unsafe,
+    )
 
 
 def stac_api_to_odc(
     dc: Datacube,
-    limit: int,
-    update: bool,
-    allow_unsafe: bool,
+    update_if_exists: bool,
     config: dict,
-    **kwargs,
+    catalog_href: str,
+    allow_unsafe_changes: bool = True,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
+    client = Client.open(catalog_href)
 
-    # QA the BBOX
-    if config.get("bbox") and len(config["bbox"]) != 4:
-        raise ValueError(
-            "Bounding box must be of the form lon-min,lat-min,lon-max,lat-max"
-        )
-
-    # QA the search
-    srch = Search().search(**config)
-    n_items = srch.found()
-    logging.info("Found {} items to index".format(n_items))
-    if n_items > 10000:
-        logging.warning(
-            "More than 10,000 items were returned by your query, which is greater than the API limit"
-        )
-
-    if n_items == 0:
-        logging.warning("Didn't find any items, finishing.")
-        return 0, 0
-
-    # Get a generator of (stac, uri, relative_uri) tuples
-    datasets = get_items(srch, limit)
+    search = client.search(**config)
+    n_items = search.matched()
+    if n_items is not None:
+        logging.info("Found {} items to index".format(n_items))
+        if n_items == 0:
+            logging.warning("Didn't find any items, finishing.")
+            return 0, 0
+    else:
+        logging.warning("API did not return the number of items.")
 
     # Do the indexing of all the things
     success = 0
     failure = 0
 
-    for dataset, uri in datasets:
-        try:
-            index_update_dataset(dataset, uri, dc, doc2ds, update, allow_unsafe=allow_unsafe)
-            success += 1
-        except Exception as e:
-            logging.warning(f"Failed to handle dataset: {uri} with exception {e}")
-            failure += 1
+    sys.stdout.write("\rIndexing from STAC API...\n")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        future_to_item = {
+            executor.submit(
+                process_item,
+                item,
+                dc,
+                doc2ds,
+                update_if_exists=update_if_exists,
+                allow_unsafe=allow_unsafe,
+            ): item.id
+            for item in search.get_all_items()
+        }
+        for future in concurrent.futures.as_completed(future_to_item):
+            item = future_to_item[future]
+            try:
+                _ = future.result()
+                success += 1
+                if success % 10 == 0:
+                    sys.stdout.write(f"\rAdded {success} datasets...")
+            except Exception as e:
+                logging.exception(f"Failed to handle item {item} with exception {e}")
+                failure += 1
+    sys.stdout.write("\r")
 
     return success, failure
 
 
 @click.command("stac-to-dc")
+@limit
+@update_if_exists
+@allow_unsafe
 @click.option(
-    "--limit",
-    default=None,
-    type=int,
-    help="Stop indexing after n datasets have been indexed.",
-)
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="If set, update instead of add datasets",
-)
-@click.option(
-    "--allow-unsafe",
-    is_flag=True,
-    default=False,
-    help="Allow unsafe changes to a dataset. Take care!",
+    "--catalog-href",
+    type=str,
+    default="https://earth-search.aws.element84.com/v0/",
+    help="URL to the catalog to search",
 )
 @click.option(
     "--collections",
@@ -155,23 +182,26 @@ def stac_api_to_odc(
     default=None,
     help="Dates to search, either one day or an inclusive range, e.g. 2020-01-01 or 2020-01-01/2020-01-02",
 )
-@click.argument("product", type=str, nargs=1)
+@click.option(
+    "--options",
+    type=str,
+    default=None,
+    help="Other search terms, as a # separated list, i.e., --options=cloud_cover=0,100#sky=green",
+)
 def cli(
     limit,
-    update,
+    update_if_exists,
     allow_unsafe,
+    catalog_href,
     collections,
     bbox,
     datetime,
-    product,
+    options,
 ):
     """
-    Iterate through STAC items from a STAC API and add them to datacube
-    Note that you need to set the STAC_API_URL environment variable to
-    something like https://earth-search.aws.element84.com/v0/
+    Iterate through STAC items from a STAC API and add them to datacube.
     """
-
-    config = {}
+    config = _parse_options(options)
 
     # Format the search terms
     if bbox:
@@ -183,10 +213,13 @@ def cli(
     if datetime:
         config["datetime"] = datetime
 
+    if limit is not None:
+        config["max_items"] = limit
+
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, limit, update, allow_unsafe, config
+        dc, update_if_exists, config, catalog_href, allow_unsafe_changes=allow_unsafe
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")

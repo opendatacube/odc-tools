@@ -272,4 +272,5 @@ def fuse_ds(
         fused_doc["measurements"][key]["path"] = path
 
     fused_ds = Dataset(product, prep_eo3(fused_doc), uris=[""])
+    fused_doc["properties"]["fused"] = "True"
     return fused_ds

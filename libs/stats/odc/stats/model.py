@@ -1,13 +1,15 @@
-from abc import ABC, abstractmethod, abstractproperty
 import math
 from pathlib import Path
+from abc import ABC, abstractmethod
 from copy import deepcopy
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple, Union, List, Mapping
 from uuid import UUID
-from toolz import dicttoolz
+
+import pandas as pd
+from pyproj.transformer import transform
 import pystac
 import xarray as xr
 import pandas as pd
@@ -21,6 +23,8 @@ from datacube.utils.geometry import GeoBox
 from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
+from pystac.extensions.projection import ProjectionExtension
+from toolz import dicttoolz
 
 import eodatasets3
 from eodatasets3.assemble import DatasetAssembler, serialise
@@ -292,7 +296,18 @@ class Task:
         return "/".join([p1, p2, self.short_time])
 
     def _lineage(self) -> Tuple[UUID, ...]:
-        return tuple(ds.id for ds in self.datasets)
+        ds, *_ = self.datasets
+
+        # TODO: replace this and test
+        # if 'fused' in ds.metadata._doc['properties'].keys():
+        if 'fused' in ds.type.name:
+            lineage = tuple(set(
+                x for ds in self.datasets for y in ds.metadata.sources.values() for x in y.values()
+            ))
+        else:
+            lineage = tuple(ds.id for ds in self.datasets)
+
+        return lineage
 
     def _prefix(self, relative_to: str = "dataset") -> str:
         product = self.product
@@ -366,10 +381,33 @@ class Task:
         # several fix values in self.product.properties (e.g. "odc:file_format": "GeoTIFF")
         for product_property_name, product_property_value in self.product.properties.items():
             dataset_assembler.properties[product_property_name] = product_property_value
+        
+        # TODO: check this change purpose
+        """
+        geobox_wgs84 = geobox.extent.to_crs(
+            "epsg:4326", resolution=math.inf, wrapdateline=True
+        )
+        bbox = geobox_wgs84.boundingbox
+
+        item = pystac.Item(
+            id=str(self.uuid),
+            geometry=geobox_wgs84.json,
+            bbox=[bbox.left, bbox.bottom, bbox.right, bbox.top],
+            datetime=self.time_range.start.replace(tzinfo=timezone.utc),
+            properties=properties
+        )
+        ProjectionExtension.add_to(item)
+        proj_ext = ProjectionExtension.ext(item)
+        proj_ext.apply(geobox.crs.epsg, transform=geobox.transform, shape=geobox.shape)
+
+        # Lineage last
+        item.properties["odc:lineage"] = dict(inputs=inputs)
+        """
 
         dataset_assembler.product_name = self.product.name
         dataset_assembler.dataset_version = self.product.version
         dataset_assembler.region_code = self.product.region_code(self.tile_index)
+
 
         if processing_dt is None:
             processing_dt = datetime.utcnow()
@@ -378,6 +416,25 @@ class Task:
         dataset_assembler.maturity = self.product.maturity
         dataset_assembler.collection_number = self.product.collection_number
 
+        # TODO: check the these two JSON files content
+        """
+        # Add links
+        item.links.append(
+            pystac.Link(
+                rel="product_overview",
+                media_type="application/json",
+                target=product.href,
+            )
+        )
+        item.links.append(
+            pystac.Link(
+                rel="self",
+                media_type="application/json",
+                target=self.metadata_path("absolute", ext="json"),
+            )
+        )
+        """
+        
         dataset_assembler.note_software_version("eodatasets3",
                                                 "https://github.com/GeoscienceAustralia/eo-datasets",
                                                 eodatasets3.__version__,)

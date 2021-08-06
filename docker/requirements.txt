@@ -1,48 +1,63 @@
-# After installing this you can install all of odc-tools without pulling in new
-# dependencies and also run tests
+# This file is used to download all dependencies
+#
+# Majority of dependencies will be pulled in via `-e /code/...`, but some
+# extras are needed:
+#  - test dependencies that are not listed as direct dependencies
+#  - libraries that need extra features enabled (dask[complete], datacube[dev])
+#  - optional dependencies that are needed to run tests more fully (hdstats)
+#  - libraries that we need to constrain versions for to help pip resolutions
 #
 
+# things needed for tests that might not be referenced in setup.py
 deepdiff
 moto
 mock
 docker
+pytest-depends
 pip-tools
 rio-cogeo
 
-datacube[dev]
-hdstats
-
-affine
-aiobotocore[boto3,awscli]
-aiohttp
-azure-storage-blob
-#boto3
-#botocore
-click
-dask[complete]
-dask-image
-distributed
-google-cloud-storage
-ipyleaflet
-ipywidgets
-jinja2
-jupyter-ui-poll
-lmdb
-numexpr
-numpy
-pyproj
-pystac
-pyyaml
-rasterio
-requests
-sat-search
-scikit-image
-thredds-crawler
-toolz
-tqdm
-xarray
-zstandard
-
+# needed to bootstrap environment without network index
 wheel
 setuptools
 pip
+
+# need newer datacube because of click and sqlalchemy
+# TODO: remove --extra-index-url when 1.8.4 is released
+--extra-index-url="https://packages.dea.ga.gov.au"
+datacube[dev]>=1.8.4.dev
+
+# hdstats is optional, needs to be pulled in manually
+hdstats
+
+# need to constrain this one for pip-sake
+# Fixing this allows pip resolution without constraints.txt
+aiobotocore[boto3,awscli]==1.3.3
+
+# Make sure dask has all the features enabled
+dask[complete]
+
+# not needed for python 3.8 and up, and are not installed,
+# but `pip check` doesn't know better
+dataclasses
+
+# This section should list all odc libs to be installed for testing including
+# desired feature flags.
+#
+# These are used to pull in dependencies, but are then discarded
+#
+-e /code/apps/dc_tools[AZURE,THREDDS,tests]
+-e /code/apps/cloud[AZURE,THREDDS,GCP]
+-e /code/libs/geom
+-e /code/libs/dtools
+-e /code/libs/index
+-e /code/libs/aws
+-e /code/libs/azure
+-e /code/libs/dscache
+-e /code/libs/io
+-e /code/libs/aio
+-e /code/libs/algo
+-e /code/libs/ppt
+-e /code/libs/ui
+-e /code/libs/stats
+-e /code/libs/thredds

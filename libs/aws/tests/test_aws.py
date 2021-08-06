@@ -1,7 +1,9 @@
 import json
+import os
 
 import boto3
 from moto import mock_sqs
+import pytest
 from odc.aws.queue import redrive_queue
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
@@ -12,8 +14,14 @@ def get_n_messages(queue):
     return int(queue.attributes.get("ApproximateNumberOfMessages"))
 
 
+@pytest.fixture
+def aws_env(monkeypatch):
+    if 'AWS_DEFAULT_REGION' not in os.environ:
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
+
+
 @mock_sqs
-def test_redrive_to_queue():
+def test_redrive_to_queue(aws_env):
     resource = boto3.resource("sqs")
 
     dead_queue = resource.create_queue(QueueName=DEAD_QUEUE_NAME)
