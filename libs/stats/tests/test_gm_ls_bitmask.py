@@ -79,6 +79,7 @@ def test_fuser(dataset):
     assert (result == expected_result).all()
 
 def test_reduce(dataset):
+    _ = pytest.importorskip("hdstats")
     gm = StatsGMLSBitmask(["band_red"])
 
     xx = gm._native_tr(dataset)

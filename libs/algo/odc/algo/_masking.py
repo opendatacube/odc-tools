@@ -383,61 +383,71 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
     return xr_apply_morph_op(xx, "closing", radius, **kw)
 
 
-def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray:
+def mask_cleanup_np(mask: np.ndarray, filter: Dict = dict(closing=0, opening=2, dilation=5)) -> np.ndarray:
     """
-    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
+    Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
 
     :param mask: Binary image to process
-    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    :param filter: dict of integer (closing=int, opening=int, dilation=int), order of operation
+        closing = remove small holes in cloud - morphological closing
+        opening = shrinks away small areas of the mask
+        dilation = adds padding to the mask
     """
     import skimage.morphology as morph
 
     assert mask.dtype == "bool"
 
-    r1, r2 = r
-    if r1 == 0 and r2 == 0:
+    if ("closing" in filter and filter["closing"] == 0) and filter["opening"] == 0 and filter["dilation"] == 0:
         return mask
 
-    if r1 > 0:
-        mask = morph.binary_opening(mask, _disk(r1, mask.ndim))
+    if "closing" in filter and filter["closing"] > 0:
+        mask = morph.binary_closing(mask, _disk(filter["closing"], mask.ndim))
 
-    if r2 > 0:
-        mask = morph.binary_dilation(mask, _disk(r2, mask.ndim))
+    if filter["opening"] > 0:
+        mask = morph.binary_opening(mask, _disk(filter["opening"], mask.ndim))
+
+    if filter["dilation"] > 0:
+        mask = morph.binary_dilation(mask, _disk(filter["dilation"], mask.ndim))
 
     return mask
 
 
-def _compute_overlap_depth(r: Tuple[int, int], ndim: int) -> Tuple[int, ...]:
+def _compute_overlap_depth(r: Tuple[int, int, int], ndim: int) -> Tuple[int, ...]:
     r = max(r)
     return (0,) * (ndim - 2) + (r, r)
 
 
 def mask_cleanup(
-    mask: xr.DataArray, r: Tuple[int, int] = (2, 5), name: Optional[str] = None
+    mask: xr.DataArray, filter: Dict = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
 ) -> xr.DataArray:
     """
-    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
+    Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
 
-    This is bit-equivalent to ``mask |> opening(r1) |> dilation(r2)``, but
-    could be faster when using Dask, as we fuse those operations into single
-    Dask task.
+    This is bit-equivalent to ``mask |> morphological closing |> opening |> dilation``, but
+    could be faster when using Dask, as we fuse those operations into single Dask task.
 
     :param mask: Binary image to process
-    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    :param filter: dict of integer (closing=int, opening=int, dilation=int), order of operation
+        closing = remove small holes in cloud - morphological closing
+        opening = shrinks away small areas of the mask
+        dilation = adds padding to the mask
     :param name: Used when building Dask graphs
     """
 
     data = mask.data
     if dask.is_dask_collection(data):
         if name is None:
-            name = f"mask_cleanup_{r[0]}_{r[1]}"
+            if "closing" in filter and filter["closing"] != 0:
+                name = f"mask_cleanup_{filter['closing']}_{filter['opening']}_{filter['dilation']}"
+            else:
+                name = f"mask_cleanup_{filter['opening']}_{filter['dilation']}"
 
-        depth = _compute_overlap_depth(r, data.ndim)
+        depth = _compute_overlap_depth(filter.values(), data.ndim)
         data = data.map_overlap(
-            partial(mask_cleanup_np, r=r), depth, boundary="none", name=randomize(name)
+            partial(mask_cleanup_np, filter=filter), depth, boundary="none", name=randomize(name)
         )
     else:
-        data = mask_cleanup_np(data, r)
+        data = mask_cleanup_np(data, filter=filter)
 
     return xr.DataArray(data, attrs=mask.attrs, coords=mask.coords, dims=mask.dims)
 
@@ -729,7 +739,7 @@ def _nodata_fuser(xx, **kw):
 
 def _fuse_mean_np(*aa, nodata):
     assert len(aa) > 0
-    
+
     out = aa[0].astype(np.float32)
     count = (aa[0] != nodata).astype(np.float32)
     for a in aa[1:]:

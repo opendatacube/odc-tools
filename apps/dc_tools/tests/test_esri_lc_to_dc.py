@@ -22,6 +22,7 @@ def test_one_transformed_item(file_list):
 
 
 # Test the actual process
+@pytest.mark.depends(on='have_db')
 def test_indexing_cli():
     runner = CliRunner()
     result = runner.invoke(

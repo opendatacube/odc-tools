@@ -16,8 +16,8 @@ RUN apt-get update \
 
 WORKDIR /code
 
-COPY docker/rr-odc-tools.in docker/constraints.txt docker/requirements.txt /conf/
+COPY docker/constraints.txt docker/requirements.txt /conf/
 RUN --mount=type=bind,target=/src \
     --mount=type=cache,target=/home/odc/.cache/pip,uid=1000,gid=1000 \
     (cd /src && tar c .git libs apps ) | (cd /code && tar x) \
-    && env-build-tool new_no_index /conf/rr-odc-tools.in /conf/constraints.txt /env /src/docker/wheels
+    && env-build-tool new_no_index /conf/requirements.txt /conf/constraints.txt /env /src/docker/wheels

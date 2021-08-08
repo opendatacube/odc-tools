@@ -1,7 +1,7 @@
 """
 Geomedian
 """
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
@@ -23,7 +23,7 @@ class StatsGM(StatsPluginInterface):
         mask_band: str,
         cloud_classes: Tuple[str, ...],
         nodata_classes: Optional[Tuple[str, ...]] = None,
-        filters: Optional[Tuple[int, int]] = (0, 0),
+        filters: Optional[Dict[str, int]] = dict(opening=0, dilation=0),
         basis_band=None,
         aux_names=dict(smad="smad", emad="emad", bcmad="bcmad", count="count"),
         rgb_bands=None,
@@ -153,7 +153,7 @@ class StatsGMS2(StatsGM):
             "thin cirrus",
         ),
         nodata_classes: Optional[Tuple[str, ...]] = None,
-        filters: Optional[Tuple[int, int]] = (2, 5),
+        filters: Optional[Dict[str, int]] = dict(opening=2, dilation=5),
         basis_band: Optional[str] = None,
         aux_names=dict(smad="SMAD", emad="EMAD", bcmad="BCMAD", count="COUNT"),
         rgb_bands=None,
@@ -209,7 +209,7 @@ class StatsGMLS(StatsGM):
         mask_band: str = "fmask",
         cloud_classes: Tuple[str, ...] = ("cloud", "shadow"),
         nodata_classes: Optional[Tuple[str, ...]] = ("nodata",),
-        filters: Optional[Tuple[int, int]] = (0, 0),
+        filters: Optional[Dict[str, int]] = dict(opening=0, dilation=0),
         basis_band: Optional[str] = None,
         aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
         rgb_bands=None,

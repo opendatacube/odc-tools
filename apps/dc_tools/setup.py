@@ -18,7 +18,7 @@ setup(
     install_requires=[
         "click",
         "fsspec",
-        "pystac-client",
+        "pystac-client>=0.2.0b2",
         "toolz",
         "pyyaml",
         "datacube",
@@ -26,7 +26,7 @@ setup(
         "odc_io",
         "odc_aws",
         "odc_aio",
-        "pystac",
+        "pystac>=1.0.0",
     ],
     extras_require={
         "tests": TEST_REQUIREMENTS,
@@ -44,6 +44,7 @@ setup(
             "stac-to-dc = odc.apps.dc_tools.stac_api_to_dc:cli",
             "azure-to-dc = odc.apps.dc_tools.azure_to_dc:cli [AZURE]",
             "esri-lc-to-dc = odc.apps.dc_tools.esri_land_cover_to_dc:cli",
+            "fs-to-dc = odc.apps.dc_tools.fs_to_dc:cli",
         ]
     },
     packages=["odc.apps.dc_tools"],

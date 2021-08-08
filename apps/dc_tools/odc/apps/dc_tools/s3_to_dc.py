@@ -34,7 +34,7 @@ def stream_docs(documents):
 
 # Log the internal errors parsing docs
 def doc_error(uri, doc, e):
-    logging.error(f"Failed to parse doc {uri} with error {e}")
+    logging.exception(f"Failed to parse doc {uri} with error {e}")
 
 
 def dump_to_odc(
@@ -58,7 +58,7 @@ def dump_to_odc(
             index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
             ds_added += 1
         except (IndexingException) as e:
-            logging.error(f"Failed to index dataset {uri} with error {e}")
+            logging.exception(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
 
     return ds_added, ds_failed
@@ -139,7 +139,7 @@ def cli(
         allow_unsafe=allow_unsafe,
     )
 
-    print(f"Added {added} Datasets, Failed {failed} Datasets")
+    print(f"Added {added} datasets and failed {failed} datasets.")
 
     if failed > 0:
         sys.exit(failed)

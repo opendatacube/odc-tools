@@ -24,8 +24,6 @@ jobs:
       run: |
         cd tests
         docker-compose up -d
-        # Manually install over the top to fix weird file symbolic links in CI
-        docker-compose exec -T tools-tester pip install -r /code/docker/rr-odc-tools.in
         # Now set up some metadata and products
         # Skip the below because it fails. TODO: fix up missing product definition
         docker-compose exec -T tools-tester bash -c \

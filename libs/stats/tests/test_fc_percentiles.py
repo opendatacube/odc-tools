@@ -30,8 +30,12 @@ def dataset():
         "y": np.linspace(0, 5, band_1.shape[1]), 
         "spec": index,
     }
+    
 
-    data_vars = {"band_1": (("spec", "y", "x"), band_1), "water": (("spec", "y", "x"), band_2)}
+    data_vars = {
+        "band_1": xr.DataArray(band_1, dims=("spec", "y", "x"), attrs={"test_attr": 57}), 
+        "water": (("spec", "y", "x"), band_2)
+    }
     xx = xr.Dataset(data_vars=data_vars, coords=coords)
     return xx
 
@@ -42,6 +46,7 @@ def test_native_transform(dataset, bits):
     xx = dataset.copy()
     xx['water'] = da.bitwise_or(xx['water'], bits)
     xx = StatsFCP._native_tr(xx)
+    assert xx["band_1"].attrs["test_attr"] == 57
     
     expected_result = np.array([
         [[255, 255], [255, 50]],
@@ -63,7 +68,8 @@ def test_native_transform(dataset, bits):
 def test_fusing(dataset):
     xx = StatsFCP._native_tr(dataset)
     xx = xx.groupby("solar_day").map(StatsFCP._fuser)
-
+    assert xx["band_1"].attrs["test_attr"] == 57
+    
     expected_result = np.array(
         [[28, 46], [255, 76]],
     )
@@ -101,4 +107,7 @@ def test_reduce(dataset):
 
     for band_name in xx.data_vars.keys():
         assert xx.data_vars[band_name].dtype == np.uint8
+        
+        if band_name != "qa":
+            assert xx[band_name].attrs["test_attr"] == 57
     
