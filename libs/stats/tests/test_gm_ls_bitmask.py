@@ -105,7 +105,7 @@ def test_reduce(dataset):
     result = xx.compute()
 
     assert set(xx.data_vars.keys()) == set(
-        ["band_red", "sdev", "edev", "bcdev", "count"]
+        ["band_red", "smad", "emad", "bcmad", "count"]
     )
 
     # it's a complex calculation so we copied the result
@@ -115,15 +115,15 @@ def test_reduce(dataset):
     red = result["band_red"].data
     assert (red == expected_result).all()
 
-    edev = result["edev"].data
+    edev = result["emad"].data
     assert np.isclose(edev[0, 0], 32, atol=1e-6)
     assert np.isclose(edev[1, 0], 7, atol=1e-6)
 
-    bcdev = result["bcdev"].data
+    bcdev = result["bcmad"].data
     assert np.isclose(bcdev[0, 0], 0.008061964, atol=1e-6)
     assert np.isclose(bcdev[1, 0], 0.0017294621, atol=1e-6)
 
-    sdev = result["sdev"].data
+    sdev = result["smad"].data
     assert np.isclose(sdev[0, 0], 0.0, atol=1e-6)
     assert np.isclose(sdev[1, 0], 0.0, atol=1e-6)
 
