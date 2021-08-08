@@ -34,8 +34,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
             aux_names=dict(smad="smad", emad="emad", bcmad="bcmad", count="count"),
             resampling: str = "nearest",
             work_chunks: Tuple[int, int] = (400, 400),
-            scale=1/0.0000275,
-            offset=-0.2/0.0000275,
+            scale: float = 1/0.0000275,
+            offset: float = -0.2/0.0000275,
             **other,
     ):
         self.mask_band = mask_band
