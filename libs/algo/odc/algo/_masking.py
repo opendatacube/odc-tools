@@ -421,14 +421,14 @@ def mask_cleanup(
     mask: xr.DataArray, filter: Dict = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
 ) -> xr.DataArray:
     """
-    Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
+    Apply morphological closing followed by opening and dilation on given binary mask.
 
     This is bit-equivalent to ``mask |> morphological closing |> opening |> dilation``, but
     could be faster when using Dask, as we fuse those operations into single Dask task.
 
     :param mask: Binary image to process
-    :param filter: dict of integer (closing=int, opening=int, dilation=int), order of operation
-        closing = remove small holes in cloud - morphological closing
+    :param filter: dict of integer - dict(closing=int, opening=int, dilation=int), order of operation if value `>0`
+        closing(optional) = remove small holes in cloud - morphological closing
         opening = shrinks away small areas of the mask
         dilation = adds padding to the mask
     :param name: Used when building Dask graphs
