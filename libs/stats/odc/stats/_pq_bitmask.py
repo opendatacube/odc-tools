@@ -53,7 +53,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
             ),
             nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),
             filters: Optional[List[Iterable[Tuple[str, int]]]] = None,
-            aerosol_filters: Optional[Iterable[Tuple[str, int]]] = None,
+            aerosol_filters: Optional[List[Iterable[Tuple[str, int]]]] = None,
             resampling: str = "nearest",
     ):
         self.pq_band = pq_band
