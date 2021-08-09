@@ -26,7 +26,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
             # provide flags with high cloud bits definition
             flags: Dict[str, Optional[Any]] = dict(
                 cloud="high_confidence",
-                # cloud_shadow="high_confidence",
                 cirrus="high_confidence",
             ),
             nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),
@@ -159,7 +158,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
-        # Scale USGS Landsat bands into surface reflectance
+        # Rescaling gm bands between 0-10000 (approx) range
         # for band in gm.data_vars:
         #     if band in self.bands:
         #         gm[band] = scale * sr_scale * gm[band] + offset * sr_scale

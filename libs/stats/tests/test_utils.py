@@ -19,7 +19,7 @@ from odc.stats.utils import (
     bin_seasonal,
     mk_season_rules,
     season_binner,
-    fuse_products, 
+    fuse_products,
     fuse_ds
 )
 
@@ -136,7 +136,7 @@ def fc_definition():
         'description': 'Geoscience Australia Landsat Fractional Cover Collection 3',
         'measurements': [
             {'name': 'bs', 'dtype': 'uint8', 'units': 'percent', 'nodata': 255, 'aliases': ['bare']},
-            {'name': 'pv', 'dtype': 'uint8', 'units': 'percent', 'nodata': 255, 'aliases': ['green_veg']}, 
+            {'name': 'pv', 'dtype': 'uint8', 'units': 'percent', 'nodata': 255, 'aliases': ['green_veg']},
             {'name': 'npv', 'dtype': 'uint8', 'units': 'percent', 'nodata': 255, 'aliases': ['dead_veg']},
             {'name': 'ue', 'dtype': 'uint8', 'units': '1', 'nodata': 255, 'aliases': ['err']}],
         'metadata_type': 'eo3'
@@ -160,6 +160,38 @@ def wo_definition():
 
 
 @pytest.fixture
+def usgs_ls8_sr_definition():
+    definition = {
+        'name': 'ls8_sr',
+        'description': 'USGS Landsat 8 Collection 2 Level-2 Surface Reflectance',
+        'metadata_type': 'eo3',
+        'measurements': [
+            {
+                'name': 'QA_PIXEL',
+                'dtype': 'uint16',
+                'units': 'bit_index',
+                'nodata': '1',
+                'flags_definition': {
+                    'snow': {'bits': 5, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                    'clear': {'bits': 6, 'values': {'0': False, '1': True}},
+                    'cloud': {'bits': 3, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                    'water': {'bits': 7, 'values': {'0': 'land_or_cloud', '1': 'water'}},
+                    'cirrus': {'bits': 2, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                    'nodata': {'bits': 0, 'values': {'0': False, '1': True}},
+                    'cloud_shadow': {'bits': 4, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
+                    'dilated_cloud': {'bits': 1, 'values': {'0': 'not_dilated', '1': 'dilated'}},
+                    'cloud_confidence': {'bits': [8, 9], 'values': {'0': 'none', '1': 'low', '2': 'medium', '3': 'high'}},
+                    'cirrus_confidence': {'bits': [14, 15], 'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}},
+                    'snow_ice_confidence': {'bits': [12, 13], 'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}},
+                    'cloud_shadow_confidence': {'bits': [10, 11], 'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}}
+                }
+            }
+        ]
+    }
+    return definition
+
+
+@pytest.fixture
 def dc():
     return Datacube()
 
@@ -177,7 +209,7 @@ def test_fuse_products(wo_definition, fc_definition):
     bad_product = DatasetType(eo3, bad_definition)
     with pytest.raises(AssertionError):
         fuse_products(bad_product, fc_product)
-            
+
     bad_definition = deepcopy(wo_definition)
     bad_definition["measurements"].append(fc_definition["measurements"][1])
     bad_product = DatasetType(eo3, bad_definition)
@@ -190,7 +222,6 @@ def _get_msr_paths(ds):
 
 
 def test_fuse_dss(wo_definition, fc_definition):
-
     standard_metadata_types = {d["name"]: metadata_from_doc(d) for d in default_metadata_type_docs()}
     eo3 = standard_metadata_types["eo3"]
 
@@ -238,7 +269,7 @@ def test_fuse_dss(wo_definition, fc_definition):
         'landsat:collection_category': 'T1'},
         'measurements': {'water': {'path': 'ga_ls_wo_3_091086_2020-04-04_final_water.tif'}}
     }
-    
+
     fc_metadata = {
         'id': '41980746-4f17-5e0c-86a0-92cca8d3c99d',
         'crs': 'epsg:32655',
@@ -281,7 +312,7 @@ def test_fuse_dss(wo_definition, fc_definition):
         'ue': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_ue.tif'},
         'npv': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_npv.tif'}}
     }
-    
+
     # paths get made absolute here
     # TODO: force paths to stay relative
     uris = ["s3://dea-public-data/derivative/ga_ls_wo_3/1-6-0/091/086/2020/04/04/ga_ls_wo_3_091086_2020-04-04_final.stac-item.json"]

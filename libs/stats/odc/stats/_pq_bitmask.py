@@ -48,7 +48,6 @@ class StatsPQLSBitmask(StatsPluginInterface):
             # provide flags with high cloud bits definition
             flags: Dict[str, Optional[Any]] = dict(
                 cloud="high_confidence",
-                # cloud_shadow="high_confidence",
                 cirrus="high_confidence",
             ),
             nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),

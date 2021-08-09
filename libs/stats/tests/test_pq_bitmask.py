@@ -4,10 +4,12 @@ import dask.array as da
 from odc.stats._pq_bitmask import StatsPQLSBitmask
 import pytest
 import pandas as pd
+from copy import deepcopy
+from .test_utils import usgs_ls8_sr_definition
 
 
 @pytest.fixture
-def dataset():
+def dataset(usgs_ls8_sr_definition):
     band_red = np.array([
         [[255, 57], [20, 50]],
         [[30, 0], [70, 80]],
@@ -31,22 +33,10 @@ def dataset():
         "y": np.linspace(0, 5, band_pq.shape[1]),
         "spec": index,
     }
-    pq_flags_definition = {'snow': {'bits': 5, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
-                        'clear': {'bits': 6, 'values': {'0': False, '1': True}},
-                        'cloud': {'bits': 3, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
-                        'water': {'bits': 7, 'values': {'0': 'land_or_cloud', '1': 'water'}},
-                        'cirrus': {'bits': 2, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
-                        'nodata': {'bits': 0, 'values': {'0': False, '1': True}},
-                        'cloud_shadow': {'bits': 4, 'values': {'0': 'not_high_confidence', '1': 'high_confidence'}},
-                        'dilated_cloud': {'bits': 1, 'values': {'0': 'not_dilated', '1': 'dilated'}},
-                        'cloud_confidence': {'bits': [8, 9],
-                                             'values': {'0': 'none', '1': 'low', '2': 'medium', '3': 'high'}},
-                        'cirrus_confidence': {'bits': [14, 15],
-                                              'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}},
-                        'snow_ice_confidence': {'bits': [12, 13],
-                                                'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}},
-                        'cloud_shadow_confidence': {'bits': [10, 11],
-                                                    'values': {'0': 'none', '1': 'low', '2': 'reserved', '3': 'high'}}}
+    pq_flags_definition = {}
+    for measurement in usgs_ls8_sr_definition['measurements']:
+        if measurement['name'] == "QA_PIXEL":
+            pq_flags_definition = measurement['flags_definition']
     attrs = dict(units="bit_index", nodata="1", crs="epsg:32633", grid_mapping="spatial_ref", flags_definition=pq_flags_definition)
 
     data_vars = {"band_red": (("spec", "y", "x"), band_red), "QA_PIXEL": (("spec", "y", "x"), band_pq, attrs)}
