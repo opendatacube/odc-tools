@@ -391,7 +391,7 @@ def mask_cleanup_np(
     Apply morphological operations on given binary mask.
 
     :param mask: Binary image to process
-    :param mask_filters: List of morphological operations to apply on mask
+    :param mask_filters: Iterable tuples of morphological operations to apply on mask
     """
     import skimage.morphology as morph
 
