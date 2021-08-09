@@ -331,11 +331,10 @@ def load_enum_filtered(
     :param geobox: GeoBox of the final output
     :param categories: Enum values or names
 
-    :param filters: dict(closing=int, opening=int, dilation=int), where
-                    closing(optional = remove small holes in cloud - morphological closing,
-                    opening = shrinks away small areas of the mask,
-                    dilation = adds padding to the mask.
-                    Use ``0`` to skip filter step.
+    :param filter: dict of integer - dict(closing=int, opening=int, dilation=int), order of operation if value `>0`
+                    closing(optional) = remove small holes in cloud - morphological closing
+                    opening = shrinks away small areas of the mask
+                    dilation = adds padding to the mask
     :param groupby: One of 'solar_day'|'time'|'idx'|None
     :param resampling: Any resampling mode supported by GDAL as a string:
                        nearest, bilinear, average, mode, cubic, etc...

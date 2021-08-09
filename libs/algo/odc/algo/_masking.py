@@ -383,7 +383,7 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
     return xr_apply_morph_op(xx, "closing", radius, **kw)
 
 
-def mask_cleanup_np(mask: np.ndarray, filter: Dict = dict(closing=0, opening=2, dilation=5)) -> np.ndarray:
+def mask_cleanup_np(mask: np.ndarray, filter: Dict[str, int] = dict(closing=0, opening=2, dilation=5)) -> np.ndarray:
     """
     Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
 
@@ -397,16 +397,16 @@ def mask_cleanup_np(mask: np.ndarray, filter: Dict = dict(closing=0, opening=2, 
 
     assert mask.dtype == "bool"
 
-    if ("closing" in filter and filter["closing"] == 0) and filter["opening"] == 0 and filter["dilation"] == 0:
+    if filter.get("closing", 0) == 0 and filter.get("opening", 0) == 0 and filter.get("dilation", 0) == 0:
         return mask
 
-    if "closing" in filter and filter["closing"] > 0:
+    if filter.get("closing", 0) > 0:
         mask = morph.binary_closing(mask, _disk(filter["closing"], mask.ndim))
 
-    if filter["opening"] > 0:
+    if filter.get("opening", 0) > 0:
         mask = morph.binary_opening(mask, _disk(filter["opening"], mask.ndim))
 
-    if filter["dilation"] > 0:
+    if filter.get("dilation", 0) > 0:
         mask = morph.binary_dilation(mask, _disk(filter["dilation"], mask.ndim))
 
     return mask
@@ -418,17 +418,17 @@ def _compute_overlap_depth(r: Tuple[int, int, int], ndim: int) -> Tuple[int, ...
 
 
 def mask_cleanup(
-    mask: xr.DataArray, filter: Dict = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
+    mask: xr.DataArray, filter: Dict[str, int] = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
 ) -> xr.DataArray:
     """
-    Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
+    Apply morphological closing followed by opening and dilation on given binary mask.
 
     This is bit-equivalent to ``mask |> morphological closing |> opening |> dilation``, but
     could be faster when using Dask, as we fuse those operations into single Dask task.
 
     :param mask: Binary image to process
-    :param filter: dict of integer (closing=int, opening=int, dilation=int), order of operation
-        closing = remove small holes in cloud - morphological closing
+    :param filter: dict of integer - dict(closing=int, opening=int, dilation=int), order of operation if value `>0`
+        closing(optional) = remove small holes in cloud - morphological closing
         opening = shrinks away small areas of the mask
         dilation = adds padding to the mask
     :param name: Used when building Dask graphs
@@ -437,7 +437,7 @@ def mask_cleanup(
     data = mask.data
     if dask.is_dask_collection(data):
         if name is None:
-            if "closing" in filter and filter["closing"] != 0:
+            if filter.get("closing", 0) != 0:
                 name = f"mask_cleanup_{filter['closing']}_{filter['opening']}_{filter['dilation']}"
             else:
                 name = f"mask_cleanup_{filter['opening']}_{filter['dilation']}"

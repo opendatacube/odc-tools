@@ -4,16 +4,18 @@ import dask.array as da
 from odc.stats._pq_bitmask import StatsPQLSBitmask
 import pytest
 import pandas as pd
+from copy import deepcopy
+from .test_utils import usgs_ls8_sr_definition
 
 
 @pytest.fixture
-def dataset():
+def dataset(usgs_ls8_sr_definition):
     band_red = np.array([
         [[255, 57], [20, 50]],
         [[30, 0], [70, 80]],
         [[25, 52], [0, 0]],
     ])
-    cloud_mask = 0b0000_0000_0001_1010
+    cloud_mask = 0b0000_0000_0001_1100
     no_data = 0b0000_0000_0000_0001
     band_pq = np.array([
         [[0, 0], [cloud_mask, no_data]],
@@ -31,9 +33,13 @@ def dataset():
         "y": np.linspace(0, 5, band_pq.shape[1]),
         "spec": index,
     }
+    pq_flags_definition = {}
+    for measurement in usgs_ls8_sr_definition['measurements']:
+        if measurement['name'] == "QA_PIXEL":
+            pq_flags_definition = measurement['flags_definition']
+    attrs = dict(units="bit_index", nodata="1", crs="epsg:32633", grid_mapping="spatial_ref", flags_definition=pq_flags_definition)
 
-    data_vars = {"band_red": (("spec", "y", "x"), band_red), "QA_PIXEL": (("spec", "y", "x"), band_pq)}
-    attrs = dict(crs="epsg:32633", grid_mapping="spatial_ref")
+    data_vars = {"band_red": (("spec", "y", "x"), band_red), "QA_PIXEL": (("spec", "y", "x"), band_pq, attrs)}
     xx = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     xx['band_red'].attrs['nodata'] = 0
     return xx
