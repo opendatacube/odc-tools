@@ -2,7 +2,7 @@
 Landsat QA Pixel Geomedian
 """
 from functools import partial
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple, Any, Iterable
 
 import xarray as xr
 from datacube.utils import masking
@@ -29,7 +29,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
                 cirrus="high_confidence",
             ),
             nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),
-            filter: Optional[Dict[str, int]] = None, # dict(closing=int,opening=int,dilation=int)
+            filters: Optional[Iterable[Tuple[str, int]]] = None, # e.g. [("closing", 10),("opening", 2),("dilation", 2)]
             aux_names=dict(smad="smad", emad="emad", bcmad="bcmad", count="count"),
             resampling: str = "nearest",
             work_chunks: Tuple[int, int] = (400, 400),
@@ -42,7 +42,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.bands = bands
         self.flags = flags
         self.nodata_flags = nodata_flags
-        self.filter = filter
+        self.filters = filters
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
@@ -144,12 +144,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
             compute_mads=True,
         )
 
-        # apply filter in this order
-        # closing = remove small holes in cloud - morphological closing
-        # opening = shrinks away small areas of the mask
-        # dilation = adds padding to the mask
-        if self.filter is not None:
-            xx["cloud_mask"] = mask_cleanup(cloud_mask, self.filter)
+        if self.filters is not None:
+            xx["cloud_mask"] = mask_cleanup(cloud_mask, mask_filters=self.filters)
 
         # erase pixels with cloud
         xx = xx.drop_vars(["cloud_mask"])
