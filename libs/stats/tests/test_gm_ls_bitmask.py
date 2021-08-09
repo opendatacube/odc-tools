@@ -98,25 +98,6 @@ def test_reduce(dataset):
     )
 
     expected_result = np.array(
-        [[51131, 51048], [51036, 51071]]
-    )
-    red = result["band_red"].data
-    assert (red == expected_result).all()
-
-    # it's a complex calculation so we copied the result
-    # emad = result["emad"].data
-    # assert np.isclose(emad[0, 0], 32, atol=1e-6)
-    # assert np.isclose(emad[1, 0], 7, atol=1e-6)
-    #
-    # bcmad = result["bcmad"].data
-    # assert np.isclose(bcmad[0, 0], 0.008061964, atol=1e-6)
-    # assert np.isclose(bcmad[1, 0], 0.0017294621, atol=1e-6)
-    #
-    # smad = result["smad"].data
-    # assert np.isclose(smad[0, 0], 0.0, atol=1e-6)
-    # assert np.isclose(smad[1, 0], 0.0, atol=1e-6)
-
-    expected_result = np.array(
         [[2, 1], [2, 1]],
     )
     count = result.compute()["count"].data
