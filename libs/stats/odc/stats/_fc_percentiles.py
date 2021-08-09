@@ -77,7 +77,7 @@ class StatsFCP(StatsPluginInterface):
 
         xx = load_with_native_transform(
             task.datasets,
-            bands=["water", "pv", "bs", "npv", "ue"],
+            bands=["water", "pv", "bs", "npv"],
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
