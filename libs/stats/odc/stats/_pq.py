@@ -2,7 +2,7 @@
 Sentinel 2 pixel quality stats
 """
 from functools import partial
-from typing import List, Dict, Optional, Tuple, cast
+from typing import List, Dict, Optional, Tuple, cast, Iterable
 
 import xarray as xr
 
@@ -21,14 +21,9 @@ cloud_classes = (
     "thin cirrus",
 )
 
-# Filters are a list of dict(closing=int, opening=int, dilation=int), where
-# closing(Optional) = remove small holes in cloud - morphological closing
-# opening = shrinks away small areas of the mask
-# dilation = adds padding to the mask
-#
-# For each entry in the list an extra ``.clear_{r1}_{r2}`` band will be added to the output in addition to
-# ``.total`` and ``.clear`` bands that are always computed.
-default_filters = [dict(opening=2,dilation=5), dict(opening=0,dilation=5)]
+# filters = list of iterable tuples of morphological operations in the order you want them performed,
+# e.g. [[("opening", 2), ("dilation", 5)]]
+default_filters = [[("opening", 2), ("dilation", 5)], [("opening", 0), ("dilation", 5)]]
 
 class StatsPQ(StatsPluginInterface):
     NAME = "pc_s2_annual"
@@ -38,22 +33,23 @@ class StatsPQ(StatsPluginInterface):
 
     def __init__(
         self,
-        filters: Optional[List[Dict[str, int]]] = None,
+        filters: Optional[List[Iterable[Tuple[str, int]]]] = None,
         resampling: str = "nearest",
     ):
         if filters is None:
-            filters = list(default_filters)
+            filters = default_filters
         self.filters = filters
         self.resampling = resampling
 
     @property
     def measurements(self) -> Tuple[str, ...]:
         measurements = ["total", "clear"]
-        for filter in self.filters:
-            if "closing" in filter:
-                measurements.append(f"clear_{filter['closing']:d}_{filter['opening']:d}_{filter['dilation']:d}")
-            else:
-                measurements.append(f"clear_{filter['opening']:d}_{filter['dilation']:d}")
+
+        for mask_filters in self.filters or []:
+            clear_filter_band_name = "clear"
+            for operation, radius in mask_filters:
+                clear_filter_band_name += f"_{radius:d}"
+            measurements.append(clear_filter_band_name)
 
         return tuple(measurements)
 
@@ -115,7 +111,8 @@ def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
 
 def _pq_fuser(
-    xx: xr.Dataset, filters: Optional[List[Dict[str, int]]] = None
+    xx: xr.Dataset,
+    filters: Optional[List[Iterable[Tuple[str, int]]]] = None
 ) -> xr.Dataset:
     """
     Native:
@@ -131,12 +128,11 @@ def _pq_fuser(
     xx.attrs.pop("native", None)
 
     if is_native:
-        for filter in filters:
-            if "closing" in filter:
-                erased_band_name = f"erased_{filter['closing']:d}_{filter['opening']:d}_{filter['dilation']:d}"
-            else:
-                erased_band_name = f"erased_{filter['opening']:d}_{filter['dilation']:d}"
-            xx[erased_band_name] = mask_cleanup(xx.erased, filter)
+        for mask_filters in filters or []:
+            erased_filter_band_name = "erased"
+            for operation, radius in mask_filters:
+                erased_filter_band_name += f"_{radius:d}"
+            xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
     return xx
 
