@@ -383,7 +383,7 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
     return xr_apply_morph_op(xx, "closing", radius, **kw)
 
 
-def mask_cleanup_np(mask: np.ndarray, filter: Dict = dict(closing=0, opening=2, dilation=5)) -> np.ndarray:
+def mask_cleanup_np(mask: np.ndarray, filter: Dict[str, int] = dict(closing=0, opening=2, dilation=5)) -> np.ndarray:
     """
     Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
 
@@ -418,7 +418,7 @@ def _compute_overlap_depth(r: Tuple[int, int, int], ndim: int) -> Tuple[int, ...
 
 
 def mask_cleanup(
-    mask: xr.DataArray, filter: Dict = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
+    mask: xr.DataArray, filter: Dict[str, int] = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
 ) -> xr.DataArray:
     """
     Apply morphological closing followed by opening and dilation on given binary mask.
