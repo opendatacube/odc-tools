@@ -332,7 +332,7 @@ def load_enum_filtered(
     :param categories: Enum values or names
 
     :param filters: iterable tuples of morphological operations in the order you want them performed,
-                    e.g. [[("opening", 2), ("dilation", 5)]
+                    e.g. [("opening", 2), ("dilation", 5)]
     :param groupby: One of 'solar_day'|'time'|'idx'|None
     :param resampling: Any resampling mode supported by GDAL as a string:
                        nearest, bilinear, average, mode, cubic, etc...
