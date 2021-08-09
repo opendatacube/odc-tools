@@ -397,16 +397,16 @@ def mask_cleanup_np(mask: np.ndarray, filter: Dict[str, int] = dict(closing=0, o
 
     assert mask.dtype == "bool"
 
-    if ("closing" in filter and filter["closing"] == 0) and filter["opening"] == 0 and filter["dilation"] == 0:
+    if filter.get("closing", 0) == 0 and filter.get("opening", 0) == 0 and filter.get("dilation", 0) == 0:
         return mask
 
-    if "closing" in filter and filter["closing"] > 0:
+    if filter.get("closing", 0) > 0:
         mask = morph.binary_closing(mask, _disk(filter["closing"], mask.ndim))
 
-    if filter["opening"] > 0:
+    if filter.get("opening", 0) > 0:
         mask = morph.binary_opening(mask, _disk(filter["opening"], mask.ndim))
 
-    if filter["dilation"] > 0:
+    if filter.get("dilation", 0) > 0:
         mask = morph.binary_dilation(mask, _disk(filter["dilation"], mask.ndim))
 
     return mask
@@ -437,7 +437,7 @@ def mask_cleanup(
     data = mask.data
     if dask.is_dask_collection(data):
         if name is None:
-            if "closing" in filter and filter["closing"] != 0:
+            if filter.get("closing", 0) != 0:
                 name = f"mask_cleanup_{filter['closing']}_{filter['opening']}_{filter['dilation']}"
             else:
                 name = f"mask_cleanup_{filter['opening']}_{filter['dilation']}"
