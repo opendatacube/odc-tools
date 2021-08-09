@@ -383,32 +383,32 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
     return xr_apply_morph_op(xx, "closing", radius, **kw)
 
 
-def mask_cleanup_np(mask: np.ndarray, filter: Dict[str, int] = dict(closing=0, opening=2, dilation=5)) -> np.ndarray:
+def mask_cleanup_np(
+    mask: np.ndarray,
+    mask_filters: Iterable[Tuple[str, int]] = [("opening", 2), ("dilation", 5)],
+) -> np.ndarray:
     """
-    Apply morphological closing(>0) then opening(>0) followed by dilation(>0) on given binary mask.
+    Apply morphological operations on given binary mask.
 
     :param mask: Binary image to process
-    :param filter: dict of integer (closing=int, opening=int, dilation=int), order of operation
-        closing = remove small holes in cloud - morphological closing
-        opening = shrinks away small areas of the mask
-        dilation = adds padding to the mask
+    :param mask_filters: List of morphological operations to apply on mask
     """
     import skimage.morphology as morph
 
     assert mask.dtype == "bool"
 
-    if filter.get("closing", 0) == 0 and filter.get("opening", 0) == 0 and filter.get("dilation", 0) == 0:
-        return mask
+    for operation, radius in mask_filters:
+        if operation == "closing" and radius > 0:
+            mask = morph.binary_closing(mask, _disk(radius, mask.ndim))
 
-    if filter.get("closing", 0) > 0:
-        mask = morph.binary_closing(mask, _disk(filter["closing"], mask.ndim))
+        if operation == "opening" and radius > 0:
+            mask = morph.binary_opening(mask, _disk(radius, mask.ndim))
 
-    if filter.get("opening", 0) > 0:
-        mask = morph.binary_opening(mask, _disk(filter["opening"], mask.ndim))
+        if operation == "dilation" and radius > 0:
+            mask = morph.binary_dilation(mask, _disk(radius, mask.ndim))
 
-    if filter.get("dilation", 0) > 0:
-        mask = morph.binary_dilation(mask, _disk(filter["dilation"], mask.ndim))
-
+        if operation == "erosion" and radius > 0:
+            mask = morph.binary_erosion(mask, _disk(radius, mask.ndim))
     return mask
 
 
@@ -418,7 +418,9 @@ def _compute_overlap_depth(r: Tuple[int, int, int], ndim: int) -> Tuple[int, ...
 
 
 def mask_cleanup(
-    mask: xr.DataArray, filter: Dict[str, int] = dict(closing=0, opening=2, dilation=5), name: Optional[str] = None
+    mask: xr.DataArray,
+    mask_filters: Iterable[Tuple[str, int]] = [("opening", 2), ("dilation", 5)],
+    name: Optional[str] = None
 ) -> xr.DataArray:
     """
     Apply morphological closing followed by opening and dilation on given binary mask.
@@ -427,27 +429,31 @@ def mask_cleanup(
     could be faster when using Dask, as we fuse those operations into single Dask task.
 
     :param mask: Binary image to process
-    :param filter: dict of integer - dict(closing=int, opening=int, dilation=int), order of operation if value `>0`
-        closing(optional) = remove small holes in cloud - morphological closing
-        opening = shrinks away small areas of the mask
-        dilation = adds padding to the mask
+    :param mask_filters: iterable tuples of morphological operations - ("<operation>", <radius>) - to apply on mask, where
+        operation: string, can be one of this morphological operations -
+                closing  = remove small holes in cloud - morphological closing
+                opening  = shrinks away small areas of the mask
+                dilation = adds padding to the mask
+                erosion  = Erosion shrinks bright regions and enlarges dark regions
+        radius: int
     :param name: Used when building Dask graphs
     """
 
     data = mask.data
     if dask.is_dask_collection(data):
         if name is None:
-            if filter.get("closing", 0) != 0:
-                name = f"mask_cleanup_{filter['closing']}_{filter['opening']}_{filter['dilation']}"
-            else:
-                name = f"mask_cleanup_{filter['opening']}_{filter['dilation']}"
+            name = "mask_cleanup"
+            r = []
+            for operation, radius in mask_filters:
+                name = name + f"_{radius}"
+                r.append(radius)
 
-        depth = _compute_overlap_depth(filter.values(), data.ndim)
+        depth = _compute_overlap_depth(tuple(r), data.ndim)
         data = data.map_overlap(
-            partial(mask_cleanup_np, filter=filter), depth, boundary="none", name=randomize(name)
+            partial(mask_cleanup_np, mask_filters=mask_filters), depth, boundary="none", name=randomize(name)
         )
     else:
-        data = mask_cleanup_np(data, filter=filter)
+        data = mask_cleanup_np(data, mask_filters=mask_filters)
 
     return xr.DataArray(data, attrs=mask.attrs, coords=mask.coords, dims=mask.dims)
 
