@@ -2,7 +2,7 @@
 Sentinel 2 pixel quality stats
 """
 from functools import partial
-from typing import List, Dict, Optional, Tuple, cast
+from typing import List, Dict, Optional, Tuple, cast, Iterable
 
 import xarray as xr
 
@@ -21,14 +21,13 @@ cloud_classes = (
     "thin cirrus",
 )
 
-# Filters are a list of dict(closing=int, opening=int, dilation=int), where
-# closing(Optional) = remove small holes in cloud - morphological closing
-# opening = shrinks away small areas of the mask
-# dilation = adds padding to the mask
-#
-# For each entry in the list an extra ``.clear_{r1}_{r2}`` band will be added to the output in addition to
-# ``.total`` and ``.clear`` bands that are always computed.
-default_filters = [dict(opening=2,dilation=5), dict(opening=0,dilation=5)]
+# filters - dict of band name and list of iterable tuples of morphological operations
+#           in the order you want them to perform
+default_filters = {
+  "clear_2_5": [("opening", 2), ("dilation", 5)],
+  "clear_0_5": [("opening", 0), ("dilation", 5)]
+}
+
 
 class StatsPQ(StatsPluginInterface):
     NAME = "pc_s2_annual"
@@ -38,22 +37,22 @@ class StatsPQ(StatsPluginInterface):
 
     def __init__(
         self,
-        filters: Optional[List[Dict[str, int]]] = None,
+        filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
         resampling: str = "nearest",
     ):
         if filters is None:
-            filters = list(default_filters)
+            filters = default_filters
         self.filters = filters
         self.resampling = resampling
+        self.default_filters = default_filters
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        measurements = ["total", "clear"]
-        for filter in self.filters:
-            if "closing" in filter:
-                measurements.append(f"clear_{filter['closing']:d}_{filter['opening']:d}_{filter['dilation']:d}")
-            else:
-                measurements.append(f"clear_{filter['opening']:d}_{filter['dilation']:d}")
+        measurements = [
+            "total",
+            "clear",
+            *list(self.filters)
+        ]
 
         return tuple(measurements)
 
@@ -115,7 +114,8 @@ def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
 
 def _pq_fuser(
-    xx: xr.Dataset, filters: Optional[List[Dict[str, int]]] = None
+    xx: xr.Dataset,
+    filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None
 ) -> xr.Dataset:
     """
     Native:
@@ -131,12 +131,9 @@ def _pq_fuser(
     xx.attrs.pop("native", None)
 
     if is_native:
-        for filter in filters:
-            if "closing" in filter:
-                erased_band_name = f"erased_{filter['closing']:d}_{filter['opening']:d}_{filter['dilation']:d}"
-            else:
-                erased_band_name = f"erased_{filter['opening']:d}_{filter['dilation']:d}"
-            xx[erased_band_name] = mask_cleanup(xx.erased, filter)
+        for band, mask_filters in filter.items():
+            erased_filter_band_name = band.replace("clear", "erased")
+            xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
     return xx
 
@@ -149,7 +146,7 @@ def test_pq_product():
     product = StatsPQ().product(location)
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
 
-    product = StatsPQ(filters=[]).product(location)
+    product = StatsPQ(filters={}).product(location)
     assert product.measurements == ("total", "clear")
 
 
@@ -161,9 +158,9 @@ def test_plugin():
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
     assert pq.filters == default_filters
 
-    pq = _plugins.resolve("pq")(filters=[], resampling="cubic")
+    pq = _plugins.resolve("pq")(filters={}, resampling="cubic")
     product = pq.product(location)
 
     assert product.measurements == ("total", "clear")
-    assert pq.filters == []
+    assert pq.filters == {}
     assert pq.resampling == "cubic"

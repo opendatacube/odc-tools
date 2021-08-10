@@ -227,40 +227,45 @@ def test_fuse_mean_np():
     out = _fuse_mean_np(*slices, nodata=255)
     assert (out == np.array([[28, 46], [255, 76]])).all()
 
+
 def test_mask_cleanup_np():
     mask = np.ndarray(shape=(2,2), dtype=bool, buffer=np.array([[True, False], [False, True]]))
 
-    mask_filter_with_opening_dilation = dict(opening=1, dilation=1)
+    mask_filter_with_opening_dilation = [("opening", 1), ("dilation", 1)]
     result = mask_cleanup_np(mask, mask_filter_with_opening_dilation)
     expected_result = np.array(
         [[False, False], [False, False]],
     )
     assert (result == expected_result).all()
 
-    mask_filter_opening = dict(opening=1, dilation=0)
+    mask_filter_opening = [("opening", 1), ("dilation", 0)]
     result = mask_cleanup_np(mask, mask_filter_opening)
     expected_result = np.array(
         [[False, False], [False, False]],
     )
     assert (result == expected_result).all()
 
-    mask_filter_with_dilation = dict(opening=0, dilation=1)
+    mask_filter_with_dilation = [("opening", 0), ("dilation", 1)]
     result = mask_cleanup_np(mask, mask_filter_with_dilation)
     expected_result = np.array(
         [[True, True], [True, True]],
     )
     assert (result == expected_result).all()
 
-    mask_filter_with_closing = dict(closing=1, opening=1, dilation=1)
+    mask_filter_with_closing = [("closing", 1), ("opening", 1), ("dilation", 1)]
     result = mask_cleanup_np(mask, mask_filter_with_closing)
     expected_result = np.array(
         [[True, True], [True, True]],
     )
     assert (result == expected_result).all()
 
-    mask_filter_with_all_zero = dict(closing=0, opening=0, dilation=0)
+    mask_filter_with_all_zero = [("closing", 0), ("opening", 0), ("dilation", 0)]
     result = mask_cleanup_np(mask, mask_filter_with_all_zero)
     expected_result = np.array(
         [[True, False], [False, True]],
     )
     assert (result == expected_result).all()
+
+    invalid_mask_filter = [("oppening", 1), ("dilation", 1)]
+    with pytest.raises(Exception):
+        mask_cleanup_np(mask, invalid_mask_filter)
