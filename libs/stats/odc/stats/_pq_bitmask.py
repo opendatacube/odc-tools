@@ -12,8 +12,7 @@ aerosol_band = input band for aerosol masking; provide one of the band as an inp
 | SR_ATMOS_OPACITY | Unitless | 0.001 * DN | Atmospheric opacity; < 0.1 = clear; 0.1 - 0.3 = average; > 0.3 = hazy |
 | SR_QA_AEROSOL    | Bit Index | NA | Aerosol level; Bit(6-7): 00 = climatology; 01 = low; 10 = medium; 11 = high |
 
-filters = List of dict containing band-name as key and
-    list of iterable tuples of morphological operations as its value.
+filters = dict containing band-name as key and list of iterable tuples of morphological operations as it's value.
     Provide morphological operations in the order you want them to perform.
     For example,
 
@@ -21,8 +20,7 @@ filters = List of dict containing band-name as key and
         "clear_10_2_2": [("closing", 10), ("opening", 2), ("dilation", 2)]
     }
 
-aerosol_filters = List of dict containing band-name as key and
-    list of iterable tuples of morphological operations as its value.
+aerosol_filters = dict containing band-name as key and list of iterable tuples of morphological operations as it's value.
     Provide morphological operations in the order you want them to perform.
     Similar to filters but for aerosol.
     For example,
