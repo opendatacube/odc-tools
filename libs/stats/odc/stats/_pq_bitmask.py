@@ -17,9 +17,9 @@ filters = List of dict containing band-name as key and
     Provide morphological operations in the order you want them to perform.
     For example,
 
-    filters = [
-        {"clear_10_2_2": [("closing", 10), ("opening", 2), ("dilation", 2)]}
-    ]
+    filters = {
+        "clear_10_2_2": [("closing", 10), ("opening", 2), ("dilation", 2)]
+    }
 
 aerosol_filters = List of dict containing band-name as key and
     list of iterable tuples of morphological operations as its value.
@@ -27,9 +27,9 @@ aerosol_filters = List of dict containing band-name as key and
     Similar to filters but for aerosol.
     For example,
 
-    aerosol_filters = [
-        {"clear_10_2_2_aerosol": [("closing", 10), ("opening", 2), ("dilation", 2)]}
-    ]
+    aerosol_filters = {
+        "clear_10_2_2_aerosol": [("closing", 10), ("opening", 2), ("dilation", 2)]
+    }
 
 resampling = "nearest"
 """
@@ -65,16 +65,16 @@ class StatsPQLSBitmask(StatsPluginInterface):
                 cirrus="high_confidence",
             ),
             nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),
-            filters: Optional[List[Dict[str, Iterable[Tuple[str, int]]]]] = None,
-            aerosol_filters: Optional[List[Dict[str, Iterable[Tuple[str, int]]]]] = None,
+            filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
+            aerosol_filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
             resampling: str = "nearest",
     ):
         self.pq_band = pq_band
         self.aerosol_band = aerosol_band
         self.flags = flags
         self.nodata_flags = nodata_flags
-        self.filters = filters or []
-        self.aerosol_filters = aerosol_filters or []
+        self.filters = filters or {}
+        self.aerosol_filters = aerosol_filters or {}
         self.resampling = resampling
 
     @property
@@ -82,16 +82,16 @@ class StatsPQLSBitmask(StatsPluginInterface):
         """
         Output product measurements
         """
-        measurements = ["total", "clear"]
-
-        for filter in self.filters:
-            measurements.extend(list(filter.keys()))
+        measurements = [
+            "total",
+            "clear",
+            *list(self.filters)
+        ]
 
         if self.aerosol_band:
             measurements.append("clear_aerosol")
             if self.aerosol_band == "SR_QA_AEROSOL":
-                for filter in self.aerosol_filters:
-                    measurements.extend(list(filter.keys()))
+                measurements.extend(list(self.aerosol_filters))
 
         return tuple(measurements)
 
@@ -123,10 +123,9 @@ class StatsPQLSBitmask(StatsPluginInterface):
         """
         pq = xr.Dataset()
 
-        for filter in self.filters:
-            for band, mask_filters in filter.items():
-                erased_filter_band_name = band.replace("clear", "erased")
-                xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
+        for band, mask_filters in self.filters.items():
+            erased_filter_band_name = band.replace("clear", "erased")
+            xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
         erased_bands = [str(n) for n in xx.data_vars if str(n).startswith("erased")]
         valid = xx["keeps"]
@@ -139,13 +138,12 @@ class StatsPQLSBitmask(StatsPluginInterface):
                 pq[clear_band_name] = (valid & (~xx[band])).sum(axis=0, dtype="uint16")
 
         if self.aerosol_band and self.aerosol_band == "SR_QA_AEROSOL":
-            for filter in self.aerosol_filters:
-                for band, mask_filters in filter.items():
-                    erased_aerosol_filter_band_name = band.replace("clear", "erased")
-                    if erased_aerosol_filter_band_name not in xx:
-                        xx[erased_aerosol_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
+            for band, mask_filters in self.aerosol_filters.items():
+                erased_aerosol_filter_band_name = band.replace("clear", "erased")
+                if erased_aerosol_filter_band_name not in xx:
+                    xx[erased_aerosol_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
-                    pq[band] = (valid & (~xx[erased_aerosol_filter_band_name] & ~xx["erased_aerosol"])).sum(axis=0, dtype="uint16")
+                pq[band] = (valid & (~xx[erased_aerosol_filter_band_name] & ~xx["erased_aerosol"])).sum(axis=0, dtype="uint16")
 
         return pq
 

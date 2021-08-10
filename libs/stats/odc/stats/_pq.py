@@ -23,10 +23,11 @@ cloud_classes = (
 
 # filters - dict of band name and list of iterable tuples of morphological operations
 #           in the order you want them to perform
-default_filters = [
-    {"clear_2_5": [("opening", 2), ("dilation", 5)]},
-    {"clear_0_5": [("opening", 0), ("dilation", 5)]}
-]
+default_filters = {
+  "clear_2_5": [("opening", 2), ("dilation", 5)],
+  "clear_0_5": [("opening", 0), ("dilation", 5)]
+}
+
 
 class StatsPQ(StatsPluginInterface):
     NAME = "pc_s2_annual"
@@ -36,23 +37,22 @@ class StatsPQ(StatsPluginInterface):
 
     def __init__(
         self,
-        filters: Optional[List[Dict[str, Iterable[Tuple[str, int]]]]] = None,
+        filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
         resampling: str = "nearest",
     ):
         if filters is None:
             filters = default_filters
         self.filters = filters
         self.resampling = resampling
+        self.default_filters = default_filters
 
     @property
     def measurements(self) -> Tuple[str, ...]:
         measurements = [
             "total",
             "clear",
+            *list(self.filters)
         ]
-
-        for filter in self.filters:
-            measurements.extend(list(filter.keys()))
 
         return tuple(measurements)
 
@@ -115,7 +115,7 @@ def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
 def _pq_fuser(
     xx: xr.Dataset,
-    filters: Optional[List[Dict[str, Iterable[Tuple[str, int]]]]] = None
+    filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None
 ) -> xr.Dataset:
     """
     Native:
@@ -131,10 +131,9 @@ def _pq_fuser(
     xx.attrs.pop("native", None)
 
     if is_native:
-        for filter in filters:
-            for band, mask_filters in filter.items():
-                erased_filter_band_name = band.replace("clear", "erased")
-                xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
+        for band, mask_filters in filter.items():
+            erased_filter_band_name = band.replace("clear", "erased")
+            xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
     return xx
 
@@ -147,7 +146,7 @@ def test_pq_product():
     product = StatsPQ().product(location)
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
 
-    product = StatsPQ(filters=[]).product(location)
+    product = StatsPQ(filters={}).product(location)
     assert product.measurements == ("total", "clear")
 
 
@@ -159,9 +158,9 @@ def test_plugin():
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
     assert pq.filters == default_filters
 
-    pq = _plugins.resolve("pq")(filters=[], resampling="cubic")
+    pq = _plugins.resolve("pq")(filters={}, resampling="cubic")
     product = pq.product(location)
 
     assert product.measurements == ("total", "clear")
-    assert pq.filters == []
+    assert pq.filters == {}
     assert pq.resampling == "cubic"
