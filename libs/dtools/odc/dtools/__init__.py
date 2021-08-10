@@ -3,6 +3,8 @@
    - pool_broadcast
 """
 
+from ._version import __version__
+
 from ._broadcast import (
     pool_broadcast,
     rio_activate,
