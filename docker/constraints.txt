@@ -40,7 +40,7 @@ cycler==0.10.0
 dask==2021.7.1
 dask-image==0.6.0
 dataclasses==0.6
-datacube==1.8.4.dev205+g9db6195f
+datacube==1.8.4
 debugpy==1.4.1
 decorator==5.0.9
 deepdiff==5.5.0
@@ -142,8 +142,8 @@ PyNaCl==1.4.0
 pyparsing==2.4.7
 pyproj==3.1.0
 pyrsistent==0.18.0
-pystac==1.0.0
-pystac-client==0.2.0b2
+pystac==1.1.0
+pystac-client==0.2.0
 pytest==6.2.4
 pytest-cov==2.12.1
 pytest-depends==1.0.1
