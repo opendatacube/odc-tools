@@ -1,3 +1,5 @@
+from ._version import __version__
+
 from ._dscache import (
     TileIdx,
     DatasetCache,
