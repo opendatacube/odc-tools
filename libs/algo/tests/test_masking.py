@@ -265,3 +265,7 @@ def test_mask_cleanup_np():
         [[True, False], [False, True]],
     )
     assert (result == expected_result).all()
+
+    invalid_mask_filter = [("oppening", 1), ("dilation", 1)]
+    with pytest.raises(Exception):
+        mask_cleanup_np(mask, invalid_mask_filter)

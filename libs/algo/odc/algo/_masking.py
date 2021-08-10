@@ -397,22 +397,23 @@ def mask_cleanup_np(
 
     assert mask.dtype == "bool"
 
+    ops = dict(
+        opening=morph.binary_opening,
+        closing=morph.binary_closing,
+        dilation=morph.binary_dilation,
+        erosion=morph.binary_erosion,
+    )
+
     for operation, radius in mask_filters:
-        if operation == "closing" and radius > 0:
-            mask = morph.binary_closing(mask, _disk(radius, mask.ndim))
-
-        if operation == "opening" and radius > 0:
-            mask = morph.binary_opening(mask, _disk(radius, mask.ndim))
-
-        if operation == "dilation" and radius > 0:
-            mask = morph.binary_dilation(mask, _disk(radius, mask.ndim))
-
-        if operation == "erosion" and radius > 0:
-            mask = morph.binary_erosion(mask, _disk(radius, mask.ndim))
+        op = ops.get(operation, None)
+        if op is None:
+            raise ValueError(f"Not supported morphological operation: {operation}")
+        if radius > 0:
+            mask = op(mask, _disk(radius, mask.ndim))
     return mask
 
 
-def _compute_overlap_depth(r: Tuple[int, int, int], ndim: int) -> Tuple[int, ...]:
+def _compute_overlap_depth(r: Iterable[int], ndim: int) -> Tuple[int, ...]:
     r = max(r)
     return (0,) * (ndim - 2) + (r, r)
 
@@ -423,10 +424,10 @@ def mask_cleanup(
     name: Optional[str] = None
 ) -> xr.DataArray:
     """
-    Apply morphological closing followed by opening and dilation on given binary mask.
+    Apply morphological operations on given binary mask.
+    As we fuse those operations into single Dask task, it could be faster to run.
 
-    This is bit-equivalent to ``mask |> morphological closing |> opening |> dilation``, but
-    could be faster when using Dask, as we fuse those operations into single Dask task.
+    Default mask_filters value is bit-equivalent to ``mask |> opening |> dilation``.
 
     :param mask: Binary image to process
     :param mask_filters: iterable tuples of morphological operations - ("<operation>", <radius>) - to apply on mask, where
@@ -434,7 +435,7 @@ def mask_cleanup(
                 closing  = remove small holes in cloud - morphological closing
                 opening  = shrinks away small areas of the mask
                 dilation = adds padding to the mask
-                erosion  = Erosion shrinks bright regions and enlarges dark regions
+                erosion  = shrinks bright regions and enlarges dark regions
         radius: int
     :param name: Used when building Dask graphs
     """
@@ -444,11 +445,11 @@ def mask_cleanup(
         if name is None:
             name = "mask_cleanup"
             r = []
-            for operation, radius in mask_filters:
+            for _, radius in mask_filters:
                 name = name + f"_{radius}"
                 r.append(radius)
 
-        depth = _compute_overlap_depth(tuple(r), data.ndim)
+        depth = _compute_overlap_depth(r, data.ndim)
         data = data.map_overlap(
             partial(mask_cleanup_np, mask_filters=mask_filters), depth, boundary="none", name=randomize(name)
         )
