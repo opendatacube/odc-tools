@@ -1,6 +1,7 @@
 """ Various Geometry Helpers
 
 """
+from ._version import __version__
 
 from typing import Union, Tuple, Optional
 from affine import Affine

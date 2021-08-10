@@ -1,6 +1,7 @@
 """ Notebook display helper methods.
 """
 
+from ._version import __version__
 from ._ui import (
     ui_poll,
     with_ui_cbk,

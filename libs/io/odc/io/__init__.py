@@ -1,5 +1,6 @@
 """ Various file io helpers
 """
+from ._version import __version__
 from .text import (
     parse_yaml,
     read_stdin_lines,
