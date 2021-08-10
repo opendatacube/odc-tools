@@ -238,7 +238,7 @@ def test_reduce_for_aerosol(dataset_with_aerosol_band):
 
 def test_reduce_for_aerosol_with_filter(dataset_with_aerosol_band):
     filters = [{"clear_0_1_1": [("closing", 0), ("opening", 1), ("dilation", 1)]}]
-    aerosol_filters = [{"clear_0_1_1": [("closing", 0), ("opening", 1), ("dilation", 1)]}]
+    aerosol_filters = [{"clear_0_1_1_aerosol": [("closing", 0), ("opening", 1), ("dilation", 1)]}]
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=filters, aerosol_filters=aerosol_filters)
 
     xx = pq._native_tr(dataset_with_aerosol_band)

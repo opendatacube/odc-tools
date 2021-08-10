@@ -331,7 +331,7 @@ def load_enum_filtered(
     :param geobox: GeoBox of the final output
     :param categories: Enum values or names
 
-    :param filters: iterable tuples of morphological operations in the order you want them performed,
+    :param filters: iterable tuples of morphological operations in the order you want them to perform
                     e.g. [("opening", 2), ("dilation", 5)]
     :param groupby: One of 'solar_day'|'time'|'idx'|None
     :param resampling: Any resampling mode supported by GDAL as a string:

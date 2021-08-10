@@ -141,11 +141,11 @@ class StatsPQLSBitmask(StatsPluginInterface):
         if self.aerosol_band and self.aerosol_band == "SR_QA_AEROSOL":
             for filter in self.aerosol_filters:
                 for band, mask_filters in filter.items():
-                    erased_aerosol_filter_band_name = band.replace("clear", "erased") + "_aerosol"
+                    erased_aerosol_filter_band_name = band.replace("clear", "erased")
                     if erased_aerosol_filter_band_name not in xx:
                         xx[erased_aerosol_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
-                    pq[f"{band}_aerosol"] = (valid & (~xx[erased_aerosol_filter_band_name] & ~xx["erased_aerosol"])).sum(axis=0, dtype="uint16")
+                    pq[band] = (valid & (~xx[erased_aerosol_filter_band_name] & ~xx["erased_aerosol"])).sum(axis=0, dtype="uint16")
 
         return pq
 
