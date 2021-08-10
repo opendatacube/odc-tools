@@ -22,10 +22,7 @@ wheel
 setuptools
 pip
 
-# need newer datacube because of click and sqlalchemy
-# TODO: remove --extra-index-url when 1.8.4 is released
---extra-index-url="https://packages.dea.ga.gov.au"
-datacube[dev]>=1.8.4.dev
+datacube[dev]==1.8.4
 
 # hdstats is optional, needs to be pulled in manually
 hdstats
@@ -56,7 +53,7 @@ dataclasses
 -e /code/libs/dscache
 -e /code/libs/io
 -e /code/libs/aio
--e /code/libs/algo
+-e /code/libs/algo[hdstats]
 -e /code/libs/ppt
 -e /code/libs/ui
 -e /code/libs/stats
