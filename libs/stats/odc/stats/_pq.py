@@ -44,7 +44,6 @@ class StatsPQ(StatsPluginInterface):
             filters = default_filters
         self.filters = filters
         self.resampling = resampling
-        self.default_filters = default_filters
 
     @property
     def measurements(self) -> Tuple[str, ...]:
