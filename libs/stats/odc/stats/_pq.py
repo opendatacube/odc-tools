@@ -21,9 +21,12 @@ cloud_classes = (
     "thin cirrus",
 )
 
-# filters = list of iterable tuples of morphological operations in the order you want them performed,
-# e.g. [[("opening", 2), ("dilation", 5)]]
-default_filters = [[("opening", 2), ("dilation", 5)], [("opening", 0), ("dilation", 5)]]
+# filters - dict of band name and list of iterable tuples of morphological operations
+#           in the order you want them to perform
+default_filters = [
+    {"clear_2_5": [("opening", 2), ("dilation", 5)]},
+    {"clear_0_5": [("opening", 0), ("dilation", 5)]}
+]
 
 class StatsPQ(StatsPluginInterface):
     NAME = "pc_s2_annual"
@@ -33,7 +36,7 @@ class StatsPQ(StatsPluginInterface):
 
     def __init__(
         self,
-        filters: Optional[List[Iterable[Tuple[str, int]]]] = None,
+        filters: Optional[List[Dict[str, Iterable[Tuple[str, int]]]]] = None,
         resampling: str = "nearest",
     ):
         if filters is None:
@@ -43,13 +46,13 @@ class StatsPQ(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        measurements = ["total", "clear"]
+        measurements = [
+            "total",
+            "clear",
+        ]
 
-        for mask_filters in self.filters or []:
-            clear_filter_band_name = "clear"
-            for operation, radius in mask_filters:
-                clear_filter_band_name += f"_{radius:d}"
-            measurements.append(clear_filter_band_name)
+        for filter in self.filters:
+            measurements.extend(list(filter.keys()))
 
         return tuple(measurements)
 
@@ -112,7 +115,7 @@ def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
 
 def _pq_fuser(
     xx: xr.Dataset,
-    filters: Optional[List[Iterable[Tuple[str, int]]]] = None
+    filters: Optional[List[Dict[str, Iterable[Tuple[str, int]]]]] = None
 ) -> xr.Dataset:
     """
     Native:
@@ -128,11 +131,10 @@ def _pq_fuser(
     xx.attrs.pop("native", None)
 
     if is_native:
-        for mask_filters in filters or []:
-            erased_filter_band_name = "erased"
-            for operation, radius in mask_filters:
-                erased_filter_band_name += f"_{radius:d}"
-            xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
+        for filter in filters:
+            for band, mask_filters in filter.items():
+                erased_filter_band_name = band.replace("clear", "erased")
+                xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
     return xx
 

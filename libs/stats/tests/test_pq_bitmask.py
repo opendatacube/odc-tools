@@ -74,23 +74,20 @@ def dataset_with_atmos_opacity_band(dataset):
 
 def test_meaurements(dataset):
     filters = [
-        [("closing", 0),("opening", 1), ("dilation", 1)],
-        [("closing", 1),("opening", 0), ("dilation", 1)],
-        [("closing", 1),("opening", 1), ("dilation", 0)],
-        [("closing", 1),("opening", 1), ("dilation", 1)]
+        {"clear_0_1_1": [("closing", 0),("opening", 1), ("dilation", 1)]},
+        {"clear_1_0_1": [("closing", 1),("opening", 0), ("dilation", 1)]},
+        {"clear_1_1_0": [("closing", 1),("opening", 1), ("dilation", 0)]},
+        {"clear_1_1_1": [("closing", 1),("opening", 1), ("dilation", 1)]}
     ]
-    pq = StatsPQLSBitmask(filters=filters)
-    meaurements = pq.measurements
-    assert (meaurements == ("total", "clear", "clear_0_1_1", "clear_1_0_1", "clear_1_1_0", "clear_1_1_1"))
+    aerosol_filters = [
+        {"clear_0_1_1_aerosol": [("closing", 0),("opening", 1), ("dilation", 1)]},
+        {"clear_1_0_1_aerosol": [("closing", 1),("opening", 0), ("dilation", 1)]}
+    ]
+    pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=filters, aerosol_filters=aerosol_filters)
 
-    filters_without_closing = [
-        [("opening", 1), ("dilation", 0)],
-        [("opening", 1), ("dilation", 1)],
-        [("opening", 0), ("dilation", 1)]
-    ]
-    pq = StatsPQLSBitmask(filters=filters_without_closing)
-    meaurements = pq.measurements
-    assert (meaurements == ("total", "clear", "clear_1_0", "clear_1_1", "clear_0_1"))
+    expected_result = ("total", "clear", "clear_0_1_1", "clear_1_0_1", "clear_1_1_0", "clear_1_1_1", "clear_aerosol", "clear_0_1_1_aerosol", "clear_1_0_1_aerosol")
+    measurements = pq.measurements
+    assert (measurements == expected_result)
 
 def test_native_transform(dataset):
     pq = StatsPQLSBitmask()
@@ -152,8 +149,8 @@ def test_reduce(dataset):
 
 def test_reduce_with_filter(dataset):
     filters = [
-        [("opening", 1), ("dilation", 1)],
-        [("closing", 2), ("opening", 1), ("dilation", 1)]
+        {"clear_1_1": [("opening", 1), ("dilation", 1)]},
+        {"clear_2_1_1": [("closing", 2), ("opening", 1), ("dilation", 1)]}
     ]
     pq = StatsPQLSBitmask(filters=filters)
 
@@ -240,8 +237,8 @@ def test_reduce_for_aerosol(dataset_with_aerosol_band):
     assert (clear_aerosol == expected_result).all()
 
 def test_reduce_for_aerosol_with_filter(dataset_with_aerosol_band):
-    filters = [[("closing", 0), ("opening", 1), ("dilation", 1)]]
-    aerosol_filters = [[("closing", 0), ("opening", 1), ("dilation", 1)]]
+    filters = [{"clear_0_1_1": [("closing", 0), ("opening", 1), ("dilation", 1)]}]
+    aerosol_filters = [{"clear_0_1_1": [("closing", 0), ("opening", 1), ("dilation", 1)]}]
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=filters, aerosol_filters=aerosol_filters)
 
     xx = pq._native_tr(dataset_with_aerosol_band)
