@@ -45,7 +45,7 @@ class StatsWofs(StatsPluginInterface):
     PRODUCT_FAMILY = "wo_summary"
 
     # these get padded out if dilation was requested
-    BAD_BITS_MASK = 0b0111_1110  # Cloud/Shadow + Terrain Shadow
+    BAD_BITS_MASK = 0b0111_1111  # Cloud/Shadow + Terrain Shadow
 
     def __init__(
         self,
