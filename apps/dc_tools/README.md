@@ -5,7 +5,7 @@ Command line utilities for working with datacube index
 ## Installation
 
 ``` bash
-pip install --extra-index-url="https://packages.dea.ga.gov.au" odc_apps_dc_tools
+pip install odc-apps-dc-tools
 ```
 
 ## Usage

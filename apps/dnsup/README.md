@@ -8,7 +8,7 @@ Installation
 ------------
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" dea_dnsup
+pip install --extra-index-url="https://packages.dea.ga.gov.au" dea-dnsup
 ```
 
 Usage
