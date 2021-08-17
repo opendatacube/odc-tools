@@ -45,7 +45,9 @@ def _parse_options(options: Optional[str]) -> Dict[str, Any]:
     return parsed_options
 
 
-def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
+def _guess_location(
+    item: pystac.Item, rewrite: Optional[Tuple[str, str]] = None
+) -> Tuple[str, bool]:
     self_link = None
     asset_link = None
     relative = True
@@ -57,11 +59,17 @@ def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
         # Override self with canonical
         if link.rel == "canonical":
             self_link = link.target
+            break
 
-    for name, asset in item.assets.items():
+    for _, asset in item.assets.items():
         if "geotiff" in asset.media_type:
             asset_link = os.path.dirname(asset.href)
             break
+
+    if rewrite is not None:
+        for _, asset in item.assets.items():
+            if "geotiff" in asset.media_type:
+                asset.href = asset.href.replace(rewrite[0], rewrite[1])
 
     # If the metadata and the document are not on the same path,
     # we need to use absolute links and not relative ones.
@@ -73,8 +81,10 @@ def _guess_location(item: pystac.Item) -> Tuple[str, bool]:
     return self_link, relative
 
 
-def item_to_meta_uri(item: Item) -> Generator[Tuple[dict, str, bool], None, None]:
-    uri, relative = _guess_location(item)
+def item_to_meta_uri(
+    item: Item, rewrite: Optional[Tuple[str, str]] = None
+) -> Generator[Tuple[dict, str, bool], None, None]:
+    uri, relative = _guess_location(item, rewrite)
     metadata = item.to_dict()
     if relative:
         metadata = stac_transform(metadata)
@@ -90,8 +100,9 @@ def process_item(
     doc2ds: Doc2Dataset,
     update_if_exists: bool,
     allow_unsafe: bool,
+    rewrite: Optional[Tuple[str, str]] = None,
 ):
-    meta, uri = item_to_meta_uri(item)
+    meta, uri = item_to_meta_uri(item, rewrite)
     index_update_dataset(
         meta,
         uri,
@@ -108,6 +119,7 @@ def stac_api_to_odc(
     config: dict,
     catalog_href: str,
     allow_unsafe: bool = True,
+    rewrite: Optional[Tuple[str, str]] = None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
@@ -136,6 +148,7 @@ def stac_api_to_odc(
                 doc2ds,
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
+                rewrite=rewrite,
             ): item.id
             for item in search.get_all_items()
         }
@@ -188,6 +201,15 @@ def stac_api_to_odc(
     default=None,
     help="Other search terms, as a # separated list, i.e., --options=cloud_cover=0,100#sky=green",
 )
+@click.option(
+    "--rewrite-assets",
+    type=str,
+    default=None,
+    help=(
+        "Rewrite asset hrefs, for example, to change from "
+        "HTTPS to S3 URIs, --rewrite-assets=https://example.com/,s3://"
+    )
+)
 def cli(
     limit,
     update_if_exists,
@@ -197,6 +219,7 @@ def cli(
     bbox,
     datetime,
     options,
+    rewrite_assets,
 ):
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -216,10 +239,15 @@ def cli(
     if limit is not None:
         config["max_items"] = limit
 
+    if rewrite_assets is not None:
+        rewrite = list(rewrite_assets.split(";"))
+        if len(rewrite) != 2:
+            raise ValueError("Rewrite assets argument needs to be two strings split by ';'")
+
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe
+        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe, rewrite=rewrite
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
