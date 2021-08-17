@@ -225,6 +225,7 @@ def cli(
     Iterate through STAC items from a STAC API and add them to datacube.
     """
     config = _parse_options(options)
+    rewrite = None
 
     # Format the search terms
     if bbox:
