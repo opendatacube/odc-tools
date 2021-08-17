@@ -107,7 +107,7 @@ def stac_api_to_odc(
     update_if_exists: bool,
     config: dict,
     catalog_href: str,
-    allow_unsafe_changes: bool = True,
+    allow_unsafe: bool = True,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
@@ -219,7 +219,7 @@ def cli(
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, update_if_exists, config, catalog_href, allow_unsafe_changes=allow_unsafe
+        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
