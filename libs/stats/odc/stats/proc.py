@@ -109,7 +109,7 @@ class TaskRunner:
                 return False
         return True
 
-    def tasks(self, tasks: List[str]) -> Iterator[Task]:
+    def tasks(self, tasks: List[str], ds_filters: Optional[str] = None,) -> Iterator[Task]:
         from ._cli_common import parse_all_tasks
 
         if len(tasks) == 0:
@@ -118,10 +118,10 @@ class TaskRunner:
             # this can throw ValueError
             tiles = parse_all_tasks(tasks, self.rdr.all_tiles)
 
-        return self.rdr.stream(tiles)
+        return self.rdr.stream(tiles, ds_filters=ds_filters)
 
     def dry_run(
-        self, tasks: List[str], check_exists: bool = True
+        self, tasks: List[str], check_exists: bool = True, ds_filters: Optional[str] = None
     ) -> Iterator[TaskResult]:
         sink = self.sink
         overwrite = self._cfg.overwrite
@@ -133,7 +133,7 @@ class TaskRunner:
             True: " (recompute)" if overwrite else " (skip)",
         }
 
-        for task in self.tasks(tasks):
+        for task in self.tasks(tasks, ds_filters=ds_filters):
             uri = sink.uri(task)
             exists = None
             if check_exists:
@@ -247,21 +247,21 @@ class TaskRunner:
             yield result
 
     def run(
-        self, tasks: Optional[List[str]] = None, sqs: Optional[str] = None
+        self, tasks: Optional[List[str]] = None, sqs: Optional[str] = None, ds_filters: Optional[str] = None,
     ) -> Iterator[TaskResult]:
         cfg = self._cfg
         _log = self._log
 
         if tasks is not None:
             _log.info("Starting processing from task list")
-            return self._run(self.tasks(tasks))
+            return self._run(self.tasks(tasks, ds_filters=ds_filters))
         if sqs is not None:
             _log.info(
                 f"Processing from SQS: {sqs}, T:{cfg.job_queue_max_lease} M:{cfg.renew_safety_margin} seconds"
             )
             return self._run(
                 self.rdr.stream_from_sqs(
-                    sqs, visibility_timeout=cfg.job_queue_max_lease
+                    sqs, visibility_timeout=cfg.job_queue_max_lease, ds_filters=ds_filters
                 )
             )
         raise ValueError("Must supply one of tasks= or sqs=")

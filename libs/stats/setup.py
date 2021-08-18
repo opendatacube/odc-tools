@@ -1,5 +1,4 @@
 from setuptools import setup
-
 setup(
     name="odc_stats",
     use_scm_version={"root": "../..", "relative_to": __file__},
@@ -22,9 +21,9 @@ setup(
         "dataclasses; python_version<'3.7'",
         "tqdm",
         "eodatasets3"
-
     ],
     packages=["odc.stats"],
     zip_safe=False,
     entry_points={"console_scripts": ["odc-stats = odc.stats.cli:main"]},
 )
+setup()

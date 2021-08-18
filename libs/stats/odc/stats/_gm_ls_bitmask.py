@@ -2,18 +2,16 @@
 Landsat QA Pixel Geomedian
 """
 from functools import partial
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple, Any, Iterable
 
-import dask.array as da
 import xarray as xr
-import numpy as np
-from odc.algo import geomedian_with_mads, keep_good_only, erase_bad, to_rgba
+from datacube.utils import masking
+from odc.algo import geomedian_with_mads, keep_good_only, erase_bad
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
 from odc.algo.io import load_with_native_transform
+from odc.stats import _plugins
+from odc.stats.model import StatsPluginInterface
 from odc.stats.model import Task
-
-from . import _plugins
-from .model import StatsPluginInterface
 
 
 class StatsGMLSBitmask(StatsPluginInterface):
@@ -25,19 +23,31 @@ class StatsGMLSBitmask(StatsPluginInterface):
             self,
             bands: Optional[Tuple[str, ...]] = None,
             mask_band: str = "QA_PIXEL",
-            filter: Optional[Tuple[int, int]] = None,
-            aux_names=dict(smad="sdev", emad="edev", bcmad="bcdev", count="count"),
+            # provide flags with high cloud bits definition
+            flags: Dict[str, Optional[Any]] = dict(
+                cloud="high_confidence",
+                cirrus="high_confidence",
+            ),
+            nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),
+            filters: Optional[Iterable[Tuple[str, int]]] = None, # e.g. [("closing", 10),("opening", 2),("dilation", 2)]
+            aux_names=dict(smad="smad", emad="emad", bcmad="bcmad", count="count"),
             resampling: str = "nearest",
             work_chunks: Tuple[int, int] = (400, 400),
+            scale: float = 0.0000275,
+            offset: float = -0.2,
             **other,
     ):
         self.mask_band = mask_band
         self.resampling = resampling
         self.bands = bands
-        self.filter = filter
+        self.flags = flags
+        self.nodata_flags = nodata_flags
+        self.filters = filters
         self.work_chunks = work_chunks
         self.renames = aux_names
         self.aux_bands = list(aux_names.values())
+        self.scale = scale
+        self.offset = offset
         self.sr_scale = 10000  # scale USGS Landsat bands into surface reflectance
 
         if self.bands is None:
@@ -46,8 +56,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
                 "green",
                 "blue",
                 "nir",
-                "swir1",
-                "swir2",
+                "swir_1",
+                "swir_2",
             )
 
     @property
@@ -61,7 +71,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         1. Loads pq bands
         2. Extract cloud_mask flags from bands
         3. Drops nodata pixels
-        4. Add cloud_mask
+        4. Add cloud_mask band to xx for fuser and reduce
 
         .. bitmask::
             15  14  13  12  11  10  9   8   7   6   5   4   3   2   1   0
@@ -86,11 +96,15 @@ class StatsGMLSBitmask(StatsPluginInterface):
         mask_band = xx[self.mask_band]
         xx = xx.drop_vars([self.mask_band])
 
-        # set cloud_mask (dilated_cloud + cloud + cloud_shadow) bitmask - True=cloud, False=non-cloud
-        cloud_mask = da.bitwise_and(mask_band, 0b0000_0000_0001_1010) != 0
+        flags_def = masking.get_flags_def(mask_band)
+
+        # set cloud_mask - True=cloud, False=non-cloud
+        mask, _ = masking.create_mask_value(flags_def, **self.flags)
+        cloud_mask = (mask_band & mask) != 0
 
         # set no_data bitmask - True=data, False=no-data
-        keeps = da.bitwise_and(mask_band, 0b0000_0000_0000_0001) == 0
+        nodata_mask, _ = masking.create_mask_value(flags_def, **self.nodata_flags)
+        keeps = (mask_band & nodata_mask) == 0
 
         # drops nodata pixels and add cloud_mask from xx
         xx = keep_good_only(xx, keeps)
@@ -116,16 +130,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
         return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
-        scale = 0.0000275
-        offset = -0.2
         cloud_mask = xx["cloud_mask"]
         sr_scale = self.sr_scale
         cfg = dict(
             maxiters=1000,
             num_threads=1,
-            scale=scale,
-            offset=offset,
-            sr_scale=self.sr_scale,
+            scale=self.scale,
+            offset=self.offset,
             reshape_strategy="mem",
             out_chunks=(-1, -1, -1),
             work_chunks=self.work_chunks,
@@ -133,11 +144,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
             compute_mads=True,
         )
 
-        # apply filter - [r1, r2]
-        # r1 = shrinks away small areas of the mask
-        # r2 = adds padding to the mask
-        if self.filter is not None:
-            xx["cloud_mask"] = mask_cleanup(cloud_mask, self.filter)
+        if self.filters is not None:
+            xx["cloud_mask"] = mask_cleanup(cloud_mask, mask_filters=self.filters)
 
         # erase pixels with cloud
         xx = xx.drop_vars(["cloud_mask"])
@@ -146,15 +154,15 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
-        # Scale USGS Landsat bands into surface reflectance
-        for band in gm.data_vars:
-            if band in self.bands:
-                gm[band] = scale * sr_scale * gm[band] + offset * sr_scale
-                gm[band] = gm[band].round().astype(np.uint16)
-
-        # Rescale edev to sr_scale
-        gm['edev'] = scale * sr_scale * gm['edev']
-        gm['edev'] = gm['edev'].round().astype(np.uint16)
+        # Rescaling gm bands between 0-10000 (approx) range
+        # for band in gm.data_vars:
+        #     if band in self.bands:
+        #         gm[band] = scale * sr_scale * gm[band] + offset * sr_scale
+        #         gm[band] = gm[band].round().astype(np.uint16)
+        #
+        # # Rescale edev to sr_scale
+        # gm['emad'] = scale * sr_scale * gm['emad']
+        # gm['emad'] = gm['emad'].round().astype(np.uint16)
 
         return gm
 

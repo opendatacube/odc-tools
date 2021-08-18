@@ -13,7 +13,7 @@ It is still under development, including adding support for processing sibling p
 ## Installation
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" odc-stats
+pip install odc-stats
 ```
 
 ## Usage

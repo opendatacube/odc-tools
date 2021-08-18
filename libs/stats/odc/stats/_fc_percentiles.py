@@ -34,7 +34,7 @@ class StatsFCP(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        _measurments = [f"{b}_pc_{p}" for b, p in product(["pv", "bs", "npv", "ue"], ["10", "50", "90"])]
+        _measurments = [f"{b}_pc_{p}" for b, p in product(["pv", "bs", "npv"], ["10", "50", "90"])]
         _measurments.append("qa")
         return _measurments
 
@@ -77,7 +77,7 @@ class StatsFCP(StatsPluginInterface):
 
         xx = load_with_native_transform(
             task.datasets,
-            bands=["water", "pv", "bs", "npv", "ue"],
+            bands=["water", "pv", "bs", "npv"],
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
