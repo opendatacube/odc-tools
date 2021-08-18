@@ -9,6 +9,7 @@ from datacube.model import Dataset, DatasetType, metadata_from_doc
 from datacube.index.eo3 import prep_eo3
 from datacube.index.index import default_metadata_type_docs
 
+from eodatasets3.assemble import DatasetAssembler
 from odc.index.stac import stac_transform
 from odc.stats.model import DateTimeRange
 from odc.stats.tasks import TaskReader
@@ -33,14 +34,15 @@ def test_stac(test_db_path):
     reader = TaskReader(test_db_path, product)
     task = reader.load_task(reader.all_tiles[0])
 
-    stac_meta = task.render_metadata()
-    odc_meta = stac_transform(stac_meta)
+    datasetassembler = task.render_metadata()
 
-    # TODO: actually test content of odc_meta?
-    assert isinstance(odc_meta, dict)
+    #stac_meta = task.render_metadata()
+    #odc_meta = stac_transform(stac_meta)
 
-    stac_item = pystac.Item.from_dict(stac_meta)
-    stac_item.validate()
+    assert isinstance(datasetassembler, DatasetAssembler)
+
+    #stac_item = pystac.Item.from_dict(stac_meta)
+    #stac_item.validate()
 
 
 def test_binning():
