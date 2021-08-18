@@ -50,7 +50,7 @@ class StatsFCP(StatsPluginInterface):
         for band in xx.data_vars.keys():
             bad = bad | (xx[band] == -999)
 
-        tcw = 0.0135 * xx['blue'] + 0.2021 * xx['green'] + 0.3102 * xx['red'] + 0.1584 * xx['nir'] - 0.6806 * xx['swir1'] - 0.6108 * xx['swir2'] 
+        tcw = 0.0135 * xx['blue'] + 0.2021 * xx['green'] + 0.3102 * xx['red'] + 0.1584 * xx['nir'] - 0.6806 * xx['swir1'] - 0.6109 * xx['swir2'] 
         
         xx = xx.drop_vars(xx.data_vars.keys())
         xx['tcw'] = tcw.astype(np.int16)
