@@ -241,9 +241,9 @@ def cli(
         config["max_items"] = limit
 
     if rewrite_assets is not None:
-        rewrite = list(rewrite_assets.split(";"))
+        rewrite = list(rewrite_assets.split(","))
         if len(rewrite) != 2:
-            raise ValueError("Rewrite assets argument needs to be two strings split by ';'")
+            raise ValueError("Rewrite assets argument needs to be two strings split by ','")
 
     # Do the thing
     dc = Datacube()
