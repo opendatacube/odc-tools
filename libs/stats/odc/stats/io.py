@@ -326,7 +326,7 @@ class S3COGSink:
                 band = single_band['measurement']
                 thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
 
-                tuning_pixels, stretch = FileWrite().filter_singleband_data(data=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]),
+                tuning_pixels, stretch = FileWrite()._filter_singleband_data(data=ds[band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]),
                                                                             bit=single_band['bit'] if 'bit' in single_band else None,
                                                                             lookup_table=single_band['lookup_table'] if 'lookup_table' in single_band else None)
                 if 'bit' in single_band:

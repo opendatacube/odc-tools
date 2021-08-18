@@ -22,7 +22,6 @@ setup(
         "dataclasses; python_version<'3.7'",
         "tqdm",
         "eodatasets3"
-        "pystac>=1.0.0",
 
     ],
     packages=["odc.stats"],
