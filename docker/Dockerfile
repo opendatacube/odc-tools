@@ -21,11 +21,6 @@ RUN apt-get update \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# prep db
-RUN  install --owner postgres --group postgres -D -d /var/run/postgresql /srv/postgresql \
-  && sudo -u postgres "$(find /usr/lib/postgresql/ -type f -name initdb)" \
-     -D "/srv/postgresql" --auth-host=md5 --encoding=UTF8
-
 RUN groupadd --gid 1000 odc \
   && useradd --gid 1000 \
   --uid 1000 \
@@ -36,10 +31,17 @@ RUN groupadd --gid 1000 odc \
   && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
   && install -d -o odc -g odc /env \
   && install -d -o odc -g odc /code \
+  && install -d -o odc -g odc -D /var/run/postgresql /srv/postgresql \
   && true
 
 COPY docker/constraints.txt docker/requirements.txt /conf/
+COPY docker/assets/with-bootstrap /usr/local/bin/
+COPY docker/assets/with-test-db /usr/local/bin/
+
 USER odc
+# Bake in fresh empty datacube db into docker image (owned by odc user)
+RUN with-test-db prepare
+
 RUN --mount=type=bind,target=/src \
     --mount=type=cache,target=/home/odc/.cache/pip,uid=1000,gid=1000 \
     (cd /src && tar c libs apps ) | (cd /code && tar x) \
@@ -48,9 +50,6 @@ RUN --mount=type=bind,target=/src \
   && echo "Done"
 
 USER root
-COPY docker/assets/with-bootstrap /usr/local/bin/
-COPY docker/assets/with-test-db /usr/local/bin/
-
 
 WORKDIR /code
 #ENTRYPOINT ["/bin/tini", "-s", "--", "/usr/local/bin/with-bootstrap"]

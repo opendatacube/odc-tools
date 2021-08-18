@@ -4,29 +4,53 @@ _launch_db () {
     local pgdata="${1:-/srv/postgresql}"
     local bin=$(find /usr/lib/postgresql/ -type d -name bin)
 
-    sudo -u postgres test -e "${pgdata}/PG_VERSION" || {
-        sudo -u postgres "${bin}/initdb" -D "${pgdata}" --auth-host=md5 --encoding=UTF8
+    [ -e "${pgdata}/PG_VERSION" ] || {
+        "${bin}/initdb" -D "${pgdata}" --auth-host=md5 --encoding=UTF8
     }
 
-    sudo -u postgres "${bin}/pg_ctl" -D "${pgdata}" -l "${pgdata}/pg.log" start
+    "${bin}/pg_ctl" -D "${pgdata}" -l "${pgdata}/pg.log" start
 }
 
-sudo -u postgres psql -c '\conninfo' 2> /dev/null > /dev/null || {
-    echo "Launching DB"
-    _launch_db
+_stop_db () {
+    local pgdata="${1:-/srv/postgresql}"
+    local bin=$(find /usr/lib/postgresql/ -type d -name bin)
+
+    "${bin}/pg_ctl" -D "${pgdata}" stop
 }
 
-sudo -u postgres psql -c '\du' | grep -qs $USER || {
-    export DATACUBE_DB_URL="postgresql://${USER}@/${USER}"
+_prep_db () {
+    psql -c '\conninfo' 2> /dev/null > /dev/null || {
+        echo "Launching DB"
+        _launch_db
+    }
 
-    echo "Creating user: ${USER}"
-    sudo -u postgres createuser --superuser ${USER}
-
-    echo "Initialising Test Database"
-    createdb ${USER}
-    datacube system init
+    # Create `datacube` database if not present, then run `datacube system init` on it
+    [[ $(psql -lqt | awk '$1 == "datacube" {print}' | wc -l) == 1 ]] || {
+        echo "Initialising Test Database"
+        createdb datacube
+        datacube system init
+    }
 }
+
+export DATACUBE_DB_URL="postgresql:///datacube"
 
 [ -z "${1:-}" ] || {
-    exec "$@"
+    case "$1" in
+        start)
+            _launch_db
+            ;;
+        stop)
+            _stop_db
+            ;;
+        prepare)
+            # Start DB, prep it if needed then stop
+            #  used inside the docker
+            _prep_db
+            _stop_db
+            ;;
+        *)
+            _prep_db
+            exec "$@"
+            ;;
+    esac
 }
