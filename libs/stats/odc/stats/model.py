@@ -1,22 +1,30 @@
 import math
+from pathlib import Path
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, List, Mapping
 from uuid import UUID
-
+import json
 import pandas as pd
 from pyproj.transformer import transform
-import pystac
 import xarray as xr
+from toolz import dicttoolz
+from rasterio.crs import CRS
+
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
+from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
-from pystac.extensions.projection import ProjectionExtension
-from toolz import dicttoolz
+
+from eodatasets3.assemble import DatasetAssembler, serialise
+from eodatasets3.images import GridSpec
+from eodatasets3.model import DatasetDoc, ProductDoc, GridDoc
+from eodatasets3.properties import StacPropertyView
+from eodatasets3.verify import PackageChecksum
 
 TileIdx_xy = Tuple[int, int]
 TileIdx_txy = Tuple[str, int, int]
@@ -146,6 +154,15 @@ class OutputProduct:
     href: str = ""
     region_code_format: str = "x{x:02d}y{y:02d}"
     cfg: Any = None
+    naming_conventions_values: str = "dea_c3"
+    explorer_path: str = "https://explorer.dea.ga.gov.au/"
+    inherit_skip_properties: Optional[List[str]] = None
+    preview_image: Optional[List[Any]] = None
+    preview_image_singleband: Optional[List[Any]] = None
+    classifier: str = "level3"
+    maturity: str = "final"
+    collection_number: int = 3
+    nodata: int = -999
 
     def __post_init__(self):
         if self.href == "":
@@ -328,76 +345,56 @@ class Task:
         return f"{prefix}_{name}.{ext}"
 
     def render_metadata(
-        self, ext: str = EXT_TIFF, processing_dt: Optional[datetime] = None
-    ) -> Dict[str, Any]:
+        self, ext: str = EXT_TIFF, output_dataset: xr.Dataset = None, processing_dt: Optional[datetime] = None
+    ) -> DatasetAssembler:
         """
-        Put together STAC metadata document for the output of this task.
+        Put together metadata document for the output of this task. It needs the source_dataset to inherit
+        several properties and lineages. It also needs the output_dataset to get the measurement information.
         """
+        dataset_assembler = DatasetAssembler(naming_conventions=self.product.naming_conventions_values,
+                                             dataset_location=Path(self.product.explorer_path),
+                                             allow_absolute_paths=True)
+
+        platforms = [] # platforms are the concat value in stats
+
+        for dataset in self.datasets:
+            source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
+            dataset_assembler.add_source_dataset(source_datasetdoc,
+                                                 classifier=self.product.classifier,
+                                                 auto_inherit_properties=True, # it will grab all useful input dataset preperties
+                                                 inherit_geometry=True,
+                                                 inherit_skip_properties=self.product.inherit_skip_properties)
+            if 'eo:platform' in source_datasetdoc.properties:
+                platforms.append(source_datasetdoc.properties['eo:platform'])
+
+        if len(platforms) > 0:
+            dataset_assembler.platform = ','.join(sorted(set(platforms)))
+
+        # inherit properties from cfg
+        for product_property_name, product_property_value in self.product.properties.items():
+            dataset_assembler.properties[product_property_name] = product_property_value
+
+        dataset_assembler.product_name = self.product.name
+        dataset_assembler.dataset_version = self.product.version
+        dataset_assembler.region_code = self.product.region_code(self.tile_index)
+
         if processing_dt is None:
             processing_dt = datetime.utcnow()
+        dataset_assembler.processed = processing_dt
 
-        product = self.product
-        geobox = self.geobox
-        region_code = product.region_code(self.tile_index)
-        inputs = list(map(str, self._lineage()))
+        dataset_assembler.maturity = self.product.maturity
+        dataset_assembler.collection_number = self.product.collection_number
 
-        properties: Dict[str, Any] = deepcopy(product.properties)
-
-        properties["dtr:start_datetime"] = format_datetime(self.time_range.start)
-        properties["dtr:end_datetime"] = format_datetime(self.time_range.end)
-        properties["odc:processing_datetime"] = format_datetime(
-            processing_dt, timespec="seconds"
-        )
-        properties["odc:region_code"] = region_code
-        properties["odc:product"] = product.name
-        properties["odc:dataset_version"] = product.version
-
-        geobox_wgs84 = geobox.extent.to_crs(
-            "epsg:4326", resolution=math.inf, wrapdateline=True
-        )
-        bbox = geobox_wgs84.boundingbox
-
-        item = pystac.Item(
-            id=str(self.uuid),
-            geometry=geobox_wgs84.json,
-            bbox=[bbox.left, bbox.bottom, bbox.right, bbox.top],
-            datetime=self.time_range.start.replace(tzinfo=timezone.utc),
-            properties=properties
-        )
-        ProjectionExtension.add_to(item)
-        proj_ext = ProjectionExtension.ext(item)
-        proj_ext.apply(geobox.crs.epsg, transform=geobox.transform, shape=geobox.shape)
-
-        # Lineage last
-        item.properties["odc:lineage"] = dict(inputs=inputs)
-
-        # Add all the assets
         for band, path in self.paths(ext=ext).items():
-            asset = pystac.Asset(
-                href=path,
-                media_type="image/tiff; application=geotiff",
-                roles=["data"],
-                title=band,
-            )
-            item.add_asset(band, asset)
+            dataset_assembler.note_measurement(band,
+                                               path,
+                                               pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
+                                               grid=GridSpec(shape=self.geobox.shape,
+                                                             transform=self.geobox.transform,
+                                                             crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
+                                               nodata=self.product.nodata)
 
-        # Add links
-        item.links.append(
-            pystac.Link(
-                rel="product_overview",
-                media_type="application/json",
-                target=product.href,
-            )
-        )
-        item.links.append(
-            pystac.Link(
-                rel="self",
-                media_type="application/json",
-                target=self.metadata_path("absolute", ext="json"),
-            )
-        )
-
-        return item.to_dict()
+        return dataset_assembler
 
 
 class StatsPluginInterface(ABC):
@@ -436,6 +433,15 @@ class StatsPluginInterface(ABC):
         producer: str = "ga.gov.au",
         properties: Dict[str, Any] = dict(),
         region_code_format: str = "x{x:02d}y{y:02d}",
+        naming_conventions_values: str = "dea_c3",
+        explorer_path: str = "https://explorer.dea.ga.gov.au",
+        inherit_skip_properties: Optional[List[str]] = None,
+        preview_image: Optional[List[Any]] = None,
+        preview_image_singleband: Optional[List[Any]] = None,
+        classifier: str = "level3",
+        maturity: str = "final",
+        collection_number: int = 3,
+        nodata: int = -999,
     ) -> OutputProduct:
         """
         :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
@@ -446,6 +452,15 @@ class StatsPluginInterface(ABC):
         :param collections_site: href=f"https://{collections_site}/product/{name}"
         :param producer: Producer ``ga.gov.au``
         :param region_code_format: Change region code formatting, default ``"x{x:02d}y{y:02d}"``
+        :param naming_conventions_values: default ``dea_c3``
+        :param explorer_path: default ``https://explorer.dea.ga.gov.au``
+        :param inherit_skip_properties: block properties from source datasets.
+        :param preview_image: three measurement display as a thumbnail setting. Three values map to green, red and blue.
+        :param preview_image_singleband: each measurment display as a thumbnail setting.
+        :param classifier: default ``level3``
+        :param maturity: default ``final``
+        :param collection_number: default ``3``
+        :param nodata: default ``-999``
         """
         if name is None:
             name = self.NAME
@@ -486,6 +501,15 @@ class StatsPluginInterface(ABC):
             measurements=self.measurements,
             href=f"https://{collections_site}/product/{name}",
             region_code_format=region_code_format,
+            naming_conventions_values=naming_conventions_values,
+            explorer_path=explorer_path,
+            inherit_skip_properties=inherit_skip_properties,
+            preview_image=preview_image,
+            preview_image_singleband=preview_image_singleband,
+            classifier=classifier,
+            maturity=maturity,
+            collection_number=collection_number,
+            nodata=nodata,
         )
 
 
