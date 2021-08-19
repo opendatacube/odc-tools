@@ -39,8 +39,6 @@ COPY docker/assets/with-bootstrap /usr/local/bin/
 COPY docker/assets/with-test-db /usr/local/bin/
 
 USER odc
-# Bake in fresh empty datacube db into docker image (owned by odc user)
-RUN with-test-db prepare
 
 RUN --mount=type=bind,target=/src \
     --mount=type=cache,target=/home/odc/.cache/pip,uid=1000,gid=1000 \
@@ -48,6 +46,11 @@ RUN --mount=type=bind,target=/src \
   && env-build-tool new_no_index /conf/requirements.txt /conf/constraints.txt /env /src/docker/wheels \
   && rm -rf /code/* \
   && echo "Done"
+
+# Bake in fresh empty datacube db into docker image (owned by odc user)
+# Need to run after environment setup as it needs datacube
+RUN with-bootstrap with-test-db prepare
+
 
 USER root
 

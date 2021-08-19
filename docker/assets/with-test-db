@@ -1,5 +1,9 @@
 #!/bin/bash
 
+set -o errexit
+set -o pipefail
+set -o nounset
+
 _launch_db () {
     local pgdata="${1:-/srv/postgresql}"
     local bin=$(find /usr/lib/postgresql/ -type d -name bin)
