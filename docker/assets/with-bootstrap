@@ -21,7 +21,7 @@
         # unless uid already matches: change it and update HOME and /env
         [[ $(id -u odc) -eq ${target_uid} ]] || {
             usermod --uid ${target_uid} odc
-            chown -R odc:odc /home/odc/ /env
+            chown -R odc:odc /home/odc /env /srv/postgresql /var/run/postgresql
         }
 
         exec sudo -u odc -E -H bash "$0" "$@"
