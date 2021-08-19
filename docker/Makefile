@@ -87,7 +87,10 @@ run-test:
 	@docker run --rm \
     -v $(CODE):/code \
     $(DKR_IMG) with-test-db env AWS_DEFAULT_REGION=us-west-2 \
-               pytest --cov=. --cov-report=html --timeout=30 .
+               pytest --cov=. \
+               --cov-report=html \
+               --cov-report=xml:coverage.xml \
+               --timeout=30 .
 
 clean:
 	rm -f .build/download.info.txt .build/compile.info.txt .build/prepared.txt
