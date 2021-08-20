@@ -388,12 +388,12 @@ class Task:
         if self.paths(ext=ext).items() is not None:
             for band, path in self.paths(ext=ext).items():
                 dataset_assembler.note_measurement(band,
-                                                path,
-                                                pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
-                                                grid=GridSpec(shape=self.geobox.shape,
-                                                                transform=self.geobox.transform,
-                                                                crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
-                                                nodata=self.product.nodata)
+                                                   path,
+                                                   pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
+                                                   grid=GridSpec(shape=self.geobox.shape,
+                                                                 transform=self.geobox.transform,
+                                                                 crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
+                                                   nodata=self.product.nodata)
 
         return dataset_assembler
 
