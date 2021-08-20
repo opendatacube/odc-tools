@@ -19,12 +19,12 @@ from . import _plugins
 NODATA = -9999 # output NODATA
 
 
-class StatsFCP(StatsPluginInterface):
+class StatsTCWPC(StatsPluginInterface):
     
-    NAME = "ga_fc_percentiles"
+    NAME = "ga_tcw_percentiles"
     SHORT_NAME = NAME
     VERSION = "0.0.1"
-    PRODUCT_FAMILY = "fc_percentiles"
+    PRODUCT_FAMILY = "twc_percentiles"
 
     def __init__(
         self,
@@ -91,4 +91,4 @@ class StatsFCP(StatsPluginInterface):
         return None
 
 
-_plugins.register("fc-percentiles", StatsFCP)
+_plugins.register("tcw-percentiles", StatsTCWPC)
