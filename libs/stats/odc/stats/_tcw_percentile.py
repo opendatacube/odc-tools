@@ -3,15 +3,13 @@ Fractional Cover Percentiles
 """
 from functools import partial
 from typing import Optional, Tuple
-from itertools import product
-import dask.array as da
 import xarray as xr
 import numpy as np
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_percentile
-from odc.algo._masking import _xr_fuse, _or_fuser, _fuse_mean_np, _fuse_or_np, _fuse_and_np
+from odc.algo._masking import _xr_fuse, _fuse_mean_np
 from .model import StatsPluginInterface
 from . import _plugins
 
