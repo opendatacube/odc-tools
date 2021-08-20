@@ -385,15 +385,17 @@ class Task:
         dataset_assembler.maturity = self.product.maturity
         dataset_assembler.collection_number = self.product.collection_number
 
-        if self.paths(ext=ext).items() is not None:
-            for band, path in self.paths(ext=ext).items():
-                dataset_assembler.note_measurement(band,
-                                                   path,
-                                                   pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
-                                                   grid=GridSpec(shape=self.geobox.shape,
-                                                                 transform=self.geobox.transform,
-                                                                 crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
-                                                   nodata=self.product.nodata)
+        
+        for band, path in self.paths(ext=ext).items():
+            pixels = output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]) if band in output_dataset else None
+            # when we pass grid, the eodatasets will not load file from path
+            dataset_assembler.note_measurement(band,
+                                                path,
+                                                pixels=pixels,
+                                                grid=GridSpec(shape=self.geobox.shape,
+                                                                transform=self.geobox.transform,
+                                                                crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
+                                                nodata=self.product.nodata)
 
         return dataset_assembler
 
