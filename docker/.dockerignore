@@ -1,2 +1,4 @@
 .cache
-env.tgz
+.build
+wheels
+Makefile

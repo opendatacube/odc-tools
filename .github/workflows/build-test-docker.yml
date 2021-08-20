@@ -15,8 +15,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
 
     - name: Config
       id: cfg
@@ -64,10 +62,8 @@ jobs:
       timeout-minutes: 20
       shell: bash
       run: |
-        cd tests
-        docker-compose up -d
-        docker-compose exec -T tools-tester datacube system init
-        docker-compose exec -T tools-tester pytest --timeout=30
+        cd docker
+        make run-test
 
     - name: DockerHub Login
       if: steps.cfg.outputs.push_image == 'yes'

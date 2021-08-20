@@ -130,7 +130,7 @@ def _pq_fuser(
     xx.attrs.pop("native", None)
 
     if is_native:
-        for band, mask_filters in filter.items():
+        for band, mask_filters in filters.items():
             erased_filter_band_name = band.replace("clear", "erased")
             xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
 
