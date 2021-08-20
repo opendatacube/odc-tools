@@ -22,6 +22,7 @@ wheel
 setuptools
 pip
 
+eodatasets3
 datacube[dev]==1.8.4
 
 # hdstats is optional, needs to be pulled in manually
