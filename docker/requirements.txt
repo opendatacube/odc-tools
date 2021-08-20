@@ -33,6 +33,7 @@ aiobotocore[boto3,awscli]==1.3.3
 
 # Make sure dask has all the features enabled
 dask[complete]
+eodatasets3==0.22.0
 
 # not needed for python 3.8 and up, and are not installed,
 # but `pip check` doesn't know better
