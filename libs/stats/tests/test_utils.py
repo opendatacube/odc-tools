@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from copy import deepcopy
 
-import pystac
 import pytest
 from datacube import Datacube
 from datacube.model import Dataset, DatasetType, metadata_from_doc
@@ -36,13 +35,7 @@ def test_stac(test_db_path):
 
     datasetassembler = task.render_metadata()
 
-    #stac_meta = task.render_metadata()
-    #odc_meta = stac_transform(stac_meta)
-
     assert isinstance(datasetassembler, DatasetAssembler)
-
-    #stac_item = pystac.Item.from_dict(stac_meta)
-    #stac_item.validate()
 
 
 def test_binning():
