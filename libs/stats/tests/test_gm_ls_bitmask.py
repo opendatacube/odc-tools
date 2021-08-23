@@ -45,7 +45,7 @@ def dataset(usgs_ls8_sr_definition):
 
 
 def test_native_transform(dataset):
-    gm = StatsGMLSBitmask(["band_red"])
+    gm = StatsGMLSBitmask(bands=["band_red"])
 
     xx = gm._native_tr(dataset)
     expected_result = np.array([
@@ -66,7 +66,7 @@ def test_native_transform(dataset):
 
 
 def test_fuser(dataset):
-    gm = StatsGMLSBitmask(["band_red"])
+    gm = StatsGMLSBitmask(bands=["band_red"])
 
     xx = gm._native_tr(dataset)
     xx = xx.groupby("solar_day").map(gm._fuser)
@@ -83,10 +83,9 @@ def test_fuser(dataset):
     result = xx.compute()["cloud_mask"].data
     assert (result == expected_result).all()
 
-
 def test_reduce(dataset):
     _ = pytest.importorskip("hdstats")
-    gm = StatsGMLSBitmask(["band_red"])
+    gm = StatsGMLSBitmask(bands=["band_red"])
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
@@ -100,5 +99,25 @@ def test_reduce(dataset):
     expected_result = np.array(
         [[2, 1], [2, 1]],
     )
-    count = result.compute()["count"].data
+    count = result["count"].data
+    assert (count == expected_result).all()
+
+def test_reduce_with_filters(dataset):
+    _ = pytest.importorskip("hdstats")
+    mask_filters = [("closing", 2), ("dilation",1)]
+    gm = StatsGMLSBitmask(bands=["band_red"], filters=mask_filters)
+
+    xx = gm._native_tr(dataset)
+    xx = gm.reduce(xx)
+
+    result = xx.compute()
+
+    assert set(xx.data_vars.keys()) == set(
+        ["band_red", "smad", "emad", "bcmad", "count"]
+    )
+
+    expected_result = np.array(
+        [[1, 1], [2, 1]],
+    )
+    count = result["count"].data
     assert (count == expected_result).all()
