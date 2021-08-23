@@ -83,6 +83,31 @@ def get_queue(queue_name: str):
     return queue
 
 
+def list_queues(region: str):
+    """
+    Return a list of queues which the user is allowed to see
+    """
+    client = boto3.client('sqs', region_name=region)
+    queues = client.list_queues()
+    return queues
+
+
+def get_queue_attributes(queue_name: str, region: str, attribute: Optional[str]) -> dict:
+    """
+    Return informed queue's attribute or a list of queue's attributes when attribute isn't informed
+    """
+
+    if attribute is None:
+        attribute = 'All'
+
+    attributes_dict = client = boto3.client('sqs', region_name=region)
+    client.get_queue_attributes(
+        QueueUrl=queue_name,
+        AttributeNames=[attribute]
+    )
+    return attributes_dict
+
+
 def publish_message(queue, message: str, message_attributes: Mapping[str, Any] = {}):
     """
     Publish a message to a queue resource. Message should be a JSON object dumped as a
