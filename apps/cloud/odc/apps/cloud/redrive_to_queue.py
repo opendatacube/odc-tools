@@ -27,13 +27,13 @@ def cli(queue, to_queue, limit, dryrun):
 
     logging.basicConfig(
         level=logging.INFO,
-        format="[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s",
+        format="[%(asctime)s] %(levelname)s - %(message)s",
         stream=sys.stdout,
     )
 
     _log = logging.getLogger(__name__)
 
-    count = redrive_queue(queue, to_queue, limit, dryrun)
+    count = redrive_queue(queue, to_queue, limit, dryrun, max_wait=1)
 
     if count == 0:
         _log.info("No messages to redrive")
