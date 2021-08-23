@@ -394,7 +394,7 @@ class Task:
                                                     grid=GridSpec(shape=self.geobox.shape,
                                                                     transform=self.geobox.transform,
                                                                     crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
-                                                    nodata=self.product.nodata)
+                                                    nodata=self.product.nodata[band])
 
         return dataset_assembler
 
@@ -443,7 +443,7 @@ class StatsPluginInterface(ABC):
         classifier: str = "level3",
         maturity: str = "final",
         collection_number: int = 3,
-        nodata: int = -999,
+        nodata: Optional[Dict[str, int]] = None
     ) -> OutputProduct:
         """
         :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
@@ -462,7 +462,7 @@ class StatsPluginInterface(ABC):
         :param classifier: default ``level3``
         :param maturity: default ``final``
         :param collection_number: default ``3``
-        :param nodata: default ``-999``
+        :param nodata: band level nodata information. Pass it to eodatasets3 library only.
         """
         if name is None:
             name = self.NAME

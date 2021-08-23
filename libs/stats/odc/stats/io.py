@@ -351,7 +351,7 @@ class S3COGSink:
                 thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=tuning_pixels,
                                                                           static_stretch=stretch,
                                                                           input_geobox=input_geobox,
-                                                                          nodata=task.product.nodata)
+                                                                          nodata=task.product.nodata[band])
                 
                 thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
         
@@ -368,7 +368,7 @@ class S3COGSink:
 
                 thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
                                                                           input_geobox=input_geobox,
-                                                                          nodata=task.product.nodata)
+                                                                          nodata=task.product.nodata[band])
 
                 thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
         
