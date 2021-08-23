@@ -83,7 +83,7 @@ def get_queue(queue_name: str):
     return queue
 
 
-def list_queues(region: str):
+def list_queues(region: Optional[str]):
     """
     Return a list of queues which the user is allowed to see
     """
@@ -92,7 +92,7 @@ def list_queues(region: str):
     return queues
 
 
-def get_queue_attributes(queue_name: str, region: str, attribute: Optional[str]) -> dict:
+def get_queue_attributes(queue_name: str, region: Optional[str], attribute: Optional[str]) -> dict:
     """
     Return informed queue's attribute or a list of queue's attributes when attribute isn't informed
     """
