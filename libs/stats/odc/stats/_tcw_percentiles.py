@@ -42,7 +42,7 @@ class StatsTCWPC(StatsPluginInterface):
         Loads data in its native projection.
         """
 
-        bad = ((xx["fmask"] & 0b0000_1101) == 0)
+        bad = (xx["fmask"] & 0b0000_1101) != 0
         xx = xx.drop_vars(["fmask"])
         
         for band in xx.data_vars.keys():
