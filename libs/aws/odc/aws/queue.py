@@ -2,6 +2,15 @@ import boto3
 import itertools
 from typing import Mapping, Any, Iterable, Optional
 
+from odc.aws import mk_boto_session
+
+
+def _create_sqs_client(
+    region: Optional[str] = None
+):
+
+    return mk_boto_session().create_client("sqs", region)
+
 
 def redrive_queue(
     queue_name: str,
@@ -74,7 +83,7 @@ def redrive_queue(
     return count
 
 
-def get_queue(queue_name: str):
+def get_queue(queue_name: str, region: Optional[str] = None):
     """
     Return a queue resource by name, e.g., alex-really-secret-queue
     """
@@ -83,25 +92,25 @@ def get_queue(queue_name: str):
     return queue
 
 
-def list_queues(region: Optional[str]):
+def list_queues(region: Optional[str] = None):
     """
     Return a list of queues which the user is allowed to see
     """
-    client = boto3.client('sqs', region_name=region)
-    queues = client.list_queues()
-    return queues
+    sqs = _create_sqs_client(region=region)
+    return sqs.list_queues()
 
 
-def get_queue_attributes(queue_name: str, region: Optional[str], attribute: Optional[str]) -> dict:
+def get_queue_attributes(queue_name: str, region: Optional[str] = None, attribute: Optional[str] = None) -> dict:
     """
     Return informed queue's attribute or a list of queue's attributes when attribute isn't informed
     """
 
-    if attribute is None:
-        attribute = 'All'
+    sqs = _create_sqs_client(region=region)
 
-    client = boto3.client('sqs', region_name=region)
-    attributes_dict = client.get_queue_attributes(
+    if attribute is None:
+        attribute = ['All']
+
+    attributes_dict = sqs.get_queue_attributes(
         QueueUrl=queue_name,
         AttributeNames=[attribute]
     )
