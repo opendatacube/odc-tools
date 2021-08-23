@@ -100,8 +100,8 @@ def get_queue_attributes(queue_name: str, region: str, attribute: Optional[str])
     if attribute is None:
         attribute = 'All'
 
-    attributes_dict = client = boto3.client('sqs', region_name=region)
-    client.get_queue_attributes(
+    client = boto3.client('sqs', region_name=region)
+    attributes_dict = client.get_queue_attributes(
         QueueUrl=queue_name,
         AttributeNames=[attribute]
     )
