@@ -23,7 +23,7 @@ _stop_db () {
 }
 
 _prep_db () {
-    psql -c '\conninfo' 2> /dev/null > /dev/null || {
+    psql -c '\conninfo' datacube 2> /dev/null > /dev/null || {
         echo "Launching DB"
         _launch_db
     }

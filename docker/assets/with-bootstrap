@@ -30,12 +30,31 @@
 
 [[ $UID -ne 0 ]] || echo "WARNING: Running as root"
 
+cached_dev_install () {
+    local cache_file=/code/.run/dev-install.tgz
+
+    if [[ -e ${cache_file} ]]; then
+        echo "Installing from cache"
+        tar xvzf ${cache_file} -C /
+    else
+        echo "Fresh dev install"
+        ./scripts/dev-install.sh --no-deps --no-build-isolation
+        echo "Caching dev install to: ${cache_file}"
+        mkdir -p $(dirname ${cache_file})
+        tar cvzf ${cache_file} $(find ${VIRTUAL_ENV} \( -name "*egg-link" -or -name "easy-install.pth" \))
+    fi
+}
+
 env="${PYENV:-/env}"
 
 if [ -e "${env}/bin/activate" ]; then
     [ -n "${VIRTUAL_ENV:-}" ] || {
         source "${env}/bin/activate"
     }
+fi
+
+if [[ -d /code/scripts ]]; then
+    cached_dev_install
 fi
 
 [ -z "${1:-}" ] || {
