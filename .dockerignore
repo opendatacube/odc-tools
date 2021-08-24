@@ -3,6 +3,7 @@ notebooks/
 docs/
 tests/
 .github/
+.git/
 docker/.cache
 docker/.build
 
