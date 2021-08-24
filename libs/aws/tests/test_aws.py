@@ -108,5 +108,5 @@ def test_get_queue_attributes(aws_env):
     assert len(all_attributes) == len(valid_attributes)
 
     for att in valid_attributes:
-        assert get_queue_attributes(queue_name="queue1", attribute=att)
-
+        att_returned = get_queue_attributes(queue_name="queue1", attribute=att)
+        assert att_returned.get(att)
