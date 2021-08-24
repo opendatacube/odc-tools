@@ -83,7 +83,7 @@ def redrive_queue(
     return count
 
 
-def get_queue(queue_name: str, region: Optional[str] = None):
+def get_queue(queue_name: str):
     """
     Return a queue resource by name, e.g., alex-really-secret-queue
     """
