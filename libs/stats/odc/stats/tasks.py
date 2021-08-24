@@ -390,10 +390,8 @@ class TaskReader:
         self.resolution = resolution
         self._dscache = cache
         self._cfg = cfg
-        # if run from_sqs, the cache is "", defer grid value setup
-        self._grid = grid if len(cache) != 0 else ""
-        # if run from_sqs, the cache is "", defer gridspec value setup
-        self._gridspec = gridspec if len(cache) != 0 else ""
+        self._grid = grid if cache else ""
+        self._gridspec = gridspec if cache else ""
         self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid)) if cache else []
 
     def is_compatible_resolution(self, resolution: Tuple[float, float], tol=1e-8):
