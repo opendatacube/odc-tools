@@ -2,9 +2,10 @@ import json
 import os
 
 import boto3
-from moto import mock_sqs
 import pytest
-from odc.aws.queue import redrive_queue, list_queues, get_queue_attributes, get_queue
+from moto import mock_sqs
+
+from odc.aws.queue import redrive_queue, list_queues, get_queue_attributes
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
 DEAD_QUEUE_NAME = "mock-dead-queue"
