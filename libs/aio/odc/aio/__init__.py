@@ -3,6 +3,7 @@ import logging
 
 import botocore
 import aiobotocore
+from aiobotocore.session import get_session
 from aiobotocore.config import AioConfig
 import asyncio
 from fnmatch import fnmatch
@@ -341,7 +342,7 @@ class S3Fetcher(object):
         self._session = None
 
         async def setup(s3_cfg):
-            session = aiobotocore.get_session()
+            session = get_session()
             s3_ctx = session.create_client("s3", region_name=region_name, config=s3_cfg)
             s3 = await s3_ctx.__aenter__()
             return (session, s3, s3_ctx)
