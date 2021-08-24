@@ -113,7 +113,7 @@ def get_queue_attributes(queue_name: str, attribute: Optional[str] = None) -> di
     if attribute is None:
         return queue.attributes
 
-    return queue.attributes.get(attribute)
+    return {attribute: queue.attributes.get(attribute)}
 
 
 def publish_message(queue, message: str, message_attributes: Mapping[str, Any] = {}):
