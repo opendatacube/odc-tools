@@ -2,15 +2,6 @@ import boto3
 import itertools
 from typing import Mapping, Any, Iterable, Optional
 
-from odc.aws import mk_boto_session
-
-
-def _create_sqs_client(
-    region: Optional[str] = None
-):
-
-    return mk_boto_session().create_client("sqs", region)
-
 
 def redrive_queue(
     queue_name: str,
