@@ -64,7 +64,7 @@ class TaskRunner:
                     )
         else:  # skip rdr and resolution compatible init
             _log.info(f"Skip rdr init for run from sqs: {cfg.filedb}")
-            self.rdr = TaskReader("", self.product)
+            self.rdr = TaskReader("", self.product, resolution)
             
         self._client = None
 

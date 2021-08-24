@@ -365,7 +365,10 @@ class SaveTasks:
 
 class TaskReader:
     def __init__(
-        self, cache: Union[str, DatasetCache], product: Optional[OutputProduct] = None
+        self, 
+        cache: Union[str, DatasetCache], 
+        product: Optional[OutputProduct] = None, 
+        resolution: Optional[Tuple[float, float]] = None
     ):
         self._cache_path = None
 
@@ -383,11 +386,14 @@ class TaskReader:
             cfg = {}
 
         self._product = product
-        self.resolution = None
+        # if not from_sqs, the resolution check can finish before init TaskReader
+        self.resolution = resolution
         self._dscache = cache
         self._cfg = cfg
-        self._grid = grid if cache else ""
-        self._gridspec = gridspec if cache else ""
+        # if run from_sqs, the cache is "", defer grid value setup
+        self._grid = grid if len(cache) != 0 else ""
+        # if run from_sqs, the cache is "", defer gridspec value setup
+        self._gridspec = gridspec if len(cache) != 0 else ""
         self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid)) if cache else []
 
     def is_compatible_resolution(self, resolution: Tuple[float, float], tol=1e-8):
@@ -418,7 +424,7 @@ class TaskReader:
         """
         self._cache_path = None
 
-        if isinstance(cache, str): # if read from message, there is no filedb at beginning
+        if isinstance(cache, str):
             if cache.startswith("s3://"):
                 self._cache_path = s3_download(cache)
                 cache = self._cache_path
@@ -433,8 +439,8 @@ class TaskReader:
 
         self._dscache = cache
         self._cfg = cfg
-        self._grid = grid if cache else ""
-        self._gridspec = gridspec if cache else ""
+        self._grid = grid
+        self._gridspec = gridspec
         self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid)) if cache else []
 
 
