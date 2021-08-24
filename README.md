@@ -67,10 +67,8 @@ Use `conda env update -f <file>` to install all needed dependencies for
 channels:
   - conda-forge
 dependencies:
-  - pip=20
-
   # Datacube
-  - datacube>=1.8.4
+  - datacube>=1.8.5
 
   # odc.dscache
   - python-lmdb
@@ -99,6 +97,8 @@ dependencies:
   #  pin aiobotocore for easier resolution of dependencies
   - aiobotocore==1.3.3
   - boto3
+
+  - pip=20
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
