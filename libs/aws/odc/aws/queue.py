@@ -87,6 +87,39 @@ def get_queue(queue_name: str):
     return queue
 
 
+def list_queues(region: Optional[str] = None):
+    """
+    Return a list of queues which the user is allowed to see
+    """
+    sqs = boto3.resource("sqs")
+    return list(sqs.queues.all())
+
+
+def get_queue_attributes(queue_name: str, attribute: Optional[str] = None) -> dict:
+    """
+    Return informed queue's attribute or a list of queue's attributes when attribute isn't informed
+    Valid attribute options:
+        'ApproximateNumberOfMessages',
+        'ApproximateNumberOfMessagesDelayed',
+        'ApproximateNumberOfMessagesNotVisible',
+        'CreatedTimestamp',
+        'DelaySeconds',
+        'LastModifiedTimestamp',
+        'MaximumMessageSize',
+        'MessageRetentionPeriod',
+        'QueueArn',
+        'ReceiveMessageWaitTimeSeconds',
+        'VisibilityTimeout'
+    """
+
+    queue = get_queue(queue_name=queue_name)
+
+    if attribute is None:
+        return queue.attributes
+
+    return {attribute: queue.attributes.get(attribute)}
+
+
 def publish_message(queue, message: str, message_attributes: Mapping[str, Any] = {}):
     """
     Publish a message to a queue resource. Message should be a JSON object dumped as a
