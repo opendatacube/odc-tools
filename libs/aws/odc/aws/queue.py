@@ -9,7 +9,7 @@ def redrive_queue(
     limit: Optional[int] = 0,
     dryrun: bool = False,
     max_wait: int = 5,
-    max_messages: int = 10,
+    messages_per_request: int = 10,
 ):
     """
     Redrive messages from one queue to another. Default usage is to define
@@ -44,7 +44,12 @@ def redrive_queue(
             )
         alive_queue = source_queues[0]
 
-    messages = get_messages(dead_queue, max_wait=max_wait, max_messages=max_messages)
+    messages = get_messages(
+        dead_queue,
+        limit=limit,
+        max_wait=max_wait,
+        messages_per_request=messages_per_request,
+    )
     count_messages = 0
     approx_n_messages = dead_queue.attributes.get("ApproximateNumberOfMessages")
     try:
@@ -65,9 +70,7 @@ def redrive_queue(
         message_group.append(message)
         count += 1
 
-        if limit and count >= limit:
-            break
-        elif count % 10 == 0:
+        if count % 10 == 0:
             message_group = post_messages(alive_queue, message_group)
 
     # Post the last few messages
@@ -153,7 +156,7 @@ def get_messages(
     visibility_timeout: int = 60,
     message_attributes: Iterable[str] = ["All"],
     max_wait: int = 1,
-    max_messages: int = 1,
+    messages_per_request: int = 1,
     **kw
 ):
     """
@@ -172,7 +175,7 @@ def get_messages(
     messages = _sqs_message_stream(
         queue,
         VisibilityTimeout=visibility_timeout,
-        MaxNumberOfMessages=max_messages,
+        MaxNumberOfMessages=messages_per_request,
         WaitTimeSeconds=max_wait,
         MessageAttributeNames=message_attributes,
         **kw
