@@ -6,7 +6,7 @@ from odc.apps.dc_tools.s3_to_dc import cli
 
 
 @pytest.mark.depends(on=['add_products'])
-def test_s3_to_dc_yaml():
+def test_s3_to_dc_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
@@ -22,7 +22,7 @@ def test_s3_to_dc_yaml():
 
 
 @pytest.mark.depends(on=['add_products'])
-def test_s3_to_dc_stac():
+def test_s3_to_dc_stac(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
