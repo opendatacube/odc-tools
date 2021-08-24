@@ -97,24 +97,38 @@ def list_queues(region: Optional[str] = None):
     Return a list of queues which the user is allowed to see
     """
     sqs = _create_sqs_client(region=region)
-    return sqs.list_queues()
+    list_queues_return = sqs.list_queues()
+
+    return list_queues_return.get('QueueUrls', [])
 
 
 def get_queue_attributes(queue_name: str, region: Optional[str] = None, attribute: Optional[str] = None) -> dict:
     """
     Return informed queue's attribute or a list of queue's attributes when attribute isn't informed
+    Valid attribute options:
+        'ApproximateNumberOfMessages',
+        'ApproximateNumberOfMessagesDelayed',
+        'ApproximateNumberOfMessagesNotVisible',
+        'CreatedTimestamp',
+        'DelaySeconds',
+        'LastModifiedTimestamp',
+        'MaximumMessageSize',
+        'MessageRetentionPeriod',
+        'QueueArn',
+        'ReceiveMessageWaitTimeSeconds',
+        'VisibilityTimeout'
     """
 
     sqs = _create_sqs_client(region=region)
 
     if attribute is None:
-        attribute = ['All']
+        attribute = 'All'
 
     attributes_dict = sqs.get_queue_attributes(
         QueueUrl=queue_name,
         AttributeNames=[attribute]
     )
-    return attributes_dict
+    return attributes_dict.get('Attributes', {})
 
 
 def publish_message(queue, message: str, message_attributes: Mapping[str, Any] = {}):
