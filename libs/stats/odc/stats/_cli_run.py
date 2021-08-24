@@ -25,6 +25,11 @@ from ._sqs import SQSWorkToken
     help="Path to store pod's heartbeats when running stats as K8 jobs",
 )
 @click.option(
+    "--dataset-filters",
+    type=str,
+    help="",
+)
+@click.option(
     "--public/--no-public",
     is_flag=True,
     default=None,
@@ -65,6 +70,7 @@ def run(
     location,
     max_processing_time,
     heartbeat_filepath,
+    dataset_filters,
 ):
     """
     Run Stats.
@@ -151,7 +157,7 @@ def run(
 
     if dryrun:
         check_exists = runner.verify_setup()
-        for task in runner.dry_run(tasks, check_exists=check_exists):
+        for task in runner.dry_run(tasks, check_exists=check_exists, ds_filters=dataset_filters):
             print(task.meta)
         sys.exit(0)
 
@@ -159,7 +165,7 @@ def run(
         print("Failed to verify setup, exiting")
         sys.exit(1)
 
-    result_stream = runner.run(sqs=from_sqs) if from_sqs else runner.run(tasks=tasks)
+    result_stream = runner.run(sqs=from_sqs, ds_filters=dataset_filters) if from_sqs else runner.run(tasks=tasks, ds_filters=dataset_filters)
 
     total = 0
     finished = 0

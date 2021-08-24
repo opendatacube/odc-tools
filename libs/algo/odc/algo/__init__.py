@@ -2,6 +2,7 @@
 
 """
 
+from ._version import __version__
 from ._numexpr import apply_numexpr, safe_div
 
 from ._masking import (

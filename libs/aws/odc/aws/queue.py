@@ -8,7 +8,8 @@ def redrive_queue(
     to_queue_name: Optional[str] = None,
     limit: Optional[int] = 0,
     dryrun: bool = False,
-    max_wait: int = 10,
+    max_wait: int = 5,
+    max_messages: int = 10,
 ):
     """
     Redrive messages from one queue to another. Default usage is to define
@@ -43,8 +44,13 @@ def redrive_queue(
             )
         alive_queue = source_queues[0]
 
-    messages = get_messages(dead_queue, max_wait=max_wait)
-    count_messages = int(dead_queue.attributes.get("ApproximateNumberOfMessages"))
+    messages = get_messages(dead_queue, max_wait=max_wait, max_messages=max_messages)
+    count_messages = 0
+    approx_n_messages = dead_queue.attributes.get("ApproximateNumberOfMessages")
+    try:
+        count_messages = int(approx_n_messages)
+    except TypeError:
+        print("Couldn't get approximate number of messages, setting to 0")
 
     # If there's no messages then there's no work to do. If it's a dryrun, we
     # don't do anything either.
@@ -60,13 +66,11 @@ def redrive_queue(
         count += 1
 
         if limit and count >= limit:
-            message_group = post_messages(alive_queue, message_group)
             break
         elif count % 10 == 0:
             message_group = post_messages(alive_queue, message_group)
 
     # Post the last few messages
-
     if len(message_group) > 0:
         message_group = post_messages(alive_queue, message_group)
 
@@ -81,6 +85,39 @@ def get_queue(queue_name: str):
     sqs = boto3.resource("sqs")
     queue = sqs.get_queue_by_name(QueueName=queue_name)
     return queue
+
+
+def list_queues(region: Optional[str] = None):
+    """
+    Return a list of queues which the user is allowed to see
+    """
+    sqs = boto3.resource("sqs")
+    return list(sqs.queues.all())
+
+
+def get_queue_attributes(queue_name: str, attribute: Optional[str] = None) -> dict:
+    """
+    Return informed queue's attribute or a list of queue's attributes when attribute isn't informed
+    Valid attribute options:
+        'ApproximateNumberOfMessages',
+        'ApproximateNumberOfMessagesDelayed',
+        'ApproximateNumberOfMessagesNotVisible',
+        'CreatedTimestamp',
+        'DelaySeconds',
+        'LastModifiedTimestamp',
+        'MaximumMessageSize',
+        'MessageRetentionPeriod',
+        'QueueArn',
+        'ReceiveMessageWaitTimeSeconds',
+        'VisibilityTimeout'
+    """
+
+    queue = get_queue(queue_name=queue_name)
+
+    if attribute is None:
+        return queue.attributes
+
+    return {attribute: queue.attributes.get(attribute)}
 
 
 def publish_message(queue, message: str, message_attributes: Mapping[str, Any] = {}):
@@ -115,7 +152,8 @@ def get_messages(
     limit: Optional[int] = None,
     visibility_timeout: int = 60,
     message_attributes: Iterable[str] = ["All"],
-    max_wait: int = 10,
+    max_wait: int = 1,
+    max_messages: int = 1,
     **kw
 ):
     """
@@ -134,7 +172,7 @@ def get_messages(
     messages = _sqs_message_stream(
         queue,
         VisibilityTimeout=visibility_timeout,
-        MaxNumberOfMessages=1,
+        MaxNumberOfMessages=max_messages,
         WaitTimeSeconds=max_wait,
         MessageAttributeNames=message_attributes,
         **kw

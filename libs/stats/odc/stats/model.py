@@ -1,19 +1,22 @@
-from abc import ABC, abstractmethod, abstractproperty
 import math
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
-from toolz import dicttoolz
+
+import pandas as pd
+from pyproj.transformer import transform
 import pystac
 import xarray as xr
-import pandas as pd
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
+from pystac.extensions.projection import ProjectionExtension
+from toolz import dicttoolz
 
 TileIdx_xy = Tuple[int, int]
 TileIdx_txy = Tuple[str, int, int]
@@ -269,7 +272,18 @@ class Task:
         return "/".join([p1, p2, self.short_time])
 
     def _lineage(self) -> Tuple[UUID, ...]:
-        return tuple(ds.id for ds in self.datasets)
+        ds, *_ = self.datasets
+
+        # TODO: replace this and test
+        # if 'fused' in ds.metadata._doc['properties'].keys():
+        if 'fused' in ds.type.name:
+            lineage = tuple(set(
+                x for ds in self.datasets for y in ds.metadata.sources.values() for x in y.values()
+            ))
+        else:
+            lineage = tuple(ds.id for ds in self.datasets)
+
+        return lineage
 
     def _prefix(self, relative_to: str = "dataset") -> str:
         product = self.product
@@ -348,11 +362,12 @@ class Task:
             geometry=geobox_wgs84.json,
             bbox=[bbox.left, bbox.bottom, bbox.right, bbox.top],
             datetime=self.time_range.start.replace(tzinfo=timezone.utc),
-            properties=properties,
-            stac_extensions=["projection"],
+            properties=properties
         )
+        ProjectionExtension.add_to(item)
+        proj_ext = ProjectionExtension.ext(item)
+        proj_ext.apply(geobox.crs.epsg, transform=geobox.transform, shape=geobox.shape)
 
-        item.ext.projection.epsg = geobox.crs.epsg
         # Lineage last
         item.properties["odc:lineage"] = dict(inputs=inputs)
 
@@ -365,9 +380,6 @@ class Task:
                 title=band,
             )
             item.add_asset(band, asset)
-
-            item.ext.projection.set_transform(geobox.transform, asset=asset)
-            item.ext.projection.set_shape(geobox.shape, asset=asset)
 
         # Add links
         item.links.append(

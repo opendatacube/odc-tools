@@ -7,7 +7,7 @@ Installation
 ------------
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" odc_algo
+pip install odc-algo
 ```
 
 Usage

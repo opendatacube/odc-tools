@@ -8,110 +8,74 @@ from typing import Tuple
 
 import click
 from datacube import Datacube
-from datacube.utils import changes
+from datacube.index.hl import Doc2Dataset
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.index import from_yaml_doc_stream
-from odc.index.stac import stac_transform
+from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe,
+                                     fail_on_missing_lineage,
+                                     index_update_dataset, no_sign_request,
+                                     request_payer, skip_check, skip_lineage,
+                                     transform_stac, transform_stac_absolute,
+                                     update, update_if_exists, verify_lineage)
+from odc.index import parse_doc_stream
+from odc.index.stac import stac_transform, stac_transform_absolute
+
+
+# Grab the URL from the resulting S3 item
+def stream_urls(urls):
+    for url in urls:
+        yield url.url
+
+
+# Parse documents as they stream through from S3
+def stream_docs(documents):
+    for document in documents:
+        yield (document.url, document.data)
+
+
+# Log the internal errors parsing docs
+def doc_error(uri, doc, e):
+    logging.exception(f"Failed to parse doc {uri} with error {e}")
 
 
 def dump_to_odc(
-    data_stream,
+    document_stream,
     dc: Datacube,
     products: list,
     transform=None,
     update=False,
+    update_if_exists=False,
     allow_unsafe=False,
     **kwargs,
 ) -> Tuple[int, int]:
-    # TODO: Get right combination of flags for **kwargs in low validation/no-lineage mode
-    expand_stream = ((d.url, d.data) for d in data_stream if d.data is not None)
+    doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
-    ds_stream = from_yaml_doc_stream(
-        expand_stream, dc.index, products=products, transform=transform, **kwargs
-    )
     ds_added = 0
     ds_failed = 0
-    # Consume chained streams to DB
-    for result in ds_stream:
-        ds, err = result
-        if err is not None:
-            logging.error(err)
+    uris_docs = parse_doc_stream(stream_docs(document_stream), on_error=doc_error, transform=transform)
+
+    for uri, metadata in uris_docs:
+        try:
+            index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
+            ds_added += 1
+        except (IndexingException) as e:
+            logging.exception(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
-        else:
-            logging.info(ds)
-            # TODO: Potentially wrap this in transactions and batch to DB
-            # TODO: Capture UUID's from dataset doc and perform a bulk has
-            try:
-                if update:
-                    updates = {}
-                    if allow_unsafe:
-                        updates = {tuple(): changes.allow_any}
-                    dc.index.datasets.update(ds, updates_allowed=updates)
-                else:
-                    dc.index.datasets.add(ds)
-                ds_added += 1
-            except Exception as e:
-                logging.error(e)
-                ds_failed += 1
 
     return ds_added, ds_failed
 
 
 @click.command("s3-to-dc")
-@click.option(
-    "--skip-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is not to skip lineage. Set to skip lineage altogether.",
-)
-@click.option(
-    "--fail-on-missing-lineage/--auto-add-lineage",
-    is_flag=True,
-    default=True,
-    help=(
-        "Default is to fail if lineage documents not present in the database. "
-        "Set auto add to try to index lineage documents."
-    ),
-)
-@click.option(
-    "--verify-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is no verification. Set to verify parent dataset definitions.",
-)
-@click.option(
-    "--stac",
-    is_flag=True,
-    default=False,
-    help="Expect STAC 1.0 metadata and attempt to transform to ODC EO3 metadata",
-)
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="If set, update instead of add datasets",
-)
-@click.option(
-    "--allow-unsafe",
-    is_flag=True,
-    default=False,
-    help="Allow unsafe changes to a dataset. Take care!",
-)
-@click.option(
-    "--skip-check",
-    is_flag=True,
-    default=False,
-    help="Assume file exists when listing exact file rather than wildcard.",
-)
-@click.option(
-    "--no-sign-request", is_flag=True, default=False, help="Do not sign AWS S3 requests"
-)
-@click.option(
-    "--request-payer",
-    is_flag=True,
-    default=False,
-    help="Needed when accessing requester pays public buckets",
-)
+@skip_lineage
+@fail_on_missing_lineage
+@verify_lineage
+@transform_stac
+@transform_stac_absolute
+@update
+@update_if_exists
+@allow_unsafe
+@skip_check
+@no_sign_request
+@request_payer
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -119,7 +83,9 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
     stac,
+    absolute,
     update,
+    update_if_exists,
     allow_unsafe,
     skip_check,
     no_sign_request,
@@ -131,7 +97,10 @@ def cli(
 
     transform = None
     if stac:
-        transform = stac_transform
+        if absolute:
+            transform = stac_transform_absolute
+        else:
+            transform = stac_transform
 
     candidate_products = product.split()
 
@@ -139,18 +108,7 @@ def cli(
     if request_payer:
         opts["RequestPayer"] = "requester"
 
-    # Get a generator from supplied S3 Uri for metadata definitions
-    fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-
-    # TODO: Share Fetcher
-    s3_obj_stream = s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
-
-    # Extract URLs from output of iterator before passing to Fetcher
-    s3_url_stream = (o.url for o in s3_obj_stream)
-
-    # TODO: Capture S3 URL's in batches and perform bulk_location_has
-
-    # Consume generator and fetch YAML's
+    # Check datacube connection and products
     dc = Datacube()
     odc_products = dc.list_products().name.values
 
@@ -164,8 +122,12 @@ def cli(
         )
         sys.exit(1)
 
+    # Get a generator from supplied S3 Uri for candidate documents
+    fetcher = S3Fetcher(aws_unsigned=no_sign_request)
+    document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
+
     added, failed = dump_to_odc(
-        fetcher(s3_url_stream),
+        fetcher(document_stream),
         dc,
         candidate_products,
         skip_lineage=skip_lineage,
@@ -173,10 +135,11 @@ def cli(
         verify_lineage=verify_lineage,
         transform=transform,
         update=update,
+        update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
     )
 
-    print(f"Added {added} Datasets, Failed {failed} Datasets")
+    print(f"Added {added} datasets and failed {failed} datasets.")
 
     if failed > 0:
         sys.exit(failed)

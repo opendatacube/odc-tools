@@ -7,7 +7,7 @@ Installation
 ------------
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" odc_aio
+pip install odc-aio
 ```
 
 Usage
@@ -30,5 +30,5 @@ the [conda-forge](https://conda-forge.org/) channel is added.
 conda create --name odc_tools datacube
 conda activate odc_tools
 cd libs/aio/
-pip install --extra-index-url="https://packages.dea.ga.gov.au" -e .
+pip install -e .
 ```

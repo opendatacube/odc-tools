@@ -4,11 +4,15 @@ import pkg_resources
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
+import click
+
 
 ESRI_LANDCOVER_BASE_URI = (
     "https://ai4edataeuwest.blob.core.windows.net/io-lulc/"
     "io-lulc-model-001-v01-composite-v03-supercell-v02-clip-v01/{id}_20200101-20210101.tif"
 )
+
+MICROSOFT_PC_STAC_URI = "https://planetarycomputer.microsoft.com/api/stac/v1/"
 
 
 class IndexingException(Exception):
@@ -17,6 +21,99 @@ class IndexingException(Exception):
     """
 
     pass
+
+
+# A whole bunch of generic Click options
+skip_lineage = click.option(
+    "--skip-lineage",
+    is_flag=True,
+    default=False,
+    help="Default is not to skip lineage. Set to skip lineage altogether.",
+)
+
+fail_on_missing_lineage = click.option(
+    "--fail-on-missing-lineage/--auto-add-lineage",
+    is_flag=True,
+    default=True,
+    help=(
+        "Default is to fail if lineage documents not present in the database. "
+        "Set auto add to try to index lineage documents."
+    ),
+)
+
+verify_lineage = click.option(
+    "--verify-lineage",
+    is_flag=True,
+    default=False,
+    help="Default is no verification. Set to verify parent dataset definitions.",
+)
+
+transform_stac = click.option(
+    "--stac",
+    is_flag=True,
+    default=False,
+    help="Expect STAC 1.0 metadata and attempt to transform to ODC EO3 metadata.",
+)
+
+transform_stac_absolute = click.option(
+    "--absolute",
+    is_flag=True,
+    default=False,
+    help="Use absolute paths from the STAC document.",
+)
+
+update = click.option(
+    "--update",
+    is_flag=True,
+    default=False,
+    help="If set, update instead of add datasets.",
+)
+
+update_if_exists = click.option(
+    "--update-if-exists",
+    is_flag=True,
+    default=False,
+    help="If the dataset or product already exists, update it instead of skipping it.",
+)
+
+allow_unsafe = click.option(
+    "--allow-unsafe",
+    is_flag=True,
+    default=False,
+    help="Allow unsafe changes to a dataset. Take care!",
+)
+
+skip_check = click.option(
+    "--skip-check",
+    is_flag=True,
+    default=False,
+    help="Assume file exists when listing exact file rather than wildcard.",
+)
+
+no_sign_request = click.option(
+    "--no-sign-request", is_flag=True, default=False, help="Do not sign AWS S3 requests."
+)
+
+request_payer = click.option(
+    "--request-payer",
+    is_flag=True,
+    default=False,
+    help="Needed when accessing requester pays public buckets.",
+)
+
+archive = click.option(
+    "--archive",
+    is_flag=True,
+    default=False,
+    help="Archive datasets instead of adding them.",
+)
+
+limit = click.option(
+    "--limit",
+    default=None,
+    type=int,
+    help="Stop indexing after n datasets have been indexed.",
+)
 
 
 def get_esri_list():

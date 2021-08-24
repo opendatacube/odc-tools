@@ -1,3 +1,4 @@
+from ._version import __version__
 import logging
 
 import botocore
@@ -560,11 +561,12 @@ def s3_find_glob(
         # fixed depth query
         _, prefix = s3_url_parse(glob_pattern)
         dirs_glob = prefix.split('/')[:-1]
+
         def dirs_pred(f):
             n = f.count('/')
             _glob = '/'.join(dirs_glob[:n]) + '/'
             return fnmatch(f, _glob)
-        
+
         if qq.glob is not None:
             pred = norm_predicate(glob=qq.glob)
             stream = do_file_query(qq, pred, dirs_pred=dirs_pred)

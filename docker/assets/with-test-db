@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+_launch_db () {
+    local pgdata="${1:-/srv/postgresql}"
+    local bin=$(find /usr/lib/postgresql/ -type d -name bin)
+
+    [ -e "${pgdata}/PG_VERSION" ] || {
+        "${bin}/initdb" -D "${pgdata}" --auth-host=md5 --encoding=UTF8
+    }
+
+    "${bin}/pg_ctl" -D "${pgdata}" -l "${pgdata}/pg.log" start
+}
+
+_stop_db () {
+    local pgdata="${1:-/srv/postgresql}"
+    local bin=$(find /usr/lib/postgresql/ -type d -name bin)
+
+    "${bin}/pg_ctl" -D "${pgdata}" stop
+}
+
+_prep_db () {
+    psql -c '\conninfo' 2> /dev/null > /dev/null || {
+        echo "Launching DB"
+        _launch_db
+    }
+
+    # Create `datacube` database if not present, then run `datacube system init` on it
+    [[ $(psql -lqt | awk '$1 == "datacube" {print}' | wc -l) == 1 ]] || {
+        echo "Initialising Test Database"
+        createdb datacube
+        datacube system init
+    }
+}
+
+export DATACUBE_DB_URL="postgresql:///datacube"
+
+[ -z "${1:-}" ] || {
+    case "$1" in
+        start)
+            _launch_db
+            ;;
+        stop)
+            _stop_db
+            ;;
+        prepare)
+            # Start DB, prep it if needed then stop
+            #  used inside the docker
+            _prep_db
+            _stop_db
+            ;;
+        *)
+            _prep_db
+            exec "$@"
+            ;;
+    esac
+}

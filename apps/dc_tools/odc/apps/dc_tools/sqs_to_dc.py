@@ -15,24 +15,18 @@ import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
+from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
+                                     fail_on_missing_lineage,
+                                     index_update_dataset, limit, skip_lineage,
+                                     transform_stac, transform_stac_absolute,
+                                     update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
-from odc.index.stac import stac_transform
+from odc.index.stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
 from yaml import load
 
-from odc.apps.dc_tools.utils import index_update_dataset
-
-
 # Added log handler
-logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
-
-
-class SQStoDCException(Exception):
-    """
-    Exception to raise for error during SQS to DC indexing/archiving
-    """
-
-    pass
+logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
 
 
 def extract_metadata_from_message(message):
@@ -40,14 +34,14 @@ def extract_metadata_from_message(message):
         body = json.loads(message.body)
         metadata = json.loads(body["Message"])
     except (KeyError, json.JSONDecodeError) as e:
-        raise SQStoDCException(
+        raise IndexingException(
             f"Failed to load metadata from the SQS message due to error: {e}"
         )
 
     if metadata:
         return metadata
     else:
-        raise SQStoDCException("Failed to load metadata from the SQS message")
+        raise IndexingException("Failed to load metadata from the SQS message")
 
 
 def handle_json_message(metadata, transform, odc_metadata_link):
@@ -69,22 +63,17 @@ def handle_json_message(metadata, transform, odc_metadata_link):
                 metadata = documents.parse_yaml(content)
                 uri = odc_yaml_uri
             except requests.RequestException as err:
-                raise SQStoDCException(
+                raise IndexingException(
                     f"Failed to load metadata from the link provided -  {err}"
                 )
         else:
-            raise SQStoDCException("ODC EO3 metadata link not found")
+            raise IndexingException("ODC EO3 metadata link not found")
     else:
         # if no odc_metadata_link provided, it will look for metadata dict "href" value with "rel==self"
         uri = get_uri(metadata, "self")
 
     if transform:
-        try:
-            metadata = transform(metadata)
-        except KeyError as err:
-            raise SQStoDCException(
-                f"Failed to transform metadata from {uri} with error - {err}"
-            )
+        metadata = transform(metadata)
 
     return metadata, uri
 
@@ -100,7 +89,7 @@ def handle_bucket_notification_message(
         record_path (tuple): [PATH for selectingthe s3 key path from the JSON message document]
 
     Raises:
-        SQStoDCException: [Catch s3 ]
+        IndexingException: [Catch s3 ]
 
     Returns:
         Tuple[dict, str]: [description]
@@ -116,7 +105,7 @@ def handle_bucket_notification_message(
             # Check for bucket name and key, and fail if there isn't one
             if not (bucket_name and key):
                 # Not deleting this message, as it's non-conforming. Check this logic
-                raise SQStoDCException(
+                raise IndexingException(
                     "No bucket name or key in message, are you sure this is a bucket notification?"
                 )
 
@@ -125,10 +114,11 @@ def handle_bucket_notification_message(
             if record_path is not None and not any(
                 [PurePath(key).match(p) for p in record_path]
             ):
-                message.delete()
                 logging.warning(
                     f"Key: {key} not in specified list of record_paths, deleting message from the queue."
                 )
+                # This will return Nones, which will flag the message to be ignored
+                return None, None
 
             # We have enough information to proceed, get the key and extract
             # the contents...
@@ -138,11 +128,11 @@ def handle_bucket_notification_message(
                 data = load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
             except Exception as e:
-                raise SQStoDCException(
-                    f"Exception thrown when trying to load s3 object: '{e}'\n"
+                raise IndexingException(
+                    f"Exception thrown when trying to load s3 object: {e}"
                 )
     else:
-        raise SQStoDCException(
+        raise IndexingException(
             "Attempted to get metadata from record when no record key exists in message."
         )
 
@@ -163,7 +153,7 @@ def do_archiving(metadata, dc: Datacube):
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
     else:
-        raise SQStoDCException("Failed to get an ID from the message, can't archive.")
+        raise IndexingException("Failed to get an ID from the message, can't archive.")
 
 
 def queue_to_odc(
@@ -194,7 +184,7 @@ def queue_to_odc(
         except FileNotFoundError as e:
             logging.error(f"Could not find region_code file with error: {e}")
         if len(region_codes) == 0:
-            raise SQStoDCException(
+            raise IndexingException(
                 f"Region code list is empty, please check the list at: {region_code_list_uri}"
             )
 
@@ -230,61 +220,49 @@ def queue_to_odc(
                         ["properties", "odc:region_code"], metadata
                     )
                     if region_code not in region_codes:
-                        # We  don't want to keep this one, so delete the message
-                        message.delete()
-                        # And fail it...
-                        raise SQStoDCException(
+                        # We don't want to keep this one, so flag it so
+                        # it's not indexed by is still deleted.
+                        metadata = None
+                        uri = None
+                        logging.warning(
                             f"Region code {region_code} not in list of allowed region codes, ignoring this dataset."
                         )
 
                 # Index the dataset
-                index_update_dataset(
-                    metadata,
-                    uri,
-                    dc,
-                    doc2ds,
-                    update=update,
-                    update_if_exists=update_if_exists,
-                    allow_unsafe=allow_unsafe,
-                )
-            ds_success += 1
+                if metadata is not None and uri is not None:
+                    index_update_dataset(
+                        metadata,
+                        uri,
+                        dc,
+                        doc2ds,
+                        update=update,
+                        update_if_exists=update_if_exists,
+                        allow_unsafe=allow_unsafe,
+                    )
+                    ds_success += 1
+                else:
+                    logging.warning("Found None for metadata and uri, skipping")
+
             # Success, so delete the message.
             message.delete()
-        except SQStoDCException as err:
-            logging.error(err)
+        except (IndexingException) as err:
+            logging.exception(f"Failed to handle message with exception: {err}")
             ds_failed += 1
 
     return ds_success, ds_failed
 
 
 @click.command("sqs-to-dc")
-@click.option(
-    "--skip-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is not to skip lineage. Set to skip lineage altogether.",
-)
-@click.option(
-    "--fail-on-missing-lineage/--auto-add-lineage",
-    is_flag=True,
-    default=True,
-    help=(
-        "Default is to fail if lineage documents not present in the database. "
-        "Set auto add to try to index lineage documents."
-    ),
-)
-@click.option(
-    "--verify-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is no verification. Set to verify parent dataset definitions.",
-)
-@click.option(
-    "--stac",
-    is_flag=True,
-    default=False,
-    help="Expect STAC 1.0 metadata and attempt to transform to ODC EO3 metadata",
-)
+@skip_lineage
+@fail_on_missing_lineage
+@verify_lineage
+@transform_stac
+@transform_stac_absolute
+@update
+@update_if_exists
+@allow_unsafe
+@archive
+@limit
 @click.option(
     "--odc-metadata-link",
     default=None,
@@ -293,36 +271,6 @@ def queue_to_odc(
     "metadata doc e.g. 'foo/bar/link', or if metadata doc is STAC, "
     "provide 'rel' value of the 'links' object having "
     "metadata link. e.g. 'STAC-LINKS-REL:odc_yaml'",
-)
-@click.option(
-    "--limit",
-    default=None,
-    type=int,
-    help="Stop indexing after n datasets have been indexed.",
-)
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="If set, update instead of add datasets",
-)
-@click.option(
-    "--update-if-exists",
-    is_flag=True,
-    default=False,
-    help="If the dataset already exists, update it instead of skipping it.",
-)
-@click.option(
-    "--archive",
-    is_flag=True,
-    default=False,
-    help="If set, archive datasets",
-)
-@click.option(
-    "--allow-unsafe",
-    is_flag=True,
-    default=False,
-    help="Allow unsafe changes to a dataset. Take care!",
 )
 @click.option(
     "--record-path",
@@ -335,12 +283,6 @@ def queue_to_odc(
     default=None,
     help="A path to a list (one item per line, in txt or gzip format) of valide region_codes to include",
 )
-@click.option(
-    "--absolute",
-    is_flag=True,
-    default=False,
-    help="Use absolute paths when converting from stac",
-)
 @click.argument("queue_name", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -348,15 +290,15 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
     stac,
-    odc_metadata_link,
-    limit,
+    absolute,
     update,
     update_if_exists,
-    archive,
     allow_unsafe,
+    archive,
+    limit,
+    odc_metadata_link,
     record_path,
     region_code_list_uri,
-    absolute,
     queue_name,
     product,
 ):
@@ -364,7 +306,10 @@ def cli(
 
     transform = None
     if stac:
-        transform = lambda stat_doc: stac_transform(stat_doc, relative=not absolute)
+        if absolute:
+            transform = stac_transform_absolute
+        else:
+            transform = stac_transform
 
     candidate_products = product.split()
 

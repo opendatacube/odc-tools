@@ -7,7 +7,7 @@ import datetime
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Generator, Tuple
+from typing import Dict, Tuple
 
 import click
 import pystac
@@ -15,9 +15,11 @@ import rasterio
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
-from odc.apps.dc_tools.utils import get_esri_list, index_update_dataset
+from odc.apps.dc_tools.utils import (get_esri_list, index_update_dataset,
+                                     limit, update_if_exists)
 from odc.index.stac import stac_transform
 from pyproj import Transformer
+from pystac.extensions.projection import ProjectionExtension
 
 ESRI_LANDCOVER_PRODUCT = (
     "https://raw.githubusercontent.com/opendatacube/"
@@ -79,11 +81,11 @@ def get_item(uri: str) -> Tuple[pystac.Item, str]:
         properties={
             "odc:product": "esri_land_cover",
             "odc:region_code": region.strip(),
-        },
-        stac_extensions=["projection"],
+        }
     )
-
-    item.ext.projection.epsg = crs
+    ProjectionExtension.add_to(item)
+    proj_ext = ProjectionExtension.ext(item)
+    proj_ext.apply(crs, transform=transform, shape=shape)
 
     asset = pystac.Asset(
         href=uri,
@@ -92,9 +94,6 @@ def get_item(uri: str) -> Tuple[pystac.Item, str]:
         title="classification",
     )
     item.add_asset("classification", asset)
-
-    item.ext.projection.set_transform(transform, asset=asset)
-    item.ext.projection.set_shape(shape, asset=asset)
 
     return item, uri
 
@@ -121,32 +120,22 @@ def esri_lc_to_dc(dc: Datacube, limit: int, update: bool) -> Tuple[int, int]:
             )
             success += 1
         except Exception as e:
-            logging.warning(f"Failed to index {uri} with exception {e}")
+            logging.exception(f"Failed to index {uri} with exception {e}")
             failure += 1
 
     return success, failure
 
 
 @click.command("esri-lc-to-dc")
-@click.option(
-    "--limit",
-    default=None,
-    type=int,
-    help="Stop indexing after n datasets have been indexed.",
-)
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="If set, update instead of add datasets",
-)
+@limit
+@update_if_exists
 @click.option(
     "--add-product",
     is_flag=True,
     default=False,
     help="If set, add the product too",
 )
-def cli(limit, update, add_product):
+def cli(limit, update_if_exists, add_product):
     """
     Add all of the ESRI Land Cover scenes to an ODC Database.
     Optionally add the product definition with `--add-product`.
@@ -160,7 +149,7 @@ def cli(limit, update, add_product):
     if add_product:
         add_esri_lc_product(dc)
 
-    added, failed = esri_lc_to_dc(dc, limit, update)
+    added, failed = esri_lc_to_dc(dc, limit, update_if_exists)
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
 

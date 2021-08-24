@@ -15,8 +15,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
 
     - name: Config
       id: cfg
@@ -60,12 +58,12 @@ jobs:
         docker pull opendatacube/odc-test-runner:latest || true
         make -C docker dkr-no-deps
 
-    - name: Run tests
-      timeout-minutes: 10
+    - name: Run tests and integration tests
+      timeout-minutes: 20
+      shell: bash
       run: |
-        cd tests
-        docker-compose up -d
-        docker-compose exec -T tools-tester pytest --timeout=30
+        cd docker
+        make run-test
 
     - name: DockerHub Login
       if: steps.cfg.outputs.push_image == 'yes'
@@ -77,4 +75,3 @@ jobs:
       if: steps.cfg.outputs.push_image == 'yes'
       run: |
         docker push opendatacube/odc-test-runner:latest
-

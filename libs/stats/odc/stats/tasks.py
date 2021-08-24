@@ -131,6 +131,7 @@ class SaveTasks:
         dc: Datacube,
         product: str,
         msg: Callable[[str], Any],
+        dataset_filter: Optional[dict] = {},
         temporal_range: Optional[DateTimeRange] = None,
         tiles: Optional[TilesRange2d] = None,
     ):
@@ -146,7 +147,7 @@ class SaveTasks:
             freq=self._frequency,
         )
 
-        query = dict(product=product)
+        query = dict(product=product, **dataset_filter)
 
         if tiles is not None:
             (x0, x1), (y0, y1) = tiles
@@ -189,6 +190,7 @@ class SaveTasks:
         self,
         dc: Datacube,
         product: str,
+        dataset_filter: Optional[dict] = {},
         temporal_range: Union[str, DateTimeRange, None] = None,
         tiles: Optional[TilesRange2d] = None,
         predicate: Optional[Callable[[Dataset], bool]] = None,
@@ -199,6 +201,7 @@ class SaveTasks:
     ) -> bool:
         """
         :param product: Product name to consume
+        :param dataset_filter: Optionally apply search filter on Datasets
         :param temporal_range: Optionally  limit query in time
         :param tiles: Optionally limit query to a range of tiles
         :param predicate: If supplied filter Datasets as they come in with custom filter, Dataset->Bool
@@ -233,7 +236,7 @@ class SaveTasks:
             temporal_range = DateTimeRange(temporal_range)
 
         if dss is None:
-            dss, n_dss, cfg = self._get_dss(dc, product, msg, temporal_range, tiles)
+            dss, n_dss, cfg = self._get_dss(dc, product, msg, dataset_filter, temporal_range, tiles)
         else:
 
             cfg: Dict[str, Any] = dict(
@@ -469,10 +472,14 @@ class TaskReader:
         tile_index: TileIdx_txy,
         product: Optional[OutputProduct] = None,
         source: Any = None,
+        ds_filters: Optional[str] = None,
     ) -> Task:
         product = self._resolve_product(product)
 
         dss = self.datasets(tile_index)
+        if ds_filters is not None:
+            ds_checker = DatasetChecker(ds_filters)
+            dss = tuple(ds for ds in dss if ds_checker.check_dataset(ds))
         tidx_xy = _xy(tile_index)
 
         return Task(
@@ -485,17 +492,18 @@ class TaskReader:
         )
 
     def stream(
-        self, tiles: Iterable[TileIdx_txy], product: Optional[OutputProduct] = None
+        self, tiles: Iterable[TileIdx_txy], product: Optional[OutputProduct] = None, ds_filters: Optional[str] = None,
     ) -> Iterator[Task]:
         product = self._resolve_product(product)
         for tidx in tiles:
-            yield self.load_task(tidx, product)
+            yield self.load_task(tidx, product, ds_filters=ds_filters)
 
     def stream_from_sqs(
         self,
         sqs_queue,
         product: Optional[OutputProduct] = None,
         visibility_timeout: int = 300,
+        ds_filters: Optional[str] = None,
         **kw,
     ) -> Iterator[Task]:
         from odc.aws.queue import get_messages, get_queue
@@ -530,5 +538,34 @@ class TaskReader:
                         raise ValueError(
                             f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
                         )
+            yield self.load_task(tidx, product, source=token, ds_filters=ds_filters)
 
-            yield self.load_task(tidx, product, source=token)
+
+class DatasetChecker:
+    
+    def __init__(self, ds_filters):
+        ds_filters = ds_filters.split('|')
+        self.ds_filters = tuple(json.loads(ds_filter) for ds_filter in ds_filters)
+    
+    @staticmethod
+    def check_dt(ds_filter, datetime_str):
+        time_range = DateTimeRange(ds_filter["datetime"])
+        dt = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+        return dt in time_range
+
+    def check_ds_1(self, ds_filter, ds):
+        valid = True
+        for key in ds_filter.keys():
+            if key == 'datetime':
+                valid &= self.check_dt(ds_filter, ds.metadata_doc["properties"][key])
+            else:
+                valid &= ds_filter[key] == ds.metadata_doc["properties"][key]
+
+        return valid
+
+    def check_dataset(self, ds):
+        valid = False
+        for ds_filter in self.ds_filters:
+            valid |= self.check_ds_1(ds_filter, ds)
+
+        return valid

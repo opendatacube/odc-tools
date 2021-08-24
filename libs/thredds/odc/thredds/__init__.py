@@ -1,5 +1,6 @@
 """Thredds crawling and YAML fetching utilities
 """
+from ._version import __version__
 from thredds_crawler.crawl import Crawl
 import requests
 from urllib.parse import urlparse
