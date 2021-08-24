@@ -4,7 +4,7 @@ import os
 import boto3
 from moto import mock_sqs
 import pytest
-from odc.aws.queue import redrive_queue, list_queues, get_queue_attributes
+from odc.aws.queue import redrive_queue, list_queues, get_queue_attributes, get_queue
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
 DEAD_QUEUE_NAME = "mock-dead-queue"
@@ -89,8 +89,6 @@ def test_get_queue_attributes(aws_env):
 
     resource.create_queue(QueueName="queue1")
 
-    all_attributes = get_queue_attributes(queue_name="queue1")
-
     valid_attributes = [
         'ApproximateNumberOfMessages',
         'ApproximateNumberOfMessagesDelayed',
@@ -105,7 +103,10 @@ def test_get_queue_attributes(aws_env):
         'VisibilityTimeout'
     ]
 
+    all_attributes = get_queue_attributes(queue_name="queue1")
+
     assert len(all_attributes) == len(valid_attributes)
+
     for att in valid_attributes:
-        att_returned = get_queue_attributes(queue_name="queue1", attribute=att)
-        assert att_returned.get(att)
+        assert get_queue_attributes(queue_name="queue1", attribute=att)
+
