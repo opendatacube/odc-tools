@@ -139,22 +139,18 @@ jobs:
         && github.repository == 'opendatacube/odc-tools'
 
       run: |
-        if [ -n "${{ secrets.DockerPassword }}" ]; then
-           echo "Login to DockerHub as ${DOCKER_USER}"
-           echo "${{ secrets.DockerPassword }}" | docker login -u "${DOCKER_USER}" --password-stdin
+        if [ -n "${{ secrets.DOCKER_USER }}" ]; then
+           echo "Login to DockerHub as ${{ secrets.DOCKER_USER }}"
+           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
            echo "::set-output name=logged_in::yes"
         else
-           echo "Set DockerPassword secret to push to docker"
+           echo "Set DOCKER_{PASSWORD,USER} secrets to push to docker"
+           echo "::set-output name=logged_in::no"
         fi
 
     - name: DockerHub Push
       if: |
-        github.event_name == 'push'
-        && github.ref == 'refs/heads/develop'
-        && github.repository == 'opendatacube/odc-tools'
-        && steps.dkr.outputs.logged_in == 'yes'
+        steps.dkr.outputs.logged_in == 'yes'
 
       run: |
-        if [ -n "${{ secrets.DockerPassword }}" ]; then
-           docker push "${{ steps.cfg.outputs.docker_image }}"
-        fi
+        docker push "${{ steps.cfg.outputs.docker_image }}"
