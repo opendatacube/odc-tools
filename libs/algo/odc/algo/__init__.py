@@ -63,6 +63,16 @@ from ._warp import xr_reproject
 
 from ._tiff import save_cog
 
+from ._broadcast import (
+    pool_broadcast,
+)
+
+from ._dask_stream import (
+    dask_compute_stream,
+    seq_to_bags,
+)
+
+
 __all__ = (
     "apply_numexpr",
     "safe_div",
@@ -107,4 +117,7 @@ __all__ = (
     "colorize",
     "xr_reproject",
     "save_cog",
+    "pool_broadcast",
+    "dask_compute_stream",
+    "seq_to_bags",
 )
