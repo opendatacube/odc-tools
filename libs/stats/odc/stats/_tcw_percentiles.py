@@ -40,7 +40,6 @@ class StatsTCWPC(StatsPluginInterface):
         _measurments
         return _measurments
 
-    @staticmethod
     def _native_tr(self, xx):
         """
         Loads data in its native projection.
@@ -74,7 +73,7 @@ class StatsTCWPC(StatsPluginInterface):
             task.datasets,
             bands=["blue", "green", "red", "nir", "swir1", "swir2", "fmask"],
             geobox=task.geobox,
-            native_transform=partial(self._native_tr, self=self),
+            native_transform=self._native_tr,
             fuser=self._fuser,
             groupby="solar_day",
             resampling=self.resampling,
