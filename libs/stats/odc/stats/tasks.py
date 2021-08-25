@@ -10,6 +10,7 @@ import json
 import os
 from tqdm.auto import tqdm
 from urllib.parse import urlparse
+import logging
 
 from odc.dscache import DatasetCache
 from datacube import Datacube
@@ -420,6 +421,9 @@ class TaskReader:
         Adding the missing _grid, _gridspec, _gridspec and _all_tiles which skip for sqs task init.
         Upading the cfg which used placeholder filedb path for sqs task init.
         """
+
+        _log = logging.getLogger(__name__)
+
         self._cache_path = None
 
         if isinstance(cache, str):
@@ -440,6 +444,19 @@ class TaskReader:
         self._grid = grid
         self._gridspec = gridspec
         self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid)) if cache else []
+
+        # first time to access the filedb, then it can do the resolution check
+        if self.resolution is not None:
+            _log.info(f"Changing resolution to {self.resolution[0], self.resolution[1]}")
+            if self.is_compatible_resolution(self.resolution):
+                self.change_resolution(self.resolution)
+            else: # if resolution has issue, stop init 
+                _log.error(
+                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                )
+                raise ValueError(
+                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                )
 
 
     def __del__(self):
@@ -530,18 +547,6 @@ class TaskReader:
             local_cache_file = key.split("/")[-1]
             if not os.path.isfile(local_cache_file):  # use the download filedb from S3 as the init context flag
                 self.init_from_sqs(filedb)
-                # first time to access the filedb, then it can do the resolution check
-                if self.resolution is not None:
-                    _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
-                    if self.rdr.is_compatible_resolution(self.rdr.resolution):
-                        self.rdr.change_resolution(resolution)
-                    else:
-                        _log.error(
-                            f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
-                        )
-                        raise ValueError(
-                            f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
-                        )
             yield self.load_task(tidx, product, source=token, ds_filters=ds_filters)
 
 
