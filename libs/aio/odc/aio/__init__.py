@@ -5,6 +5,7 @@ import botocore
 import aiobotocore
 from aiobotocore.session import get_session
 from aiobotocore.config import AioConfig
+from botocore.exceptions import ClientError, BotoCoreError
 import asyncio
 from fnmatch import fnmatch
 from types import SimpleNamespace
@@ -38,7 +39,6 @@ async def s3_fetch_object(url, s3, range=None, **kw):
         .range = None | (in, out)
         .error = str| botocore.Exception class
     """
-    from botocore.exceptions import ClientError, BotoCoreError
 
     def result(data=None, last_modified=None, error=None):
         return SimpleNamespace(
@@ -127,7 +127,6 @@ async def s3_head_object(url, s3, **kw):
     (None, error) -- on failure
 
     """
-    from botocore.exceptions import ClientError, BotoCoreError
 
     def unpack(url, rr):
         return SimpleNamespace(
@@ -482,7 +481,6 @@ class S3Fetcher(object):
           .error = str| botocore.Exception class
 
         """
-        from odc.ppt import future_results
 
         def generate_requests(urls, s3, **kw):
             for url in urls:
@@ -540,7 +538,10 @@ def s3_find_glob(
                 yield f
 
     def do_dir_query(qq, dirs_pred=None):
-        return (SimpleNamespace(url=url) for url in s3.dir_dir(qq.base, qq.depth, pred=dirs_pred, **kw))
+        return (
+            SimpleNamespace(url=url)
+            for url in s3.dir_dir(qq.base, qq.depth, pred=dirs_pred, **kw)
+        )
 
     try:
         qq = parse_query(glob_pattern)
@@ -561,11 +562,11 @@ def s3_find_glob(
     else:
         # fixed depth query
         _, prefix = s3_url_parse(glob_pattern)
-        dirs_glob = prefix.split('/')[:-1]
+        dirs_glob = prefix.split("/")[:-1]
 
         def dirs_pred(f):
-            n = f.count('/')
-            _glob = '/'.join(dirs_glob[:n]) + '/'
+            n = f.count("/")
+            _glob = "/".join(dirs_glob[:n]) + "/"
             return fnmatch(f, _glob)
 
         if qq.glob is not None:
