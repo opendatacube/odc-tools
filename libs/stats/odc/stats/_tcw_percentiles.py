@@ -74,7 +74,7 @@ class StatsTCWPC(StatsPluginInterface):
             task.datasets,
             bands=["blue", "green", "red", "nir", "swir1", "swir2", "fmask"],
             geobox=task.geobox,
-            native_transform=self._native_tr,
+            native_transform=partial(self._native_tr, self=self),
             fuser=self._fuser,
             groupby="solar_day",
             resampling=self.resampling,
