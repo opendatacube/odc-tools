@@ -9,7 +9,6 @@ from .text import (
     slurp,
 )
 from .tar import tar_doc_stream
-from .path import default_base_dir, normalise_path
 from .timer import RateEstimator
 
 
@@ -20,7 +19,5 @@ __all__ = (
     "slurp_lines",
     "parse_mtl",
     "tar_doc_stream",
-    "default_base_dir",
-    "normalise_path",
     "RateEstimator",
 )
