@@ -2,7 +2,7 @@
 Fractional Cover Percentiles
 """
 from functools import partial
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 import xarray as xr
 import numpy as np
 from odc.stats.model import Task
@@ -27,8 +27,12 @@ class StatsTCWPC(StatsPluginInterface):
     def __init__(
         self,
         resampling: str = "bilinear",
+        coefficients: Dict[str, float] = {
+            "red": 0.0135, "blue": 0.2021, "green": 0.3102, "nir": 0.1584, "swir1": -0.6806, "swir2": -0.6109
+            },
     ):
         self.resampling = resampling
+        self.coefficients = coefficients
 
     @property
     def measurements(self) -> Tuple[str, ...]:
@@ -37,7 +41,7 @@ class StatsTCWPC(StatsPluginInterface):
         return _measurments
 
     @staticmethod
-    def _native_tr(xx):
+    def _native_tr(self, xx):
         """
         Loads data in its native projection.
         """
@@ -48,7 +52,7 @@ class StatsTCWPC(StatsPluginInterface):
         for band in xx.data_vars.keys():
             bad = bad | (xx[band] == -999)
 
-        tcw = 0.0135 * xx['blue'] + 0.2021 * xx['green'] + 0.3102 * xx['red'] + 0.1584 * xx['nir'] - 0.6806 * xx['swir1'] - 0.6109 * xx['swir2'] 
+        tcw = sum(coeff * xx[band] for band, coeff in self.coefficients.items())
         
         xx = xx.drop_vars(xx.data_vars.keys())
         xx['tcw'] = tcw.astype(np.int16)
