@@ -89,32 +89,3 @@ def pool_broadcast(
 
     # block until all done and return result
     return [f.result() for f in ff]
-
-
-def rio_activate(client: Client, aws=None, defaults=True, **kwargs):
-    """Inject activated rasterio.Env into every worker thread.
-
-    This de-activates previously setup environment.
-
-    :param aws: Dictionary of options for rasterio.session.AWSSession
-                OR False in which case session won't be setup
-                OR None -- session = rasterio.session.AWSSession()
-
-    :param defaults: Supply False to not inject COG defaults
-    :param **kwargs: Passed on to rasterio.Env(..) constructor
-    """
-    from ._rio import activate_rio_env
-
-    return pool_broadcast(
-        client, activate_rio_env, aws=aws, defaults=defaults, **kwargs
-    )
-
-
-def rio_getenv(client, sanitize=True):
-    """Query currently active rio environment from all worker threads.
-
-    :param sanitize: If True replace sensitive Values with 'x'
-    """
-    from ._rio import get_rio_env
-
-    return pool_broadcast(client, get_rio_env, sanitize=sanitize)
