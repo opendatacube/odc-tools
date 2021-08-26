@@ -71,32 +71,3 @@ def parse_query(url_query):
     base = base.rstrip("/") + "/"
 
     return SimpleNamespace(base=base, depth=depth, file=_file, glob=glob)
-
-
-def test_parse_query():
-    import pytest
-
-    E = SimpleNamespace
-    base = "s3://bucket/path/a/"
-
-    assert parse_query(base) == E(base=base, depth=None, glob=None, file=None)
-    assert parse_query(base + "some") == E(
-        base=base + "some/", depth=None, glob=None, file=None
-    )
-    assert parse_query(base + "*") == E(base=base, depth=0, glob="*", file=None)
-    assert parse_query(base + "*/*txt") == E(base=base, depth=1, glob="*txt", file=None)
-    assert parse_query(base + "*/*/*txt") == E(
-        base=base, depth=2, glob="*txt", file=None
-    )
-    assert parse_query(base + "*/*/file.txt") == E(
-        base=base, depth=2, glob=None, file="file.txt"
-    )
-    assert parse_query(base + "**/*txt") == E(
-        base=base, depth=-1, glob="*txt", file=None
-    )
-    assert parse_query(base + "*/*/something/*yaml") == E(
-        base=base, depth=3, glob="*yaml", file=None
-    )
-
-    with pytest.raises(ValueError):
-        parse_query(base + "**/*/something/*yaml")
