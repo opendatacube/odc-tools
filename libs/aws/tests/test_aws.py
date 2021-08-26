@@ -1,11 +1,14 @@
 import json
 import os
+from types import SimpleNamespace
 
 import boto3
 import pytest
 from moto import mock_sqs
 
+
 from odc.aws.queue import redrive_queue, get_queues
+from odc.aws._find import parse_query
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
 DEAD_QUEUE_NAME = "mock-dead-queue"
@@ -17,7 +20,7 @@ def get_n_messages(queue):
 
 @pytest.fixture
 def aws_env(monkeypatch):
-    if 'AWS_DEFAULT_REGION' not in os.environ:
+    if "AWS_DEFAULT_REGION" not in os.environ:
         monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
 
 
@@ -85,23 +88,23 @@ def test_get_queues(aws_env):
     assert "b_queue2" in list(queues)[0].url
 
     # Test prefix and contains
-    queues = get_queues(prefix='c', contains="3")
+    queues = get_queues(prefix="c", contains="3")
     assert "c_queue3" in list(queues)[0].url
 
     # Test prefix and not contains
-    queues = get_queues(prefix='d', contains="5")
+    queues = get_queues(prefix="d", contains="5")
     assert len(list(queues)) == 0
 
     # Test contains and not prefix
-    queues = get_queues(prefix='q', contains="2")
+    queues = get_queues(prefix="q", contains="2")
     assert len(list(queues)) == 0
 
     # Test not found prefix
-    queues = get_queues(prefix='fake_start')
+    queues = get_queues(prefix="fake_start")
     assert len(list(queues)) == 0
 
     # Test not found contains
-    queues = get_queues(contains='not_there')
+    queues = get_queues(contains="not_there")
     assert len(list(queues)) == 0
 
 
@@ -110,3 +113,30 @@ def test_get_queues_empty(aws_env):
     queues = get_queues()
 
     assert list(queues) == []
+
+
+def test_parse_query():
+    E = SimpleNamespace
+    base = "s3://bucket/path/a/"
+
+    assert parse_query(base) == E(base=base, depth=None, glob=None, file=None)
+    assert parse_query(base + "some") == E(
+        base=base + "some/", depth=None, glob=None, file=None
+    )
+    assert parse_query(base + "*") == E(base=base, depth=0, glob="*", file=None)
+    assert parse_query(base + "*/*txt") == E(base=base, depth=1, glob="*txt", file=None)
+    assert parse_query(base + "*/*/*txt") == E(
+        base=base, depth=2, glob="*txt", file=None
+    )
+    assert parse_query(base + "*/*/file.txt") == E(
+        base=base, depth=2, glob=None, file="file.txt"
+    )
+    assert parse_query(base + "**/*txt") == E(
+        base=base, depth=-1, glob="*txt", file=None
+    )
+    assert parse_query(base + "*/*/something/*yaml") == E(
+        base=base, depth=3, glob="*yaml", file=None
+    )
+
+    with pytest.raises(ValueError):
+        parse_query(base + "**/*/something/*yaml")
