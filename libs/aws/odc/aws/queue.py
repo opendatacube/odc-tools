@@ -77,7 +77,7 @@ def redrive_queue(
     if len(message_group) > 0:
         message_group = post_messages(alive_queue, message_group)
 
-    # Return the number of messages that were redriven.
+    # Return the number of messages that were re-driven.
     return count
 
 
@@ -90,37 +90,22 @@ def get_queue(queue_name: str):
     return queue
 
 
-def list_queues(region: Optional[str] = None):
+def get_queues(prefix: str = None, contains: str = None):
     """
-    Return a list of queues which the user is allowed to see
+    Return a list of sqs queues which the user is allowed to see and filtered by the parameters provided
     """
     sqs = boto3.resource("sqs")
-    return list(sqs.queues.all())
 
+    queues = sqs.queues.all()
+    if prefix is not None:
+        queues = queues.filter(QueueNamePrefix=prefix)
 
-def get_queue_attributes(queue_name: str, attribute: Optional[str] = None) -> dict:
-    """
-    Return informed queue's attribute or a list of queue's attributes when attribute isn't informed
-    Valid attribute options:
-        'ApproximateNumberOfMessages',
-        'ApproximateNumberOfMessagesDelayed',
-        'ApproximateNumberOfMessagesNotVisible',
-        'CreatedTimestamp',
-        'DelaySeconds',
-        'LastModifiedTimestamp',
-        'MaximumMessageSize',
-        'MessageRetentionPeriod',
-        'QueueArn',
-        'ReceiveMessageWaitTimeSeconds',
-        'VisibilityTimeout'
-    """
-
-    queue = get_queue(queue_name=queue_name)
-
-    if attribute is None:
-        return queue.attributes
-
-    return {attribute: queue.attributes.get(attribute)}
+    if contains is not None:
+        for queue in queues:
+            if contains in queue.attributes.get('QueueArn').split(':')[-1]:
+                yield queue
+    else:
+        yield from queues
 
 
 def publish_message(queue, message: str, message_attributes: Mapping[str, Any] = {}):
@@ -166,8 +151,9 @@ def get_messages(
     :param limit: the maximum number of messages to return from the queue (default to all)
     :param visibility_timeout: A period of time in seconds during which Amazon SQS prevents other consumers
                                from receiving and processing the message
-    :message_attributes: Select what attributes to include in the messages, default All
-    :max_wait: Longest to wait in seconds before assuming queue is empty (default: 10)
+    :param message_attributes: Select what attributes to include in the messages, default All
+    :param max_wait: Longest to wait in seconds before assuming queue is empty (default: 10)
+    :param messages_per_request:
     :**kw: Any other arguments are passed to ``.receive_messages()`` boto3 call
 
     :return: Iterator of sqs messages

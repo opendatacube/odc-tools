@@ -5,7 +5,7 @@ import boto3
 import pytest
 from moto import mock_sqs
 
-from odc.aws.queue import redrive_queue, list_queues, get_queue_attributes
+from odc.aws.queue import redrive_queue, get_queues
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
 DEAD_QUEUE_NAME = "mock-dead-queue"
@@ -49,7 +49,7 @@ def test_redrive_to_queue(aws_env):
     dead_queue.send_message(MessageBody=json.dumps({"test": 2}))
     assert get_n_messages(dead_queue) == 1
 
-    count = redrive_queue(DEAD_QUEUE_NAME, ALIVE_QUEUE_NAME, max_wait=0)
+    redrive_queue(DEAD_QUEUE_NAME, ALIVE_QUEUE_NAME, max_wait=0)
     assert get_n_messages(dead_queue) == 1
     assert get_n_messages(alive_queue) == 2
 
@@ -64,50 +64,49 @@ def test_redrive_to_queue(aws_env):
 
 
 @mock_sqs
-def test_list_queues(aws_env):
+def test_get_queues(aws_env):
     resource = boto3.resource("sqs")
 
-    resource.create_queue(QueueName="queue1")
-    resource.create_queue(QueueName="queue2")
-    resource.create_queue(QueueName="queue3")
-    resource.create_queue(QueueName="queue4")
+    resource.create_queue(QueueName="a_queue1")
+    resource.create_queue(QueueName="b_queue2")
+    resource.create_queue(QueueName="c_queue3")
+    resource.create_queue(QueueName="d_queue4")
 
-    queues = list_queues()
+    queues = get_queues()
 
-    assert len(queues) == 4
+    assert len(list(queues)) == 4
+
+    # Test prefix
+    queues = get_queues(prefix="a_queue1")
+    assert "queue1" in list(queues)[0].url
+
+    # Test prefix
+    queues = get_queues(contains="2")
+    assert "b_queue2" in list(queues)[0].url
+
+    # Test prefix and contains
+    queues = get_queues(prefix='c', contains="3")
+    assert "c_queue3" in list(queues)[0].url
+
+    # Test prefix and not contains
+    queues = get_queues(prefix='d', contains="5")
+    assert len(list(queues)) == 0
+
+    # Test contains and not prefix
+    queues = get_queues(prefix='q', contains="2")
+    assert len(list(queues)) == 0
+
+    # Test not found prefix
+    queues = get_queues(prefix='fake_start')
+    assert len(list(queues)) == 0
+
+    # Test not found contains
+    queues = get_queues(contains='not_there')
+    assert len(list(queues)) == 0
 
 
 @mock_sqs
-def test_list_queues_empty(aws_env):
-    queues = list_queues()
+def test_get_queues_empty(aws_env):
+    queues = get_queues()
 
-    assert queues == []
-
-
-@mock_sqs
-def test_get_queue_attributes(aws_env):
-    resource = boto3.resource("sqs")
-
-    resource.create_queue(QueueName="queue1")
-
-    valid_attributes = [
-        'ApproximateNumberOfMessages',
-        'ApproximateNumberOfMessagesDelayed',
-        'ApproximateNumberOfMessagesNotVisible',
-        'CreatedTimestamp',
-        'DelaySeconds',
-        'LastModifiedTimestamp',
-        'MaximumMessageSize',
-        'MessageRetentionPeriod',
-        'QueueArn',
-        'ReceiveMessageWaitTimeSeconds',
-        'VisibilityTimeout'
-    ]
-
-    all_attributes = get_queue_attributes(queue_name="queue1")
-
-    assert len(all_attributes) == len(valid_attributes)
-
-    for att in valid_attributes:
-        att_returned = get_queue_attributes(queue_name="queue1", attribute=att)
-        assert att_returned.get(att)
+    assert list(queues) == []
