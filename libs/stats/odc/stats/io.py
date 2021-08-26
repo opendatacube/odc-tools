@@ -278,9 +278,17 @@ class S3COGSink:
                                                 proc.VERSION)
 
         # add accessories files. we add the filename because odc-metadata need the filename, not full path.
-        for band, _ in task.paths(ext="tif").items():
-            thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-            dataset_assembler._accessories[f"thumbnail:{band}"] = Path(urlparse(thumbnail_path).path).name
+        if task.product.preview_image_singleband:
+            for single_band in task.product.preview_image_singleband:
+                band = single_band['measurement']
+                thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
+                dataset_assembler._accessories[f"thumbnail:{band}"] = Path(urlparse(thumbnail_path).path).name
+
+        if task.product.preview_image:
+            for single_image in task.product.preview_image:
+                thumbnail_name = single_image['thumbnail_name']
+                thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
+                dataset_assembler._accessories[f"thumbnail:{thumbnail_name}"] = Path(urlparse(thumbnail_path).path).name
 
         dataset_assembler._accessories["checksum:sha1"] = Path(urlparse(sha1_url).path).name
         dataset_assembler._accessories["metadata:processor"] = Path(urlparse(proc_info_url).path).name
@@ -365,10 +373,13 @@ class S3COGSink:
 
                 thumbnail_name = single_image['thumbnail_name']
                 thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
-
-                thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
-                                                                          input_geobox=input_geobox,
-                                                                          nodata=task.product.nodata[band])
+                
+                for display_band in ['red', 'green', 'blue']:
+                    if display_band in single_image:
+                        thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
+                                                                                input_geobox=input_geobox,
+                                                                                nodata=task.product.nodata[single_image[display_band]])
+                        break
 
                 thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
         
