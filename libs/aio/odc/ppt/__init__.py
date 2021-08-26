@@ -2,8 +2,6 @@
 """
 from threading import BoundedSemaphore
 
-from ._version import __version__
-
 EOS_MARKER = object()
 
 
