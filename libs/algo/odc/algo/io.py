@@ -14,13 +14,13 @@ from warnings import warn
 import xarray as xr
 
 from odc.index import group_by_nothing, solar_offset
-from odc.algo import enum_to_bool, xr_reproject
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.utils.geometry import GeoBox, gbox
 from datacube.api.core import output_geobox
 from datacube.testutils.io import native_geobox
-from ._masking import _max_fuser, _nodata_fuser
+from ._masking import _max_fuser, _nodata_fuser, enum_to_bool
+from ._warp import xr_reproject
 
 
 def compute_native_load_geobox(
@@ -352,8 +352,7 @@ def load_enum_filtered(
     def native_op(xx: xr.Dataset) -> xr.Dataset:
         _xx = enum_to_bool(xx[band], categories)
         return xr.Dataset(
-            {band: _xx},
-            attrs={"native": True},  # <- native flag needed for fuser
+            {band: _xx}, attrs={"native": True},  # <- native flag needed for fuser
         )
 
     def fuser(xx: xr.Dataset) -> xr.Dataset:
