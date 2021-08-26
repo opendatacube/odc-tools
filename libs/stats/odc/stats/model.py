@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
 
 import pandas as pd
-from pyproj.transformer import transform
 import pystac
 import xarray as xr
 from datacube.model import Dataset
