@@ -299,7 +299,7 @@ class Task:
             ))
         else:
             lineage = tuple(ds.id for ds in self.datasets)
-
+            
         return lineage
 
     def _prefix(self, relative_to: str = "dataset") -> str:
@@ -358,14 +358,21 @@ class Task:
         platforms = [] # platforms are the concat value in stats
 
         for dataset in self.datasets:
-            source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
-            dataset_assembler.add_source_dataset(source_datasetdoc,
-                                                 classifier=self.product.classifier,
-                                                 auto_inherit_properties=True, # it will grab all useful input dataset preperties
-                                                 inherit_geometry=True,
-                                                 inherit_skip_properties=self.product.inherit_skip_properties)
-            if 'eo:platform' in source_datasetdoc.properties:
-                platforms.append(source_datasetdoc.properties['eo:platform'])
+            if 'fused' in dataset.type.name:
+                sources = [e['id'] for e in dataset.metadata.sources.values()]
+                platforms.append(dataset.metadata_doc['properties']['eo:platform'])
+                dataset_assembler.datetime = dataset.metadata_doc['properties']['datetime']
+                dataset_assembler.note_source_datasets(self.product.classifier,
+                                                       *sources)
+            else:
+                source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
+                dataset_assembler.add_source_dataset(source_datasetdoc,
+                                                    classifier=self.product.classifier,
+                                                    auto_inherit_properties=True, # it will grab all useful input dataset preperties
+                                                    inherit_geometry=True,
+                                                    inherit_skip_properties=self.product.inherit_skip_properties)
+                if 'eo:platform' in source_datasetdoc.properties:
+                    platforms.append(source_datasetdoc.properties['eo:platform'])
 
         if len(platforms) > 0:
             dataset_assembler.platform = ','.join(sorted(set(platforms)))
