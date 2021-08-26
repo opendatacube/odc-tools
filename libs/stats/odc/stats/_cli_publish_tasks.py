@@ -1,5 +1,6 @@
 import sys
 import click
+import json
 
 from ._cli_common import main, parse_all_tasks
 
@@ -40,7 +41,7 @@ def publish_to_queue(db, queue, verbose, dryrun, bunch_size, tasks):
     If no tasks are supplied all tasks will be published the queue.
     """
     from odc.aws.queue import get_queue, publish_messages
-    from .tasks import TaskReader, render_task
+    from .tasks import TaskReader, render_sqs
     import toolz
 
     rdr = TaskReader(db)
@@ -60,9 +61,10 @@ def publish_to_queue(db, queue, verbose, dryrun, bunch_size, tasks):
         sys.exit(0)
 
     queue = get_queue(queue)
-    # TODO: switch to JSON for SQS message body
+    
+    # We assume the db files are always be the S3 uri. If they are not, there is no need to use SQS queue to process.
     messages = (
-        dict(Id=str(idx), MessageBody=render_task(tidx))
+        dict(Id=str(idx), MessageBody=json.dumps(render_sqs(tidx, db)))
         for idx, tidx in enumerate(tasks)
     )
 

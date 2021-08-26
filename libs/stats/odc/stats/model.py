@@ -514,7 +514,7 @@ class TaskRunnerConfig:
         )
 
     # Input
-    filedb: str
+    filedb: str = ""
     aws_unsigned: bool = True
 
     # Plugin
