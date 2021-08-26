@@ -20,14 +20,12 @@ Full list of libraries, and install instructions:
 - `odc.algo` algorithms (GeoMedian wrapper is here)
 - `odc.stats` large scale processing framework (under development)
 - `odc.ui` tools for data visualization in notebook/lab
-- `odc.index` extra utils for working with datacube database
-- `odc.aws` AWS/S3 utilities, used by apps mainly
-- `odc.aio` faster concurrent fetching from S3 with async, used by apps
+- `odc.stac` STAC to ODC conversion tools
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
 - `odc.io` common IO utilities, used by apps mainly
-- `odc.dtools` tools/experiments in the area of dask.distributed/dask<>datacube integration
 - `odc.geom` geometry utils and prototypes
-- `odc.ppt` parallel processing helper methods, internal lib
+- `odc.aws` AWS/S3 utilities, used by apps mainly
+- `odc.aio` faster concurrent fetching from S3 with async, used by apps
 - `odc.{thredds,azure}` internal libs for cloud IO
 
 Pre-release of these libraries is on PyPI now, so can be installed with `pip`
@@ -37,15 +35,14 @@ pushed to `https://packages.dea.ga.gov.au`, and can be installed like so:
 ```
 pip install --extra-index-url="https://packages.dea.ga.gov.au" \
   odc-ui \
-  odc-index \
+  odc-stac \
   odc-stats \
   odc-geom \
   odc-algo \
   odc-io \
   odc-aws \
   odc-aio \
-  odc-dscache \
-  odc-dtools
+  odc-dscache
 ```
 
 **NOTE**: on Ubuntu 18.04 the default `pip` version is awfully old and does not
