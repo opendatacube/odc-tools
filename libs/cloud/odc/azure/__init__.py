@@ -1,6 +1,6 @@
 """Azure blob storage crawling and YAML fetching utilities
 """
-from ._version import __version__
+from ..cloud._version import __version__
 from azure.storage.blob import ContainerClient, BlobClient
 from typing import List, Tuple, Optional
 from multiprocessing.dummy import Pool as ThreadPool
