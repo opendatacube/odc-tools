@@ -1,7 +1,7 @@
 """
 Helper methods for working with AWS
 """
-from ._version import __version__
+from ..cloud._version import __version__
 import os
 import botocore
 import botocore.session

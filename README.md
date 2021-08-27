@@ -23,9 +23,10 @@ Full list of libraries, and install instructions:
 - `odc.stac` STAC to ODC conversion tools
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
 - `odc.io` common IO utilities, used by apps mainly
-- `odc.aws` AWS/S3 utilities, used by apps mainly
-- `odc.aio` faster concurrent fetching from S3 with async, used by apps
-- `odc.{thredds,azure}` internal libs for cloud IO
+- `odc-cloud[ASYNC,AZURE,THREDDS]` cloud crawling support package
+  - `odc.aws` AWS/S3 utilities, used by apps mainly
+  - `odc.aio` faster concurrent fetching from S3 with async, used by apps `odc-cloud[ASYNC]`
+  - `odc.{thredds,azure}` internal libs for cloud IO `odc-cloud[THREDDS,AZURE]`
 
 Pre-release of these libraries is on PyPI now, so can be installed with `pip`
 "the normal way". Most recent development versions of `odc-tools` packages are
@@ -38,8 +39,7 @@ pip install --extra-index-url="https://packages.dea.ga.gov.au" \
   odc-stats \
   odc-algo \
   odc-io \
-  odc-aws \
-  odc-aio \
+  odc-cloud[ASYNC] \
   odc-dscache
 ```
 
