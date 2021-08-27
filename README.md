@@ -23,7 +23,6 @@ Full list of libraries, and install instructions:
 - `odc.stac` STAC to ODC conversion tools
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
 - `odc.io` common IO utilities, used by apps mainly
-- `odc.geom` geometry utils and prototypes
 - `odc.aws` AWS/S3 utilities, used by apps mainly
 - `odc.aio` faster concurrent fetching from S3 with async, used by apps
 - `odc.{thredds,azure}` internal libs for cloud IO
@@ -37,7 +36,6 @@ pip install --extra-index-url="https://packages.dea.ga.gov.au" \
   odc-ui \
   odc-stac \
   odc-stats \
-  odc-geom \
   odc-algo \
   odc-io \
   odc-aws \
