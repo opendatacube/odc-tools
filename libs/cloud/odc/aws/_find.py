@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+from fnmatch import fnmatch
+from itertools import takewhile
 
 
 def s3_file_info(f, bucket):
@@ -12,8 +14,6 @@ def s3_file_info(f, bucket):
 
 
 def norm_predicate(pred=None, glob=None):
-    from fnmatch import fnmatch
-
     def glob_predicate(glob, pred):
         if pred is None:
             return lambda f: fnmatch(f.url, glob)
@@ -35,7 +35,6 @@ def parse_query(url_query):
     - s3://bucket/some/path/*/*/*.yaml
     - s3://bucket/some/path/**/file.yaml
     """
-    from itertools import takewhile
 
     glob_set = set("*[]?")
 

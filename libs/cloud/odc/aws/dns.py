@@ -1,6 +1,6 @@
 """ Tools for interacting with route53
 """
-from . import mk_boto_session, _fetch_text
+from . import mk_boto_session, _fetch_text, ec2_tags
 
 
 def public_ip():
@@ -69,12 +69,10 @@ def dns_delete(domain, route53=None):
 
 
 def cli(args):
-    from . import ec2_tags
-
     def error(msg):
         print(msg, file=sys.stderr)
 
-    def help():
+    def display_help():
         print(
             """Modify DNS record of EC2 instance:
 
@@ -91,11 +89,11 @@ Examples:
 
     n = len(args)
     if n == 0:
-        help()
+        display_help()
         return 0
     elif n == 1:
         if args[0] in ("help", "--help"):
-            help()
+            display_help()
             return 0
         args = (args[0], "auto")
     elif n > 2:

@@ -19,6 +19,7 @@ def find_latest_manifest(prefix, s3, **kw) -> str:
             leaf = d.split("/")[-2]
             if leaf.endswith("Z"):
                 return d + "manifest.json"
+    return ""
 
 
 def retrieve_manifest_files(key: str, s3, schema, **kw):
@@ -36,8 +37,7 @@ def retrieve_manifest_files(key: str, s3, schema, **kw):
     gz = GzipFile(fileobj=BytesIO(bb), mode="r")
     csv_rdr = csv.reader(l.decode("utf8") for l in gz)
     for rec in csv_rdr:
-        rec = SimpleNamespace(**{k: v for k, v in zip(schema, rec)})
-        yield rec
+        yield SimpleNamespace(**dict(zip(schema, rec)))
 
 
 def list_inventory(
@@ -62,6 +62,8 @@ def list_inventory(
     :param n_threads: (int) number of threads, if not sent does not use threads
     :return: SimpleNamespace
     """
+    # TODO: refactor parallel execution part out of this function
+    # pylint: disable=too-many-locals
     s3 = s3 or s3_client()
 
     if manifest.endswith("/"):

@@ -1,19 +1,24 @@
 """
 Helper methods for working with AWS
 """
-from ..cloud._version import __version__
+import json
+import logging
 import os
+import threading
+import time
+from tempfile import mkstemp
+from typing import IO, Any, Dict, Optional, Tuple, Union
+from urllib.parse import urlparse
+from urllib.request import urlopen
+
 import botocore
 import botocore.session
 from botocore.credentials import Credentials, ReadOnlyCredentials
+from botocore.exceptions import ClientError
 from botocore.session import Session
-import time
-from urllib.request import urlopen
-from urllib.parse import urlparse
-from tempfile import mkstemp
-from typing import Optional, Dict, Tuple, Any, Union, IO
-import logging
-import threading
+from odc.cloud._version import __version__
+
+from ._find import norm_predicate, s3_file_info
 
 _LCL = threading.local()
 ByteRange = Union[slice, Tuple[int, int]]  # pylint: disable=invalid-name
@@ -70,8 +75,6 @@ def ec2_metadata(timeout: float = 0.1) -> Optional[Dict[str, Any]]:
     """When running inside AWS returns dictionary describing instance identity.
     Returns None when not inside AWS
     """
-    import json
-
     txt = _fetch_text(
         "http://169.254.169.254/latest/dynamic/instance-identity/document", timeout
     )
@@ -323,7 +326,7 @@ def s3_open(
         try:
             kwargs["Range"] = s3_fmt_range(range)
         except Exception:
-            raise ValueError("Bad range passed in: " + str(range))
+            raise ValueError("Bad range passed in: " + str(range)) from None
 
     s3 = s3 or s3_client()
     bucket, key = s3_url_parse(url)
@@ -371,8 +374,6 @@ def s3_head_object(url: str, s3: MaybeS3 = None, **kwargs) -> Optional[Dict[str,
     :param s3: pre-configured s3 client, see make_s3_client()
     :param kwargs: are passed on to ``s3.head_object(..)``
     """
-    from botocore.exceptions import ClientError
-
     s3 = s3 or s3_client()
     bucket, key = s3_url_parse(url)
 
@@ -471,8 +472,6 @@ def s3_find(url, pred=None, glob=None, s3=None, **kw):
     - last_modified
     - etag
     """
-    from ._find import norm_predicate, s3_file_info
-
     if glob is None and isinstance(pred, str):
         pred, glob = None, pred
 
@@ -532,7 +531,7 @@ def read_ssm_params(params, ssm=None):
     if ssm is None:
         ssm = mk_boto_session().create_client("ssm")
 
-    result = ssm.get_parameters(Names=[s for s in params], WithDecryption=True)
+    result = ssm.get_parameters(Names=list(params), WithDecryption=True)
     failed = result.get("InvalidParameters")
     if failed:
         raise ValueError("Failed to lookup some keys: " + ",".join(failed))
