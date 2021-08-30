@@ -13,11 +13,19 @@ from uuid import UUID
 from pathlib import Path
 
 import toolz
-from datacube.model import Dataset, GridSpec, DatasetType, MetadataType
+from datacube.model import (
+    Dataset,
+    GridSpec,
+    DatasetType,
+    MetadataType,
+    metadata_from_doc,
+)
 from datacube.utils.geometry import CRS
 from . import _jsoncache as base
 
 from odc.io.text import split_and_check
+
+# pylint: disable=invalid-name,too-many-public-methods
 
 ProductCollection = Union[
     Iterator[DatasetType], List[DatasetType], Dict[str, DatasetType]
@@ -64,8 +72,6 @@ def doc2gs(doc: Document) -> GridSpec:
 def build_dc_product_map(
     metadata_json: Document, products_json: Document
 ) -> Tuple[Dict[str, MetadataType], Dict[str, DatasetType]]:
-    from datacube.model import metadata_from_doc
-
     mm = toolz.valmap(metadata_from_doc, metadata_json)
 
     def mk_product(doc, name):
@@ -123,7 +129,7 @@ def parse_group_name(group_name: str) -> Tuple[TileIdx, str]:
         prefix, *tidx = split_and_check(group_name, "/", (3, 4))
         x, y = map(int, tidx[-2:])
     except ValueError:
-        raise ValueError("Bad group name: " + group_name)
+        raise ValueError("Bad group name: " + group_name) from None
 
     if len(tidx) == 2:
         return (x, y), prefix
