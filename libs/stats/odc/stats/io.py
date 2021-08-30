@@ -209,6 +209,92 @@ class S3COGSink:
             out.append(self._write_blob(cog_bytes, url, ContentType="image/tiff"))
         return out
 
+
+    def _get_single_band_thumbnail(self, ds: xr.Dataset, task: Task, single_band: Dict[str, str], input_geobox: GridSpec, odc_file_path: str) -> Delayed:
+        """
+        The single_band Dict can be:
+            1. single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}}, or
+            2. single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['blue']} or 
+            3. single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['red', 'green', 'blue']}
+        """
+        band = single_band['measurement']
+        thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
+        zero_band = numpy.zeros((task.geobox.shape[0], task.geobox.shape[1]))
+
+        # if use lookup_table to tune pixel, it will return [numpy.Array, numpy.Array, numpy.Array]
+        # if use bit to tune pixel, it will return numpy.Array
+        tuning_pixels, stretch = FileWrite()._filter_singleband_data(data=ds[band].values.reshape([task.geobox.shape[0], 
+                                                                                                   task.geobox.shape[1]]),
+                                                                     bit=single_band['bit'] if 'bit' in single_band else None,
+                                                                     lookup_table=single_band['lookup_table'] if 'lookup_table' in single_band else None)
+        if 'bit' in single_band:
+            # the bit operation return tuning_pixels is numapy.array
+            if 'display_bands' not in single_band: # if no display_band, duplicate it as r,g,b
+                tuning_pixels = [tuning_pixels, tuning_pixels, tuning_pixels]
+            else:
+                display_pixels = []
+                for display_band in ["red", "green", "blue"]:
+                    display_pixels.append(tuning_pixels) if display_band in single_band["display_bands"] else display_pixels.append(zero_band)
+                tuning_pixels = display_pixels # make sure the tuning_pixcels format is [numpy.array, numpy.array, numpy.array] == [r, g, b]
+
+        thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=tuning_pixels,
+                                                                  static_stretch=stretch,
+                                                                  input_geobox=input_geobox,
+                                                                  nodata=task.product.nodata[band])
+                                                                  
+        return self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg")
+
+    def _get_multi_band_thumbnail(self, ds: xr.Dataset, task: Task, multi_band: Dict[str, str], input_geobox: GridSpec, odc_file_path: str) -> Delayed:
+        """
+        The multi_band Dict can be:
+            1. multi_band: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'} or
+            2. multi_band: {'thumbnail_name': 'frequency', 'blue': 'frequency'}
+        """
+        display_pixels = []
+        nodata_val = 0
+
+        zero_band = numpy.zeros((task.geobox.shape[0], task.geobox.shape[1]))
+        
+        for display_band in ['red', 'green', 'blue']:
+            display_pixels.append(ds[multi_band[display_band]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])) if display_band in multi_band else display_pixels.append(zero_band)
+            nodata_val = task.product.nodata[multi_band[display_band]]
+
+        thumbnail_name = multi_band['thumbnail_name']
+        thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
+
+        thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
+                                                                  input_geobox=input_geobox,
+                                                                  nodata=nodata_val)
+
+        return self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg")
+        
+
+    def _ds_to_thumbnail_cog(self, ds: xr.Dataset, task: Task) -> List[Delayed]:
+        odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
+
+        thumbnail_cogs = []
+
+        input_geobox = GridSpec(shape=task.geobox.shape, 
+                                transform=task.geobox.transform, 
+                                crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
+
+        # if we do not define the r/g/b values, we will grab the first avaialble variable shape to 
+        # generate full zero numpy
+        zero_band = numpy.zeros_like(ds[list(ds.keys())[0]].values.reshape([task.geobox.shape[0], 
+                                                                            task.geobox.shape[1]]))
+
+        if task.product.preview_image_singleband:
+            for single_band in task.product.preview_image_singleband:
+                thumbnail_cog = self._get_single_band_thumbnail(ds, task, single_band, input_geobox, odc_file_path)
+                thumbnail_cogs.append(thumbnail_cog)
+        
+        if task.product.preview_image: # change elif to if, so we can dump two kinds of thumbnail
+            for multi_band in task.product.preview_image:
+                thumbnail_cog = self._get_multi_band_thumbnail(ds, task, multi_band, input_geobox, odc_file_path)
+                thumbnail_cogs.append(thumbnail_cog)
+
+        return thumbnail_cogs
+
     def cog_opts(self, band_name: str = "") -> Dict[str, Any]:
         opts = dict(self._cog_opts)
         opts.update(self._cog_opts_per_band.get(band_name, {}))
@@ -357,66 +443,7 @@ class S3COGSink:
             }
             cogs.extend(self._ds_to_cog(aux, aux_paths))
 
-        thumbnail_cogs = []
-
-        input_geobox = GridSpec(shape=task.geobox.shape, 
-                                transform=task.geobox.transform, 
-                                crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
-
-        # if we do not define the r/g/b values, we will grab the first avaialble variable shape to 
-        # generate full zero numpy
-        zero_band = numpy.zeros_like(ds[list(ds.keys())[0]].values.reshape([task.geobox.shape[0], 
-                                                                            task.geobox.shape[1]]))
-
-        if task.product.preview_image_singleband:
-            # single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}}, or
-            # single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['blue']} or 
-            # single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['red', 'green', 'blue']}
-            for single_band in task.product.preview_image_singleband:
-                band = single_band['measurement']
-                thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-
-                tuning_pixels, stretch = FileWrite()._filter_singleband_data(data=ds[band].values.reshape([task.geobox.shape[0], 
-                                                                                                           task.geobox.shape[1]]),
-                                                                             bit=single_band['bit'] if 'bit' in single_band else None,
-                                                                             lookup_table=single_band['lookup_table'] if 'lookup_table' in single_band else None)
-                if 'bit' in single_band:
-                    # the bit operation return tuning_pixels is numapy.array
-                    if 'display_bands' not in single_band: # if no display_band, duplicate it as r,g,b
-                        tuning_pixels = [tuning_pixels, tuning_pixels, tuning_pixels]
-                    else:
-                        display_pixels = []
-                        for display_band in ["red", "green", "blue"]:
-                            display_pixels.append(tuning_pixels) if display_band in single_band["display_bands"] else display_pixels.append(zero_band)
-                        tuning_pixels = display_pixels # make sure the tuning_pixcels format is [numpy.array, numpy.array, numpy.array] == [r, g, b]
-
-                thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=tuning_pixels,
-                                                                          static_stretch=stretch,
-                                                                          input_geobox=input_geobox,
-                                                                          nodata=task.product.nodata[band])
-                
-                thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
-        
-        if task.product.preview_image: # change elif to if, so we can dump two kinds of thumbnail
-            # single_image: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'}}, or
-            # single_image: {'thumbnail_name': 'frequency', 'blue': 'frequency'}}
-            for single_image in task.product.preview_image:
-                display_pixels = []
-                for display_band in ['red', 'green', 'blue']:
-                    display_pixels.append(ds[single_image[display_band]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])) if display_band in single_image else display_pixels.append(zero_band)
-
-                thumbnail_name = single_image['thumbnail_name']
-                thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
-                
-                for display_band in ['red', 'green', 'blue']:
-                    if display_band in single_image:
-                        thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
-                                                                                input_geobox=input_geobox,
-                                                                                nodata=task.product.nodata[single_image[display_band]])
-                        break
-
-                thumbnail_cogs.append(self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg"))
-        
+        thumbnail_cogs = self._ds_to_thumbnail_cog(ds, task)
 
         # this will raise IOError if any write failed, hence preventing json
         # from being written
