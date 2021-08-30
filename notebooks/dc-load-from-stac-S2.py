@@ -22,10 +22,9 @@ from dask.distributed import wait as dask_wait
 from datacube.model import Dataset
 from datacube.storage import measurement_paths
 from datacube.utils.dask import start_local_dask
-from IPython.display import Image
+from IPython.display import Image, display
 from odc.algo import colorize, to_rgba
-from odc.algo.io import dc_load
-from odc.stac import stac2ds
+from odc.stac import stac2ds, dc_load
 from odc.ui import to_jpeg_data
 from odc.ui.plt_tools import scl_colormap
 from pystac_client import Client
