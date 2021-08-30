@@ -20,6 +20,8 @@ import toolz
 from types import SimpleNamespace
 from pathlib import Path
 
+# pylint: disable=invalid-name,too-many-public-methods
+
 FORMAT_VERSION = b"0001"
 RESERVED_INFO_KEYS = set(["version", "zdict"])
 
@@ -102,7 +104,7 @@ def jsonKV2dict(
             doc = decompressor.decompress(doc)
         return k.decode("utf8"), json.loads(doc)
 
-    doc = {k: doc for k, doc in map(decode, kv)}
+    doc = dict(map(decode, kv))
     if len(doc) == 1 and list(doc)[0] == "":
         doc = doc[""]
     return doc
@@ -516,7 +518,7 @@ def _from_existing_db(db, complevel: int = 6) -> JsonBlobCache:
     try:
         db_info = db.open_db(b"info", create=False)
     except lmdb.NotFoundError:
-        raise ValueError("Existing database is not a ds cache")
+        raise ValueError("Existing database is not a ds cache") from None
 
     with db.begin(db_info, write=False) as tr:
         version = tr.get(b"version", None)

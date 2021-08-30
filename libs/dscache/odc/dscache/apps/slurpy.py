@@ -19,14 +19,13 @@ def qmap(proc, q, eos_marker=None):
     """
     while True:
         item = q.get(block=True)
-        if item is eos_marker:
+        try:
+            if item is eos_marker:
+                break
+
+            yield proc(item)
+        finally:
             q.task_done()
-            break
-        else:
-            try:
-                yield proc(item)
-            finally:
-                q.task_done()
 
 
 @click.command("slurpy")
@@ -55,6 +54,7 @@ def cli(env, grid, year, output, products, complevel):
 
     Optionally tile datasets into a grid while extracting (see --grid option)
     """
+    # pylint: disable=too-many-locals,too-many-statements
 
     if len(products) == 0:
         click.echo("Have to supply at least one product")
