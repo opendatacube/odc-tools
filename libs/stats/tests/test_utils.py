@@ -9,7 +9,7 @@ from datacube.model import Dataset, DatasetType, metadata_from_doc
 from datacube.index.eo3 import prep_eo3
 from datacube.index.index import default_metadata_type_docs
 
-from odc.index.stac import stac_transform
+from odc.stac.transform import stac_transform
 from odc.stats.model import DateTimeRange
 from odc.stats.tasks import TaskReader
 from odc.stats.utils import (
