@@ -251,13 +251,12 @@ class S3COGSink:
             2. multi_band: {'thumbnail_name': 'frequency', 'blue': 'frequency'}
         """
         display_pixels = []
-        nodata_val = 0
 
         zero_band = numpy.zeros((task.geobox.shape[0], task.geobox.shape[1]))
         
         for display_band in ['red', 'green', 'blue']:
             display_pixels.append(ds[multi_band[display_band]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])) if display_band in multi_band else display_pixels.append(zero_band)
-            nodata_val = task.product.nodata[multi_band[display_band]]
+            nodata_val = task.product.nodata[multi_band[display_band]] if display_band in multi_band else 0
 
         thumbnail_name = multi_band['thumbnail_name']
         thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
