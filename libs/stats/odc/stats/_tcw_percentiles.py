@@ -28,7 +28,7 @@ class StatsTCWPC(StatsPluginInterface):
         self,
         resampling: str = "bilinear",
         coefficients: Dict[str, float] = {
-            "red": 0.0135, "blue": 0.2021, "green": 0.3102, "nir": 0.1584, "swir1": -0.6806, "swir2": -0.6109
+            'blue': 0.0315, 'green': 0.2021, 'red': 0.3102, 'nir': 0.1594, 'swir1': -0.6806, 'swir2': -0.6109
             },
     ):
         self.resampling = resampling
@@ -45,7 +45,8 @@ class StatsTCWPC(StatsPluginInterface):
         Loads data in its native projection.
         """
 
-        bad = (xx["fmask"] & 0b0000_1101) != 0
+        bad = (xx["fmask"] & 0b0000_1101) != 0 # a pixel is bad if any of the cloud, shadow, or no-data bits are 1
+        bad |= xx["nbart_contiguity"] == 0 # or the nbart contiguity bit is 0
         xx = xx.drop_vars(["fmask"])
         
         for band in xx.data_vars.keys():
@@ -71,7 +72,7 @@ class StatsTCWPC(StatsPluginInterface):
 
         xx = load_with_native_transform(
             task.datasets,
-            bands=["blue", "green", "red", "nir", "swir1", "swir2", "fmask"],
+            bands=["blue", "green", "red", "nir", "swir1", "swir2", "fmask", "nbart_contiguity"],
             geobox=task.geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
