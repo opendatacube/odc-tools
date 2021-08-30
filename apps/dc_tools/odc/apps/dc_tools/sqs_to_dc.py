@@ -21,7 +21,7 @@ from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
-from odc.index.stac import stac_transform, stac_transform_absolute
+from odc.stac.transform import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
 from yaml import load
 
