@@ -38,7 +38,7 @@ def redrive_queue(
             raise Exception(
                 "No alive queue found for the deadletter queue, please check your configuration."
             )
-        elif len(source_queues) > 1:
+        if len(source_queues) > 1:
             raise Exception(
                 "Deadletter queue has more than one source, please specify the target queue name."
             )
@@ -108,11 +108,13 @@ def get_queues(prefix: str = None, contains: str = None):
         yield from queues
 
 
-def publish_message(queue, message: str, message_attributes: Mapping[str, Any] = {}):
+def publish_message(queue, message: str, message_attributes: Optional[Mapping[str, Any]] = None):
     """
     Publish a message to a queue resource. Message should be a JSON object dumped as a
     string.
     """
+    if message_attributes is None:
+        message_attributes = {}
     queue.send_message(
         QueueUrl=queue.url, MessageBody=message, MessageAttributes=message_attributes
     )
@@ -139,7 +141,7 @@ def get_messages(
     queue,
     limit: Optional[int] = None,
     visibility_timeout: int = 60,
-    message_attributes: Iterable[str] = ["All"],
+    message_attributes: Optional[Iterable[str]] = None,
     max_wait: int = 1,
     messages_per_request: int = 1,
     **kw
@@ -158,6 +160,9 @@ def get_messages(
 
     :return: Iterator of sqs messages
     """
+    if message_attributes is None:
+        message_attributes = ["All"]
+
     messages = _sqs_message_stream(
         queue,
         VisibilityTimeout=visibility_timeout,

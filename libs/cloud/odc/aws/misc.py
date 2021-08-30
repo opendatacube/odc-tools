@@ -1,3 +1,8 @@
+from botocore.session import get_session
+from botocore.auth import S3SigV4Auth
+from botocore.awsrequest import AWSRequest
+from urllib.request import Request
+
 from . import auto_find_region, s3_url_parse
 import logging
 
@@ -6,11 +11,6 @@ log = logging.getLogger(__name__)
 
 
 def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
-    from botocore.session import get_session
-    from botocore.auth import S3SigV4Auth
-    from botocore.awsrequest import AWSRequest
-    from urllib.request import Request
-
     session = get_session()
 
     if region_name is None:
@@ -41,7 +41,7 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
         credentials = creds
         auth = S3SigV4Auth(credentials, "s3", region_name)
 
-    def build_request(bucket=None, key=None, url=None, Range=None):
+    def build_request(bucket=None, key=None, url=None, range=None):  #pylint: disable=redefined-builtin
         if key is None and url is None:
             if bucket is None:
                 raise ValueError("Have to supply bucket,key or url")
@@ -51,14 +51,14 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
         if url is not None:
             bucket, key = s3_url_parse(url)
 
-        if isinstance(Range, (tuple, list)):
-            Range = "bytes={}-{}".format(Range[0], Range[1] - 1)
+        if isinstance(range, (tuple, list)):
+            range = "bytes={}-{}".format(range[0], range[1] - 1)
 
         maybe_refresh_credentials()
 
         headers = {}
-        if Range is not None:
-            headers["Range"] = Range
+        if range is not None:
+            headers["Range"] = range
 
         req = AWSRequest(
             method="GET",
