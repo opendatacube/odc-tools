@@ -3,19 +3,30 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, List, Mapping
 from uuid import UUID
+from pathlib import Path
 
+import json
 import pandas as pd
 import pystac
 import xarray as xr
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
+from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
 from odc.io.text import split_and_check
 from pystac.extensions.projection import ProjectionExtension
 from toolz import dicttoolz
+from toolz import dicttoolz
+from rasterio.crs import CRS
+
+from eodatasets3.assemble import DatasetAssembler, serialise
+from eodatasets3.images import GridSpec
+from eodatasets3.model import DatasetDoc, ProductDoc, GridDoc
+from eodatasets3.properties import StacPropertyView
+from eodatasets3.verify import PackageChecksum
 
 TileIdx_xy = Tuple[int, int]
 TileIdx_txy = Tuple[str, int, int]
@@ -145,6 +156,16 @@ class OutputProduct:
     href: str = ""
     region_code_format: str = "x{x:02d}y{y:02d}"
     cfg: Any = None
+    naming_conventions_values: str = "dea_c3"
+    explorer_path: str = "https://explorer.dea.ga.gov.au/"
+    inherit_skip_properties: Optional[List[str]] = None
+    preview_image: Optional[List[Any]] = None
+    preview_image_singleband: Optional[List[Any]] = None
+    classifier: str = "level3"
+    maturity: str = "final"
+    collection_number: int = 3
+    nodata : Optional[Dict[str, int]] = None
+
 
     def __post_init__(self):
         if self.href == "":
@@ -326,6 +347,67 @@ class Task:
         prefix = self._prefix(relative_to)
         return f"{prefix}_{name}.{ext}"
 
+    def render_assembler_metadata(
+        self, ext: str = EXT_TIFF, output_dataset: xr.Dataset = None, processing_dt: Optional[datetime] = None
+    ) -> DatasetAssembler:
+        """
+        Put together metadata document for the output of this task. It needs the source_dataset to inherit
+        several properties and lineages. It also needs the output_dataset to get the measurement information.
+        """
+        dataset_assembler = DatasetAssembler(naming_conventions=self.product.naming_conventions_values,
+                                             dataset_location=Path(self.product.explorer_path),
+                                             allow_absolute_paths=True)
+
+        platforms = [] # platforms are the concat value in stats
+
+        for dataset in self.datasets:
+            if 'fused' in dataset.type.name:
+                sources = [e['id'] for e in dataset.metadata.sources.values()]
+                platforms.append(dataset.metadata_doc['properties']['eo:platform'])
+                dataset_assembler.datetime = dataset.metadata_doc['properties']['datetime']
+                dataset_assembler.note_source_datasets(self.product.classifier,
+                                                       *sources)
+            else:
+                source_datasetdoc = serialise.from_doc(dataset.metadata_doc, skip_validation=True)
+                dataset_assembler.add_source_dataset(source_datasetdoc,
+                                                    classifier=self.product.classifier,
+                                                    auto_inherit_properties=True, # it will grab all useful input dataset preperties
+                                                    inherit_geometry=True,
+                                                    inherit_skip_properties=self.product.inherit_skip_properties)
+                if 'eo:platform' in source_datasetdoc.properties:
+                    platforms.append(source_datasetdoc.properties['eo:platform'])
+
+        if len(platforms) > 0:
+            dataset_assembler.platform = ','.join(sorted(set(platforms)))
+
+        # inherit properties from cfg
+        for product_property_name, product_property_value in self.product.properties.items():
+            dataset_assembler.properties[product_property_name] = product_property_value
+
+        dataset_assembler.product_name = self.product.name
+        dataset_assembler.dataset_version = self.product.version
+        dataset_assembler.region_code = self.product.region_code(self.tile_index)
+
+        if processing_dt is None:
+            processing_dt = datetime.utcnow()
+        dataset_assembler.processed = processing_dt
+
+        dataset_assembler.maturity = self.product.maturity
+        dataset_assembler.collection_number = self.product.collection_number
+
+        if output_dataset is not None:
+            for band, path in self.paths(ext=ext).items():
+                # when we pass grid, the eodatasets will not load file from path
+                dataset_assembler.note_measurement(band,
+                                                    path,
+                                                    pixels=output_dataset[band].values.reshape([self.geobox.shape[0], self.geobox.shape[1]]),
+                                                    grid=GridSpec(shape=self.geobox.shape,
+                                                                    transform=self.geobox.transform,
+                                                                    crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
+                                                    nodata=self.product.nodata[band])
+
+        return dataset_assembler
+
     def render_metadata(
         self, ext: str = EXT_TIFF, processing_dt: Optional[datetime] = None
     ) -> Dict[str, Any]:
@@ -435,6 +517,15 @@ class StatsPluginInterface(ABC):
         producer: str = "ga.gov.au",
         properties: Dict[str, Any] = dict(),
         region_code_format: str = "x{x:02d}y{y:02d}",
+        naming_conventions_values: str = "dea_c3",
+        explorer_path: str = "https://explorer.dea.ga.gov.au",
+        inherit_skip_properties: Optional[List[str]] = None,
+        preview_image: Optional[List[Any]] = None,
+        preview_image_singleband: Optional[List[Any]] = None,
+        classifier: str = "level3",
+        maturity: str = "final",
+        collection_number: int = 3,
+        nodata: Optional[Dict[str, int]] = None
     ) -> OutputProduct:
         """
         :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
@@ -445,6 +536,15 @@ class StatsPluginInterface(ABC):
         :param collections_site: href=f"https://{collections_site}/product/{name}"
         :param producer: Producer ``ga.gov.au``
         :param region_code_format: Change region code formatting, default ``"x{x:02d}y{y:02d}"``
+        :param naming_conventions_values: default ``dea_c3``
+        :param explorer_path: default ``https://explorer.dea.ga.gov.au``
+        :param inherit_skip_properties: block properties from source datasets.
+        :param preview_image: three measurement display as a thumbnail setting. Three values map to green, red and blue.
+        :param preview_image_singleband: each measurment display as a thumbnail setting.
+        :param classifier: default ``level3``
+        :param maturity: default ``final``
+        :param collection_number: default ``3``
+        :param nodata: band level nodata information. Pass it to eodatasets3 library only.
         """
         if name is None:
             name = self.NAME
@@ -485,6 +585,15 @@ class StatsPluginInterface(ABC):
             measurements=self.measurements,
             href=f"https://{collections_site}/product/{name}",
             region_code_format=region_code_format,
+            naming_conventions_values=naming_conventions_values,
+            explorer_path=explorer_path,
+            inherit_skip_properties=inherit_skip_properties,
+            preview_image=preview_image,
+            preview_image_singleband=preview_image_singleband,
+            classifier=classifier,
+            maturity=maturity,
+            collection_number=collection_number,
+            nodata=nodata,
         )
 
 
