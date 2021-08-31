@@ -1,4 +1,5 @@
 [MASTER]
+ignore-patterns=test_.*py
 
 [MESSAGES CONTROL]
 disable=no-self-use,
