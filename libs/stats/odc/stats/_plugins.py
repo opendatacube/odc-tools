@@ -37,6 +37,7 @@ def import_all():
     # TODO: make that more automatic
     modules = [
         "odc.stats._fc_percentiles",
+        "odc.stats._tcw_percentiles",
         "odc.stats._gm",
         "odc.stats._gm_ls_bitmask",
         "odc.stats._pq",

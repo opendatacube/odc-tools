@@ -23,7 +23,9 @@ from odc.index import chopped_dss, bin_dataset_stream, dataset_count, all_datase
 from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
 from odc.io.text import split_and_check
+
 from odc.aws import s3_download, s3_url_parse
+from itertools import chain
 
 from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
 from ._gjson import gs_bounds, compute_grid_info, gjson_from_tasks
@@ -236,7 +238,15 @@ class SaveTasks:
         if isinstance(temporal_range, str):
             temporal_range = DateTimeRange(temporal_range)
 
-        if dss is None:
+        if '-' in product:
+            products = product.split('-')
+            n_dss = 0
+            dss = iter(())
+            for _product in products:
+                _dss, _n_dss, cfg = self._get_dss(dc, _product, msg, dataset_filter, temporal_range, tiles)
+                dss = chain.from_iterable((dss, _dss))
+                n_dss += _n_dss
+        elif dss is None:
             dss, n_dss, cfg = self._get_dss(dc, product, msg, dataset_filter, temporal_range, tiles)
         else:
 
