@@ -17,7 +17,7 @@ from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (get_esri_list, index_update_dataset,
                                      limit, update_if_exists)
-from odc.index.stac import stac_transform
+from odc.stac.transform import stac_transform
 from pyproj import Transformer
 from pystac.extensions.projection import ProjectionExtension
 

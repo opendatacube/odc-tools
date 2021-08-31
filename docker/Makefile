@@ -53,13 +53,14 @@ dkr-no-deps:
   -f Dockerfile .
 
 run-test:
-	@docker run --rm \
+	@docker run --rm $(TTY) \
     -v $(CODE):/code \
     $(DKR_IMG) with-test-db env AWS_DEFAULT_REGION=us-west-2 DASK_TEMPORARY_DIRECTORY=/tmp/dask \
                pytest --cov=. \
                --cov-report=html \
                --cov-report=xml:coverage.xml \
-               --timeout=30 .
+               --timeout=30 \
+               libs apps
 
 clean:
 	@echo "not implemented"

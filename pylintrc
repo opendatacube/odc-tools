@@ -1,8 +1,6 @@
 [MASTER]
 
 [MESSAGES CONTROL]
-enable=python3
-
 disable=no-self-use,
     star-args,
     duplicate-code,
@@ -20,15 +18,7 @@ disable=no-self-use,
     ungrouped-imports,
     len-as-condition,
     no-else-return,
-    import-error,
-    keyword-arg-before-vararg, # TODO: investigate differences between python versions for this
-    round-builtin, # py2.7
-    map-builtin-not-iterating, # py2.7
-    range-builtin-not-iterating, # py2.7
-    zip-builtin-not-iterating, # py2.7
-    nonzero-method, # py2.7
-    eq-without-hash # py2.7
-
+    import-error
 
 [BASIC]
 
@@ -68,7 +58,7 @@ class-attribute-rgx=([A-Za-z_][A-Za-z0-9_]{2,50}|(__.*__))$
 inlinevar-rgx=[A-Za-z_][A-Za-z0-9_]*$
 
 # Good variable names which should always be accepted, separated by a comma
-good-names=i,j,k,ex,Run,_
+good-names=i,j,k,ex,Run,N,R,_
 
 # Bad variable names which should always be refused, separated by a comma
 bad-names=foo,bar,baz,toto,tutu,tata
