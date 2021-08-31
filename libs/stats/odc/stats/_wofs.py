@@ -93,9 +93,7 @@ class StatsWofs(StatsPluginInterface):
             xx["bad"] = (xx.water & 0b0111_1110) > 0
 
         # some = (x.water&3)==0, i.e. nodata==0 and non_contigous==0
-        xx_none = (xx.water & 0b0000_0011) != 0
-        xx_none = binary_dilation(xx_none, self._dilation)
-        xx["some"] = ~xx_none
+        xx["some"] = apply_numexpr("((water<<30)>>30)==0", xx, name="some")
         xx["dry"] = xx.water == 0
         xx["wet"] = xx.water == 128
         xx = xx.drop_vars("water")
@@ -104,8 +102,7 @@ class StatsWofs(StatsPluginInterface):
 
         return xx
 
-    @staticmethod
-    def _fuser(xx):
+    def _fuser(self, xx):
         """
         xx.bad  -- don't count
         xx.wet  -- is wet
@@ -121,9 +118,13 @@ class StatsWofs(StatsPluginInterface):
         #  bad=T, wet=?, dry=? => (wet'=F  , dry'=F)
         #  bad=F, wet=T, dry=T => (wet'=F  , dry'=F)
         #  else                => (wet'=wet, dry'=dry)
-        wet = apply_numexpr("wet & (~dry) & (~bad)", xx, dtype="bool")
-        dry = apply_numexpr("dry & (~wet) & (~bad)", xx, dtype="bool")
+        xx_none = ~xx["some"]
+        xx_none = binary_dilation(xx_none, self._dilation)
+        xx["some"] = ~xx_none
 
+        wet = apply_numexpr("wet & (~dry) & (~bad) & some", xx, dtype="bool")
+        dry = apply_numexpr("dry & (~wet) & (~bad) & some", xx, dtype="bool")
+        
         return xr.Dataset(dict(wet=wet, dry=dry, bad=xx.bad, some=xx.some))
 
     def input_data(self, task: Task) -> xr.Dataset:
