@@ -10,6 +10,14 @@ import dask
 from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
+import io
+from PIL import Image
+import os
+import numpy
+from rasterio.crs import CRS
+from rasterio.enums import Resampling
+import rasterio
+import pkg_resources
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -17,10 +25,16 @@ from datacube.utils.dask import save_blob_to_s3, save_blob_to_file
 from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
-from .model import Task, EXT_TIFF
+from .model import Task, EXT_TIFF, StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
 
+from eodatasets3.assemble import DatasetAssembler, serialise
+from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
+from eodatasets3.model import DatasetDoc
+from eodatasets3.images import FileWrite, GridSpec
+import eodatasets3.stac as eo3stac
+import eodatasets3
 
 WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
 
@@ -124,13 +138,17 @@ class S3COGSink:
         self._creds = creds
         self._cog_opts = cog_opts
         self._cog_opts_per_band = cog_opts_per_band
-        self._meta_ext = "stac-item.json"
-        self._meta_contentype = "application/json"
+        self._stac_meta_ext = "stac-item.json"
+        self._odc_meta_ext = "odc-metadata.yaml"
+        self._proc_info_ext = "proc-info.yaml"
+        self._stac_meta_contentype = "application/json"
+        self._odc_meta_contentype = "text/yaml"
+        self._prod_info_meta_contentype = "text/yaml"
         self._band_ext = EXT_TIFF
         self._acl = acl
 
     def uri(self, task: Task) -> str:
-        return task.metadata_path("absolute", ext=self._meta_ext)
+        return task.metadata_path("absolute", ext=self._stac_meta_ext)
 
     def _get_creds(self) -> ReadOnlyCredentials:
         if self._creds is None:
@@ -191,6 +209,91 @@ class S3COGSink:
             out.append(self._write_blob(cog_bytes, url, ContentType="image/tiff"))
         return out
 
+
+    def _get_single_band_thumbnail(self, ds: xr.Dataset, task: Task, single_band: Dict[str, str], input_geobox: GridSpec, odc_file_path: str) -> Delayed:
+        """
+        The single_band Dict can be:
+            1. single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}}, or
+            2. single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['blue']} or 
+            3. single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['red', 'green', 'blue']}
+        """
+        band = single_band['measurement']
+        thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
+        zero_band = numpy.zeros((task.geobox.shape[0], task.geobox.shape[1]))
+
+        # if use lookup_table to tune pixel, it will return [numpy.Array, numpy.Array, numpy.Array]
+        # if use bit to tune pixel, it will return numpy.Array
+        tuning_pixels, stretch = FileWrite()._filter_singleband_data(data=ds[band].values.reshape([task.geobox.shape[0], 
+                                                                                                   task.geobox.shape[1]]),
+                                                                     bit=single_band['bit'] if 'bit' in single_band else None,
+                                                                     lookup_table=single_band['lookup_table'] if 'lookup_table' in single_band else None)
+        if 'bit' in single_band:
+            # the bit operation return tuning_pixels is numapy.array
+            if 'display_bands' not in single_band: # if no display_band, duplicate it as r,g,b
+                tuning_pixels = [tuning_pixels, tuning_pixels, tuning_pixels]
+            else:
+                display_pixels = []
+                for display_band in ["red", "green", "blue"]:
+                    display_pixels.append(tuning_pixels) if display_band in single_band["display_bands"] else display_pixels.append(zero_band)
+                tuning_pixels = display_pixels # make sure the tuning_pixcels format is [numpy.array, numpy.array, numpy.array] == [r, g, b]
+
+        thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=tuning_pixels,
+                                                                  static_stretch=stretch,
+                                                                  input_geobox=input_geobox,
+                                                                  nodata=task.product.nodata[band])
+                                                                  
+        return self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg")
+
+    def _get_multi_band_thumbnail(self, ds: xr.Dataset, task: Task, multi_band: Dict[str, str], input_geobox: GridSpec, odc_file_path: str) -> Delayed:
+        """
+        The multi_band Dict can be:
+            1. multi_band: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'} or
+            2. multi_band: {'thumbnail_name': 'frequency', 'blue': 'frequency'}
+        """
+        display_pixels = []
+
+        zero_band = numpy.zeros((task.geobox.shape[0], task.geobox.shape[1]))
+        
+        for display_band in ['red', 'green', 'blue']:
+            display_pixels.append(ds[multi_band[display_band]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])) if display_band in multi_band else display_pixels.append(zero_band)
+            nodata_val = task.product.nodata[multi_band[display_band]] if display_band in multi_band else 0
+
+        thumbnail_name = multi_band['thumbnail_name']
+        thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
+
+        thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
+                                                                  input_geobox=input_geobox,
+                                                                  nodata=nodata_val)
+
+        return self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg")
+        
+
+    def _ds_to_thumbnail_cog(self, ds: xr.Dataset, task: Task) -> List[Delayed]:
+        odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
+
+        thumbnail_cogs = []
+
+        input_geobox = GridSpec(shape=task.geobox.shape, 
+                                transform=task.geobox.transform, 
+                                crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
+
+        # if we do not define the r/g/b values, we will grab the first avaialble variable shape to 
+        # generate full zero numpy
+        zero_band = numpy.zeros_like(ds[list(ds.keys())[0]].values.reshape([task.geobox.shape[0], 
+                                                                            task.geobox.shape[1]]))
+
+        if task.product.preview_image_singleband:
+            for single_band in task.product.preview_image_singleband:
+                thumbnail_cog = self._get_single_band_thumbnail(ds, task, single_band, input_geobox, odc_file_path)
+                thumbnail_cogs.append(thumbnail_cog)
+        
+        if task.product.preview_image: # change elif to if, so we can dump two kinds of thumbnail
+            for multi_band in task.product.preview_image:
+                thumbnail_cog = self._get_multi_band_thumbnail(ds, task, multi_band, input_geobox, odc_file_path)
+                thumbnail_cogs.append(thumbnail_cog)
+
+        return thumbnail_cogs
+
     def cog_opts(self, band_name: str = "") -> Dict[str, Any]:
         opts = dict(self._cog_opts)
         opts.update(self._cog_opts_per_band.get(band_name, {}))
@@ -215,8 +318,32 @@ class S3COGSink:
         else:
             raise ValueError(f"Can't handle url: {uri}")
 
-    def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
-        json_url = task.metadata_path("absolute", ext=self._meta_ext)
+    def get_eo3_stac_meta(self, task: Task, meta: DatasetDoc, stac_file_path: str, odc_file_path: str) -> str:
+        """
+        Convert the eodatasets3 DatasetDoc to stac meta format string.
+        The stac_meta is Python dict, please use json_fallback() to format it. Also pass dataset_location
+        to convert all accessories to full url. The S3 and local dir will use different ways to extract.
+        """
+        _u = urlparse(stac_file_path)
+
+        if _u.scheme == "s3":
+            dataset_location = f"{_u.scheme}://{_u.netloc}/{'/'.join(_u.path.split('/')[:-1])}"
+        else:
+            dataset_location = str(Path(_u.path).parent)
+
+        stac_meta = eo3stac.to_stac_item(dataset=meta,
+                                        stac_item_destination_url=stac_file_path,
+                                        dataset_location=dataset_location,
+                                        odc_dataset_metadata_url =odc_file_path,
+                                        explorer_base_url = task.product.explorer_path
+                                        )
+        return json.dumps(stac_meta, default=json_fallback) # stac_meta is Python str, but content is 'Dict format'
+
+    def dump_with_pystac(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None) -> Delayed:
+        """
+        Dump files with STAC metadata file, which generated from PySTAC
+        """
+        json_url = task.metadata_path("absolute", ext=self._stac_meta_ext)
         meta = task.render_metadata(ext=self._band_ext)
         json_data = dump_json(meta).encode("utf8")
 
@@ -242,5 +369,97 @@ class S3COGSink:
         sha1_done = self._write_blob(sha1_digest, sha1_url, ContentType="text/plain")
 
         return self._write_blob(
-            json_data, json_url, ContentType=self._meta_contentype, with_deps=sha1_done,
+            json_data, json_url, ContentType=self._stac_meta_contentype, with_deps=sha1_done,
         )
+
+    def dump_with_eodatasets3(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None, proc: StatsPluginInterface = None) -> Delayed:
+        """
+        Dump files with metadata files, which generated from eodatasets3
+        """
+        stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
+        odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
+        sha1_url = task.metadata_path("absolute", ext="sha1")
+        proc_info_url = task.metadata_path("absolute", ext=self._proc_info_ext)
+        dataset_assembler = task.render_assembler_metadata(ext=self._band_ext, output_dataset=ds)
+
+        dataset_assembler.note_software_version("eodatasets3",
+                                                "https://github.com/GeoscienceAustralia/eo-datasets",
+                                                eodatasets3.__version__,)
+
+        dataset_assembler.note_software_version('odc-stats',
+                                                "https://github.com/opendatacube/odc-tools",
+                                                # Just realized the odc-stats does not have version.
+                                                [e.version for e in pkg_resources.working_set if e.key == 'odc-stats'][0])
+
+        dataset_assembler.note_software_version(proc.NAME,
+                                                "https://github.com/opendatacube/odc-tools",
+                                                # Just realized the odc-stats does not have version.
+                                                proc.VERSION)
+
+        # add accessories files. we add the filename because odc-metadata need the filename, not full path.
+        if task.product.preview_image_singleband:
+            for single_band in task.product.preview_image_singleband:
+                band = single_band['measurement']
+                thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
+                dataset_assembler._accessories[f"thumbnail:{band}"] = Path(urlparse(thumbnail_path).path).name
+
+        if task.product.preview_image:
+            for single_image in task.product.preview_image:
+                thumbnail_name = single_image['thumbnail_name']
+                thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
+                dataset_assembler._accessories[f"thumbnail:{thumbnail_name}"] = Path(urlparse(thumbnail_path).path).name
+
+        dataset_assembler._accessories["checksum:sha1"] = Path(urlparse(sha1_url).path).name
+        dataset_assembler._accessories["metadata:processor"] = Path(urlparse(proc_info_url).path).name
+
+        meta = dataset_assembler.to_dataset_doc()
+        # already add all information to dataset_assembler, now convert to odc and stac metadata format
+
+        stac_meta = self.get_eo3_stac_meta(task, meta, stac_file_path, odc_file_path)
+
+        odc_meta_stream = io.StringIO("") # too short, not worth to move to another method.
+        serialise.to_stream(odc_meta_stream, meta)
+        odc_meta = odc_meta_stream.getvalue() # odc_meta is Python str
+
+        proc_info_meta_stream = io.StringIO("")
+        serialise._init_yaml().dump({**dataset_assembler._user_metadata, "software_versions": dataset_assembler._software_versions}, proc_info_meta_stream)
+        proc_info_meta = proc_info_meta_stream.getvalue()
+
+        # fake write result for metadata output, we want metadata file to be
+        # the last file written, so need to delay it until after sha1 files is
+        # written.
+        stac_meta_sha1 = dask.delayed(WriteResult(stac_file_path, mk_sha1(stac_meta), None))
+        odc_meta_sha1 = dask.delayed(WriteResult(odc_file_path, mk_sha1(odc_meta), None))
+        proc_info_sha1 = dask.delayed(WriteResult(proc_info_url, mk_sha1(proc_info_meta), None))
+
+        paths = task.paths("absolute", ext=self._band_ext)
+        cogs = self._ds_to_cog(ds, paths)
+
+        if aux is not None:
+            aux_paths = {
+                k: task.aux_path(k, relative_to="absolute", ext=self._band_ext)
+                for k in aux.data_vars
+            }
+            cogs.extend(self._ds_to_cog(aux, aux_paths))
+
+        thumbnail_cogs = self._ds_to_thumbnail_cog(ds, task)
+
+        # this will raise IOError if any write failed, hence preventing json
+        # from being written
+        sha1_digest = _sha1_digest(stac_meta_sha1, odc_meta_sha1, proc_info_sha1, *cogs, *thumbnail_cogs)
+        sha1_done = self._write_blob(sha1_digest, sha1_url, ContentType="text/plain")
+
+        proc_info_done = self._write_blob(proc_info_meta, proc_info_url, ContentType=self._prod_info_meta_contentype, with_deps=sha1_done)
+        odc_meta_done = self._write_blob(odc_meta, odc_file_path, ContentType=self._odc_meta_contentype, with_deps=proc_info_done)
+        cog_done = self._write_blob(stac_meta, stac_file_path, ContentType=self._stac_meta_contentype, with_deps=odc_meta_done)
+
+        # The uploading DAG is:
+        # sha1_done -> proc_info_done -> odc_meta_done -> stac_meta_done
+        return cog_done
+
+    def dump(self, task: Task, ds: Dataset, aux: Optional[Dataset] = None, proc: StatsPluginInterface = None, apply_eodatasets3: Optional[bool] = False) -> Delayed:
+        
+        if apply_eodatasets3:
+            return self.dump_with_eodatasets3(task, ds, aux, proc)
+        else:
+            return self.dump_with_pystac(task, ds, aux)

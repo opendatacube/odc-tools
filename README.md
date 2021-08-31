@@ -1,5 +1,5 @@
 [![Build Status](https://github.com/opendatacube/odc-tools/workflows/build/badge.svg)](https://github.com/opendatacube/odc-tools/actions)
-[![Test Status](https://github.com/opendatacube/odc-tools/actions/workflows/test-dc-tools.yml/badge.svg)](https://github.com/opendatacube/odc-tools/actions/workflows/test-dc-tools.yml)
+[![Test Status](https://github.com/opendatacube/odc-tools/actions/workflows/main.yml/badge.svg)](https://github.com/opendatacube/odc-tools/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/opendatacube/odc-tools/branch/develop/graph/badge.svg?token=PovpVLRFwn)](https://codecov.io/gh/opendatacube/odc-tools)
 
 DEA Prototype Code
@@ -20,15 +20,13 @@ Full list of libraries, and install instructions:
 - `odc.algo` algorithms (GeoMedian wrapper is here)
 - `odc.stats` large scale processing framework (under development)
 - `odc.ui` tools for data visualization in notebook/lab
-- `odc.index` extra utils for working with datacube database
-- `odc.aws` AWS/S3 utilities, used by apps mainly
-- `odc.aio` faster concurrent fetching from S3 with async, used by apps
+- `odc.stac` STAC to ODC conversion tools
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
 - `odc.io` common IO utilities, used by apps mainly
-- `odc.dtools` tools/experiments in the area of dask.distributed/dask<>datacube integration
-- `odc.geom` geometry utils and prototypes
-- `odc.ppt` parallel processing helper methods, internal lib
-- `odc.{thredds,azure}` internal libs for cloud IO
+- `odc-cloud[ASYNC,AZURE,THREDDS]` cloud crawling support package
+  - `odc.aws` AWS/S3 utilities, used by apps mainly
+  - `odc.aio` faster concurrent fetching from S3 with async, used by apps `odc-cloud[ASYNC]`
+  - `odc.{thredds,azure}` internal libs for cloud IO `odc-cloud[THREDDS,AZURE]`
 
 Pre-release of these libraries is on PyPI now, so can be installed with `pip`
 "the normal way". Most recent development versions of `odc-tools` packages are
@@ -37,15 +35,12 @@ pushed to `https://packages.dea.ga.gov.au`, and can be installed like so:
 ```
 pip install --extra-index-url="https://packages.dea.ga.gov.au" \
   odc-ui \
-  odc-index \
+  odc-stac \
   odc-stats \
-  odc-geom \
   odc-algo \
   odc-io \
-  odc-aws \
-  odc-aio \
-  odc-dscache \
-  odc-dtools
+  odc-cloud[ASYNC] \
+  odc-dscache
 ```
 
 **NOTE**: on Ubuntu 18.04 the default `pip` version is awfully old and does not
@@ -67,10 +62,8 @@ Use `conda env update -f <file>` to install all needed dependencies for
 channels:
   - conda-forge
 dependencies:
-  - pip=20
-
   # Datacube
-  - datacube>=1.8.4
+  - datacube>=1.8.5
 
   # odc.dscache
   - python-lmdb
@@ -99,6 +92,8 @@ dependencies:
   #  pin aiobotocore for easier resolution of dependencies
   - aiobotocore==1.3.3
   - boto3
+
+  - pip=20
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
@@ -187,3 +182,26 @@ When using Google Storage:
 gs-to-tar --bucket data.deadev.com --prefix mangrove_cover
 dc-index-from-tar --protocol gs --env mangroves --ignore-lineage metadata.tar.gz
 ```
+
+
+Local Development
+=================
+
+Requires docker, procedure was only tested on Linux hosts.
+
+```bash
+docker pull opendatacube/odc-test-runner:latest
+
+cd odc-tools
+make -C docker run-test
+```
+
+Above will run tests and generate test coverage report in `htmlcov/index.html`.
+
+Other option is to run `make -C docker bash`, this will drop you into a shell in
+`/code` folder that contains your current checkout of `odc-tools`. You can then
+use `with-test-db start` command to launch and setup test database for running
+integration tests that require datacube database to work. From here on you can
+run specific tests you are developing with `py.test ./path/to/test_file.py`. Any
+changes you make to code outside of the docker environment are available without
+any further action from you for testing.

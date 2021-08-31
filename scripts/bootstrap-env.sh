@@ -21,13 +21,12 @@ env_dir=${1:-"./test_env"}
 [ -f "${env_dir}/bin/activate" ] || exit_with_error "Not a valid python environment: ${env_dir}"
 
 source "${env_dir}/bin/activate"
-echo "Using pip: $(which pip)"
-pip install --upgrade pip
-pip install wheel
-pip install setuptools-scm
-pip install 'aiobotocore[boto3]'
-pip install GDAL=="$(gdal-config --version)"
-pip install datacube
+echo "Using python: $(which python)"
+python -m pip install --upgrade pip
+python -m pip install wheel
+python -m pip install 'aiobotocore[boto3]'
+python -m pip install GDAL=="$(gdal-config --version)"
+python -m pip install datacube
 
 if [ "${2:-}" == "dev" ]; then
     "${SCRIPT_DIR}/dev-install.sh"

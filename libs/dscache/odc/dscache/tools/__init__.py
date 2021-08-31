@@ -1,12 +1,18 @@
 """
+Tools for dealing with datacube db
 """
-from typing import Dict, Any, Optional
 import random
-from datacube import Datacube
-from datacube.model import Dataset
-from datacube.api.grid_workflow import Tile
+from typing import Any, Dict, Optional
 
+import psycopg2
+
+import datacube.utils.geometry as geom
+from datacube import Datacube
+from datacube.api.grid_workflow import Tile
+from datacube.config import LocalConfig
+from datacube.model import Dataset, GridSpec
 from odc.index import group_by_nothing
+
 from .. import DatasetCache
 
 
@@ -52,9 +58,6 @@ def db_connect(cfg=None):
 
       LocalConfig -- use loaded config object
     """
-    from datacube.config import LocalConfig
-    import psycopg2
-
     if isinstance(cfg, str) or cfg is None:
         cfg = LocalConfig.find(env=cfg)
 
@@ -148,15 +151,12 @@ and dataset_type_ref = (select id from agdc.dataset_type where name = %(product)
 
 
 def gs_albers():
-    from datacube.model import GridSpec
-    import datacube.utils.geometry as geom
-
     return GridSpec(
         crs=geom.CRS("EPSG:3577"), tile_size=(100000.0, 100000.0), resolution=(-25, 25)
     )
 
 
-class DcTileExtract(object):
+class DcTileExtract:
     """Construct ``datacube.api.grid_workflow.Tile`` object from dataset cache."""
 
     def __init__(self, cache, grid=None, group_by="time"):

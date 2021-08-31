@@ -5,7 +5,7 @@ from ._cli_common import main
 
 from odc.aio import S3Fetcher
 from datacube.index.eo3 import prep_eo3
-from odc.index.stac import stac_transform
+from odc.stac.transform import stac_transform
 from odc.index import product_from_yaml
 from odc.dscache import create_cache
 from datacube.model import Dataset

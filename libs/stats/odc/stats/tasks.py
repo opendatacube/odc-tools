@@ -9,6 +9,8 @@ import pickle
 import json
 import os
 from tqdm.auto import tqdm
+from urllib.parse import urlparse
+import logging
 
 from odc.dscache import DatasetCache
 from datacube import Datacube
@@ -21,7 +23,8 @@ from odc.index import chopped_dss, bin_dataset_stream, dataset_count, all_datase
 from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
 from odc.io.text import split_and_check
-from odc.aws import s3_download
+
+from odc.aws import s3_download, s3_url_parse
 from itertools import chain
 
 from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
@@ -75,6 +78,30 @@ def parse_task(s: str) -> TileIdx_txy:
     if t.startswith("x"):
         t, x, y = y, t, x
     return (t, int(x.lstrip("x")), int(y.lstrip("y")))
+
+def render_sqs(tidx: TileIdx_txy, filedb: str) -> Dict[str, str]:
+    """
+    Add extra layer to render task. Convert it to JSON for SQS message body.
+    """
+    period, xi, yi = tidx
+    return {"filedb": filedb, "tile_idx": f"{period}/{xi:02d}/{yi:02d}"}
+
+
+def parse_sqs(s: str) -> Tuple[TileIdx_txy, str]:
+    """
+    Add extra layer to parse task. Convert it from JSON for SQS message body.
+    """
+
+    message_body = json.loads(s)
+    filedb = message_body.get("filedb", None)
+
+    tile_info = message_body.get("tile_idx", None)
+
+    sep = "/" if "/" in s else ","
+    t, x, y = split_and_check(tile_info, sep, 3)
+    if t.startswith("x"):
+        t, x, y = y, t, x
+    return ((t, int(x.lstrip("x")), int(y.lstrip("y"))), filedb)
 
 
 class SaveTasks:
@@ -349,26 +376,34 @@ class SaveTasks:
 
 class TaskReader:
     def __init__(
-        self, cache: Union[str, DatasetCache], product: Optional[OutputProduct] = None
+        self, 
+        cache: Union[str, DatasetCache], 
+        product: Optional[OutputProduct] = None, 
+        resolution: Optional[Tuple[float, float]] = None
     ):
         self._cache_path = None
-        if isinstance(cache, str):
+
+        if len(cache) != 0 and isinstance(cache, str): 
             if cache.startswith("s3://"):
                 self._cache_path = s3_download(cache)
                 cache = self._cache_path
             cache = DatasetCache.open_ro(cache)
 
-        # TODO: verify this things are set in the file
-        cfg = cache.get_info_dict("stats/config")
-        grid = cfg["grid"]
-        gridspec = cache.grids[grid]
+            # TODO: verify this things are set in the file
+            cfg = cache.get_info_dict("stats/config")
+            grid = cfg["grid"]
+            gridspec = cache.grids[grid]
+        else: # if read from message, there is no filedb at beginning
+            cfg = {}
 
         self._product = product
+        # if not from_sqs, the resolution check can finish before init TaskReader
+        self.resolution = resolution
         self._dscache = cache
         self._cfg = cfg
-        self._grid = grid
-        self._gridspec = gridspec
-        self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid))
+        self._grid = grid if cache else ""
+        self._gridspec = gridspec if cache else ""
+        self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid)) if cache else []
 
     def is_compatible_resolution(self, resolution: Tuple[float, float], tol=1e-8):
         for res, sz in zip(resolution, self._gridspec.tile_size):
@@ -390,6 +425,49 @@ class TaskReader:
         self._gridspec = GridSpec(
             gs.crs, gs.tile_size, resolution=resolution, origin=gs.origin
         )
+
+    def init_from_sqs(self, cache: Union[str, DatasetCache]):
+        """
+        Adding the missing _grid, _gridspec, _gridspec and _all_tiles which skip for sqs task init.
+        Upading the cfg which used placeholder filedb path for sqs task init.
+        """
+
+        _log = logging.getLogger(__name__)
+
+        self._cache_path = None
+
+        if isinstance(cache, str):
+            if cache.startswith("s3://"):
+                self._cache_path = s3_download(cache)
+                cache = self._cache_path
+            cache = DatasetCache.open_ro(cache)
+
+        # TODO: verify this things are set in the file
+        cfg = cache.get_info_dict("stats/config")
+        grid = cfg["grid"]
+        gridspec = cache.grids[grid]
+
+        cfg['filedb'] = cache
+
+        self._dscache = cache
+        self._cfg = cfg
+        self._grid = grid
+        self._gridspec = gridspec
+        self._all_tiles = sorted(idx for idx, _ in cache.tiles(grid)) if cache else []
+
+        # first time to access the filedb, then it can do the resolution check
+        if self.resolution is not None:
+            _log.info(f"Changing resolution to {self.resolution[0], self.resolution[1]}")
+            if self.is_compatible_resolution(self.resolution):
+                self.change_resolution(self.resolution)
+            else: # if resolution has issue, stop init 
+                _log.error(
+                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                )
+                raise ValueError(
+                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                )
+
 
     def __del__(self):
         if self._cache_path is not None:
@@ -468,9 +546,17 @@ class TaskReader:
             sqs_queue = get_queue(sqs_queue)
 
         for msg in get_messages(sqs_queue, visibility_timeout=visibility_timeout, **kw):
-            # TODO: switch to JSON for SQS message body
             token = SQSWorkToken(msg, visibility_timeout)
-            tidx = parse_task(msg.body)
+            tidx, filedb = parse_sqs(msg.body)
+
+            # avoid the download and update again, how ever, we have to setup an exception to handle the unit test filedb
+            if urlparse(filedb).scheme == 's3':
+                bucket, key = s3_url_parse(filedb)
+            else: # if it is the test_tiles.db, we load it from local
+                key = filedb 
+            local_cache_file = key.split("/")[-1]
+            if not os.path.isfile(local_cache_file):  # use the download filedb from S3 as the init context flag
+                self.init_from_sqs(filedb)
             yield self.load_task(tidx, product, source=token, ds_filters=ds_filters)
 
 

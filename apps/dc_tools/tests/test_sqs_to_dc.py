@@ -12,7 +12,7 @@ from pathlib import Path
 from datacube.utils import documents
 from deepdiff import DeepDiff
 from datetime import date
-from odc.index.stac import stac_transform
+from odc.stac.transform import stac_transform
 from odc.apps.dc_tools.sqs_to_dc import (
     handle_json_message,
     handle_bucket_notification_message,

@@ -1,5 +1,5 @@
 from typing import Tuple, Optional, Dict
-from math import pi
+from math import pi, floor
 from types import SimpleNamespace
 import toolz
 from datacube.utils.geometry import CRS
@@ -140,8 +140,8 @@ def bin_by_native_tile(dss, cells, persist=None, native_tile_id=None):
         tile = native_tile_id(ds)
         if tile is None:
             raise ValueError("Missing tile id")
-        else:
-            register(tile, ds_val)
+
+        register(tile, ds_val)
         yield ds
 
 
@@ -165,7 +165,7 @@ def _parse_gridspec_string(s: str) -> GridSpec:
             shape = int(shape)
             shape = (shape, shape)
     except ValueError:
-        raise ValueError(f"Failed to parse gridspec: {s}")
+        raise ValueError(f"Failed to parse gridspec: {s}") from None
 
     tsz = tuple(abs(n * res) for n, res in zip(res, shape))
 
@@ -223,8 +223,6 @@ def gridspec_from_crs(
     :param resolution: (Y, X) size of each data point in the grid, in CRS units. Y will
                        usually be negative.
     """
-    from math import floor
-
     if resolution is None:
         resolution = (-tile_size[0], tile_size[1])
 

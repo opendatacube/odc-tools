@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
+import json
 from odc.stats._sqs import SQSWorkToken
 from odc.aws.queue import get_queue, publish_message
-from odc.stats.tasks import TaskReader, render_task
+from odc.stats.tasks import TaskReader, render_sqs
 from odc.stats.model import OutputProduct
-
 
 def test_sqs_work_token(sqs_message):
     tk = SQSWorkToken(sqs_message, 60)
@@ -40,14 +40,13 @@ def test_sqs_work_token(sqs_message):
     tk.cancel()
     assert tk.extend(100) is False
 
-
 def test_rdr_sqs(sqs_queue_by_name, test_db_path):
     q = get_queue(sqs_queue_by_name)
     product = OutputProduct.dummy()
     rdr = TaskReader(test_db_path, product)
 
     for tidx in rdr.all_tiles:
-        publish_message(q, render_task(tidx))
+        publish_message(q, json.dumps(render_sqs(tidx, test_db_path)))
 
     for task in rdr.stream_from_sqs(sqs_queue_by_name, visibility_timeout=120, max_wait=0):
         _now = datetime.utcnow()

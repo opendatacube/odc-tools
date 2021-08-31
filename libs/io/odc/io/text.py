@@ -1,3 +1,5 @@
+from sys import stdin
+
 from typing import Tuple, Union, Dict, Any, Iterator, List, Optional
 from pathlib import Path
 
@@ -13,6 +15,7 @@ except ImportError:
 
 
 def _parse_yaml_yaml(s: str) -> Dict[str, Any]:
+    # pylint: disable=import-outside-toplevel
     import yaml
 
     return yaml.load(s, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))
@@ -56,8 +59,6 @@ def read_stdin_lines(skip_empty: bool = False) -> Iterator[str]:
 
     skip_empty - when True whitespace only lines will be omitted
     """
-    from sys import stdin
-
     pred = {True: lambda s: len(s) > 0, False: lambda s: True}[skip_empty]
 
     for line in stdin:
@@ -196,6 +197,7 @@ def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
     return a, b
 
 
+# pylint: disable=import-outside-toplevel,inconsistent-return-statements
 def click_range2d(ctx, param, value):
     """
     @click.option('--range', callback=click_range2d)
@@ -228,6 +230,7 @@ def parse_slice(s: str) -> slice:
     return slice(*parts)
 
 
+# pylint: disable=import-outside-toplevel,inconsistent-return-statements
 def click_slice(ctx, param, value):
     """
     @click.option('--slice', callback=click_slice)
