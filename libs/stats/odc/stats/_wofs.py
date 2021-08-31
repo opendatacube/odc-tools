@@ -93,7 +93,9 @@ class StatsWofs(StatsPluginInterface):
             xx["bad"] = (xx.water & 0b0111_1110) > 0
 
         # some = (x.water&3)==0, i.e. nodata==0 and non_contigous==0
-        xx["some"] = apply_numexpr("((water<<30)>>30)==0", xx, name="some")
+        xx_none = (xx.water & 0b0000_0011) != 0
+        xx_none = binary_dilation(xx_none, self._dilation)
+        xx["some"] = ~xx_none
         xx["dry"] = xx.water == 0
         xx["wet"] = xx.water == 128
         xx = xx.drop_vars("water")
