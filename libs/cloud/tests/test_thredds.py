@@ -19,6 +19,7 @@ def test_thredds_crawl():
     assert len(urls) == 490
 
 
+@pytest.mark.skip
 @pytest.mark.xfail
 def test_download_yaml():
     """Test pass/fail arms of YAML download from Thredds"""
