@@ -277,11 +277,6 @@ class S3COGSink:
                                 transform=task.geobox.transform, 
                                 crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
 
-        # if we do not define the r/g/b values, we will grab the first avaialble variable shape to 
-        # generate full zero numpy
-        zero_band = numpy.zeros_like(ds[list(ds.keys())[0]].values.reshape([task.geobox.shape[0], 
-                                                                            task.geobox.shape[1]]))
-
         if task.product.preview_image_singleband:
             for single_band in task.product.preview_image_singleband:
                 thumbnail_cog = self._get_single_band_thumbnail(ds, task, single_band, input_geobox, odc_file_path)
