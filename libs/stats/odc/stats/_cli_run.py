@@ -36,7 +36,7 @@ from ._sqs import SQSWorkToken
     help="Mark outputs for public access (default: no)",
 )
 @click.option(
-    "--apply_eodatasets3/--not_apply_eodatasets3",
+    "--apply_eodatasets3",
     is_flag=True,
     default=False,
     help="Apply eodatasets3 plugin to generate metadata files (default: use PySTAC to generate metadata files)",
