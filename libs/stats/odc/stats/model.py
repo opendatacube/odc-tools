@@ -405,7 +405,7 @@ class Task:
                                                     grid=GridSpec(shape=self.geobox.shape,
                                                                     transform=self.geobox.transform,
                                                                     crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
-                                                    nodata=self.product.nodata[band])
+                                                    nodata=output_dataset[band].nodata if 'nodata' in output_dataset[band].attrs else 'None')
 
         return dataset_assembler
 

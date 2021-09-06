@@ -240,7 +240,7 @@ class S3COGSink:
         thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=tuning_pixels,
                                                                   static_stretch=stretch,
                                                                   input_geobox=input_geobox,
-                                                                  nodata=task.product.nodata[band])
+                                                                  nodata=ds[band].nodata if 'nodata' in ds[band].attrs else None)
                                                                   
         return self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg")
 
@@ -256,7 +256,8 @@ class S3COGSink:
         
         for display_band in ['red', 'green', 'blue']:
             display_pixels.append(ds[multi_band[display_band]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])) if display_band in multi_band else display_pixels.append(zero_band)
-            nodata_val = task.product.nodata[multi_band[display_band]] if display_band in multi_band else 0
+            if display_band in multi_band:
+                nodata_val = ds[multi_band[display_band]].nodata if 'nodata' in ds[multi_band[display_band]].attrs else None
 
         thumbnail_name = multi_band['thumbnail_name']
         thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
