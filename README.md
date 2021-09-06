@@ -93,13 +93,61 @@ dependencies:
   - aiobotocore==1.3.3
   - boto3
 
+  # eodatasets3 (used by odc-stats)
+  - boltons
+  - ciso8601
+  - python-rapidjson
+  - requests-cache
+  - ruamel.yaml
+  - structlog
+  - url-normalize
+
+  # for dev
+  - pylint
+  - autopep8
+  - flake8
+  - isort
+  - black
+  - mypy
+
+  # For tests
+  - pytest
+  - pytest-httpserver
+  - pytest-cov
+  - pytest-timeout
+  - moto
+  - mock
+  - deepdiff
+
+  # for pytest-depends
+  - future_fstrings
+  - networkx
+  - colorama
+
   - pip=20
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
 
+      # odc.stats
+      - eodatasets3
+
+      # tests
+      - pytest-depends
+
       # odc.ui
       - jupyter-ui-poll
+
+      # odc-tools libs
+      - odc-stac
+      - odc-algo
+      - odc-ui
+      - odc-dscache
+      - odc-stats
+
+      # odc-tools CLI apps
+      - odc-apps-cloud
+      - odc-apps-dc-tools
 ```
 </div></details>
 
