@@ -117,7 +117,7 @@ limit = click.option(
 
 
 def get_esri_list():
-    stream = pkg_resources.resource_stream(__name__, "./esri-lc-tiles-list.txt")
+    stream = pkg_resources.resource_stream(__name__, "esri-lc-tiles-list.txt")
     with stream as f:
         for tile in f.readlines():
             id = tile.decode().rstrip('\n')
