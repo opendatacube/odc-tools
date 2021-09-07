@@ -9,12 +9,9 @@ on:
       - '!docs/**'
       - '!old/**'
       - '!README.md'
-env:
-  ORG: opendatacube
-  IMAGE: odc-test-runner
 
 jobs:
-  build:
+  build-wheels:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,15 +22,25 @@ jobs:
       with:
         python-version: 3.8
 
-    - name: Install dependencies
+    - uses: actions/cache@v2
+      id: wheels_cache
+      with:
+        path: ./wheels
+        key: wheels-${{ github.sha }}
+
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install --upgrade 'setuptools>51'
-        python -m pip install \
+        python -m pip install --upgrade setuptools
+        python -m pip install --upgrade \
+         toml \
          wheel \
          twine
+        python -m pip freeze
 
     - name: Patch Package Versions
+      if: |
+        github.ref != 'refs/heads/stable'
       run: |
         find . -name _version.py | xargs python ./scripts/patch_version.py ${GITHUB_RUN_NUMBER:-0}
 
@@ -42,6 +49,151 @@ jobs:
         mkdir -p ./wheels
         ./scripts/build-wheels.sh ./wheels
         find ./wheels -type f
+
+  build-test-env-base:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/cache@v2
+      id: conda_cache
+      with:
+        path: |
+          tests/env
+
+        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+
+    - uses: conda-incubator/setup-miniconda@v2
+      if: steps.conda_cache.outputs.cache-hit != 'true'
+      with:
+        channels: conda-forge,defaults
+        channel-priority: true
+        activate-environment: ""
+        mamba-version: "*"
+        use-mamba: true
+
+    - name: Dump Conda Environment Info
+      shell: bash -l {0}
+      if: steps.conda_cache.outputs.cache-hit != 'true'
+      run: |
+          conda info
+          conda list
+          mamba -V
+          conda config --show-sources
+          conda config --show
+          printenv | sort
+
+    - name: Build Python Environment for Testing
+      shell: bash -l {0}
+      if: steps.conda_cache.outputs.cache-hit != 'true'
+      run: |
+        mamba env create -f tests/test-env-py38.yml -p tests/env
+
+    - name: Check Python Env
+      shell: bash -l {0}
+      if: steps.conda_cache.outputs.cache-hit != 'true'
+      run: |
+        mamba env export -p tests/env
+
+
+  run-tests:
+    runs-on: ubuntu-latest
+
+    needs:
+      - build-wheels
+      - build-test-env-base
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get Wheels from Cache
+      uses: actions/cache@v2
+      id: wheels_cache
+      with:
+        path: ./wheels
+        key: wheels-${{ github.sha }}
+
+    - name: Get Conda Environment from Cache
+      uses: actions/cache@v2
+      id: conda_cache
+      with:
+        path: |
+          tests/env
+
+        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+
+    - name: Update PATH
+      shell: bash
+      run: |
+        echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+
+    - name: Install wheels for testing
+      shell: bash
+      run: |
+        which python
+        which createdb
+        which datacube
+
+        ls -lh wheels/
+        python -m pip install --no-deps wheels/*whl
+        python -m pip check || true
+
+    - name: Start Test DB
+      shell: bash
+      run: |
+        echo "Launching test db"
+        pgdata=$(pwd)/.dbdata
+        initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
+        pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
+        createdb datacube
+        datacube system init
+
+      env:
+        DATACUBE_DB_URL: postgresql:///datacube
+
+    - name: Run Tests
+      shell: bash
+      run: |
+        datacube system check
+
+        echo "Running Tests"
+        ./tests/env/bin/pytest --cov=. \
+        --cov-report=html \
+        --cov-report=xml:coverage.xml \
+        --timeout=30 \
+        libs apps
+
+      env:
+        AWS_DEFAULT_REGION: us-west-2
+        DASK_TEMPORARY_DIRECTORY: /tmp/dask
+        DATACUBE_DB_URL: postgresql:///datacube
+
+    - name: Upload Coverage
+      if: |
+        github.repository == 'opendatacube/odc-tools'
+
+      uses: codecov/codecov-action@v1
+      with:
+        fail_ci_if_error: false
+        verbose: false
+
+
+  publish-wheels:
+    needs:
+      - build-wheels
+      - run-tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/cache@v2
+      id: wheels_cache
+      with:
+        path: ./wheels
+        key: wheels-${{ github.sha }}
 
     - name: Prepare for upload to S3
       run: |
@@ -66,91 +218,3 @@ jobs:
         AWS_DEFAULT_REGION: 'ap-southeast-2'
         AWS_REGION: 'ap-southeast-2'
         S3_DST: 's3://datacube-core-deployment/'
-
-
-  run-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Config
-      id: cfg
-      run: |
-        echo ::set-output name=docker_image::${ORG}/${IMAGE}:latest
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
-    - name: Cache Docker layers
-      uses: pat-s/always-upload-cache@v2.1.5
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
-    - name: Build Test Docker
-      uses: docker/build-push-action@v2
-      with:
-        file: docker/Dockerfile
-        context: docker
-        tags: ${{ steps.cfg.outputs.docker_image }}
-        outputs: type=docker
-        build-args: |
-          V_BASE=3.3.0
-          V_PG=12
-        cache-from: |
-          type=local,src=/tmp/.buildx-cache
-        cache-to: |
-          type=local,mode=max,dest=/tmp/.buildx-cache-new
-
-    # This ugly bit is necessary if you don't want your cache to grow forever
-    # till it hits GitHub's limit of 5GB.
-    # Temp fix
-    # https://github.com/docker/build-push-action/issues/252
-    # https://github.com/moby/buildkit/issues/1896
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-
-    - name: Run Dockerized Tests
-      timeout-minutes: 20
-      shell: bash
-      run: |
-        make -C docker run-test
-
-    - name: Upload Coverage
-      if: |
-        github.repository == 'opendatacube/odc-tools'
-
-      uses: codecov/codecov-action@v1
-      with:
-        fail_ci_if_error: false
-        verbose: false
-
-    - name: DockerHub Login
-      id: dkr
-      if: |
-        github.event_name == 'push'
-        && github.ref == 'refs/heads/develop'
-        && github.repository == 'opendatacube/odc-tools'
-
-      run: |
-        if [ -n "${{ secrets.DOCKER_USER }}" ]; then
-           echo "Login to DockerHub as ${{ secrets.DOCKER_USER }}"
-           echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
-           echo "::set-output name=logged_in::yes"
-        else
-           echo "Set DOCKER_{PASS,USER} secrets to push to docker"
-           echo "::set-output name=logged_in::no"
-        fi
-
-    - name: DockerHub Push
-      if: |
-        steps.dkr.outputs.logged_in == 'yes'
-
-      run: |
-        docker push "${{ steps.cfg.outputs.docker_image }}"
