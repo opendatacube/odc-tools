@@ -27,9 +27,6 @@ def redrive_queue(
             message.delete()
         return []
 
-    if limit < 1:
-        raise Exception(f"Limit {limit} is not valid.")
-
     dead_queue = get_queue(queue_name)
 
     if to_queue_name is not None:
