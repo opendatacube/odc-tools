@@ -22,6 +22,7 @@ from pystac.extensions.projection import ProjectionExtension
 from toolz import dicttoolz
 from toolz import dicttoolz
 from rasterio.crs import CRS
+import warnings
 
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.images import GridSpec
@@ -358,7 +359,9 @@ class Task:
         dataset_assembler = DatasetAssembler(naming_conventions=self.product.naming_conventions_values,
                                              dataset_location=Path(self.product.explorer_path),
                                              allow_absolute_paths=True)
-
+        
+        # ignore the tons of Inheritable property warnings
+        warnings.simplefilter(action='ignore', category=UserWarning)
         platforms = [] # platforms are the concat value in stats
 
         for dataset in self.datasets:
@@ -377,6 +380,9 @@ class Task:
                                                     inherit_skip_properties=self.product.inherit_skip_properties)
                 if 'eo:platform' in source_datasetdoc.properties:
                     platforms.append(source_datasetdoc.properties['eo:platform'])
+
+        # set the warning message back
+        warnings.filterwarnings('default')
 
         if len(platforms) > 0:
             dataset_assembler.platform = ','.join(sorted(set(platforms)))
