@@ -15,10 +15,7 @@ from odc.aws.queue import redrive_queue
     default=None,
 )
 @click.option(
-    "--dryrun",
-    is_flag=True,
-    default=False,
-    help="Don't actually do real work"
+    "--dryrun", is_flag=True, default=False, help="Don't actually do real work"
 )
 def cli(queue, to_queue, limit, dryrun):
     """
