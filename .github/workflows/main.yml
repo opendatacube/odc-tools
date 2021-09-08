@@ -97,12 +97,85 @@ jobs:
         mamba env export -p tests/env
 
 
-  run-tests:
+  test-with-coverage:
     runs-on: ubuntu-latest
 
     needs:
-      - build-wheels
       - build-test-env-base
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get Conda Environment from Cache
+      uses: actions/cache@v2
+      id: conda_cache
+      with:
+        path: |
+          tests/env
+
+        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+
+    - name: Update PATH
+      shell: bash
+      run: |
+        echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+
+    - name: Install in Edit mode
+      shell: bash
+      run: |
+        which python
+        which createdb
+        which datacube
+
+        ./scripts/dev-install.sh --no-deps
+
+
+    - name: Start Test DB
+      shell: bash
+      run: |
+        echo "Launching test db"
+        pgdata=$(pwd)/.dbdata
+        initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
+        pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
+        createdb datacube
+        datacube system init
+
+      env:
+        DATACUBE_DB_URL: postgresql:///datacube
+
+    - name: Run Tests
+      shell: bash
+      run: |
+        datacube system check
+
+        echo "Running Tests"
+        pytest --cov=. \
+        --cov-report=html \
+        --cov-report=xml:coverage.xml \
+        --timeout=30 \
+        libs apps
+
+      env:
+        AWS_DEFAULT_REGION: us-west-2
+        DASK_TEMPORARY_DIRECTORY: /tmp/dask
+        DATACUBE_DB_URL: postgresql:///datacube
+
+    - name: Upload Coverage
+      if: |
+        github.repository == 'opendatacube/odc-tools'
+
+      uses: codecov/codecov-action@v1
+      with:
+        fail_ci_if_error: false
+        verbose: false
+
+
+  test-wheels:
+    runs-on: ubuntu-latest
+
+    needs:
+      - build-test-env-base
+      - build-wheels
 
     steps:
     - uses: actions/checkout@v2
@@ -158,31 +231,17 @@ jobs:
         datacube system check
 
         echo "Running Tests"
-        ./tests/env/bin/pytest --cov=. \
-        --cov-report=html \
-        --cov-report=xml:coverage.xml \
-        --timeout=30 \
-        libs apps
+        pytest --timeout=30 libs apps
 
       env:
         AWS_DEFAULT_REGION: us-west-2
         DASK_TEMPORARY_DIRECTORY: /tmp/dask
         DATACUBE_DB_URL: postgresql:///datacube
 
-    - name: Upload Coverage
-      if: |
-        github.repository == 'opendatacube/odc-tools'
-
-      uses: codecov/codecov-action@v1
-      with:
-        fail_ci_if_error: false
-        verbose: false
-
-
   publish-wheels:
     needs:
       - build-wheels
-      - run-tests
+      - test-wheels
 
     runs-on: ubuntu-latest
 
