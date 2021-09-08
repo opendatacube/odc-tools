@@ -6,7 +6,7 @@ from typing import Mapping, Any, Iterable, Optional
 def redrive_queue(
     queue_name: str,
     to_queue_name: Optional[str] = None,
-    limit: Optional[int] = 0,
+    limit: Optional[int] = None,
     dryrun: bool = False,
     max_wait: int = 5,
     messages_per_request: int = 10,
@@ -28,7 +28,6 @@ def redrive_queue(
         return []
 
     dead_queue = get_queue(queue_name)
-    alive_queue = None
 
     if to_queue_name is not None:
         alive_queue = get_queue(to_queue_name)
@@ -102,13 +101,15 @@ def get_queues(prefix: str = None, contains: str = None):
 
     if contains is not None:
         for queue in queues:
-            if contains in queue.attributes.get('QueueArn').split(':')[-1]:
+            if contains in queue.attributes.get("QueueArn").split(":")[-1]:
                 yield queue
     else:
         yield from queues
 
 
-def publish_message(queue, message: str, message_attributes: Optional[Mapping[str, Any]] = None):
+def publish_message(
+    queue, message: str, message_attributes: Optional[Mapping[str, Any]] = None
+):
     """
     Publish a message to a queue resource. Message should be a JSON object dumped as a
     string.
@@ -144,7 +145,7 @@ def get_messages(
     message_attributes: Optional[Iterable[str]] = None,
     max_wait: int = 1,
     messages_per_request: int = 1,
-    **kw
+    **kw,
 ):
     """
     Get messages from SQS queue resource. Returns a lazy sequence of message objects.
@@ -169,9 +170,13 @@ def get_messages(
         MaxNumberOfMessages=messages_per_request,
         WaitTimeSeconds=max_wait,
         MessageAttributeNames=message_attributes,
-        **kw
+        **kw,
     )
-    if limit is None or limit == 0:
+
+    if limit is None:
         return messages
+
+    if limit < 1:
+        raise Exception(f"Limit {limit} is not valid.")
 
     return itertools.islice(messages, limit)
