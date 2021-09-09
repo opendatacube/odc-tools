@@ -10,7 +10,6 @@ from odc.aws.queue import redrive_queue
 @click.option(
     "--limit",
     "-l",
-    type=int,
     help="Limit the number of messages to transfer.",
     default=None,
 )
@@ -29,6 +28,15 @@ def cli(queue, to_queue, limit, dryrun):
     )
 
     _log = logging.getLogger(__name__)
+
+    if limit is not None:
+        try:
+            limit = int(limit)
+        except ValueError:
+            raise ValueError(f"Limit {limit} is not valid")
+
+        if limit < 1:
+            raise ValueError(f"Limit {limit} is not valid.")
 
     count = redrive_queue(queue, to_queue, limit, dryrun, max_wait=1)
 
