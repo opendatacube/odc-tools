@@ -201,18 +201,18 @@ def test_fuse_products(wo_definition, fc_definition):
 
     wo_product = DatasetType(eo3, wo_definition)
     fc_product = DatasetType(eo3, fc_definition)
-    fused_product = fuse_products(wo_product, fc_product)
+    fuse_products(wo_product, fc_product)
 
     bad_definition = deepcopy(wo_definition)
     bad_definition["metadata"]["properties"]["odc:file_format"] = "bad"
     bad_product = DatasetType(eo3, bad_definition)
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         fuse_products(bad_product, fc_product)
 
     bad_definition = deepcopy(wo_definition)
     bad_definition["measurements"].append(fc_definition["measurements"][1])
     bad_product = DatasetType(eo3, bad_definition)
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         fuse_products(bad_product, fc_product)
 
 
@@ -236,37 +236,39 @@ def test_fuse_dss(wo_definition, fc_definition):
         '$schema': 'https://schemas.opendatacube.org/dataset',
         'lineage': {'source_datasets': {}},
         'product': {'name': 'ga_ls_wo_3'},
-        'properties': {'title': 'ga_ls_wo_3_091086_2020-04-04_final',
-        'eo:gsd': 30.0,
-        'created': '2021-03-09T23:22:42.130266Z',
-        'datetime': '2020-04-04T23:33:10.644420Z',
-        'proj:epsg': 32655,
-        'proj:shape': [7211, 8311],
-        'eo:platform': 'landsat-7',
-        'odc:product': 'ga_ls_wo_3',
-        'odc:producer': 'ga.gov.au',
-        'eo:instrument': 'ETM',
-        'eo:cloud_cover': 44.870310145260326,
-        'eo:sun_azimuth': 49.20198554,
-        'proj:transform': [30.0, 0.0, 423285.0, 0.0, -30.0, -4040385.0, 0.0, 0.0, 1.0],
-        'landsat:wrs_row': 86,
-        'odc:file_format': 'GeoTIFF',
-        'odc:region_code': '091086',
-        'dtr:end_datetime': '2020-04-04T23:33:24.461679Z',
-        'eo:sun_elevation': 32.7056476,
-        'landsat:wrs_path': 91,
-        'dtr:start_datetime': '2020-04-04T23:32:56.662365Z',
-        'odc:product_family': 'wo',
-        'odc:dataset_version': '1.6.0',
-        'dea:dataset_maturity': 'final',
-        'odc:collection_number': 3,
-        'odc:naming_conventions': 'dea_c3',
-        'odc:processing_datetime': '2020-04-04T23:33:10.644420Z',
-        'landsat:landsat_scene_id': 'LE70910862020095ASA00',
-        'landsat:collection_number': 1,
-        'landsat:landsat_product_id': 'LE07_L1TP_091086_20200404_20200501_01_T1',
-        'landsat:collection_category': 'T1'},
-        'measurements': {'water': {'path': 'ga_ls_wo_3_091086_2020-04-04_final_water.tif'}}
+        'properties': {
+            'title': 'ga_ls_wo_3_091086_2020-04-04_final',
+            'eo:gsd': 30.0,
+            'created': '2021-03-09T23:22:42.130266Z',
+            'datetime': '2020-04-04T23:33:10.644420Z',
+            'proj:epsg': 32655,
+            'proj:shape': [7211, 8311],
+            'eo:platform': 'landsat-7',
+            'odc:product': 'ga_ls_wo_3',
+            'odc:producer': 'ga.gov.au',
+            'eo:instrument': 'ETM',
+            'eo:cloud_cover': 44.870310145260326,
+            'eo:sun_azimuth': 49.20198554,
+            'proj:transform': [30.0, 0.0, 423285.0, 0.0, -30.0, -4040385.0, 0.0, 0.0, 1.0],
+            'landsat:wrs_row': 86,
+            'odc:file_format': 'GeoTIFF',
+            'odc:region_code': '091086',
+            'dtr:end_datetime': '2020-04-04T23:33:24.461679Z',
+            'eo:sun_elevation': 32.7056476,
+            'landsat:wrs_path': 91,
+            'dtr:start_datetime': '2020-04-04T23:32:56.662365Z',
+            'odc:product_family': 'wo',
+            'odc:dataset_version': '1.6.0',
+            'dea:dataset_maturity': 'final',
+            'odc:collection_number': 3,
+            'odc:naming_conventions': 'dea_c3',
+            'odc:processing_datetime': '2020-04-04T23:33:10.644420Z',
+            'landsat:landsat_scene_id': 'LE70910862020095ASA00',
+            'landsat:collection_number': 1,
+            'landsat:landsat_product_id': 'LE07_L1TP_091086_20200404_20200501_01_T1',
+            'landsat:collection_category': 'T1'},
+            'measurements': {'water': {'path': 'ga_ls_wo_3_091086_2020-04-04_final_water.tif'}
+        }
     }
 
     fc_metadata = {
@@ -276,48 +278,50 @@ def test_fuse_dss(wo_definition, fc_definition):
         'label': 'ga_ls_fc_3_091086_2020-04-04_final',
         '$schema': 'https://schemas.opendatacube.org/dataset',
         'product': {'name': 'ga_ls_fc_3'},
-        'properties': {'title': 'ga_ls_fc_3_091086_2020-04-04_final',
-        'eo:gsd': 30.0,
-        'created': '2021-03-10T04:14:49.645196Z',
-        'datetime': '2020-04-04T23:33:10.644420Z',
-        'proj:epsg': 32655,
-        'proj:shape': [7211, 8311],
-        'eo:platform': 'landsat-7',
-        'odc:product': 'ga_ls_fc_3',
-        'odc:producer': 'ga.gov.au',
-        'eo:instrument': 'ETM',
-        'eo:cloud_cover': 44.870310145260326,
-        'eo:sun_azimuth': 49.20198554,
-        'proj:transform': [30.0, 0.0, 423285.0, 0.0, -30.0, -4040385.0, 0.0, 0.0, 1.0],
-        'landsat:wrs_row': 86,
-        'odc:file_format': 'GeoTIFF',
-        'odc:region_code': '091086',
-        'dtr:end_datetime': '2020-04-04T23:33:24.461679Z',
-        'eo:sun_elevation': 32.7056476,
-        'landsat:wrs_path': 91,
-        'dtr:start_datetime': '2020-04-04T23:32:56.662365Z',
-        'odc:product_family': 'fc',
-        'odc:dataset_version': '2.5.0',
-        'dea:dataset_maturity': 'final',
-        'odc:collection_number': 3,
-        'odc:naming_conventions': 'dea_c3',
-        'odc:processing_datetime': '2020-04-04T23:33:10.644420Z',
-        'landsat:landsat_scene_id': 'LE70910862020095ASA00',
-        'landsat:collection_number': 1,
-        'landsat:landsat_product_id': 'LE07_L1TP_091086_20200404_20200501_01_T1',
-        'landsat:collection_category': 'T1'},
-        'measurements': {'bs': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_bs.tif'},
-        'pv': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_pv.tif'},
-        'ue': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_ue.tif'},
-        'npv': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_npv.tif'}}
+        'properties': {
+            'title': 'ga_ls_fc_3_091086_2020-04-04_final',
+            'eo:gsd': 30.0,
+            'created': '2021-03-10T04:14:49.645196Z',
+            'datetime': '2020-04-04T23:33:10.644420Z',
+            'proj:epsg': 32655,
+            'proj:shape': [7211, 8311],
+            'eo:platform': 'landsat-7',
+            'odc:product': 'ga_ls_fc_3',
+            'odc:producer': 'ga.gov.au',
+            'eo:instrument': 'ETM',
+            'eo:cloud_cover': 44.870310145260326,
+            'eo:sun_azimuth': 49.20198554,
+            'proj:transform': [30.0, 0.0, 423285.0, 0.0, -30.0, -4040385.0, 0.0, 0.0, 1.0],
+            'landsat:wrs_row': 86,
+            'odc:file_format': 'GeoTIFF',
+            'odc:region_code': '091086',
+            'dtr:end_datetime': '2020-04-04T23:33:24.461679Z',
+            'eo:sun_elevation': 32.7056476,
+            'landsat:wrs_path': 91,
+            'dtr:start_datetime': '2020-04-04T23:32:56.662365Z',
+            'odc:product_family': 'fc',
+            'odc:dataset_version': '2.5.0',
+            'dea:dataset_maturity': 'final',
+            'odc:collection_number': 3,
+            'odc:naming_conventions': 'dea_c3',
+            'odc:processing_datetime': '2020-04-04T23:33:10.644420Z',
+            'landsat:landsat_scene_id': 'LE70910862020095ASA00',
+            'landsat:collection_number': 1,
+            'landsat:landsat_product_id': 'LE07_L1TP_091086_20200404_20200501_01_T1',
+            'landsat:collection_category': 'T1'},
+            'measurements': {'bs': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_bs.tif'},
+            'pv': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_pv.tif'},
+            'ue': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_ue.tif'},
+            'npv': {'path': 'ga_ls_fc_3_091086_2020-04-04_final_npv.tif'}
+        }
     }
 
     # paths get made absolute here
     # TODO: force paths to stay relative
-    uris = ["s3://dea-public-data/derivative/ga_ls_wo_3/1-6-0/091/086/2020/04/04/ga_ls_wo_3_091086_2020-04-04_final.stac-item.json"]
-    wo_ds = Dataset(wo_product, prep_eo3(wo_metadata), uris=uris)
-    uris = ["s3://dea-public-data/derivative/ga_ls_fc_3/2-5-0/091/086/2020/04/04/ga_ls_fc_3_091086_2020-04-04_final.stac-item.json"]
-    fc_ds = Dataset(fc_product, prep_eo3(fc_metadata), uris=uris)
+    wo_uris = ["s3://dea-public-data/derivative/ga_ls_wo_3/1-6-0/091/086/2020/04/04/ga_ls_wo_3_091086_2020-04-04_final.stac-item.json"]
+    wo_ds = Dataset(wo_product, prep_eo3(wo_metadata), uris=wo_uris)
+    fc_uris = ["s3://dea-public-data/derivative/ga_ls_fc_3/2-5-0/091/086/2020/04/04/ga_ls_fc_3_091086_2020-04-04_final.stac-item.json"]
+    fc_ds = Dataset(fc_product, prep_eo3(fc_metadata), uris=fc_uris)
 
     fused_ds = fuse_ds(wo_ds, fc_ds, fused_product)
     assert _get_msr_paths(fused_ds) == _get_msr_paths(fc_ds).union(_get_msr_paths(wo_ds))
@@ -326,24 +330,33 @@ def test_fuse_dss(wo_definition, fc_definition):
 
     bad_metadata = deepcopy(fc_metadata)
     bad_metadata["properties"]["datetime"] = '2020-04-03T23:33:10.644420Z'
-    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=uris)
-    with pytest.raises(AssertionError):
+    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=fc_uris)
+    with pytest.raises(ValueError):
         fused_ds = fuse_ds(wo_ds, bad_ds, fused_product)
 
     bad_metadata = deepcopy(fc_metadata)
     bad_metadata["crs"] = "epsg:32656"
-    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=uris)
-    with pytest.raises(AssertionError):
+    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=fc_uris)
+    with pytest.raises(ValueError):
         fused_ds = fuse_ds(wo_ds, bad_ds, fused_product)
 
     bad_metadata = deepcopy(fc_metadata)
     bad_metadata['grids']['default']['shape'] = [7212, 8311]
-    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=uris)
-    with pytest.raises(AssertionError):
+    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=fc_uris)
+    with pytest.raises(ValueError):
         fused_ds = fuse_ds(wo_ds, bad_ds, fused_product)
 
     bad_metadata = deepcopy(fc_metadata)
     bad_metadata['label'] += 'a'
-    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=uris)
-    with pytest.raises(AssertionError):
+    bad_ds = Dataset(fc_product, prep_eo3(bad_metadata), uris=fc_uris)
+    with pytest.raises(ValueError):
         fused_ds = fuse_ds(wo_ds, bad_ds, fused_product)
+
+    # Test fuse without odc:file_format
+    wo_no_ff = deepcopy(wo_metadata)
+    fc_no_ff = deepcopy(fc_metadata)
+    del wo_no_ff["properties"]["odc:file_format"]
+    del fc_no_ff["properties"]["odc:file_format"]
+    wo_ds = Dataset(wo_product, prep_eo3(wo_no_ff), uris=wo_uris)
+    fc_ds = Dataset(fc_product, prep_eo3(fc_no_ff), uris=fc_uris)
+    fuse_ds(wo_ds, fc_ds, fused_product)
