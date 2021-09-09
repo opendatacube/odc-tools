@@ -202,6 +202,7 @@ def fuse_products(type_1: DatasetType, type_2: DatasetType) -> DatasetType:
     if not len(measurements_1.intersection(measurements_2)) == 0:
         raise ValueError("Measurements are overlapping, they should be different")
 
+    file_format = None
     try:
         file_format = def_1["metadata"]["properties"]["odc:file_format"]
         if not file_format == def_2["metadata"]["properties"]["odc:file_format"]:
@@ -214,9 +215,12 @@ def fuse_products(type_1: DatasetType, type_2: DatasetType) -> DatasetType:
 
     fused_def["name"] = name
     fused_def["metadata"] = {
-        "product": {"name": name},
-        "properties": {"odc:file_format": file_format},
+        "product": {"name": name}
     }
+
+    if file_format is not None:
+        fused_def["metadata"]["odc:file_format"] = file_format
+
     fused_def[
         "description"
     ] = f"Fused products: {def_1['description']}, {def_2['description']}"

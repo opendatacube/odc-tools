@@ -215,6 +215,16 @@ def test_fuse_products(wo_definition, fc_definition):
     with pytest.raises(ValueError):
         fuse_products(bad_product, fc_product)
 
+    # Test fusing without file_format on the product
+    wo_no_ff = deepcopy(wo_definition)
+    del wo_no_ff["metadata"]["properties"]["odc:file_format"]
+    fc_no_ff = deepcopy(fc_definition)
+    del fc_no_ff["metadata"]["properties"]["odc:file_format"]
+
+    wo_product = DatasetType(eo3, wo_no_ff)
+    fc_product = DatasetType(eo3, fc_no_ff)
+    fuse_products(wo_product, fc_product)
+
 
 def _get_msr_paths(ds):
     return set(m["path"] for m in ds.metadata_doc["measurements"].values())
