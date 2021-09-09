@@ -5,9 +5,10 @@ from types import SimpleNamespace
 import boto3
 import pytest
 from moto import mock_sqs
+from click.testing import CliRunner
 
-
-from odc.aws.queue import redrive_queue, get_queues
+from odc.apps.cloud import redrive_to_queue
+from odc.aws.queue import redrive_queue, get_queues, get_queue
 from odc.aws._find import parse_query
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
@@ -64,6 +65,61 @@ def test_redrive_to_queue(aws_env):
     assert count == 35
 
     assert get_n_messages(dead_queue) == 0
+
+
+@mock_sqs
+def test_redrive_to_queue_cli(aws_env):
+    resource = boto3.resource("sqs")
+
+    dead_queue = resource.create_queue(QueueName=DEAD_QUEUE_NAME)
+    alive_queue = resource.create_queue(
+        QueueName=ALIVE_QUEUE_NAME,
+        Attributes={
+            "RedrivePolicy": json.dumps(
+                {
+                    "deadLetterTargetArn": dead_queue.attributes.get("QueueArn"),
+                    "maxReceiveCount": 2,
+                }
+            ),
+        },
+    )
+
+    for i in range(35):
+        dead_queue.send_message(MessageBody=json.dumps({"content": f"Something {i}"}))
+
+    # Invalid value string
+    returned = CliRunner().invoke(
+        redrive_to_queue.cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", "string_test"],
+    )
+
+    assert returned.exit_code == 1
+
+    # Invalid value 0
+    returned = CliRunner().invoke(
+        redrive_to_queue.cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", 0],
+    )
+
+    assert returned.exit_code == 1
+
+    # Valid value 1
+    returned = CliRunner().invoke(
+        redrive_to_queue.cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", 1],
+    )
+
+    assert returned.exit_code == 0
+    assert int(get_queue(ALIVE_QUEUE_NAME).attributes.get('ApproximateNumberOfMessages')) == 1
+
+    # Valid value None (all)
+    returned = CliRunner().invoke(
+        redrive_to_queue.cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", None],
+    )
+
+    assert returned.exit_code == 0
+    assert int(get_queue(DEAD_QUEUE_NAME).attributes.get('ApproximateNumberOfMessages')) == 0
 
 
 @mock_sqs
