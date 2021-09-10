@@ -121,6 +121,14 @@ def test_redrive_to_queue_cli(aws_env):
     assert returned.exit_code == 0
     assert int(get_queue(DEAD_QUEUE_NAME).attributes.get('ApproximateNumberOfMessages')) == 0
 
+    # test cli with limit flag without value
+    returned = CliRunner().invoke(
+        redrive_to_queue.cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--dryrun", "--limit"],
+    )
+
+    assert returned.exit_code == 0
+
 
 @mock_sqs
 def test_get_queues(aws_env):

@@ -8,15 +8,17 @@ from odc.aws.queue import redrive_queue
 @click.argument("queue", required=True)
 @click.argument("to-queue", required=False)
 @click.option(
-    "--limit",
-    "-l",
-    help="Limit the number of messages to transfer.",
-    default=None,
-)
-@click.option(
     "--dryrun", is_flag=True, default=False, help="Don't actually do real work"
 )
-def cli(queue, to_queue, limit, dryrun):
+@click.option(
+    "--limit",
+    "-l",
+    is_flag=False,
+    flag_value="default",
+    default=None,
+    help="Limit the number of messages to transfer.",
+)
+def cli(queue, to_queue, dryrun, limit):
     """
     Redrives all the messages from the given sqs queue to the destination
     """
@@ -28,6 +30,10 @@ def cli(queue, to_queue, limit, dryrun):
     )
 
     _log = logging.getLogger(__name__)
+
+    # In case of sending just the flag without parameters this must be applied
+    if limit is "default":
+        limit = None
 
     if limit is not None:
         try:
