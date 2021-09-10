@@ -32,7 +32,7 @@ def cli(queue, to_queue, dryrun, limit):
     _log = logging.getLogger(__name__)
 
     # In case of sending just the flag without parameters this must be applied
-    if limit is "default":
+    if limit == "default":
         limit = None
 
     if limit is not None:
