@@ -14,6 +14,13 @@ from odc.stac.transform import stac_transform
 from typing import Generator, Optional
 import logging
 
+
+import yaml
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
+
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s: %(levelname)s: %(message)s",
@@ -45,6 +52,9 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, glob):
     dc = datacube.Datacube()
     doc2ds = Doc2Dataset(dc.index)
 
+    if glob is None:
+        glob = "**/*.json" if stac else "**/*.yaml"
+
     files_to_process = _find_files(input_directory, glob, stac=stac)
 
     added, failed = 0, 0
@@ -52,9 +62,12 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, glob):
     for in_file in files_to_process:
         with in_file.open() as f:
             try:
-                # Yaml loads as JSON
-                metadata = json.load(f)
-                if stac_transform:
+                if "json" in glob:
+                    metadata = json.load(f)
+                elif "yaml" in glob:
+                    metadata = yaml.load(f, Loader=Loader)
+                # Do the STAC Transform if it's flagged
+                if stac:
                     metadata = stac_transform(metadata)
                 index_update_dataset(
                     metadata,
@@ -69,7 +82,7 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, glob):
                 logging.exception(f"Failed to add dataset {in_file} with error {e}")
                 failed += 1
 
-    print(f"Added {added} and failed {failed} datasets.")
+    logging.info(f"Added {added} and failed {failed} datasets.")
 
 
 if __name__ == "__main__":
