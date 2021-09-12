@@ -65,7 +65,7 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, glob):
                 if "json" in glob:
                     metadata = json.load(f)
                 elif "yaml" in glob:
-                    metadata = yaml.load(f, Loader=Loader)
+                    metadata = yaml.safe_load(f, Loader=Loader)
                 # Do the STAC Transform if it's flagged
                 if stac:
                     metadata = stac_transform(metadata)
