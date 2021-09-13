@@ -33,7 +33,7 @@
 
 # %%
 # #!pip install odc-stac
-# #!pip odc-ui odc-algo
+# #!pip install odc-ui odc-algo
 
 # %%
 import numpy as np
