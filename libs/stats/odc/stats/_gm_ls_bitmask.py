@@ -31,10 +31,11 @@ class StatsGMLSBitmask(StatsPluginInterface):
             nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),
             filters: Optional[Iterable[Tuple[str, int]]] = None, # e.g. [("closing", 10),("opening", 2),("dilation", 2)]
             aux_names=dict(smad="smad", emad="emad", bcmad="bcmad", count="count"),
-            resampling: str = "nearest",
+            resampling: str = "bilinear",
             work_chunks: Tuple[int, int] = (400, 400),
             scale: float = 0.0000275,
             offset: float = -0.2,
+            masking_scale = 7272.7, # for removing negative pixels from input bands. default is set to than 7272.7
             **other,
     ):
         self.mask_band = mask_band
@@ -48,6 +49,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.aux_bands = list(aux_names.values())
         self.scale = scale
         self.offset = offset
+        self.masking_scale = masking_scale
         self.sr_scale = 10000  # scale USGS Landsat bands into surface reflectance
 
         if self.bands is None:
@@ -69,9 +71,10 @@ class StatsGMLSBitmask(StatsPluginInterface):
         Loads in the data in the native projection. It performs the following:
 
         1. Loads pq bands
-        2. Extract cloud_mask flags from bands
-        3. Drops nodata pixels
-        4. Add cloud_mask band to xx for fuser and reduce
+        2. Remove negative pixel from input bands
+        3. Extract cloud_mask flags from bands
+        4. Drops nodata pixels
+        5. Add cloud_mask band to xx for fuser and reduce
 
         .. bitmask::
             15  14  13  12  11  10  9   8   7   6   5   4   3   2   1   0
@@ -93,6 +96,12 @@ class StatsGMLSBitmask(StatsPluginInterface):
             |   x-------------------------------------------------------------> cirrus_confidence
             0-----------------------------------------------------------------> cirrus_confidence
         """
+
+        # remove negative pixels - a pixel is invalid if any of the band is smaller than 7272.7
+        valid = (xx[self.bands] > self.masking_scale).to_array(dim='band').all(dim='band')
+        for band in self.bands:
+            xx[band] = xx[band].where(valid, 0)
+
         mask_band = xx[self.mask_band]
         xx = xx.drop_vars([self.mask_band])
 
@@ -106,7 +115,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
         nodata_mask, _ = masking.create_mask_value(flags_def, **self.nodata_flags)
         keeps = (mask_band & nodata_mask) == 0
 
-        # drops nodata pixels and add cloud_mask from xx
         xx = keep_good_only(xx, keeps)
         xx["cloud_mask"] = cloud_mask
 
