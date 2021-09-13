@@ -47,7 +47,6 @@ def test_fs_to_fc_yaml(test_data_dir):
         [test_data_dir, "--stac", "--glob=**/NASADEM_HGT_s56w072.stac-item.json"],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 and failed 0 datasets.\n"
 
 
 @pytest.fixture
