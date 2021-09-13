@@ -277,3 +277,37 @@ jobs:
         AWS_DEFAULT_REGION: 'ap-southeast-2'
         AWS_REGION: 'ap-southeast-2'
         S3_DST: 's3://datacube-core-deployment/'
+
+
+  check-docs:
+    runs-on: ubuntu-latest
+
+    needs:
+      - build-test-env-base
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get Conda Environment from Cache
+      uses: actions/cache@v2
+      id: conda_cache
+      with:
+        path: |
+          tests/env
+
+        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+
+    - name: Update PATH
+      shell: bash
+      run: |
+        echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+
+    - name: Install in Edit mode
+      shell: bash
+      run: |
+        ./scripts/dev-install.sh --no-deps
+
+    - name: Build STAC docs
+      shell: bash
+      run: |
+        make -C libs/stac/docs html
