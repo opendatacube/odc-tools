@@ -56,19 +56,19 @@ cfg = """---
   warnings: ignore # Disable warnings about duplicate common names
 
 sentinel-2-l2a:
-  measurements:
+  assets:
     '*':
-      dtype: uint16
+      data_type: uint16
       nodata: 0
-      units: '1'
+      unit: '1'
     SCL:
-      dtype: uint8
+      data_type: uint8
       nodata: 0
-      units: '1'
+      unit: '1'
     visual:
-      dtype: uint8
+      data_type: uint8
       nodata: 0
-      units: '1'
+      unit: '1'
   aliases:  # Alias -> Canonical Name
     rededge1: B05   # Work around non-unique `rededge` common name in S2
     rededge2: B06   # ..
