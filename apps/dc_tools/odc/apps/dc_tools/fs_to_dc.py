@@ -62,10 +62,10 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, glob):
     for in_file in files_to_process:
         with in_file.open() as f:
             try:
-                if "json" in glob:
-                    metadata = json.load(f)
-                elif "yaml" in glob:
+                if in_file.endswith(".yml") or in_file.endswith(".yaml"):
                     metadata = yaml.safe_load(f, Loader=Loader)
+                else:
+                    metadata = json.load(f)
                 # Do the STAC Transform if it's flagged
                 if stac:
                     metadata = stac_transform(metadata)
