@@ -46,7 +46,7 @@ def xr_to_mem(xx, client):
     )
 
 
-def save(xx, location, product_name, verbose):
+def save(xx, location, product_name, verbose, creds=None, rgb_bands=None):
     client = start_local_dask(
         nanny=False,
         n_workers=1,
@@ -61,7 +61,7 @@ def save(xx, location, product_name, verbose):
         aws_unsigned=True, cloud_defaults=True, client=client, **gdal_cfg
     )
 
-    rgba = to_rgba(xx.isel(time=0), clamp=(0, 3000))
+    rgba = to_rgba(xx.isel(time=0), clamp=(0, 3000), bands=rgba_bands)
     rgba = xr_to_mem(rgba, client)
 
     if verbose:
@@ -77,6 +77,7 @@ def save(xx, location, product_name, verbose):
         NUM_THREADS="ALL_CPUS",
         BIGTIFF="YES",
         SPARSE_OK=True,
+        creds=creds,
     )
 
 
@@ -84,8 +85,9 @@ def save(xx, location, product_name, verbose):
 @click.argument("product", type=str)
 @click.argument("input_prefix", type=str)
 @click.argument("location", type=str)
+@click.option("rgb-bands", type=str)
 @click.option("--verbose", "-v", is_flag=True, help="Be verbose")
-def cli(product, input_prefix, location, verbose):
+def cli(product, input_prefix, location, verbose, rgb_bands):
     """
     Generate mosaic overviews of the stats data.
 
@@ -118,7 +120,7 @@ def cli(product, input_prefix, location, verbose):
         measurements=["red", "green", "blue"],
     )
 
-    save(xx, location, product.name, verbose)
+    save(xx, location, product.name, verbose, rgb_bands=rgb_bands)
 
 
 if __name__ == "__main__":
