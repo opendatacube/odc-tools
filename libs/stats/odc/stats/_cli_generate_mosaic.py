@@ -1,9 +1,11 @@
 import click
 import json
 
+from ._cli_common import main
+
 import xarray as xr
 
-from odc.aio import S3Fetcher
+from odc.aio import S3Fetcher, s3_find_glob
 from datacube.index.eo3 import prep_eo3
 from odc.stac.transform import stac_transform
 from odc.index import product_from_yaml
@@ -34,7 +36,9 @@ def blob2ds(blob, product):
 def s3_fetch_dss(base, product, glob="*.json", s3=None):
     if s3 is None:
         s3 = S3Fetcher(aws_unsigned=True)
-    blobs = s3(o.url for o in s3.find(base, glob=glob))
+    
+    glob = f"{base.strip('/')}/{glob}"
+    blobs = s3(o.url for o in s3_find_glob(glob, skip_check=True, s3=s3))
     dss = (blob2ds(b, product) for b in blobs)
     return dss
 
@@ -81,13 +85,13 @@ def save(xx, location, product_name, verbose, creds=None, rgb_bands=None):
     )
 
 
-@click.command()
+@main.command("generate-mosaic")
 @click.argument("product", type=str)
 @click.argument("input_prefix", type=str)
 @click.argument("location", type=str)
 @click.option("--bands", type=str)
 @click.option("--verbose", "-v", is_flag=True, help="Be verbose")
-def cli(product, input_prefix, location, verbose, bands):
+def generate_mosaic(product, input_prefix, location, bands, verbose):
     """
     Generate mosaic overviews of the stats data.
 
@@ -95,24 +99,24 @@ def cli(product, input_prefix, location, verbose, bands):
     during this process.
     Note: The input bucket must be public otherwise the data can not be listed.
     """
-
+    bands = bands.split(",")
     product = product_from_yaml(product)
     if verbose:
         print(f"Preparing mosaics for {product.name} product")
 
     dss = s3_fetch_dss(input_prefix, product, glob="*.json")
-    cache = create_cache(f"{product.name}.db")
+#     cache = create_cache(f"{product.name}.db")
 
     if verbose:
         print(f"Writing {location}/{product.name}.db")
 
-    cache = create_cache(f"{location}/{product.name}.db")
-    cache.bulk_save(dss)
-    if verbose:
-        print(f"Found {cache.count:,d} datasets")
+#     cache = create_cache(f"{location}/{product.name}.db")
+#     cache.bulk_save(dss)
+#     if verbose:
+#         print(f"Found {cache.count:,d} datasets")
 
     dc = Datacube()
-    dss = list(cache.get_all())
+#     dss = list(cache.get_all())
     xx = dc.load(
         datasets=dss,
         dask_chunks={"x": 2048, "y": 2048},
@@ -122,9 +126,8 @@ def cli(product, input_prefix, location, verbose, bands):
 
     if verbose:
         print(f"Writing {location}/{product.name}.tif")
-
     xx = xx.squeeze('time').to_stacked_array('bands', ['x', 'y'])
-    save_cog(
+    yy = save_cog(
         xx,
         f"{location}/{product.name}.tif",
         blocksize=1024,
@@ -135,6 +138,8 @@ def cli(product, input_prefix, location, verbose, bands):
         BIGTIFF="YES",
         SPARSE_OK=True,
     )
+    
+    yy.compute()
 
 
 if __name__ == "__main__":
