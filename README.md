@@ -1,4 +1,3 @@
-[![Build Status](https://github.com/opendatacube/odc-tools/workflows/build/badge.svg)](https://github.com/opendatacube/odc-tools/actions)
 [![Test Status](https://github.com/opendatacube/odc-tools/actions/workflows/main.yml/badge.svg)](https://github.com/opendatacube/odc-tools/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/opendatacube/odc-tools/branch/develop/graph/badge.svg?token=PovpVLRFwn)](https://codecov.io/gh/opendatacube/odc-tools)
 
