@@ -12,7 +12,7 @@ from datacube.model import Dataset
 from datacube import Datacube
 from odc.algo import store_to_mem, to_rgba
 from datacube.utils.cog import write_cog
-
+from odc.algo import save_cog
 from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
 
@@ -67,7 +67,7 @@ def save(xx, location, product_name, verbose, creds=None, rgb_bands=None):
     if verbose:
         print(f"Writing {location}/{product_name}.tif")
 
-    write_cog(
+    save_cog(
         rgba,
         f"{location}/{product_name}.tif",
         blocksize=1024,
@@ -85,9 +85,9 @@ def save(xx, location, product_name, verbose, creds=None, rgb_bands=None):
 @click.argument("product", type=str)
 @click.argument("input_prefix", type=str)
 @click.argument("location", type=str)
-@click.option("rgb-bands", type=str)
+@click.option("--bands", type=str)
 @click.option("--verbose", "-v", is_flag=True, help="Be verbose")
-def cli(product, input_prefix, location, verbose, rgb_bands):
+def cli(product, input_prefix, location, verbose, bands):
     """
     Generate mosaic overviews of the stats data.
 
@@ -115,12 +115,26 @@ def cli(product, input_prefix, location, verbose, rgb_bands):
     dss = list(cache.get_all())
     xx = dc.load(
         datasets=dss,
-        dask_chunks={"x": 3200, "y": 3200},
+        dask_chunks={"x": 2048, "y": 2048},
         resolution=(-120, 120),
-        measurements=["red", "green", "blue"],
+        measurements=bands,
     )
 
-    save(xx, location, product.name, verbose, rgb_bands=rgb_bands)
+    if verbose:
+        print(f"Writing {location}/{product.name}.tif")
+
+    xx = xx.squeeze('time').to_stacked_array('bands', ['x', 'y'])
+    save_cog(
+        xx,
+        f"{location}/{product.name}.tif",
+        blocksize=1024,
+        compress="zstd",
+        zstd_level=4,
+        overview_levels=[],
+        NUM_THREADS="ALL_CPUS",
+        BIGTIFF="YES",
+        SPARSE_OK=True,
+    )
 
 
 if __name__ == "__main__":
