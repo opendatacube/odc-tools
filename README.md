@@ -252,3 +252,21 @@ integration tests that require datacube database to work. From here on you can
 run specific tests you are developing with `py.test ./path/to/test_file.py`. Any
 changes you make to code outside of the docker environment are available without
 any further action from you for testing.
+
+
+Release Process
+===============
+
+Development versions of packages are pushed to [DEA packages
+repo](https://packages.dea.ga.gov.au/) on every push to `develop` branch,
+version is automatically increased by a script that runs before creating wheels
+and source distribution tar balls. Right now new dev version is pushed for all
+the packages even the ones that have not changed since last push.
+
+To publish to [PyPi](https://pypi.org/) there are more steps involved.
+
+1. Manually edit `{lib,app}/{pkg}/odc/{pkg}/_version.py` file to increase version number
+2. Merge it to `develop` branch
+3. Create PR from `develop` to `pypi/publish` or `stable` branch
+4. Once PR is merged packages with updated versions will be published to PyPI,
+   assuming all the checks have passed
