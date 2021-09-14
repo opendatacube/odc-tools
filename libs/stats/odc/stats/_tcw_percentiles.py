@@ -44,8 +44,7 @@ class StatsTCWPC(StatsPluginInterface):
         """
         Loads data in its native projection.
         """
-
-        bad = (xx["fmask"] & 0b0000_1101) != 0 # a pixel is bad if any of the cloud, shadow, or no-data bits are 1
+        bad = (xx["fmask"] == 0) | (xx["fmask"] == 2) | (xx["fmask"] == 3) # a pixel is bad if any of the cloud, shadow, or no-data value
         bad |= xx["nbart_contiguity"] == 0 # or the nbart contiguity bit is 0
         xx = xx.drop_vars(["fmask", "nbart_contiguity"])
         
