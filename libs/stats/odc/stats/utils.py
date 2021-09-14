@@ -190,23 +190,37 @@ def fuse_products(type_1: DatasetType, type_2: DatasetType) -> DatasetType:
     def_1, def_2 = type_1.definition, type_2.definition
     fused_def = dict()
 
-    assert def_1["metadata_type"] == def_2["metadata_type"]
-    assert def_1["metadata_type"] == "eo3"
+    if not def_1["metadata_type"] == def_2["metadata_type"]:
+        raise ValueError("metadata_type was different between scenes")
+
+    if not def_1["metadata_type"] == "eo3":
+        raise ValueError("metadata_type must be eo3")
 
     measurements_1 = set(m["name"] for m in def_1["measurements"])
     measurements_2 = set(m["name"] for m in def_2["measurements"])
-    assert len(measurements_1.intersection(measurements_2)) == 0
 
-    file_format = def_1["metadata"]["properties"]["odc:file_format"]
-    assert file_format == def_2["metadata"]["properties"]["odc:file_format"]
+    if not len(measurements_1.intersection(measurements_2)) == 0:
+        raise ValueError("Measurements are overlapping, they should be different")
+
+    file_format = None
+    try:
+        file_format = def_1["metadata"]["properties"]["odc:file_format"]
+        if not file_format == def_2["metadata"]["properties"]["odc:file_format"]:
+            raise ValueError("odc:file_format was different between scenes")
+    except KeyError:
+        # odc:file_format didn't exist, but it's not required, so we're good
+        pass
 
     name = f"fused__{def_1['name']}__{def_2['name']}"
 
     fused_def["name"] = name
     fused_def["metadata"] = {
-        "product": {"name": name},
-        "properties": {"odc:file_format": file_format},
+        "product": {"name": name}
     }
+
+    if file_format is not None:
+        fused_def["metadata"]["odc:file_format"] = file_format
+
     fused_def[
         "description"
     ] = f"Fused products: {def_1['description']}, {def_2['description']}"
@@ -243,24 +257,28 @@ def fuse_ds(
 
     # check that all grids with the same name are identical
     common_grids = set(doc_1["grids"].keys()).intersection(doc_2["grids"].keys())
-    assert all(doc_1["grids"][g] == doc_2["grids"][g] for g in common_grids)
+    if not all(doc_1["grids"][g] == doc_2["grids"][g] for g in common_grids):
+        raise ValueError("Grids are not all the same")
 
     # TODO: handle the case that grids have conflicts in a seperate function
     fused_doc["grids"] = {**doc_1["grids"], **doc_2["grids"]}
 
     label_suffix = doc_1["label"].replace(doc_1["product"]["name"], "")
-    assert label_suffix == doc_2["label"].replace(doc_2["product"]["name"], "")
+    if not label_suffix == doc_2["label"].replace(doc_2["product"]["name"], ""):
+        raise ValueError("Label suffixes are not the same")
+
     fused_doc["label"] = f"{product.name}{label_suffix}"
 
     equal_keys = ["$schema", "crs"]
     for key in equal_keys:
-        assert doc_1[key] == doc_2[key]
+        if not doc_1[key] == doc_2[key]:
+            raise ValueError(f"{key} is not the same")
         fused_doc[key] = doc_1[key]
 
     fused_doc["properties"] = dict()
-    assert (
-        doc_1["properties"]["datetime"] == doc_2["properties"]["datetime"]
-    )  # datetime is the only manditory property
+    # datetime is the only mandatory property
+    if not doc_1["properties"]["datetime"] == doc_2["properties"]["datetime"]:
+        raise ValueError("Datetimes are not the same")
 
     # copy over all identical properties
     for key, val in doc_1["properties"].items():
@@ -272,4 +290,5 @@ def fuse_ds(
         fused_doc["measurements"][key]["path"] = path
 
     fused_ds = Dataset(product, prep_eo3(fused_doc), uris=[""])
+    fused_doc["properties"]["fused"] = "True"
     return fused_ds

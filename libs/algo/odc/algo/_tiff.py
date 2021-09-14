@@ -16,7 +16,6 @@ from rasterio.windows import Window
 from rasterio import MemoryFile
 from rasterio.shutil import copy as rio_copy
 
-from odc.aws import ReadOnlyCredentials, mk_boto_session, get_creds_with_retry
 from ._types import NodataType, NumpyIndex
 from ._numeric import roundup16, half_up, roi_shrink2, np_slice_to_idx
 from ._warp import _shrink2
@@ -436,7 +435,7 @@ def save_cog(
     rio_opts_first_pass: Optional[Dict[str, Any]] = None,
     use_final_blocksizes: bool = False,
     ACL: Optional[str] = None,
-    creds: Optional[ReadOnlyCredentials] = None,
+    creds: Optional[Any] = None,
     **extra_rio_opts,
 ):
     """
@@ -501,6 +500,8 @@ def save_cog(
     if dst == ":mem:":
         extract = True
     elif dst.startswith("s3:"):
+        from odc.aws import mk_boto_session, get_creds_with_retry
+
         if creds is None:
             _creds = get_creds_with_retry(mk_boto_session())
 

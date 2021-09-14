@@ -412,7 +412,7 @@ def geomedian_with_mads(
     if not is_float:
         gm_data = da.map_blocks(
             lambda x: from_float_np(
-                x, yxbt.dtype, nodata, scale=1 / scale, offset=offset / scale
+                x, yxbt.dtype, nodata, scale=1 / scale, offset=-offset / scale
             ),
             gm_data,
             dtype=yxbt.dtype,

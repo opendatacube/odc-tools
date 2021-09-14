@@ -1,48 +1,69 @@
-# After installing this you can install all of odc-tools without pulling in new
-# dependencies and also run tests
+# This file is used to download all dependencies
+#
+# Majority of dependencies will be pulled in via `-e /code/...`, but some
+# extras are needed:
+#  - test dependencies that are not listed as direct dependencies
+#  - libraries that need extra features enabled (dask[complete], datacube[dev])
+#  - optional dependencies that are needed to run tests more fully (hdstats)
+#  - libraries that we need to constrain versions for to help pip resolutions
 #
 
+# things needed for tests that might not be referenced in setup.py
 deepdiff
 moto
 mock
 docker
+pytest-depends
 pip-tools
-rio-cogeo
 
-datacube[dev]
-hdstats
+# needed to bootstrap environment without network index
+wheel
+setuptools
+pip
 
+datacube[dev]==1.8.5
+
+# need to constrain this one for pip-sake
+# Fixing this allows pip resolution without constraints.txt
+aiobotocore[boto3,awscli]==1.3.3
+
+# Make sure dask has all the features enabled
+dask[complete]
+
+eodatasets3
+
+# not needed for python 3.8 and up, and are not installed,
+# but `pip check` doesn't know better
+dataclasses
+
+# other top level dependencies of odc. libraries/apps
 affine
-aiobotocore[boto3,awscli]
 aiohttp
 azure-storage-blob
-#boto3
-#botocore
 click
-dask[complete]
-dask-image
-distributed
+dask_image
+deepdiff
+fsspec
 google-cloud-storage
+hdstats>=0.1.7.post5
 ipyleaflet
 ipywidgets
 jinja2
-jupyter-ui-poll
+jupyter_ui_poll
 lmdb
 numexpr
 numpy
 pyproj
-pystac
+pystac-client>=0.2.0
+pystac>=1.0.0
+pytest
+pytest-depends
 pyyaml
 rasterio
 requests
-sat-search
 scikit-image
-thredds-crawler
+thredds_crawler
 toolz
 tqdm
 xarray
 zstandard
-
-wheel
-setuptools
-pip

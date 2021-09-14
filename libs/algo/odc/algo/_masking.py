@@ -383,61 +383,78 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
     return xr_apply_morph_op(xx, "closing", radius, **kw)
 
 
-def mask_cleanup_np(mask: np.ndarray, r: Tuple[int, int] = (2, 5)) -> np.ndarray:
+def mask_cleanup_np(
+    mask: np.ndarray,
+    mask_filters: Iterable[Tuple[str, int]] = [("opening", 2), ("dilation", 5)],
+) -> np.ndarray:
     """
-    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
+    Apply morphological operations on given binary mask.
 
     :param mask: Binary image to process
-    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    :param mask_filters: Iterable tuples of morphological operations to apply on mask
     """
     import skimage.morphology as morph
 
     assert mask.dtype == "bool"
 
-    r1, r2 = r
-    if r1 == 0 and r2 == 0:
-        return mask
+    ops = dict(
+        opening=morph.binary_opening,
+        closing=morph.binary_closing,
+        dilation=morph.binary_dilation,
+        erosion=morph.binary_erosion,
+    )
 
-    if r1 > 0:
-        mask = morph.binary_opening(mask, _disk(r1, mask.ndim))
-
-    if r2 > 0:
-        mask = morph.binary_dilation(mask, _disk(r2, mask.ndim))
-
+    for operation, radius in mask_filters:
+        op = ops.get(operation, None)
+        if op is None:
+            raise ValueError(f"Not supported morphological operation: {operation}")
+        if radius > 0:
+            mask = op(mask, _disk(radius, mask.ndim))
     return mask
 
 
-def _compute_overlap_depth(r: Tuple[int, int], ndim: int) -> Tuple[int, ...]:
+def _compute_overlap_depth(r: Iterable[int], ndim: int) -> Tuple[int, ...]:
     r = max(r)
     return (0,) * (ndim - 2) + (r, r)
 
 
 def mask_cleanup(
-    mask: xr.DataArray, r: Tuple[int, int] = (2, 5), name: Optional[str] = None
+    mask: xr.DataArray,
+    mask_filters: Iterable[Tuple[str, int]] = [("opening", 2), ("dilation", 5)],
+    name: Optional[str] = None
 ) -> xr.DataArray:
     """
-    Given binary mask and (r1, r2) apply opening with r1 followed by dilation with r2.
+    Apply morphological operations on given binary mask.
+    As we fuse those operations into single Dask task, it could be faster to run.
 
-    This is bit-equivalent to ``mask |> opening(r1) |> dilation(r2)``, but
-    could be faster when using Dask, as we fuse those operations into single
-    Dask task.
+    Default mask_filters value is bit-equivalent to ``mask |> opening |> dilation``.
 
     :param mask: Binary image to process
-    :param r: Tuple of (r1, r2), here r1 shrinks away small areas of the mask, and r2 adds padding.
+    :param mask_filters: iterable tuples of morphological operations - ("<operation>", <radius>) - to apply on mask, where
+        operation: string, can be one of this morphological operations -
+                closing  = remove small holes in cloud - morphological closing
+                opening  = shrinks away small areas of the mask
+                dilation = adds padding to the mask
+                erosion  = shrinks bright regions and enlarges dark regions
+        radius: int
     :param name: Used when building Dask graphs
     """
 
     data = mask.data
     if dask.is_dask_collection(data):
         if name is None:
-            name = f"mask_cleanup_{r[0]}_{r[1]}"
+            name = "mask_cleanup"
+            r = []
+            for _, radius in mask_filters:
+                name = name + f"_{radius}"
+                r.append(radius)
 
         depth = _compute_overlap_depth(r, data.ndim)
         data = data.map_overlap(
-            partial(mask_cleanup_np, r=r), depth, boundary="none", name=randomize(name)
+            partial(mask_cleanup_np, mask_filters=mask_filters), depth, boundary="none", name=randomize(name)
         )
     else:
-        data = mask_cleanup_np(data, r)
+        data = mask_cleanup_np(data, mask_filters=mask_filters)
 
     return xr.DataArray(data, attrs=mask.attrs, coords=mask.coords, dims=mask.dims)
 
@@ -725,3 +742,18 @@ def _nodata_fuser(xx, **kw):
     if xx.shape[0] <= 1:
         return xx
     return choose_first_valid(xx, **kw)
+
+
+def _fuse_mean_np(*aa, nodata):
+    assert len(aa) > 0
+
+    out = aa[0].astype(np.float32)
+    count = (aa[0] != nodata).astype(np.float32)
+    for a in aa[1:]:
+        out += a.astype(np.float32)
+        count += (a != nodata)
+
+    out -= (len(aa) - count) * nodata
+    out = np.round(out / count).astype(aa[0].dtype)
+    out[count == 0] = nodata
+    return out

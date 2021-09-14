@@ -14,7 +14,7 @@ Random access cache of `Dataset` objects backed by disk storage.
 ## Installation
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" odc_dscache
+pip install odc-dscache
 ```
 
 ## Exporting from Datacube

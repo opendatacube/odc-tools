@@ -35,7 +35,15 @@ def import_all():
     import importlib
 
     # TODO: make that more automatic
-    modules = ["odc.stats._pq", "odc.stats._gm", "odc.stats._wofs"]
+    modules = [
+        "odc.stats._fc_percentiles",
+        "odc.stats._tcw_percentiles",
+        "odc.stats._gm",
+        "odc.stats._gm_ls_bitmask",
+        "odc.stats._pq",
+        "odc.stats._pq_bitmask",
+        "odc.stats._wofs",
+    ]
 
     for mod in modules:
         try:

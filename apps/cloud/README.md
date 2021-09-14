@@ -8,7 +8,7 @@ Installation
 ------------
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" odc_apps_cloud
+pip install odc-apps-cloud
 ```
 
 Usage

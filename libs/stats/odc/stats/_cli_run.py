@@ -1,6 +1,8 @@
 import sys
 import click
 from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
+from odc.aws.queue import get_messages, get_queue
+from ._sqs import SQSWorkToken
 
 
 @main.command("run")
@@ -23,10 +25,21 @@ from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
     help="Path to store pod's heartbeats when running stats as K8 jobs",
 )
 @click.option(
+    "--dataset-filters",
+    type=str,
+    help="",
+)
+@click.option(
     "--public/--no-public",
     is_flag=True,
     default=None,
     help="Mark outputs for public access (default: no)",
+)
+@click.option(
+    "--apply_eodatasets3",
+    is_flag=True,
+    default=False,
+    help="Apply eodatasets3 plugin to generate metadata files (default: use PySTAC to generate metadata files)",
 )
 @click.option(
     "--location", type=str, help="Output location prefix as a uri: s3://bucket/path/"
@@ -63,6 +76,8 @@ def run(
     location,
     max_processing_time,
     heartbeat_filepath,
+    dataset_filters,
+    apply_eodatasets3,
 ):
     """
     Run Stats.
@@ -135,16 +150,21 @@ def run(
     if cog_config is not None:
         _cfg["cog_opts"] = cog_config
 
-    if not _cfg.get('filedb'):
+    if from_sqs: # if config or CLI has filedb, but run from sqs, throw this warning message.
+        _log.warning("The `filedb` from config or CLI will be a placeholder value. Actual filedb saved in SQS message")
+    elif not _cfg.get('filedb'):
         _log.error("Must supply `filedb` either through config or CLI")
-        sys.exit(1)
+        sys.exit(1)    
+
     cfg = TaskRunnerConfig(**_cfg)
     _log.info(f"Using this config: {cfg}")
 
-    runner = TaskRunner(cfg, resolution=resolution)
+    # Warnning, if run from sqs, the runner will skil rdr init
+    runner = TaskRunner(cfg, resolution=resolution, from_sqs=from_sqs)
+
     if dryrun:
         check_exists = runner.verify_setup()
-        for task in runner.dry_run(tasks, check_exists=check_exists):
+        for task in runner.dry_run(tasks, check_exists=check_exists, ds_filters=dataset_filters):
             print(task.meta)
         sys.exit(0)
 
@@ -152,7 +172,7 @@ def run(
         print("Failed to verify setup, exiting")
         sys.exit(1)
 
-    result_stream = runner.run(sqs=from_sqs) if from_sqs else runner.run(tasks=tasks)
+    result_stream = runner.run(sqs=from_sqs, ds_filters=dataset_filters, apply_eodatasets3=apply_eodatasets3) if from_sqs else runner.run(tasks=tasks, ds_filters=dataset_filters, apply_eodatasets3=apply_eodatasets3)
 
     total = 0
     finished = 0

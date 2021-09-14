@@ -29,7 +29,7 @@ Future = Any
 
 class TaskRunner:
     def __init__(
-        self, cfg: TaskRunnerConfig, resolution: Optional[Tuple[float, float]] = None
+        self, cfg: TaskRunnerConfig, resolution: Optional[Tuple[float, float]] = None, from_sqs: Optional[str] = ""
     ):
         """
 
@@ -47,21 +47,25 @@ class TaskRunner:
         self.product = self.proc.product(cfg.output_location, **cfg.product)
         _log.info(f"Output product: {self.product}")
 
-        _log.info(f"Constructing task reader: {cfg.filedb}")
-        self.rdr = TaskReader(cfg.filedb, self.product)
-        _log.info(f"Will read from {self.rdr}")
-        if resolution is not None:
-            _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
-            if self.rdr.is_compatible_resolution(resolution):
-                self.rdr.change_resolution(resolution)
-            else:
-                _log.error(
-                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
-                )
-                raise ValueError(
-                    f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
-                )
-
+        if not from_sqs:
+            _log.info(f"Constructing task reader: {cfg.filedb}")
+            self.rdr = TaskReader(cfg.filedb, self.product)
+            _log.info(f"Will read from {self.rdr}")
+            if resolution is not None:
+                _log.info(f"Changing resolution to {resolution[0], resolution[1]}")
+                if self.rdr.is_compatible_resolution(resolution):
+                    self.rdr.change_resolution(resolution)
+                else:
+                    _log.error(
+                        f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                    )
+                    raise ValueError(
+                        f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
+                    )
+        else:  # skip rdr and resolution compatible init
+            _log.info(f"Skip rdr init for run from sqs: {cfg.filedb}")
+            self.rdr = TaskReader("", self.product, resolution)
+            
         self._client = None
 
     def _init_dask(self) -> Client:
@@ -109,7 +113,7 @@ class TaskRunner:
                 return False
         return True
 
-    def tasks(self, tasks: List[str]) -> Iterator[Task]:
+    def tasks(self, tasks: List[str], ds_filters: Optional[str] = None,) -> Iterator[Task]:
         from ._cli_common import parse_all_tasks
 
         if len(tasks) == 0:
@@ -118,10 +122,10 @@ class TaskRunner:
             # this can throw ValueError
             tiles = parse_all_tasks(tasks, self.rdr.all_tiles)
 
-        return self.rdr.stream(tiles)
+        return self.rdr.stream(tiles, ds_filters=ds_filters)
 
     def dry_run(
-        self, tasks: List[str], check_exists: bool = True
+        self, tasks: List[str], check_exists: bool = True, ds_filters: Optional[str] = None
     ) -> Iterator[TaskResult]:
         sink = self.sink
         overwrite = self._cfg.overwrite
@@ -133,7 +137,7 @@ class TaskRunner:
             True: " (recompute)" if overwrite else " (skip)",
         }
 
-        for task in self.tasks(tasks):
+        for task in self.tasks(tasks, ds_filters=ds_filters):
             uri = sink.uri(task)
             exists = None
             if check_exists:
@@ -171,7 +175,7 @@ class TaskRunner:
         with open(f"{hearbeat_filepath}", "w") as file_obj:
             file_obj.write(t_now.strftime("%Y-%m-%d %H:%M:%S"))
 
-    def _run(self, tasks: Iterable[Task]) -> Iterator[TaskResult]:
+    def _run(self, tasks: Iterable[Task], apply_eodatasets3) -> Iterator[TaskResult]:
         cfg = self._cfg
         client = self.client()
         sink = self.sink
@@ -209,7 +213,7 @@ class TaskRunner:
             if rgba is not None:
                 aux = xr.Dataset(dict(rgba=rgba))
 
-            cog = sink.dump(task, ds, aux)
+            cog = sink.dump(task, ds, aux, proc, apply_eodatasets3)
             cog = client.compute(cog, fifo_timeout="1ms")
 
             _log.debug("Waiting for completion")
@@ -247,22 +251,26 @@ class TaskRunner:
             yield result
 
     def run(
-        self, tasks: Optional[List[str]] = None, sqs: Optional[str] = None
+        self, tasks: Optional[List[str]] = None, 
+        sqs: Optional[str] = None, 
+        ds_filters: Optional[str] = None,
+        apply_eodatasets3: Optional[bool] = False
     ) -> Iterator[TaskResult]:
         cfg = self._cfg
         _log = self._log
 
         if tasks is not None:
             _log.info("Starting processing from task list")
-            return self._run(self.tasks(tasks))
+            return self._run(self.tasks(tasks, ds_filters=ds_filters), apply_eodatasets3)
         if sqs is not None:
             _log.info(
                 f"Processing from SQS: {sqs}, T:{cfg.job_queue_max_lease} M:{cfg.renew_safety_margin} seconds"
             )
             return self._run(
                 self.rdr.stream_from_sqs(
-                    sqs, visibility_timeout=cfg.job_queue_max_lease
-                )
+                    sqs, visibility_timeout=cfg.job_queue_max_lease, ds_filters=ds_filters
+                ), 
+                apply_eodatasets3
             )
         raise ValueError("Must supply one of tasks= or sqs=")
 

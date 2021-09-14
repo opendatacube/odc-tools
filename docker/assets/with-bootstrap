@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Become `odc` user with UID/GID compatible to /code volume
+#  If Running As root
+#    If outside volume not owned by root
+#       change `odc` to have compatible UID/GID
+#       re-exec this script as odc user
+
+[[ $UID -ne 0 ]] || {
+    target_uid=$(stat -c '%u' .)
+    target_gid=$(stat -c '%g' .)
+
+    [[ $target_uid -eq 0 ]] || {
+
+        # unless gid already matches update gid
+        [[ $(id -g odc) -eq ${target_gid} ]] || {
+            groupmod --gid ${target_gid} odc
+            usermod --gid ${target_gid} odc
+        }
+
+        # unless uid already matches: change it and update HOME and /env
+        [[ $(id -u odc) -eq ${target_uid} ]] || {
+            usermod --uid ${target_uid} odc
+            chown -R odc:odc /home/odc /env /srv/postgresql /var/run/postgresql
+        }
+
+        exec sudo -u odc -E -H bash "$0" "$@"
+    }
+}
+
+[[ $UID -ne 0 ]] || echo "WARNING: Running as root"
+
+cached_dev_install () {
+    local cache_file=/code/.run/dev-install.tgz
+
+    if [[ -e ${cache_file} ]]; then
+        echo "Installing from cache"
+        tar xvzf ${cache_file} -C /
+    else
+        echo "Fresh dev install"
+        ./scripts/dev-install.sh --no-deps --no-build-isolation
+        echo "Caching dev install to: ${cache_file}"
+        mkdir -p $(dirname ${cache_file})
+        tar cvzf ${cache_file} $(find ${VIRTUAL_ENV} \( -name "*egg-link" -or -name "easy-install.pth" \))
+    fi
+}
+
+env="${PYENV:-/env}"
+
+if [ -e "${env}/bin/activate" ]; then
+    [ -n "${VIRTUAL_ENV:-}" ] || {
+        source "${env}/bin/activate"
+    }
+fi
+
+if [[ -d /code/scripts ]]; then
+    cached_dev_install
+fi
+
+[ -z "${1:-}" ] || {
+    exec "$@"
+}

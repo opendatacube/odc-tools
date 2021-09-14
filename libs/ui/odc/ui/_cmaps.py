@@ -17,7 +17,7 @@ scl_colormap = np.array(
         [208, 208, 208, 255],  # 8  - Cloud
         [244, 244, 244, 255],  # 9  - Definitely Cloud
         [195, 231, 240, 255],  # 10 - Thin Cloud
-        [222, 157, 204, 255],
-    ],  # 11 - Snow or Ice
+        [222, 157, 204, 255],  # 11 - Snow or Ice
+    ],
     dtype="uint8",
 )

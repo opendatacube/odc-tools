@@ -2,7 +2,7 @@ from timeit import default_timer as t_now
 from types import SimpleNamespace
 
 
-class RateEstimator(object):
+class RateEstimator:
     def __init__(self):
         self.t0 = t_now()
         self.t_last = self.t0

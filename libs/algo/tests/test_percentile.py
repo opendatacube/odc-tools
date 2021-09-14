@@ -114,10 +114,18 @@ def test_xr_quantile(nodata, use_dask):
         "t": np.linspace(0, 5, band_1.shape[0])
     }
 
-    data_vars = {"band_1": (("t", "y", "x"), band_1), "band_2": (("t", "y", "x"), band_2)}
+    data_vars = {
+        "band_1": xr.DataArray(band_1, dims=("t", "y", "x"), attrs={"test_attr": 1}),
+        "band_2": xr.DataArray(band_2, dims=("t", "y", "x"), attrs={"test_attr": 2}),
+    }
 
     dataset = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
     output = xr_quantile(dataset, [0.2, 0.6], nodata).compute()
 
     for band in output.keys():
         np.testing.assert_equal(output[band], true_results[band])
+    
+    assert output["band_1_pc_20"].attrs["test_attr"] == 1
+    assert output["band_1_pc_60"].attrs["test_attr"] == 1
+    assert output["band_2_pc_20"].attrs["test_attr"] == 2
+    assert output["band_2_pc_20"].attrs["test_attr"] == 2
