@@ -105,18 +105,8 @@ def generate_mosaic(product, input_prefix, location, bands, verbose):
         print(f"Preparing mosaics for {product.name} product")
 
     dss = s3_fetch_dss(input_prefix, product, glob="*.json")
-#     cache = create_cache(f"{product.name}.db")
-
-    if verbose:
-        print(f"Writing {location}/{product.name}.db")
-
-#     cache = create_cache(f"{location}/{product.name}.db")
-#     cache.bulk_save(dss)
-#     if verbose:
-#         print(f"Found {cache.count:,d} datasets")
 
     dc = Datacube()
-#     dss = list(cache.get_all())
     xx = dc.load(
         datasets=dss,
         dask_chunks={"x": 2048, "y": 2048},
@@ -124,12 +114,17 @@ def generate_mosaic(product, input_prefix, location, bands, verbose):
         measurements=bands,
     )
 
+    if bands is None:
+        suffix = ''
+    else:
+        suffix = '_' + '_'.join(bands)
+
     if verbose:
-        print(f"Writing {location}/{product.name}.tif")
+        print(f"Writing {location}/{product.name}{suffix}.tif")
     xx = xx.squeeze('time').to_stacked_array('bands', ['x', 'y'])
     yy = save_cog(
         xx,
-        f"{location}/{product.name}.tif",
+        f"{location}/{product.name}{suffix}.tif",
         blocksize=1024,
         compress="zstd",
         zstd_level=4,
