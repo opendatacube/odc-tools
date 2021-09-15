@@ -147,7 +147,7 @@ class StatsWofs(StatsPluginInterface):
         count_wet = xx.wet.sum(axis=0, dtype="int16")
         count_dry = xx.dry.sum(axis=0, dtype="int16")
         count_clear = count_wet + count_dry
-        frequency = safe_div(count_wet, count_clear, dtype="float32")
+        frequency = safe_div(count_wet, count_clear, dtype="float16")
 
         count_wet.attrs["nodata"] = nodata
         count_clear.attrs["nodata"] = nodata
