@@ -263,10 +263,17 @@ version is automatically increased by a script that runs before creating wheels
 and source distribution tar balls. Right now new dev version is pushed for all
 the packages even the ones that have not changed since last push.
 
-To publish to [PyPi](https://pypi.org/) there are more steps involved.
+Publishing to [PyPi](https://pypi.org/) happens automatically when changes are
+pushed to a protected `pypi/publish` branch. Only members of [Open Datacube
+Admins](https://github.com/orgs/opendatacube/teams/admins) group have the
+permission to push to this branch.
+
+Process:
 
 1. Manually edit `{lib,app}/{pkg}/odc/{pkg}/_version.py` file to increase version number
-2. Merge it to `develop` branch
-3. Create PR from `develop` to `pypi/publish` branch
-4. Once PR is merged packages with updated versions will be published to PyPI,
-   assuming all the checks have passed
+2. Merge it to `develop` branch via PR
+3. Fast forward `pypi/publish` branch to match `develop`
+4. Push it to GitHub
+
+Steps 3 and 4 can be done by an authorized user with
+`./scripts/sync-publish-branch.sh` script.
