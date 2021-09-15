@@ -267,6 +267,6 @@ To publish to [PyPi](https://pypi.org/) there are more steps involved.
 
 1. Manually edit `{lib,app}/{pkg}/odc/{pkg}/_version.py` file to increase version number
 2. Merge it to `develop` branch
-3. Create PR from `develop` to `pypi/publish` or `stable` branch
+3. Create PR from `develop` to `pypi/publish` branch
 4. Once PR is merged packages with updated versions will be published to PyPI,
    assuming all the checks have passed
