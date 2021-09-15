@@ -38,18 +38,21 @@ jobs:
          twine
         python -m pip freeze
 
+    - name: Build Clean Packages
+      run: |
+        mkdir -p ./wheels/clean
+        ./scripts/build-wheels.sh ./wheels/clean
+        find ./wheels/clean -type f
+
     - name: Patch Package Versions
-      if: |
-        github.ref != 'refs/heads/stable'
-        && github.ref != 'refs/heads/pypi/publish'
       run: |
         find . -name _version.py | xargs python ./scripts/patch_version.py ${GITHUB_RUN_NUMBER:-0}
 
-    - name: Build Packages
+    - name: Build Dev Packages
       run: |
-        mkdir -p ./wheels
-        ./scripts/build-wheels.sh ./wheels
-        find ./wheels -type f
+        mkdir -p ./wheels/dev
+        ./scripts/build-wheels.sh ./wheels/dev
+        find ./wheels/dev -type f
 
   build-test-env-base:
     runs-on: ubuntu-latest
@@ -209,8 +212,8 @@ jobs:
         which createdb
         which datacube
 
-        ls -lh wheels/
-        python -m pip install --no-deps wheels/*whl
+        ls -lh wheels/clean
+        python -m pip install --no-deps wheels/clean/*whl
         python -m pip check || true
 
     - name: Start Test DB
@@ -272,7 +275,7 @@ jobs:
       if: steps.cfg.outputs.publish == 'yes'
       run: |
         mkdir -p ./pips
-        ./scripts/mk-pip-tree.sh ./wheels ./pips
+        ./scripts/mk-pip-tree.sh ./wheels/dev/ ./pips
         find ./pips -type f
     - name: Upload to S3
       if: steps.cfg.outputs.publish == 'yes'
@@ -356,7 +359,7 @@ jobs:
       if: steps.cfg.outputs.publish == 'yes'
       run: |
         mkdir -p ./pips
-        ./scripts/mk-pip-tree.sh ./wheels ./pips
+        ./scripts/mk-pip-tree.sh ./wheels/clean ./pips
         find ./pips -type f
     - name: Upload to PyPI
       if: steps.cfg.outputs.publish == 'yes'
