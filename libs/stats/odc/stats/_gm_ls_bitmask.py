@@ -5,6 +5,7 @@ from functools import partial
 from typing import Dict, Optional, Tuple, Any, Iterable
 
 import xarray as xr
+import numpy as np
 from datacube.utils import masking
 from odc.algo import geomedian_with_mads, keep_good_only, erase_bad
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
@@ -35,6 +36,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             work_chunks: Tuple[int, int] = (400, 400),
             scale: float = 0.0000275,
             offset: float = -0.2,
+            sr_scale: int = 10000, # scale USGS Landsat bands into surface reflectance
             masking_scale = 7272.7, # for removing negative pixels from input bands. default is set to than 7272.7
             **other,
     ):
@@ -50,7 +52,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.scale = scale
         self.offset = offset
         self.masking_scale = masking_scale
-        self.sr_scale = 10000  # scale USGS Landsat bands into surface reflectance
+        self.sr_scale = sr_scale
 
         if self.bands is None:
             self.bands = (
@@ -162,15 +164,15 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
-        # Rescaling gm bands between 0-10000 (approx) range
-        # for band in gm.data_vars:
-        #     if band in self.bands:
-        #         gm[band] = scale * sr_scale * gm[band] + offset * sr_scale
-        #         gm[band] = gm[band].round().astype(np.uint16)
-        #
-        # # Rescale edev to sr_scale
-        # gm['emad'] = scale * sr_scale * gm['emad']
-        # gm['emad'] = gm['emad'].round().astype(np.uint16)
+        for band in gm.data_vars.keys():
+            if band in self.bands:
+                # rescale input bands into surface reflectance
+                gm[band] = self.scale * self.sr_scale * gm[band] + self.offset * self.sr_scale
+                gm[band] = gm[band].round().astype(np.uint16)
+            elif band == 'emad':
+                # Rescale emad to 0-10,000
+                gm['emad'] = self.scale * sr_scale * gm['emad']
+                gm['emad'] = gm['emad'].round().astype(np.uint16)
 
         return gm
 
