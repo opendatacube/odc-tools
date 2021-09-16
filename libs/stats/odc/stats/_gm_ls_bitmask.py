@@ -36,7 +36,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             work_chunks: Tuple[int, int] = (400, 400),
             scale: float = 0.0000275,
             offset: float = -0.2,
-            sr_scale: int = 10000, # scale USGS Landsat bands into surface reflectance
+            output_scale: int = 10000, # scale USGS Landsat bands into surface reflectance
             masking_scale = 7272.7, # for removing negative pixels from input bands. default is set to than 7272.7
             **other,
     ):
@@ -52,7 +52,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.scale = scale
         self.offset = offset
         self.masking_scale = masking_scale
-        self.sr_scale = sr_scale
+        self.output_scale = output_scale
 
         if self.bands is None:
             self.bands = (
@@ -141,7 +141,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         cloud_mask = xx["cloud_mask"]
-        sr_scale = self.sr_scale
+        output_scale = self.output_scale
         cfg = dict(
             maxiters=1000,
             num_threads=1,
@@ -167,11 +167,11 @@ class StatsGMLSBitmask(StatsPluginInterface):
         for band in gm.data_vars.keys():
             if band in self.bands:
                 # rescale input bands into surface reflectance
-                gm[band] = self.scale * self.sr_scale * gm[band] + self.offset * self.sr_scale
+                gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
                 gm[band] = gm[band].round().astype(np.uint16)
             elif band == 'emad':
                 # Rescale emad to 0-10,000
-                gm['emad'] = self.scale * sr_scale * gm['emad']
+                gm['emad'] = self.scale * output_scale * gm['emad']
                 gm['emad'] = gm['emad'].round().astype(np.uint16)
 
         return gm
