@@ -45,7 +45,7 @@ class StatsWofs(StatsPluginInterface):
     PRODUCT_FAMILY = "wo_summary"
 
     # these get padded out if dilation was requested
-    BAD_BITS_MASK = 0b0110_1010  # Cloud/Shadow, Terrain Shadow, and non-contiguous
+    BAD_BITS_MASK = 0b0110_1000  # Cloud/Shadow, Terrain Shadow
 
     def __init__(
         self,
@@ -86,9 +86,13 @@ class StatsWofs(StatsPluginInterface):
           .wet<Bool>   - pixel has wet classification and is not ``bad``
         """
         if self._dilation != 0:
-            xx["bad"] = binary_dilation(
-                (xx.water & self.BAD_BITS_MASK) > 0, self._dilation
-            ) | ((xx.water & 0b0111_1110) > 0)
+            noncontig_mask = (xx.water & 0b0000_0010) > 0
+            nodata_mask = (xx.water & 0b0000_0001) > 0
+            mask = noncontig_mask & ~nodata_mask
+
+            mask = mask | ((xx.water & self.BAD_BITS_MASK) > 0)
+            mask = binary_dilation(mask, self._dilation)
+            xx["bad"] = mask | ((xx.water & 0b0111_1110) > 0)
         else:
             xx["bad"] = (xx.water & 0b0111_1110) > 0
 
@@ -118,12 +122,8 @@ class StatsWofs(StatsPluginInterface):
         #  bad=T, wet=?, dry=? => (wet'=F  , dry'=F)
         #  bad=F, wet=T, dry=T => (wet'=F  , dry'=F)
         #  else                => (wet'=wet, dry'=dry)
-        xx_none = ~xx["some"]
-        xx_none = binary_dilation(xx_none, self._dilation)
-        xx["some"] = ~xx_none
-
-        wet = apply_numexpr("wet & (~dry) & (~bad) & some", xx, dtype="bool")
-        dry = apply_numexpr("dry & (~wet) & (~bad) & some", xx, dtype="bool")
+        wet = apply_numexpr("wet & (~dry) & (~bad)", xx, dtype="bool")
+        dry = apply_numexpr("dry & (~wet) & (~bad)", xx, dtype="bool")
         
         return xr.Dataset(dict(wet=wet, dry=dry, bad=xx.bad, some=xx.some))
 
