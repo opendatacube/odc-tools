@@ -164,14 +164,16 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
+        # rescale gm bands into surface reflectance scale
         for band in gm.data_vars.keys():
             if band in self.bands:
-                # rescale input bands into surface reflectance
+                # gm[band] with low value (ie gm[band] < 7270) end up in negative values during sr scaling
+                # so resetting nodata and negative values back to 0 before rounding to uint16
                 gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
-                gm[band] = gm[band].round().astype(np.uint16)
+                gm[band] = gm[band].where(gm[band] > 0, 0)
+                gm[band] = gm[band].round().astype(np.uint16) # still getting some unexpected behaviour
             elif band == 'emad':
-                # Rescale emad to 0-10,000
-                gm['emad'] = self.scale * output_scale * gm['emad']
+                gm['emad'] = self.scale * self.output_scale * gm['emad']
                 gm['emad'] = gm['emad'].round().astype(np.uint16)
 
         return gm
