@@ -43,48 +43,6 @@ def s3_fetch_dss(base, product, glob="*.json", s3=None):
     return dss
 
 
-def xr_to_mem(xx, client):
-    data = store_to_mem(xx.data, client)
-    return xr.DataArray(
-        data=data, coords=xx.coords, dims=xx.dims, attrs=xx.attrs
-    )
-
-
-def save(xx, location, product_name, verbose, creds=None, rgb_bands=None):
-    client = start_local_dask(
-        nanny=False,
-        n_workers=1,
-        threads_per_worker=8,
-        mem_safety_margin="0G",
-        processes=False,
-    )
-
-    gdal_cfg = {"GDAL_CACHEMAX": 8 * (1 << 30)}
-    configure_s3_access(aws_unsigned=True, cloud_defaults=True, **gdal_cfg)
-    configure_s3_access(
-        aws_unsigned=True, cloud_defaults=True, client=client, **gdal_cfg
-    )
-
-    rgba = to_rgba(xx.isel(time=0), clamp=(0, 3000), bands=rgba_bands)
-    rgba = xr_to_mem(rgba, client)
-
-    if verbose:
-        print(f"Writing {location}/{product_name}.tif")
-
-    save_cog(
-        rgba,
-        f"{location}/{product_name}.tif",
-        blocksize=1024,
-        compress="zstd",
-        zstd_level=4,
-        overview_levels=[],
-        NUM_THREADS="ALL_CPUS",
-        BIGTIFF="YES",
-        SPARSE_OK=True,
-        creds=creds,
-    )
-
-
 @main.command("generate-mosaic")
 @click.argument("product", type=str)
 @click.argument("input_prefix", type=str)
