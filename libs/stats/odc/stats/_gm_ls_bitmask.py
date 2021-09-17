@@ -36,7 +36,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
             work_chunks: Tuple[int, int] = (400, 400),
             scale: float = 0.0000275,
             offset: float = -0.2,
-            output_scale: int = 10000, # scale USGS Landsat bands into surface reflectance
+            output_scale: int = 10000, # making SR range match sentinel-2 gm
             masking_scale = 7272.7, # for removing negative pixels from input bands. default is set to than 7272.7
             **other,
     ):
