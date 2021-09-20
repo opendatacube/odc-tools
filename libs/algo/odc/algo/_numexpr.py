@@ -146,6 +146,6 @@ def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype='float32') -> xr.DataArra
 
     mask = x2 == 0
     out = x1 / x2
-    out = erase_bad(out, mask, nodata=dtype('nan'))
+    out = erase_bad(out, mask, nodata=dtype.type('nan'))
 
     return out
