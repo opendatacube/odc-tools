@@ -139,6 +139,8 @@ def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype='float32') -> xr.DataArra
 
     TODO: currently doesn't treat nodata values in any special way.
     """
+    dtype = np.dtype(dtype)
+
     x1 = x1.astype(dtype)
     x2 = x2.astype(dtype)
 
