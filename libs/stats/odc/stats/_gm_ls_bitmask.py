@@ -169,10 +169,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
         for band in gm.data_vars.keys():
             if band in self.bands:
                 gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
+
                 # nodata pixels end up in negative values so resetting them to NODATA -
                 # a pixel is nodata if it is smaller than scaled_nodata
-                scaled_nodata = gm[band].attrs['nodata'] + self.offset * self.output_scale
+                nodata_value = gm[band].attrs['nodata'] or NODATA
+                scaled_nodata = nodata_value + self.offset * self.output_scale
                 gm[band] = gm[band].where(gm[band] > scaled_nodata, NODATA)
+
                 # set to output data type
                 gm[band] = xr.ufuncs.ceil(gm[band]).astype(self.output_dtype)
             elif band == 'emad':
