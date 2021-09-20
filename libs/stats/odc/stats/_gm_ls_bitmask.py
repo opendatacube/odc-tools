@@ -172,7 +172,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
                 # nodata pixels end up in negative values so resetting them to NODATA -
                 # a pixel is nodata if it is smaller than scaled_nodata
-                scaled_nodata = gm[band].attrs.get('nodata', default=NODATA) + self.offset * self.output_scale
+                scaled_nodata = gm[band].attrs.get('nodata', NODATA) + self.offset * self.output_scale
                 gm[band] = gm[band].where(gm[band] > scaled_nodata, NODATA)
 
                 # set to output data type
