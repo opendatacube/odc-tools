@@ -14,6 +14,9 @@
 # ---
 
 # %% [markdown] tags=[]
+# # Access Sentinel 2 Data on Planetary Computer
+
+# %% [markdown] tags=[]
 # ## Setup Instructions
 #
 # This notebook is meant to run on Planetary Computer lab hub.
@@ -207,7 +210,7 @@ ndvi.isel(time=4).compute().plot.imshow(size=8, aspect=1.2, interpolation="bicub
 scl_rgb = colorize(xx.SCL, scl_colormap)
 
 # Clamp band .red,.green,.blue [1, 3000] then rescale to [0,255]
-# and arange it in a 4 channel image RGBA
+# and arrange it in a 4 channel image RGBA
 # use: bands= optional parameter when band names are not standard
 im_rgba = to_rgba(xx, clamp=(1, 3_000))
 
@@ -257,7 +260,7 @@ rgba_512 = to_rgba(
 # Same for SCL, but we can only use nearest|mode resampling
 scl_512 = colorize(xr_reproject(xx.SCL, thumb_geobox, resampling="mode"), scl_colormap)
 
-# Compress to image 5 to JPEG and display
+# Compress image 5 (index 4) to JPEG and display
 idx = 4
 ims = [
     ipywidgets.Image(value=to_jpeg_data(rgba_512.isel(time=idx).data.compute(), 80)),
