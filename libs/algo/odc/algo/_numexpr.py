@@ -6,6 +6,7 @@ import xarray as xr
 import numexpr as ne
 import functools
 from ._dask import randomize, flatten_kv, unflatten_kv
+from ._masking import erase_bad
 
 
 def apply_numexpr_np(
@@ -138,11 +139,11 @@ def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype='float32') -> xr.DataArra
 
     TODO: currently doesn't treat nodata values in any special way.
     """
-    dtype = np.dtype(dtype)
-
     x1 = x1.astype(dtype)
-    # TODO: support nodata on input
-    return apply_numexpr("where(x2 == 0, nan, x1 / x2)",
-                         xr.Dataset(dict(x1=x1, x2=x2)),
-                         dtype=dtype,
-                         nan=dtype.type("nan"))
+    x2 = x2.astype(dtype)
+
+    mask = x2 == 0
+    out = x1 / x2
+    out = erase_bad(out, mask, nodata=dtype('nan'))
+
+    return out
