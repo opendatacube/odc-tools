@@ -189,7 +189,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         Fuse cloud_mask with OR
         """
         cloud_mask = xx["cloud_mask"]
-        xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=0), '')
+        xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=NODATA), '')
         xx["cloud_mask"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
 
         return xx
