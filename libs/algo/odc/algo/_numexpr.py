@@ -140,9 +140,9 @@ def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype='float32') -> xr.DataArra
     """
     dtype = np.dtype(dtype)
 
+    x1 = x1.astype(dtype, casting='safe')
     # TODO: support nodata on input
-    return apply_numexpr("where(x2 == 0, nan, (_1f * x1) / x2)",
+    return apply_numexpr("where(x2 == 0, nan, x1 / x2)",
                          xr.Dataset(dict(x1=x1, x2=x2)),
                          dtype=dtype,
-                         nan=dtype.type("nan"),
-                         _1f=dtype.type(1))
+                         nan=dtype.type("nan"))
