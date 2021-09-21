@@ -52,7 +52,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.aux_bands = list(aux_names.values())
         self.scale = scale
         self.offset = offset
-        self.masking_scale = (-1.0 * self.offset)/self.scale
+        self.masking_scale = -1.0 * (self.offset/self.scale)
         self.output_scale = output_scale
         self.output_dtype = np.dtype(output_dtype)
         self.output_nodata = self.offset * self.output_scale
