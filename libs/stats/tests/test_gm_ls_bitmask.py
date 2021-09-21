@@ -45,13 +45,13 @@ def dataset(usgs_ls8_sr_definition):
 
 
 def test_native_transform(dataset):
-    gm = StatsGMLSBitmask(bands=["band_red"], masking_scale=25.7)
+    gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975)
 
     xx = gm._native_tr(dataset)
     expected_result = np.array([
         [[255, 57], [0, 0]],
         [[0, 0], [70, 80]],
-        [[0, 52], [0, 0]],
+        [[25, 52], [0, 0]],
     ])
     result = xx.compute()["band_red"].data
     assert (result == expected_result).all()
@@ -66,7 +66,7 @@ def test_native_transform(dataset):
 
 
 def test_fuser(dataset):
-    gm = StatsGMLSBitmask(bands=["band_red"], masking_scale=20.7)
+    gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975)
 
     xx = gm._native_tr(dataset)
     xx = xx.groupby("solar_day").map(gm._fuser)

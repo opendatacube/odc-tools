@@ -37,7 +37,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
             work_chunks: Tuple[int, int] = (400, 400),
             scale: float = 0.0000275,
             offset: float = -0.2,
-            masking_scale: float = 7272.7, # for removing negative pixels from input bands
             output_scale: int = 10000, # gm rescaling - making SR range match sentinel-2 gm
             output_dtype: str = "uint16", # dtype of gm rescaling
             **other,
@@ -53,9 +52,10 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.aux_bands = list(aux_names.values())
         self.scale = scale
         self.offset = offset
-        self.masking_scale = masking_scale
+        self.masking_scale = (-1.0 * self.offset)/self.scale
         self.output_scale = output_scale
         self.output_dtype = np.dtype(output_dtype)
+        self.output_nodata = self.offset * self.output_scale
 
         if self.bands is None:
             self.bands = (
@@ -76,9 +76,9 @@ class StatsGMLSBitmask(StatsPluginInterface):
         Loads in the data in the native projection. It performs the following:
 
         1. Loads pq bands
-        2. Remove negative pixel from input bands
+        2. Extract valid - by removing negative pixel using masking_scale from input bands
         3. Extract cloud_mask flags from bands
-        4. Drops nodata pixels
+        4. Drop nodata and negative pixels
         5. Add cloud_mask band to xx for fuser and reduce
 
         .. bitmask::
@@ -169,12 +169,9 @@ class StatsGMLSBitmask(StatsPluginInterface):
         for band in gm.data_vars.keys():
             if band in self.bands:
                 gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
-
-                # nodata pixels end up in negative values so resetting them to NODATA -
+                # nodata pixels end up in negative values so resetting them back NODATA -
                 # a pixel is nodata if it is smaller than scaled_nodata
-                scaled_nodata = gm[band].attrs.get('nodata', NODATA) + self.offset * self.output_scale
-                gm[band] = gm[band].where(gm[band] > scaled_nodata, NODATA)
-
+                gm[band] = gm[band].where(gm[band] > self.output_nodata, NODATA)
                 # set to output data type
                 gm[band] = xr.ufuncs.ceil(gm[band]).astype(self.output_dtype)
             elif band == 'emad':
