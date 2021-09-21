@@ -36,6 +36,8 @@ from eodatasets3.images import FileWrite, GridSpec
 import eodatasets3.stac as eo3stac
 import eodatasets3
 
+import datacube_ows
+
 WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
 
 _log = logging.getLogger(__name__)
