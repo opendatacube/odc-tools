@@ -48,6 +48,9 @@ dependencies:
   - structlog
   - url-normalize
 
+  # datacube_ows (for odc-stats)
+  - datacube_ows==1.8.19
+
   # For tests
   - pytest
   - pytest-httpserver
