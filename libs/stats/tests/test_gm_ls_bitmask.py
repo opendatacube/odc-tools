@@ -85,7 +85,7 @@ def test_fuser(dataset):
 
 def test_reduce(dataset):
     _ = pytest.importorskip("hdstats")
-    gm = StatsGMLSBitmask(bands=["band_red"], masking_scale=20.7)
+    gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975)
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
@@ -105,7 +105,7 @@ def test_reduce(dataset):
 def test_reduce_with_filters(dataset):
     _ = pytest.importorskip("hdstats")
     mask_filters = [("closing", 2), ("dilation",1)]
-    gm = StatsGMLSBitmask(bands=["band_red"], filters=mask_filters, masking_scale=20.7)
+    gm = StatsGMLSBitmask(bands=["band_red"], filters=mask_filters, offset=-0.2, scale=0.00975)
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
