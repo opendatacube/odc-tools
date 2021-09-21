@@ -125,7 +125,3 @@ def test_xr_quantile(nodata, use_dask):
     for band in output.keys():
         np.testing.assert_equal(output[band], true_results[band])
     
-    assert output["band_1_pc_20"].attrs["test_attr"] == 1
-    assert output["band_1_pc_60"].attrs["test_attr"] == 1
-    assert output["band_2_pc_20"].attrs["test_attr"] == 2
-    assert output["band_2_pc_20"].attrs["test_attr"] == 2
