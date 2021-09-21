@@ -292,3 +292,19 @@ def fuse_ds(
     fused_ds = Dataset(product, prep_eo3(fused_doc), uris=[""])
     fused_doc["properties"]["fused"] = "True"
     return fused_ds
+
+
+def install_ows_environment():
+    """
+    When apply eodatasets3, install OWS to odc-stat running environment.
+    """
+    import importlib
+    try:
+        importlib.import_module("datacube_ows")
+        importlib.import_module("sentry_sdk")
+        importlib.import_module("blinker")
+    except ImportError:
+        import pip
+        pip.main(['install', "datacube_ows"])
+        pip.main(['install', "sentry-sdk"])
+        pip.main(['install', "blinker"])

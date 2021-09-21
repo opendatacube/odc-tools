@@ -161,8 +161,7 @@ class OutputProduct:
     naming_conventions_values: str = "dea_c3"
     explorer_path: str = "https://explorer.dea.ga.gov.au/"
     inherit_skip_properties: Optional[List[str]] = None
-    preview_image: Optional[List[Any]] = None
-    preview_image_singleband: Optional[List[Any]] = None
+    preview_image_ows_style: Optional[Dict[str, Any]] = None
     classifier: str = "level3"
     maturity: str = "final"
     collection_number: int = 3
@@ -311,13 +310,20 @@ class Task:
         product = self.product
         region_code = product.region_code(self.tile_index)
         file_prefix = f"{product.short_name}_{region_code}_{self.short_time}"
+        parent_folder = f"{product.location}/{self.location}"
+
+        # put maturity value: e.g. final as part of prefix
+        maturity = self.product.maturity
 
         if relative_to == "dataset":
-            return file_prefix
+            return file_prefix if (maturity is None) \
+                                    else file_prefix + "_" + maturity
         elif relative_to == "product":
-            return self.location + "/" + file_prefix
+            return self.location + "/" + file_prefix if (maturity is None) \
+                                    else self.location + "/" + file_prefix + "_" + maturity
         else:
-            return product.location + "/" + self.location + "/" + file_prefix
+            return parent_folder + "/" + file_prefix if (maturity is None) \
+                                     else parent_folder + "/" + file_prefix + "_" + maturity
 
     def paths(
         self, relative_to: str = "dataset", ext: str = EXT_TIFF
@@ -362,13 +368,13 @@ class Task:
         
         # ignore the tons of Inheritable property warnings
         warnings.simplefilter(action='ignore', category=UserWarning)
-        platforms = [] # platforms are the concat value in stats
+
+        platforms = []
 
         for dataset in self.datasets:
             if 'fused' in dataset.type.name:
                 sources = [e['id'] for e in dataset.metadata.sources.values()]
                 platforms.append(dataset.metadata_doc['properties']['eo:platform'])
-                dataset_assembler.datetime = dataset.metadata_doc['properties']['datetime']
                 dataset_assembler.note_source_datasets(self.product.classifier,
                                                        *sources)
             else:
@@ -378,14 +384,14 @@ class Task:
                                                     auto_inherit_properties=True, # it will grab all useful input dataset preperties
                                                     inherit_geometry=True,
                                                     inherit_skip_properties=self.product.inherit_skip_properties)
+
                 if 'eo:platform' in source_datasetdoc.properties:
                     platforms.append(source_datasetdoc.properties['eo:platform'])
 
-        # set the warning message back
-        warnings.filterwarnings('default')
-
-        if len(platforms) > 0:
-            dataset_assembler.platform = ','.join(sorted(set(platforms)))
+        dataset_assembler.platform = ','.join(sorted(set(platforms)))
+        dataset_assembler.datetime = format_datetime(self.time_range.start)
+        dataset_assembler.properties["dtr:start_datetime"] = format_datetime(self.time_range.start)
+        dataset_assembler.properties["dtr:end_datetime"] = format_datetime(self.time_range.end)
 
         # inherit properties from cfg
         for product_property_name, product_property_value in self.product.properties.items():
@@ -394,6 +400,9 @@ class Task:
         dataset_assembler.product_name = self.product.name
         dataset_assembler.dataset_version = self.product.version
         dataset_assembler.region_code = self.product.region_code(self.tile_index)
+
+        # set the warning message back
+        warnings.filterwarnings('default')
 
         if processing_dt is None:
             processing_dt = datetime.utcnow()
@@ -411,7 +420,7 @@ class Task:
                                                     grid=GridSpec(shape=self.geobox.shape,
                                                                     transform=self.geobox.transform,
                                                                     crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
-                                                    nodata=output_dataset[band].nodata if 'nodata' in output_dataset[band].attrs else 'None')
+                                                    nodata=output_dataset[band].nodata if 'nodata' in output_dataset[band].attrs else None)
 
         return dataset_assembler
 
@@ -527,10 +536,9 @@ class StatsPluginInterface(ABC):
         naming_conventions_values: str = "dea_c3",
         explorer_path: str = "https://explorer.dea.ga.gov.au",
         inherit_skip_properties: Optional[List[str]] = None,
-        preview_image: Optional[List[Any]] = None,
-        preview_image_singleband: Optional[List[Any]] = None,
+        preview_image_ows_style: Optional[Dict[str, Any]] = None,
         classifier: str = "level3",
-        maturity: str = "final",
+        maturity: Optional[str] = None,
         collection_number: int = 3,
         nodata: Optional[Dict[str, int]] = None
     ) -> OutputProduct:
@@ -546,10 +554,9 @@ class StatsPluginInterface(ABC):
         :param naming_conventions_values: default ``dea_c3``
         :param explorer_path: default ``https://explorer.dea.ga.gov.au``
         :param inherit_skip_properties: block properties from source datasets.
-        :param preview_image: three measurement display as a thumbnail setting. Three values map to green, red and blue.
-        :param preview_image_singleband: each measurment display as a thumbnail setting.
+        :param preview_image_ows_style: define ows_styling_dict
         :param classifier: default ``level3``
-        :param maturity: default ``final``
+        :param maturity: default ``None``
         :param collection_number: default ``3``
         :param nodata: band level nodata information. Pass it to eodatasets3 library only.
         """
@@ -595,8 +602,7 @@ class StatsPluginInterface(ABC):
             naming_conventions_values=naming_conventions_values,
             explorer_path=explorer_path,
             inherit_skip_properties=inherit_skip_properties,
-            preview_image=preview_image,
-            preview_image_singleband=preview_image_singleband,
+            preview_image_ows_style=preview_image_ows_style,
             classifier=classifier,
             maturity=maturity,
             collection_number=collection_number,
