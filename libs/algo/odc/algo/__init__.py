@@ -63,6 +63,7 @@ from ._warp import xr_reproject
 
 from ._tiff import save_cog
 
+from ._percentile import xr_quantile
 from ._broadcast import (
     pool_broadcast,
 )
@@ -71,7 +72,6 @@ from ._dask_stream import (
     dask_compute_stream,
     seq_to_bags,
 )
-
 
 __all__ = (
     "apply_numexpr",
@@ -117,6 +117,7 @@ __all__ = (
     "colorize",
     "xr_reproject",
     "save_cog",
+    "xr_quantile",
     "pool_broadcast",
     "dask_compute_stream",
     "seq_to_bags",

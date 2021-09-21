@@ -1,4 +1,4 @@
-from odc.algo._percentile import np_percentile, xr_percentile
+from odc.algo._percentile import np_percentile, xr_quantile_bands, xr_quantile
 import numpy as np
 import pytest
 import dask.array as da
@@ -55,8 +55,9 @@ def test_np_percentile_bad_data(nodata):
     np.testing.assert_equal(np_percentile(arr, 0.0, nodata), np.array([nodata, 3]))
 
 
-@pytest.mark.parametrize("nodata", [255, 200, np.nan, -1]) #should do -1
-def test_xr_percentile(nodata):
+@pytest.mark.parametrize("nodata", [255, 200, np.nan, -1])
+@pytest.mark.parametrize("use_dask", [False, True])
+def test_xr_quantile_bands(nodata, use_dask):
     band_1 = np.random.randint(0, 100, size=(10, 100, 200)).astype(type(nodata))
     band_2 = np.random.randint(0, 100, size=(10, 100, 200)).astype(type(nodata))
 
@@ -69,8 +70,42 @@ def test_xr_percentile(nodata):
     true_results["band_1_pc_60"] = np_percentile(band_1, 0.6, nodata)
     true_results["band_2_pc_60"] = np_percentile(band_2, 0.6, nodata)
 
-    band_1 = da.from_array(band_1, chunks=(2, 20, 20))
-    band_2 = da.from_array(band_2, chunks=(2, 20, 20))
+    if use_dask:
+        band_1 = da.from_array(band_1, chunks=(2, 20, 20))
+        band_2 = da.from_array(band_2, chunks=(2, 20, 20))
+
+    attrs = {"test": "attrs"}
+    coords = {
+        "x": np.linspace(10, 20, band_1.shape[2]), 
+        "y": np.linspace(0, 5, band_1.shape[1]), 
+        "t": np.linspace(0, 5, band_1.shape[0])
+    }
+
+    data_vars = {"band_1": (("t", "y", "x"), band_1), "band_2": (("t", "y", "x"), band_2)}
+
+    dataset = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+    output = xr_quantile_bands(dataset, [0.2, 0.6], nodata).compute()
+
+    for band in output.keys():
+        np.testing.assert_equal(output[band], true_results[band])
+
+
+@pytest.mark.parametrize("nodata", [255, 200, np.nan, -1])
+@pytest.mark.parametrize("use_dask", [False, True])
+def test_xr_quantile(nodata, use_dask):
+    band_1 = np.random.randint(0, 100, size=(10, 100, 200)).astype(type(nodata))
+    band_2 = np.random.randint(0, 100, size=(10, 100, 200)).astype(type(nodata))
+
+    band_1[np.random.random(size=band_1.shape) > 0.5] = nodata
+    band_2[np.random.random(size=band_1.shape) > 0.5] = nodata
+
+    true_results = dict()
+    true_results["band_1"] = np.stack([np_percentile(band_1, 0.2, nodata), np_percentile(band_1, 0.6, nodata)], axis=0)
+    true_results["band_2"] = np.stack([np_percentile(band_2, 0.2, nodata), np_percentile(band_2, 0.6, nodata)], axis=0)
+
+    if use_dask:
+        band_1 = da.from_array(band_1, chunks=(2, 20, 20))
+        band_2 = da.from_array(band_2, chunks=(2, 20, 20))
 
     attrs = {"test": "attrs"}
     coords = {
@@ -85,12 +120,8 @@ def test_xr_percentile(nodata):
     }
 
     dataset = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-    output = xr_percentile(dataset, [0.2, 0.6], nodata).compute()
+    output = xr_quantile(dataset, [0.2, 0.6], nodata).compute()
 
-    for key in output.keys():
-        np.testing.assert_equal(output[key], true_results[key])
+    for band in output.keys():
+        np.testing.assert_equal(output[band], true_results[band])
     
-    assert output["band_1_pc_20"].attrs["test_attr"] == 1
-    assert output["band_1_pc_60"].attrs["test_attr"] == 1
-    assert output["band_2_pc_20"].attrs["test_attr"] == 2
-    assert output["band_2_pc_20"].attrs["test_attr"] == 2
