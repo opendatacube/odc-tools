@@ -28,6 +28,7 @@ from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF, StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
+from .utils import install_ows_environment
 
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
@@ -209,65 +210,32 @@ class S3COGSink:
             out.append(self._write_blob(cog_bytes, url, ContentType="image/tiff"))
         return out
 
+    def _apply_color_ramp(self, ds: xr.Dataset, ows_style_dict: dict, task: Task):
+        from datacube_ows.styles.api import StandaloneStyle
+        from datacube_ows.styles.api import apply_ows_style
 
-    def _get_single_band_thumbnail(self, ds: xr.Dataset, task: Task, single_band: Dict[str, str], input_geobox: GridSpec, odc_file_path: str) -> Delayed:
-        """
-        The single_band Dict can be:
-            1. single_band: {"measurement": "count_clear", "lookup_table": {"0":[150,150,110]}}, or
-            2. single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['blue']} or 
-            3. single_band: {"measurement":'frequency', 'bit':1, 'display_bands': ['red', 'green', 'blue']}
-        """
-        band = single_band['measurement']
-        thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-        zero_band = numpy.zeros((task.geobox.shape[0], task.geobox.shape[1]))
+        ows_style = StandaloneStyle(ows_style_dict)
+        # assign the time to xr.Dataset cause ows needs it
+        time_da = xr.Dataset({"time": task.time_range.start})
+        dst = ds.expand_dims(time=time_da.to_array())
+        return apply_ows_style(ows_style, dst)
 
-        # if use lookup_table to tune pixel, it will return [numpy.Array, numpy.Array, numpy.Array]
-        # if use bit to tune pixel, it will return numpy.Array
-        tuning_pixels, stretch = FileWrite()._filter_singleband_data(data=ds[band].values.reshape([task.geobox.shape[0], 
-                                                                                                   task.geobox.shape[1]]),
-                                                                     bit=single_band['bit'] if 'bit' in single_band else None,
-                                                                     lookup_table=single_band['lookup_table'] if 'lookup_table' in single_band else None)
-        if 'bit' in single_band:
-            # the bit operation return tuning_pixels is numapy.array
-            if 'display_bands' not in single_band: # if no display_band, duplicate it as r,g,b
-                tuning_pixels = [tuning_pixels, tuning_pixels, tuning_pixels]
-            else:
-                display_pixels = []
-                for display_band in ["red", "green", "blue"]:
-                    display_pixels.append(tuning_pixels) if display_band in single_band["display_bands"] else display_pixels.append(zero_band)
-                tuning_pixels = display_pixels # make sure the tuning_pixcels format is [numpy.array, numpy.array, numpy.array] == [r, g, b]
 
-        thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=tuning_pixels,
-                                                                  static_stretch=stretch,
-                                                                  input_geobox=input_geobox,
-                                                                  nodata=ds[band].nodata if 'nodata' in ds[band].attrs else None)
-                                                                  
-        return self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg")
-
-    def _get_multi_band_thumbnail(self, ds: xr.Dataset, task: Task, multi_band: Dict[str, str], input_geobox: GridSpec, odc_file_path: str) -> Delayed:
-        """
-        The multi_band Dict can be:
-            1. multi_band: {'thumbnail_name': 'image_1', 'red': 'count_clear', 'green': 'count_wet', 'blue': 'frequency'} or
-            2. multi_band: {'thumbnail_name': 'frequency', 'blue': 'frequency'}
-        """
+    def _get_thumbnail(self, ds: xr.Dataset, task: Task, ows_style_dict: dict, input_geobox: GridSpec, odc_file_path: str) -> Delayed:
         display_pixels = []
 
-        zero_band = numpy.zeros((task.geobox.shape[0], task.geobox.shape[1]))
-        
+        image = self._apply_color_ramp(ds, ows_style_dict, task)
+        # apply the OWS styling, the return image must have red, green, blue and alpha.
         for display_band in ['red', 'green', 'blue']:
-            display_pixels.append(ds[multi_band[display_band]].values.reshape([task.geobox.shape[0], task.geobox.shape[1]])) if display_band in multi_band else display_pixels.append(zero_band)
-            if display_band in multi_band:
-                nodata_val = ds[multi_band[display_band]].nodata if 'nodata' in ds[multi_band[display_band]].attrs else None
-
-        thumbnail_name = multi_band['thumbnail_name']
-        thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
+            display_pixels.append(image[display_band].values.reshape([task.geobox.shape[0], task.geobox.shape[1]]))
 
         thumbnail_bytes = FileWrite().create_thumbnail_from_numpy(rgb=display_pixels,
+                                                                  static_stretch=(0, 255),
+                                                                  out_scale=10,
                                                                   input_geobox=input_geobox,
-                                                                  nodata=nodata_val)
+                                                                  nodata=None)
 
-        return self._write_blob(thumbnail_bytes, thumbnail_path, ContentType="image/jpeg")
-        
+        return self._write_blob(thumbnail_bytes, odc_file_path.split('.')[0] + f"_thumbnail.jpg", ContentType="image/jpeg")
 
     def _ds_to_thumbnail_cog(self, ds: xr.Dataset, task: Task) -> List[Delayed]:
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
@@ -278,15 +246,14 @@ class S3COGSink:
                                 transform=task.geobox.transform, 
                                 crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
 
-        if task.product.preview_image_singleband:
-            for single_band in task.product.preview_image_singleband:
-                thumbnail_cog = self._get_single_band_thumbnail(ds, task, single_band, input_geobox, odc_file_path)
+        if task.product.preview_image_ows_style:
+
+            
+            try:
+                thumbnail_cog = self._get_thumbnail(ds, task, task.product.preview_image_ows_style, input_geobox, odc_file_path)
                 thumbnail_cogs.append(thumbnail_cog)
-        
-        if task.product.preview_image: # change elif to if, so we can dump two kinds of thumbnail
-            for multi_band in task.product.preview_image:
-                thumbnail_cog = self._get_multi_band_thumbnail(ds, task, multi_band, input_geobox, odc_file_path)
-                thumbnail_cogs.append(thumbnail_cog)
+            except AttributeError:
+                _log.error(f"Cannot parse OWS styling: {task.product.preview_image_ows_style}.")
 
         return thumbnail_cogs
 
@@ -372,6 +339,12 @@ class S3COGSink:
         """
         Dump files with metadata files, which generated from eodatasets3
         """
+
+        # check and install datacube_ows
+        install_ows_environment()
+
+        import datacube_ows
+
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
         sha1_url = task.metadata_path("absolute", ext="sha1")
@@ -392,18 +365,14 @@ class S3COGSink:
                                                 # Just realized the odc-stats does not have version.
                                                 proc.VERSION)
 
-        # add accessories files. we add the filename because odc-metadata need the filename, not full path.
-        if task.product.preview_image_singleband:
-            for single_band in task.product.preview_image_singleband:
-                band = single_band['measurement']
-                thumbnail_path = odc_file_path.split('.')[0] + f"_{band}_thumbnail.jpg"
-                dataset_assembler._accessories[f"thumbnail:{band}"] = Path(urlparse(thumbnail_path).path).name
+        if task.product.preview_image_ows_style:
+            thumbnail_path = odc_file_path.split('.')[0] + f"_thumbnail.jpg"
+            dataset_assembler._accessories["thumbnail"] = Path(urlparse(thumbnail_path).path).name
 
-        if task.product.preview_image:
-            for single_image in task.product.preview_image:
-                thumbnail_name = single_image['thumbnail_name']
-                thumbnail_path = odc_file_path.split('.')[0] + f"_{thumbnail_name}_thumbnail.jpg"
-                dataset_assembler._accessories[f"thumbnail:{thumbnail_name}"] = Path(urlparse(thumbnail_path).path).name
+            dataset_assembler.note_software_version("datacube-ows",
+                                                    "https://github.com/opendatacube/datacube-ows",
+                                                    # Just realized the odc-stats does not have version.
+                                                    datacube_ows.__version__)
 
         dataset_assembler._accessories["checksum:sha1"] = Path(urlparse(sha1_url).path).name
         dataset_assembler._accessories["metadata:processor"] = Path(urlparse(proc_info_url).path).name
