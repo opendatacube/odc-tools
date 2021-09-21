@@ -5,6 +5,7 @@ from functools import partial
 from typing import Dict, Optional, Tuple, Any, Iterable
 
 import xarray as xr
+import numpy as np
 from datacube.utils import masking
 from odc.algo import geomedian_with_mads, keep_good_only, erase_bad
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
@@ -13,6 +14,7 @@ from odc.stats import _plugins
 from odc.stats.model import StatsPluginInterface
 from odc.stats.model import Task
 
+NODATA = 0
 
 class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"
@@ -35,7 +37,9 @@ class StatsGMLSBitmask(StatsPluginInterface):
             work_chunks: Tuple[int, int] = (400, 400),
             scale: float = 0.0000275,
             offset: float = -0.2,
-            masking_scale = 7272.7, # for removing negative pixels from input bands. default is set to than 7272.7
+            masking_scale: float = 7272.7, # for removing negative pixels from input bands
+            output_scale: int = 10000, # gm rescaling - making SR range match sentinel-2 gm
+            output_dtype: str = "uint16", # dtype of gm rescaling
             **other,
     ):
         self.mask_band = mask_band
@@ -50,7 +54,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.scale = scale
         self.offset = offset
         self.masking_scale = masking_scale
-        self.sr_scale = 10000  # scale USGS Landsat bands into surface reflectance
+        self.output_scale = output_scale
+        self.output_dtype = np.dtype(output_dtype)
 
         if self.bands is None:
             self.bands = (
@@ -97,10 +102,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
             0-----------------------------------------------------------------> cirrus_confidence
         """
 
-        # remove negative pixels - a pixel is invalid if any of the band is smaller than 7272.7
+        # remove negative pixels - a pixel is invalid if any of the band is smaller than masking_scale
         valid = (xx[self.bands] > self.masking_scale).to_array(dim='band').all(dim='band')
-        for band in self.bands:
-            xx[band] = xx[band].where(valid, 0)
 
         mask_band = xx[self.mask_band]
         xx = xx.drop_vars([self.mask_band])
@@ -115,7 +118,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         nodata_mask, _ = masking.create_mask_value(flags_def, **self.nodata_flags)
         keeps = (mask_band & nodata_mask) == 0
 
-        xx = keep_good_only(xx, keeps)
+        xx = keep_good_only(xx, valid, nodata=NODATA)   # remove negative pixels
+        xx = keep_good_only(xx, keeps, nodata=NODATA)   # remove nodata pixels
         xx["cloud_mask"] = cloud_mask
 
         return xx
@@ -139,7 +143,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         cloud_mask = xx["cloud_mask"]
-        sr_scale = self.sr_scale
         cfg = dict(
             maxiters=1000,
             num_threads=1,
@@ -162,15 +165,21 @@ class StatsGMLSBitmask(StatsPluginInterface):
         gm = geomedian_with_mads(xx, **cfg)
         gm = gm.rename(self.renames)
 
-        # Rescaling gm bands between 0-10000 (approx) range
-        # for band in gm.data_vars:
-        #     if band in self.bands:
-        #         gm[band] = scale * sr_scale * gm[band] + offset * sr_scale
-        #         gm[band] = gm[band].round().astype(np.uint16)
-        #
-        # # Rescale edev to sr_scale
-        # gm['emad'] = scale * sr_scale * gm['emad']
-        # gm['emad'] = gm['emad'].round().astype(np.uint16)
+        # rescale gm bands into surface reflectance scale
+        for band in gm.data_vars.keys():
+            if band in self.bands:
+                gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
+
+                # nodata pixels end up in negative values so resetting them to NODATA -
+                # a pixel is nodata if it is smaller than scaled_nodata
+                scaled_nodata = gm[band].attrs.get('nodata', NODATA) + self.offset * self.output_scale
+                gm[band] = gm[band].where(gm[band] > scaled_nodata, NODATA)
+
+                # set to output data type
+                gm[band] = xr.ufuncs.ceil(gm[band]).astype(self.output_dtype)
+            elif band == 'emad':
+                gm[band] = self.scale * self.output_scale * gm[band]
+                gm[band] = xr.ufuncs.ceil(gm[band]).astype(self.output_dtype)
 
         return gm
 
@@ -179,7 +188,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         Fuse cloud_mask with OR
         """
         cloud_mask = xx["cloud_mask"]
-        xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=0), '')
+        xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=NODATA), '')
         xx["cloud_mask"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
 
         return xx

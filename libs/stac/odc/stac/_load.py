@@ -55,8 +55,6 @@ def load(
        the result. The plan is to make this choice automatic if not configured.
 
 
-    **Parameters**
-
     :param items:
        Iterable of STAC :class:`~pystac.Item` to load
 
@@ -65,7 +63,8 @@ def load(
        single band name as input
 
     :param geobox:
-       Allows to specify exact region/resolution/projection
+       Allows to specify exact region/resolution/projection using
+       :class:`~datacube.utils.geometry.GeoBox` object
 
     :param groupby:
        Controls what items get placed in to the same pixel plane,
@@ -106,7 +105,8 @@ def load(
     :return:
        :class:`xarray.Dataset` with requested bands populated
 
-    **Complete Example Code**
+
+    .. rubric:: Complete Example Code
 
     .. code-block:: python
 
@@ -131,7 +131,7 @@ def load(
        xx.red.plot.imshow(col="time", size=8, aspect=1);
 
 
-    **Example Config**
+    .. rubric:: Example Configuration
 
     Sample ``stac_cfg=`` parameter.
 
