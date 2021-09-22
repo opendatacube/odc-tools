@@ -8,7 +8,7 @@ import numpy as np
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
-from odc.algo._percentile import xr_percentile
+from odc.algo._percentile import xr_quantile_bands
 from odc.algo._masking import _xr_fuse, _fuse_mean_np, enum_to_bool
 from .model import StatsPluginInterface
 from . import _plugins
@@ -18,7 +18,7 @@ NODATA = -9999 # output NODATA
 
 
 class StatsTCWPC(StatsPluginInterface):
-    
+
     NAME = "ga_tcw_percentiles"
     SHORT_NAME = NAME
     VERSION = "0.0.1"
@@ -79,13 +79,13 @@ class StatsTCWPC(StatsPluginInterface):
             resampling=self.resampling,
             chunks=chunks,
         )
-        
+
         return xx
 
     @staticmethod
     def reduce(xx: xr.Dataset) -> xr.Dataset:
 
-        yy = xr_percentile(xx, [0.1, 0.5, 0.9], nodata=NODATA)
+        yy = xr_quantile_bands(xx, [0.1, 0.5, 0.9], nodata=NODATA)
         return yy
 
     def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
