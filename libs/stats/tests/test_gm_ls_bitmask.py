@@ -85,7 +85,42 @@ def test_fuser(dataset):
 
 def test_reduce(dataset):
     _ = pytest.importorskip("hdstats")
-    gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975)
+    gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975, output_scale=100)
+
+    xx = gm._native_tr(dataset)
+    xx = gm.reduce(xx)
+
+    result = xx.compute()
+
+    assert set(xx.data_vars.keys()) == set(
+        ["band_red", "smad", "emad", "bcmad", "count"]
+    )
+
+    assert (result["band_red"].dtype == np.uint16)
+    assert (result["emad"].dtype == np.uint16)
+
+    expected_result = np.array(
+        [[116, 36], [48,  58]]
+    )
+    band_red = result["band_red"].data
+    assert (band_red == expected_result).all()
+
+    expected_result = np.array(
+        [[112, 0], [0,  0]]
+    )
+    band_emad = result["emad"].data
+    assert (band_emad == expected_result).all()
+
+    expected_result = np.array(
+        [[2, 1], [1, 1]],
+    )
+    count = result["count"].data
+    assert (count == expected_result).all()
+
+def test_reduce_with_filters(dataset):
+    _ = pytest.importorskip("hdstats")
+    mask_filters = [("closing", 2), ("dilation",1)]
+    gm = StatsGMLSBitmask(bands=["band_red"], filters=mask_filters, offset=-0.2, scale=0.00975, output_scale=100)
 
     xx = gm._native_tr(dataset)
     xx = gm.reduce(xx)
@@ -97,24 +132,16 @@ def test_reduce(dataset):
     )
 
     expected_result = np.array(
-        [[2, 1], [1, 1]],
+        [[229, 36], [48,  58]]
     )
-    count = result["count"].data
-    assert (count == expected_result).all()
+    band_red = result["band_red"].data
+    assert (band_red == expected_result).all()
 
-def test_reduce_with_filters(dataset):
-    _ = pytest.importorskip("hdstats")
-    mask_filters = [("closing", 2), ("dilation",1)]
-    gm = StatsGMLSBitmask(bands=["band_red"], filters=mask_filters, offset=-0.2, scale=0.00975)
-
-    xx = gm._native_tr(dataset)
-    xx = gm.reduce(xx)
-
-    result = xx.compute()
-
-    assert set(xx.data_vars.keys()) == set(
-        ["band_red", "smad", "emad", "bcmad", "count"]
+    expected_result = np.array(
+        [[0, 0], [0,  0]]
     )
+    band_emad = result["emad"].data
+    assert (band_emad == expected_result).all()
 
     expected_result = np.array(
         [[1, 1], [1, 1]],
