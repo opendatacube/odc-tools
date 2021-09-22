@@ -14,8 +14,6 @@ from odc.stats import _plugins
 from odc.stats.model import StatsPluginInterface
 from odc.stats.model import Task
 
-NODATA = 0
-
 class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"
     SHORT_NAME = NAME
@@ -52,10 +50,9 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.aux_bands = list(aux_names.values())
         self.scale = scale
         self.offset = offset
-        self.masking_scale = -1.0 * (self.offset/self.scale)
         self.output_scale = output_scale
         self.output_dtype = np.dtype(output_dtype)
-        self.output_nodata = self.offset * self.output_scale
+        self.output_nodata = 0
 
         if self.bands is None:
             self.bands = (
@@ -103,7 +100,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         """
 
         # remove negative pixels - a pixel is invalid if any of the band is smaller than masking_scale
-        valid = (xx[self.bands] > self.masking_scale).to_array(dim='band').all(dim='band')
+        valid = (xx[self.bands] > (-1.0 * self.offset/self.scale)).to_array(dim='band').all(dim='band')
 
         mask_band = xx[self.mask_band]
         xx = xx.drop_vars([self.mask_band])
@@ -118,8 +115,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         nodata_mask, _ = masking.create_mask_value(flags_def, **self.nodata_flags)
         keeps = (mask_band & nodata_mask) == 0
 
-        xx = keep_good_only(xx, valid, nodata=NODATA)   # remove negative pixels
-        xx = keep_good_only(xx, keeps, nodata=NODATA)   # remove nodata pixels
+        xx = keep_good_only(xx, valid)   # remove negative pixels
+        xx = keep_good_only(xx, keeps)   # remove nodata pixels
         xx["cloud_mask"] = cloud_mask
 
         return xx
@@ -167,16 +164,19 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         # rescale gm bands into surface reflectance scale
         for band in gm.data_vars.keys():
-            if band in self.bands:
-                gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
-                # nodata pixels end up in negative values so resetting them back NODATA -
-                # a pixel is nodata if it is smaller than scaled_nodata
-                gm[band] = gm[band].where(gm[band] > self.output_nodata, NODATA)
-                # set to output data type
-                gm[band] = xr.ufuncs.ceil(gm[band]).astype(self.output_dtype)
-            elif band == 'emad':
-                gm[band] = self.scale * self.output_scale * gm[band]
-                gm[band] = xr.ufuncs.ceil(gm[band]).astype(self.output_dtype)
+            if band in self.bands or band == 'emad':
+                # set nodata_mask - use for resetting nodata pixel after rescale
+                nodata_mask = gm[band] == gm[band].attrs.get('nodata')
+                # rescale
+                if band == 'emad':
+                    gm[band] = self.scale * self.output_scale * gm[band]
+                else:
+                    gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
+                #  apply nodata_mask - reset nodata pixels to output-nodata
+                gm[band] = gm[band].where(~nodata_mask, self.output_nodata)
+                # set data-type and nodata attrs
+                gm[band] = gm[band].round().astype(self.output_dtype)
+                gm[band].attrs['nodata'] = self.output_nodata
 
         return gm
 
@@ -185,7 +185,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
         Fuse cloud_mask with OR
         """
         cloud_mask = xx["cloud_mask"]
-        xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=NODATA), '')
+        xx = _xr_fuse(xx.drop_vars(["cloud_mask"]), partial(_first_valid_np, nodata=0), '')
         xx["cloud_mask"] = _xr_fuse(cloud_mask, _fuse_or_np, cloud_mask.name)
 
         return xx
