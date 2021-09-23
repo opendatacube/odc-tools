@@ -28,7 +28,6 @@ from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF, StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
-from .utils import install_ows_environment
 
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
@@ -247,13 +246,14 @@ class S3COGSink:
                                 crs=CRS.from_epsg(task.geobox.crs.to_epsg()))
 
         if task.product.preview_image_ows_style:
-
-            
             try:
                 thumbnail_cog = self._get_thumbnail(ds, task, task.product.preview_image_ows_style, input_geobox, odc_file_path)
                 thumbnail_cogs.append(thumbnail_cog)
             except AttributeError:
                 _log.error(f"Cannot parse OWS styling: {task.product.preview_image_ows_style}.")
+            except ImportError:
+                _log.error('Please run python -m pip install "odc-stats[ows]" to setup environment.')
+                _log.error("No thumbnail JEPG in output files.")
 
         return thumbnail_cogs
 
@@ -339,12 +339,6 @@ class S3COGSink:
         """
         Dump files with metadata files, which generated from eodatasets3
         """
-
-        # check and install datacube_ows
-        install_ows_environment()
-
-        import datacube_ows
-
         stac_file_path = task.metadata_path("absolute", ext=self._stac_meta_ext)
         odc_file_path = task.metadata_path("absolute", ext=self._odc_meta_ext)
         sha1_url = task.metadata_path("absolute", ext="sha1")
@@ -366,13 +360,18 @@ class S3COGSink:
                                                 proc.VERSION)
 
         if task.product.preview_image_ows_style:
-            thumbnail_path = odc_file_path.split('.')[0] + f"_thumbnail.jpg"
-            dataset_assembler._accessories["thumbnail"] = Path(urlparse(thumbnail_path).path).name
+            try:
+                import datacube_ows
+                thumbnail_path = odc_file_path.split('.')[0] + f"_thumbnail.jpg"
+                dataset_assembler._accessories["thumbnail"] = Path(urlparse(thumbnail_path).path).name
 
-            dataset_assembler.note_software_version("datacube-ows",
-                                                    "https://github.com/opendatacube/datacube-ows",
-                                                    # Just realized the odc-stats does not have version.
-                                                    datacube_ows.__version__)
+                dataset_assembler.note_software_version("datacube-ows",
+                                                        "https://github.com/opendatacube/datacube-ows",
+                                                        # Just realized the odc-stats does not have version.
+                                                        datacube_ows.__version__)
+            except ImportError:
+                _log.error('Please run python -m pip install "odc-stats[ows]" to setup environment.')
+                _log.error("No the thumbnail section in metadata files.")
 
         dataset_assembler._accessories["checksum:sha1"] = Path(urlparse(sha1_url).path).name
         dataset_assembler._accessories["metadata:processor"] = Path(urlparse(proc_info_url).path).name
