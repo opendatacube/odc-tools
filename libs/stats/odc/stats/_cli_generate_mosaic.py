@@ -47,8 +47,9 @@ def s3_fetch_dss(glob, product, s3=None):
 @click.argument("input_prefix", type=str)
 @click.argument("location", type=str)
 @click.option("--bands", type=str)
+@click.option("--resampling", type=str, default="average")
 @click.option("--verbose", "-v", is_flag=True, help="Be verbose")
-def generate_mosaic(product, input_glob, location, bands, verbose):
+def generate_mosaic(product, input_glob, location, bands, resampling, verbose):
     """
     Generate mosaic overviews of the stats data.
 
@@ -85,9 +86,9 @@ def generate_mosaic(product, input_glob, location, bands, verbose):
         blocksize=1024,
         compress="zstd",
         zstd_level=4,
-        overview_levels=[],
+        overview_resampling=resampling,
         NUM_THREADS="ALL_CPUS",
-        BIGTIFF="YES",
+        bigtiff="YES",
         SPARSE_OK=True,
     )
     
