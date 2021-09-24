@@ -251,9 +251,8 @@ class S3COGSink:
                 thumbnail_cogs.append(thumbnail_cog)
             except AttributeError:
                 _log.error(f"Cannot parse OWS styling: {task.product.preview_image_ows_style}.")
-            except ImportError:
-                _log.error('Please run python -m pip install "odc-stats[ows]" to setup environment.')
-                _log.error("No thumbnail JEPG in output files.")
+            except ImportError as e:
+                raise type(e)(str(e) + '. Please run python -m pip install "odc-stats[ows]" to setup environment to generate thumbnail.')
 
         return thumbnail_cogs
 
@@ -369,9 +368,8 @@ class S3COGSink:
                                                         "https://github.com/opendatacube/datacube-ows",
                                                         # Just realized the odc-stats does not have version.
                                                         datacube_ows.__version__)
-            except ImportError:
-                _log.error('Please run python -m pip install "odc-stats[ows]" to setup environment.')
-                _log.error("No the thumbnail section in metadata files.")
+            except ImportError as e:
+                raise type(e)(str(e) + '. Please run python -m pip install "odc-stats[ows]" to setup environment to generate thumbnail.')
 
         dataset_assembler._accessories["checksum:sha1"] = Path(urlparse(sha1_url).path).name
         dataset_assembler._accessories["metadata:processor"] = Path(urlparse(proc_info_url).path).name
