@@ -50,6 +50,8 @@ from ._memsink import (
     da_yxbt_sink,
     yxbt_sink,
     da_mem_sink,
+    yxt_sink,
+    da_yxt_sink,
 )
 
 from ._rgba import (
@@ -109,6 +111,8 @@ __all__ = (
     "store_to_mem",
     "yxbt_sink_to_mem",
     "yxbt_sink",
+    "yxt_sink",
+    "da_yxt_sink",
     "da_mem_sink",
     "da_yxbt_sink",
     "is_rgb",

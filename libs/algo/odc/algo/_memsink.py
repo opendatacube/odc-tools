@@ -148,6 +148,24 @@ class _YXBTSink:
         self.data[iy, ix, it] = item.transpose([1, 2, 0])
 
 
+class _YXTSink:
+    def __init__(
+        self, token_or_key: CacheKey,
+    ):
+        self._tk = token_or_key
+
+    @property
+    def data(self):
+        return Cache.get(self._tk)
+
+    def __setitem__(self, key, item):
+        assert len(key) == 3
+        assert item.ndim == 3
+
+        it, iy, ix = key
+        self.data[iy, ix, it] = item.transpose([1, 2, 0])
+
+
 def store_to_mem(
     xx: da.Array, client: Client, out: Optional[np.ndarray] = None
 ) -> np.ndarray:
@@ -297,6 +315,32 @@ def da_mem_sink(xx: da.Array, chunks: Tuple[int, ...], name="memsink") -> da.Arr
     )
 
 
+def da_yxt_sink(band: da.Array, chunks: Tuple[int, int, int], name="yxt") -> da.Array:
+    """
+    band is in <t,y,x>
+    output is <y,x,t>
+
+    eval(band) |> transpose(YXT) |> Store(RAM) |> DaskArray(RAM, chunks)
+    """
+    tk = tokenize(band, "da_yxt_sink", chunks, name)
+
+    dtype = band.dtype
+    nt, ny, nx = band.shape
+    shape = (ny, nx, nt)
+
+    token = Cache.dask_new(shape, dtype, f"{name}_alloc")
+
+    sink = dask.delayed(_YXTSink)(token)
+    fut = da.store([band], [sink], lock=False, compute=False)
+    sink_name = f"{name}_collect-{tk}"
+    dsk = dict(fut.dask)
+    dsk[sink_name] = (lambda *x: x[0], token.key, *fut.dask[fut.key])
+    dsk = HighLevelGraph.from_collections(sink_name, dsk, dependencies=[sink])
+    token_done = Delayed(sink_name, dsk)
+
+    return _da_from_mem(token_done, shape=shape, dtype=dtype, chunks=chunks, name=name)
+
+
 def da_yxbt_sink(
     bands: Tuple[da.Array, ...], chunks: Tuple[int, ...], name="yxbt"
 ) -> da.Array:
@@ -306,7 +350,7 @@ def da_yxbt_sink(
 
     eval(bands) |> transpose(YXBT) |> Store(RAM) |> DaskArray(RAM, chunks)
     """
-    tk = tokenize(*bands)
+    tk = tokenize(*bands, chunks, name)
 
     b = bands[0]
     dtype = b.dtype
@@ -364,3 +408,20 @@ def yxbt_sink(ds: xr.Dataset, chunks: Tuple[int, int, int, int]) -> xr.DataArray
     coords["band"] = list(ds.data_vars)
 
     return xr.DataArray(data=data, dims=dims, coords=coords, attrs=attrs)
+
+
+def yxt_sink(band: xr.DataArray, chunks: Tuple[int, int, int]) -> xr.DataArray:
+    """
+    Load ``T,Y,X` dataset into RAM with transpose to ``Y,X,T``, then present
+    that as Dask array with specified chunking.
+
+    :param band:
+       Dask backed :class:`xr.DataArray` data in ``T,Y,X`` order
+    :param chunks:
+       Desired output chunk size in output order ``Y,X,T``
+    :return:
+       Dask backed :class:`xr.DataArray` with requested chunks and ``Y,X,T`` axis order
+    """
+    data = da_yxt_sink(band.data, chunks=chunks)
+    dims = band.dims[1:] + (band.dims[0],)
+    return xr.DataArray(data=data, dims=dims, coords=band.coords, attrs=band.attrs)
