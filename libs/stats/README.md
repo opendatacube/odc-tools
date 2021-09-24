@@ -270,7 +270,7 @@ Currently when the jobs complete, pods do not shutdown cleanly due to an error i
 In order to ensure assigned EC2 instances are released, you need to delete the job manually by running the following command:
 
 ``` 
-kp delete -f path-to-job-template.yaml
+kubectl pod delete -f path-to-job-template.yaml
 ```
 
 Monitor the AWS Autoscaling Groups and ensure they are reduced to 0 once the job has completed.
@@ -294,10 +294,23 @@ You can now run a query on the log of the selected job:
 
 ## Mosaics
 
-To quickly review products stats can be used to generate a low resolution continental mosaic of a summary product. To run the command:
+To quickly review products, stats can generate a low resolution continental mosaic of a summary product. To run the command:
 
 ```
 odc-stats generate-mosaic product_definition.yaml 's3://input-data-bucket/folder/*/*/metadata-file.stac-item.json' s3://output-bucket/folder/subfolder --bands nbart_red,nbart_blue
 ```
 
-This requires a odc product definition `yaml` file defining the input summary product, an `s3` glob that specifies the location of the `metadata` for the datasets to be included, the output bucket and folder, and the bands to be included in the mosaic. If no bands are specified all bands are used.
+The arguments are:
+
+- an ODC product definition `yaml` file defining the input summary product
+- an `s3://` glob that specifies the location of the `metadata` for the datasets to be included
+- the destination bucket and folder
+- and the bands to be included in the mosaic. If no bands are specified all bands are used
+
+
+This generates a COG per band with 7 overview layers into the destination `s3://` location.
+
+This is fully parallelised, run time should scale almost linearly with number of
+CPU cores. Memory usage should be something like `2048 * 2048 * bands *
+dtype_size * num_cores`, so for 64 cores maybe something like ~1GB ish. Each
+core gets a 2048 * 2048 chunk of the whole continent.
