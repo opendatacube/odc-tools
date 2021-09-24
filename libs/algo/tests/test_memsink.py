@@ -1,3 +1,4 @@
+import xarray as xr
 import dask
 import dask.array as da
 import numpy as np
@@ -7,7 +8,9 @@ from odc.algo._memsink import (
     _da_from_mem,
     da_mem_sink,
     da_yxbt_sink,
+    da_yxt_sink,
     Token,
+    yxt_sink,
 )
 
 
@@ -97,3 +100,47 @@ def test_yxbt_sink():
     for t_idx in range(NT):
         assert (_yxbt[:, :, 0, t_idx] == _aa[t_idx]).all()
         assert (_yxbt[:, :, 1, t_idx] == _bb[t_idx]).all()
+
+
+def test_da_yxt_sink():
+    NT, NY, NX = 3, 10, 20
+    aa = da.random.uniform(size=(NT, NY, NX), chunks=(1, 5, 4))
+
+    yxt = da_yxt_sink(aa, (5, 5, -1))
+    assert yxt.chunksize == (5, 5, NT)
+    assert yxt.shape == (NY, NX, NT)
+    assert yxt.dtype == aa.dtype
+
+    _yxt = yxt.compute()
+    _aa = aa.compute()
+    for t_idx in range(NT):
+        assert (_yxt[:, :, t_idx] == _aa[t_idx]).all()
+
+
+def test_yxt_sink():
+    NT, NY, NX = 3, 10, 20
+
+    data = da.random.uniform(size=(NT, NY, NX), chunks=(1, 5, 4))
+    aa = xr.DataArray(
+        data=data,
+        dims=("time", "y", "x"),
+        coords={
+            "time": np.arange(0, NT),
+            "x": np.arange(0, NX),
+            "y": np.arange(0, NY),
+        },
+    )
+
+    yxt = yxt_sink(aa, (5, 5, -1))
+    assert yxt.data.chunksize == (5, 5, NT)
+    assert yxt.shape == (NY, NX, NT)
+    assert yxt.dtype == aa.dtype
+
+    assert (yxt.x == aa.x).all()
+    assert (yxt.y == aa.y).all()
+    assert (yxt.time == aa.time).all()
+
+    _yxt = yxt.compute()
+    _aa = aa.compute()
+    for t_idx in range(NT):
+        assert (_yxt[:, :, t_idx] == _aa[t_idx]).all()
