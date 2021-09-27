@@ -33,11 +33,10 @@ def blob2ds(blob, product):
     return Dataset(product, doc, uris=[blob.url])
 
 
-def s3_fetch_dss(base, product, glob="*.json", s3=None):
+def s3_fetch_dss(glob, product, s3=None):
     if s3 is None:
         s3 = S3Fetcher(aws_unsigned=True)
     
-    glob = f"{base.strip('/')}/{glob}"
     blobs = s3(o.url for o in s3_find_glob(glob, skip_check=True, s3=s3))
     dss = (blob2ds(b, product) for b in blobs)
     return dss
@@ -48,8 +47,9 @@ def s3_fetch_dss(base, product, glob="*.json", s3=None):
 @click.argument("input_prefix", type=str)
 @click.argument("location", type=str)
 @click.option("--bands", type=str)
+@click.option("--resampling", type=str, default="average")
 @click.option("--verbose", "-v", is_flag=True, help="Be verbose")
-def generate_mosaic(product, input_prefix, location, bands, verbose):
+def generate_mosaic(product, input_glob, location, bands, resampling, verbose):
     """
     Generate mosaic overviews of the stats data.
 
@@ -62,7 +62,7 @@ def generate_mosaic(product, input_prefix, location, bands, verbose):
     if verbose:
         print(f"Preparing mosaics for {product.name} product")
 
-    dss = s3_fetch_dss(input_prefix, product, glob="*.json")
+    dss = s3_fetch_dss(input_glob, product)
 
     dc = Datacube()
     xx = dc.load(
@@ -86,9 +86,9 @@ def generate_mosaic(product, input_prefix, location, bands, verbose):
         blocksize=1024,
         compress="zstd",
         zstd_level=4,
-        overview_levels=[],
+        overview_resampling=resampling,
         NUM_THREADS="ALL_CPUS",
-        BIGTIFF="YES",
+        bigtiff="YES",
         SPARSE_OK=True,
     )
     

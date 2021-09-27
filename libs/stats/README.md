@@ -59,10 +59,25 @@ GeoJSON files are useful when selecting test regions as well as for debugging sp
 
 <img src="docs/auxiliary/screenshot-L8-2015.png" alt="Screenshot GeoJSON" width="1000"/>
 
-Optionally two products can be fused using the following syntax:
+#### Dataset Fusing
+
+Some summary products require data from bands stored in multiple products. Products can be fused to use bands from both products in the derivitive products, this creates a virtual product that contains the bands from both products. Note that for datasets to be fused they must have the same `center_time` and `region_code`. This process find the matching dataset from each product that are in the same time and place and fuses them into one product.
+
+An example of this is `fc-percentiles`, which uses the fractional covers bands in `ga_ls_fc_3` to calculate the percentiles, and uses the `ga_ls_wo_3` band to mask out bad data.  
+
+Two products can be fused using the following syntax:
 
 ```
 odc-stats save-tasks --frequency annual --grid au-30 --year 2017 ga_ls_fc_3+ga_ls_wo_3
+```
+
+
+#### Caching datasets from multiple products
+
+Some summary products require data from multiple satellites, e.g. `tcw_pc` uses scenes from `ga_ls5t_ard_3`, `ga_ls7e_ard_3`, and `ga_ls8c_ard_3`. Note that this is different from fusing products, the scenes do not have to be in the same place or time and this simply caches the datasets from each product as is. To save datasets from multiple products:
+
+```
+odc-stats save-tasks --frequency annual --grid au-30 --year 2017 ga_ls5t_ard_3-ga_ls7e_ard_3-ga_ls8c_ard_3
 ```
 
 ### 2 - Run Statistician
@@ -255,7 +270,7 @@ Currently when the jobs complete, pods do not shutdown cleanly due to an error i
 In order to ensure assigned EC2 instances are released, you need to delete the job manually by running the following command:
 
 ``` 
-kp delete -f path-to-job-template.yaml
+kubectl pod delete -f path-to-job-template.yaml
 ```
 
 Monitor the AWS Autoscaling Groups and ensure they are reduced to 0 once the job has completed.
@@ -277,3 +292,25 @@ You can now run a query on the log of the selected job:
 
 <img src="docs/auxiliary/screenshot-grafana.png" alt="Screenshot Grafana" width="1000"/>
 
+## Mosaics
+
+To quickly review products, stats can generate a low resolution continental mosaic of a summary product. To run the command:
+
+```
+odc-stats generate-mosaic product_definition.yaml 's3://input-data-bucket/folder/*/*/metadata-file.stac-item.json' s3://output-bucket/folder/subfolder --bands nbart_red,nbart_blue
+```
+
+The arguments are:
+
+- an ODC product definition `yaml` file defining the input summary product
+- an `s3://` glob that specifies the location of the `metadata` for the datasets to be included
+- the destination bucket and folder
+- and the bands to be included in the mosaic. If no bands are specified all bands are used
+
+
+This generates a COG per band with 7 overview layers into the destination `s3://` location.
+
+This is fully parallelised, run time should scale almost linearly with number of
+CPU cores. Memory usage should be something like `2048 * 2048 * bands *
+dtype_size * num_cores`, so for 64 cores maybe something like ~1GB ish. Each
+core gets a 2048 * 2048 chunk of the whole continent.
