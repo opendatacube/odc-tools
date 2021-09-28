@@ -88,7 +88,7 @@ def _stac_product_lookup(
     if constellation in KNOWN_CONSTELLATIONS:
         # This handles the Element 84 and  Microsft PC docs
         if constellation == "sentinel-2":
-            dataset_id = properties.get("sentinel:product_id") or properties.get("s2:granule_id")
+            dataset_id = properties.get("sentinel:product_id") or properties.get("s2:granule_id") or properties.get("sentinel:sentinel_tile_id")
             product_name = "s2_l2a"
             if region_code is None:
                 # Let this throw an exception if there's something missing
