@@ -92,12 +92,25 @@ def click_yaml_cfg(*args, **kw):
     """
     def _parse(ctx, param, value):
         if value is not None:
-            from odc.io.text import parse_yaml_file_or_inline
+            import urllib
+            from urllib.parse import urlparse
+            r = urlparse(value)
 
-            try:
-                return parse_yaml_file_or_inline(value)
-            except Exception as e:
-                raise click.ClickException(str(e)) from None
+            # if referece to file, use documents.load_documents to process
+            if all([r.scheme, r.netloc]):
+                from datacube.utils import documents
+                try:
+                    return dict(next(documents.load_documents(value)))
+                except urllib.error.URLError as e:
+                    raise click.ClickException(str(e) + f". Cannot access file {value}") from None 
+                except Exception as e:
+                    raise click.ClickException(str(e)) from None 
+            else:
+                from odc.io.text import parse_yaml_file_or_inline
+                try:
+                    return parse_yaml_file_or_inline(value)
+                except Exception as e:
+                    raise click.ClickException(str(e)) from None
     return click.option(*args, callback=_parse, **kw)
 
 
