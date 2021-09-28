@@ -36,4 +36,3 @@ def test_download_yamls():
     assert len(results) == 1
     print(results)
     assert results[0][0] is not None
-

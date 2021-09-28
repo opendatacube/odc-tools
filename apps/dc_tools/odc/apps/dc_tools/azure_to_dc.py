@@ -1,115 +1,90 @@
-"""Crawl Thredds for prefixes and fetch YAML's for indexing
-and dump them into a Datacube instance
-"""
-import sys
 import logging
-from typing import Tuple
 
 import click
-from odc.azure import find_blobs, download_yamls
-from odc.index import from_yaml_doc_stream
+from datacube.index.hl import Doc2Dataset
+from odc.azure import find_blobs, download_blob
 from datacube import Datacube
 
-from typing import List, Tuple
+from odc.stac.transform import stac_transform
+
+from odc.apps.dc_tools.utils import index_update_dataset, update, update_if_exists, allow_unsafe, transform_stac
+
+from typing import List, Optional
+import json
+
+
+def stream_blob_urls(account_url, container_name, credential, blobs: List[str]):
+    for blob in blobs:
+        doc, uri, _ = download_blob(account_url, container_name, credential, blob)
+        yield (json.loads(doc), uri)
 
 
 def dump_list_to_odc(
-        account_url,
-        container_name,
-        yaml_content_list: List[Tuple[bytes, str, str]],
-        dc: Datacube,
-        products: List[str],
-        **kwargs,
+    account_url,
+    container_name,
+    credential,
+    blob_urls: List[str],
+    dc: Datacube,
+    stac: Optional[bool] = False,
+    update: Optional[bool] = False,
+    update_if_exists: Optional[bool] = False,
+    allow_unsafe: Optional[bool] = False
 ):
-    expand_stream = (
-        (account_url + "/" + container_name + "/" + d[1][:d[1].rfind("/") + 1], d[0]) for d in yaml_content_list if
-        d[0] is not None
-    )
-
-    ds_stream = from_yaml_doc_stream(
-        expand_stream, dc.index, products=products, **kwargs
-    )
     ds_added = 0
     ds_failed = 0
-    # Consume chained streams to DB
-    for result in ds_stream:
-        ds, err = result
-        if err is not None:
-            logging.error(err)
+    doc2ds = Doc2Dataset(dc.index)
+
+    for doc, uri in stream_blob_urls(account_url, container_name, credential, blob_urls):
+        try:
+            if stac:
+                doc = stac_transform(doc)
+            index_update_dataset(doc, uri, dc, doc2ds, update=update, update_if_exists=update_if_exists, allow_unsafe=allow_unsafe)
+            ds_added += 1
+        except Exception as e:
+            logging.error(f'Failed to add {uri}')
+            logging.exception(e)
             ds_failed += 1
-        else:
-            logging.info(ds)
-            try:
-                dc.index.datasets.add(ds)
-                ds_added += 1
-            except Exception as e:
-                logging.error(e)
-                ds_failed += 1
 
     return ds_added, ds_failed
 
 
 @click.command("azure-to-dc")
-@click.option(
-    "--skip-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is not to skip lineage. Set to skip lineage altogether.",
-)
-@click.option(
-    "--fail-on-missing-lineage/--auto-add-lineage",
-    is_flag=True,
-    default=True,
-    help=(
-            "Default is to fail if lineage documents not present in the database. "
-            "Set auto add to try to index lineage documents."
-    ),
-)
-@click.option(
-    "--verify-lineage",
-    is_flag=True,
-    default=False,
-    help="Default is no verification. Set to verify parent dataset definitions.",
-)
-@click.option('--product', '-p', 'product_names',
-              help=('Only match against products specified with this option, '
-                    'you can supply several by repeating this option with a new product name'),
-              multiple=True)
-@click.argument("account_url", type=str, nargs=1)
-@click.argument("containter_name", type=str, nargs=1)
+@update
+@update_if_exists
+@allow_unsafe
+@transform_stac
+@click.option("--account_url", type=str, required=False, default=None)
+@click.argument("container_name", type=str, nargs=1)
 @click.argument("credential", type=str, nargs=1)
 @click.argument("prefix", type=str, nargs=1)
 @click.argument("suffix", type=str, nargs=1)
 def cli(
-        skip_lineage: bool,
-        fail_on_missing_lineage: bool,
-        verify_lineage: bool,
-        account_url: str,
-        container_name: str,
-        credential: str,
-        product_names: List[str],
-        prefix: str,
-        suffix: str,
+    update: bool,
+    update_if_exists: bool,
+    allow_unsafe: bool,
+    stac: bool,
+    account_url: str,
+    container_name: str,
+    credential: str,
+    prefix: str,
+    suffix: str,
 ):
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
-    yaml_urls = find_blobs(account_url, container_name, credential, prefix, suffix)
+    yaml_urls = find_blobs(container_name, credential, prefix, suffix, account_url=account_url)
 
-    print(f"Found {len(yaml_urls)} datasets")
-    yaml_contents = download_yamls(yaml_urls)
-
-    print(f"Matching to {product_names} products")
     # Consume generator and fetch YAML's
     dc = Datacube()
     added, failed = dump_list_to_odc(
         account_url,
         container_name,
-        yaml_contents,
+        credential,
+        yaml_urls,
         dc,
-        product_names,
-        skip_lineage=skip_lineage,
-        fail_on_missing_lineage=fail_on_missing_lineage,
-        verify_lineage=verify_lineage
+        stac=stac,
+        update=update,
+        update_if_exists=update_if_exists,
+        allow_unsafe=allow_unsafe
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
