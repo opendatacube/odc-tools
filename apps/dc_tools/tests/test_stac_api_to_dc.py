@@ -38,8 +38,9 @@ def test_stac_to_dc_usgs():
     assert result.exit_code == 0
 
 
+@pytest.mark.xfail(reason="Failing with error 'ConformanceClasses.ITEM_SEARCH not supported'")
 @pytest.mark.depends(on=['add_products'])
-def test__to_dc_planetarycomputer():
+def test_stac_to_dc_planetarycomputer():
     runner = CliRunner()
     result = runner.invoke(
         cli,
