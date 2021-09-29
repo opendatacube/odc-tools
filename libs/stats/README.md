@@ -164,6 +164,8 @@ cog_opts:
 
 Note that configurations will vary between different products. See this [sample configuration for Australian Landsat-8](https://bitbucket.org/geoscienceaustralia/datakube-apps/src/develop/workspaces/dea-dev/processing/06_stats.yaml).
 
+If no cog_opts:overrides:rgba in configurations or relative plug-in rgba method return None. There is no rgba.tif in output files.
+
 It is also possible to define custom plugins outside of `odc.stats.*`. To do that, define class deriving from `odc.stats.model.StatsPluginInterface` and implement `.input_data` and `.reduce` methods. You can then specify fully qualified name of your custom plugin in `cfg.yaml`.
 
 ```yaml
