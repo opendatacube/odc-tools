@@ -157,9 +157,13 @@ s3_acl: public-read
 cog_opts:
   zlevel: 9
   overrides:
+    # If you're making an RGBA image, compress better
     rgba:
       compress: JPEG
       jpeg_quality: 90
+    # If you're writing a categorical raster, do overview resampling with nearest or mode
+    qa:
+      overview_resampling: nearest
 ```
 
 Note that configurations will vary between different products. See this [sample configuration for Australian Landsat-8](https://bitbucket.org/geoscienceaustralia/datakube-apps/src/develop/workspaces/dea-dev/processing/06_stats.yaml).
