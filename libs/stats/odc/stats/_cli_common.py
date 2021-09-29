@@ -92,15 +92,16 @@ def click_yaml_cfg(*args, **kw):
     """
     def _parse(ctx, param, value):
         if value is not None:
-            import urllib
             from urllib.parse import urlparse
             r = urlparse(value)
 
-            # if referece to file, use documents.load_documents to process
             if all([r.scheme, r.netloc]):
-                from datacube.utils import documents
+                import urllib
+                import fsspec
+                import yaml
                 try:
-                    return dict(next(documents.load_documents(value)))
+                    with fsspec.open(value, mode="r") as f:
+                        return next(yaml.safe_load_all(f))
                 except urllib.error.URLError as e:
                     raise click.ClickException(str(e) + f". Cannot access file {value}") from None 
                 except Exception as e:
