@@ -263,11 +263,19 @@ def fuse_ds(
     # TODO: handle the case that grids have conflicts in a seperate function
     fused_doc["grids"] = {**doc_1["grids"], **doc_2["grids"]}
 
-    label_suffix = doc_1["label"].replace(doc_1["product"]["name"], "")
-    if not label_suffix == doc_2["label"].replace(doc_2["product"]["name"], ""):
-        raise ValueError("Label suffixes are not the same")
+    # This is currently required, but Alex isn't sure that it should be.
+    label_title_doc_1 = doc_1.get("label", toolz.get_in(["properties", "title"], doc_1))
+    label_title_doc_2 = doc_2.get("label", toolz.get_in(["properties", "title"], doc_2))
 
-    fused_doc["label"] = f"{product.name}{label_suffix}"
+    if label_title_doc_1 is None or label_title_doc_2 is None:
+        raise ValueError("No label or title field found found")
+    else:
+        label_title_doc_1 = label_title_doc_1.replace(doc_1["product"]["name"], "")
+        label_title_doc_2 = label_title_doc_2.replace(doc_2["product"]["name"], "")
+        if label_title_doc_1 != label_title_doc_2:
+            raise ValueError(f"Label/Title field {label_title_doc_1} is not the same as {label_title_doc_2}")
+
+        fused_doc["label"] = f"{product.name}{label_title_doc_1}"
 
     equal_keys = ["$schema", "crs"]
     for key in equal_keys:
