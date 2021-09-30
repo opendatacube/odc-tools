@@ -164,11 +164,11 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         # rescale gm bands into surface reflectance scale
         for band in gm.data_vars.keys():
-            if band in self.bands or band == 'emad':
+            if band in self.bands or band == self.aux_names['emad']:
                 # set nodata_mask - use for resetting nodata pixel after rescale
                 nodata_mask = gm[band] == gm[band].attrs.get('nodata')
                 # rescale
-                if band == 'emad':
+                if band == self.aux_names['emad']:
                     gm[band] = self.scale * self.output_scale * gm[band]
                 else:
                     gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
