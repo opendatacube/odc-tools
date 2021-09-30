@@ -148,3 +148,15 @@ def test_reduce_with_filters(dataset):
     )
     count = result["count"].data
     assert (count == expected_result).all()
+
+def test_aux_result_bands_to_match_inputs(dataset):
+    _ = pytest.importorskip("hdstats")
+    aux_names=dict(smad="SMAD", emad="EMAD", bcmad="BCMAD", count="COUNT")
+    gm = StatsGMLSBitmask(bands=["band_red"], aux_names=aux_names, offset=-0.2, scale=0.00975, output_scale=100)
+
+    xx = gm._native_tr(dataset)
+    xx = gm.reduce(xx)
+
+    assert set(xx.data_vars.keys()) == set(
+        ["band_red", "SMAD", "EMAD", "BCMAD", "COUNT"]
+    )
