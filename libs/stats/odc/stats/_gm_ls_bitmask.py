@@ -46,7 +46,8 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.nodata_flags = nodata_flags
         self.filters = filters
         self.work_chunks = work_chunks
-        self.aux_bands = aux_names
+        self.renames = aux_names
+        self.aux_bands = list(aux_names.values())
         self.scale = scale
         self.offset = offset
         self.output_scale = output_scale
@@ -65,7 +66,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        return self.bands + list(self.aux_bands)
+        return self.bands + self.aux_bands
 
     def _native_tr(self, xx):
         """
@@ -159,15 +160,15 @@ class StatsGMLSBitmask(StatsPluginInterface):
         xx = erase_bad(xx, cloud_mask)
 
         gm = geomedian_with_mads(xx, **cfg)
-        gm = gm.rename(self.aux_bands)
+        gm = gm.rename(self.renames)
 
         # rescale gm bands into surface reflectance scale
         for band in gm.data_vars.keys():
-            if band in self.bands or band == self.aux_bands['emad']:
+            if band in self.bands or band == self.renames['emad']:
                 # set nodata_mask - use for resetting nodata pixel after rescale
                 nodata_mask = gm[band] == gm[band].attrs.get('nodata')
                 # rescale
-                if band == self.aux_bands['emad']:
+                if band == self.renames['emad']:
                     gm[band] = self.scale * self.output_scale * gm[band]
                 else:
                     gm[band] = self.scale * self.output_scale * gm[band] + self.offset * self.output_scale
