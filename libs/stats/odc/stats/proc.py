@@ -209,9 +209,12 @@ class TaskRunner:
             ds = client.persist(ds, fifo_timeout="1ms")
 
             aux: Optional[xr.Dataset] = None
-            rgba = proc.rgba(ds)
-            if rgba is not None:
-                aux = xr.Dataset(dict(rgba=rgba))
+
+            # if no rgba setting in cog_ops:overrides, no rgba tif as ouput
+            if 'overrides' in cfg.cog_opts and 'rgba' in cfg.cog_opts['overrides']: 
+                rgba = proc.rgba(ds)
+                if rgba is not None:
+                    aux = xr.Dataset(dict(rgba=rgba))
 
             cog = sink.dump(task, ds, aux, proc, apply_eodatasets3)
             cog = client.compute(cog, fifo_timeout="1ms")
