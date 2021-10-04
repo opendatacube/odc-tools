@@ -1,0 +1,57 @@
+{
+  "data": {
+    "layout-restorer:data": {
+      "main": {
+        "dock": {
+          "type": "tab-area",
+          "currentIndex": 0,
+          "widgets": [
+            "markdownviewer-widget:binder/Examples/Welcome.md"
+          ]
+        },
+        "current": "markdownviewer-widget:binder/Examples/Welcome.md"
+      },
+      "down": {
+        "size": 0,
+        "widgets": []
+      },
+      "left": {
+        "collapsed": false,
+        "current": "filebrowser",
+        "widgets": [
+          "filebrowser",
+          "running-sessions",
+          "dask-dashboard-launcher",
+          "git-sessions",
+          "@jupyterlab/toc:plugin",
+          "code-snippet-extension",
+          "extensionmanager.main-view"
+        ]
+      },
+      "right": {
+        "collapsed": true,
+        "widgets": [
+          "jp-property-inspector",
+          "debugger-sidebar"
+        ]
+      },
+      "relativeSizes": [
+        0.18031455582791997,
+        0.8196854441720801,
+        0
+      ]
+    },
+    "file-browser-filebrowser:cwd": {
+      "path": "binder/Examples"
+    },
+    "markdownviewer-widget:binder/Examples/Welcome.md": {
+      "data": {
+        "path": "binder/Examples/Welcome.md",
+        "factory": "Markdown Preview"
+      }
+    }
+  },
+  "metadata": {
+    "id": "/lab"
+  }
+}

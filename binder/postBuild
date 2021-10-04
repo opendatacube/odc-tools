@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# This runs as a last step of Docker build
+echo "+++++++++++++++++++++++++++++++++"
+echo "+ post build started            +"
+echo "+++++++++++++++++++++++++++++++++"
+
+KBD_SETTINGS_FILE=.jupyter/lab/user-settings/@jupyterlab/shortcuts-extension/shortcuts.jupyterlab-settings
+
+mkdir -p $(dirname $KBD_SETTINGS_FILE)
+cat <<EOF > $KBD_SETTINGS_FILE
+{
+        "shortcuts": [
+        {
+            "command": "runmenu:run-all",
+            "keys": [
+                "-",
+                "-"
+            ],
+            "selector": "[data-jp-kernel-user]:focus"
+        },
+        {
+            "command": "kernelmenu:restart-and-clear",
+            "keys": [
+                "0",
+                "0"
+            ],
+            "selector": "[data-jp-kernel-user]:focus"
+        }
+    ]
+}
+EOF
