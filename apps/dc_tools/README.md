@@ -179,21 +179,10 @@ TODO:
 
 ### esri-lc-to-dc
 
-Index the global 10 m [ESRI Land Cover](https://livingatlas.arcgis.com/landcover/) data.
-
-Simple usage:
-
-Index all the data and add the product first.
+Removed, use the `stac-to-dc` tool instead.
 
 ``` bash
-esri-lc-to-dc --add-product
-
-```
-
-Extended usage:
-
-Index all the data, add the product, set a limit and update scenes that already are indexed.
-
-``` bash
-esri-lc-to-dc --add-product --limit 1000 --update
+  stac-to-dc \
+    --catalog-href=https://planetarycomputer.microsoft.com/api/stac/v1/ \
+    --collections='io-lulc'
 ```
