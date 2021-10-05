@@ -369,12 +369,13 @@ class Task:
         # ignore the tons of Inheritable property warnings
         warnings.simplefilter(action='ignore', category=UserWarning)
 
-        platforms = []
+        platforms, instruments = ([], [])
 
         for dataset in self.datasets:
             if 'fused' in dataset.type.name:
                 sources = [e['id'] for e in dataset.metadata.sources.values()]
                 platforms.append(dataset.metadata_doc['properties']['eo:platform'])
+                instruments.append(dataset.metadata_doc['properties']['eo:instrument'])
                 dataset_assembler.note_source_datasets(self.product.classifier,
                                                        *sources)
             else:
@@ -387,8 +388,12 @@ class Task:
 
                 if 'eo:platform' in source_datasetdoc.properties:
                     platforms.append(source_datasetdoc.properties['eo:platform'])
+                if 'eo:instrument' in source_datasetdoc.properties:
+                    instruments.append(source_datasetdoc.properties['eo:instrument'])
 
         dataset_assembler.platform = ','.join(sorted(set(platforms)))
+        dataset_assembler.instrument = "_".join(sorted(set(instruments)))
+
         dataset_assembler.datetime = format_datetime(self.time_range.start)
         dataset_assembler.properties["dtr:start_datetime"] = format_datetime(self.time_range.start)
         dataset_assembler.properties["dtr:end_datetime"] = format_datetime(self.time_range.end)
