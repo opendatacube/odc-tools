@@ -61,6 +61,7 @@ pytest-depends
 pyyaml
 rasterio
 requests
+rio-stac
 scikit-image
 thredds_crawler
 toolz
