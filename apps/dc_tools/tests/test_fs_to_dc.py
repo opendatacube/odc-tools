@@ -11,18 +11,18 @@ def test_find_yamls(test_data_dir):
     # Default is to find YAML files
     files = [str(x) for x in _find_files(test_data_dir)]
 
-    assert len(files) == 1
-    assert files[0] == str(
+    assert len(files) == 2
+    assert str(
         Path(test_data_dir)
-        / "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml"
-    )
+        / "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.sqs.yaml"
+    ) in files
 
 
 def test_find_json(test_data_dir):
     # Search for JSON files
     files = [str(x) for x in _find_files(test_data_dir, stac=True)]
 
-    assert len(files) == 4
+    assert len(files) == 9
     assert (
         str(
             Path(test_data_dir)
