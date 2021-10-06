@@ -17,7 +17,6 @@ import numpy
 from rasterio.crs import CRS
 from rasterio.enums import Resampling
 import rasterio
-import pkg_resources
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -28,6 +27,7 @@ from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF, StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
+from odc.stats import __version__
 
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
@@ -344,18 +344,18 @@ class S3COGSink:
         proc_info_url = task.metadata_path("absolute", ext=self._proc_info_ext)
         dataset_assembler = task.render_assembler_metadata(ext=self._band_ext, output_dataset=ds)
 
+        dataset_assembler.extend_user_metadata("odc-stats-config", vars(task.product))
+
         dataset_assembler.note_software_version("eodatasets3",
                                                 "https://github.com/GeoscienceAustralia/eo-datasets",
                                                 eodatasets3.__version__,)
 
         dataset_assembler.note_software_version('odc-stats',
                                                 "https://github.com/opendatacube/odc-tools",
-                                                # Just realized the odc-stats does not have version.
-                                                [e.version for e in pkg_resources.working_set if e.key == 'odc-stats'][0])
+                                                __version__)
 
         dataset_assembler.note_software_version(proc.NAME,
                                                 "https://github.com/opendatacube/odc-tools",
-                                                # Just realized the odc-stats does not have version.
                                                 proc.VERSION)
 
         if task.product.preview_image_ows_style:
