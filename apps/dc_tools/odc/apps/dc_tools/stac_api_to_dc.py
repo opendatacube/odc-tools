@@ -15,6 +15,7 @@ from odc.apps.dc_tools.utils import (
     index_update_dataset,
     limit,
     update_if_exists,
+    bbox,
 )
 from ._stac import stac_transform, stac_transform_absolute
 from pystac.item import Item
@@ -183,12 +184,7 @@ def stac_api_to_odc(
     default=None,
     help="Comma separated list of collections to search",
 )
-@click.option(
-    "--bbox",
-    type=str,
-    default=None,
-    help="Comma separated list of bounding box coords, lon-min, lat-min, lon-max, lat-max",
-)
+@bbox
 @click.option(
     "--datetime",
     type=str,

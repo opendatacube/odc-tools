@@ -16,7 +16,7 @@ PRODUCT_EXAMPLE: str = (
 
 def have_db():
     try:
-        dc = Datacube()
+        Datacube()
     except Exception:
         return False
     return True
@@ -25,13 +25,13 @@ def have_db():
 def test_parse_local_csv(local_csv):
     local_contents = [x for x in _parse_csv(local_csv)]
 
-    assert len(local_contents) == 7
+    assert len(local_contents) == 9
     assert local_contents[0].name == "s2_l2a"
 
 
 def test_parse_remote_csv(remote_csv):
     remote_contents = [x for x in _parse_csv(remote_csv)]
-    assert len(remote_contents) == 7
+    assert len(remote_contents) == 9
     assert remote_contents[0].name == "s2_l2a"
 
 

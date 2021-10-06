@@ -115,6 +115,13 @@ limit = click.option(
     help="Stop indexing after n datasets have been indexed.",
 )
 
+bbox = click.option(
+    "--bbox",
+    type=str,
+    default=None,
+    help="Comma separated list of bounding box coords, lon-min, lat-min, lon-max, lat-max",
+)
+
 
 def get_esri_list():
     stream = pkg_resources.resource_stream(__name__, "esri-lc-tiles-list.txt")
