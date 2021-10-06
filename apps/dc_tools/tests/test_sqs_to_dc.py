@@ -20,8 +20,8 @@ from odc.apps.dc_tools.sqs_to_dc import (
 
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
-LANDSAT_C3_SQS_MESSAGE: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
-LANDSAT_C3_ODC_YAML: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml"
+LANDSAT_C3_SQS_MESSAGE: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.sqs.json"
+LANDSAT_C3_ODC_YAML: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.sqs.yaml"
 SENTINEL_2_NRT_MESSAGE: str = "sentinel-2-nrt_2020_08_21.json"
 SENTINEL_2_NRT_RECORD_PATH = ("L2/sentinel-2-nrt/S2MSIARD/*/*/ARD-METADATA.yaml",)
 
