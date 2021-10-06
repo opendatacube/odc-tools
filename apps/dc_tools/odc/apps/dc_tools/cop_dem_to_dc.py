@@ -10,14 +10,14 @@ from typing import Tuple
 
 import click
 import pystac
+import rasterio
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
-from odc.apps.dc_tools.utils import (bbox, index_update_dataset, limit,
-                                     update_if_exists)
-from odc.stac.transform import stac_transform
-import rasterio
+from odc.apps.dc_tools.utils import bbox, index_update_dataset, limit, update_if_exists
 from rio_stac import create_stac_item
+
+from ._stac import stac_transform
 
 PRODUCTS = {
     "cop_30": (
