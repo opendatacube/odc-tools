@@ -173,11 +173,10 @@ class SaveTasks:
         n_dss = dataset_count(dc.index, **query)
         if n_dss == 0:
             msg("Found no datasets to process")
-            return False
+            return [], n_dss, cfg
 
         msg(f"Processing {n_dss:,d} datasets")
 
-        cells: Dict[Tuple[int, int], Any] = {}
         if "time" in query:
             dss = chopped_dss(dc, freq="w", **query)
         else:
@@ -264,78 +263,79 @@ class SaveTasks:
         if DatasetCache.exists(self._output) and self._overwrite is False:
             raise ValueError(f"File database already exists: {self._output}")
 
-        msg(f"Processing {n_dss:,d} datasets")
+        if dss is not None and n_dss > 0:
+            msg(f"Processing {n_dss:,d} datasets")
 
-        msg("Training compression dictionary")
-        dss_slice = list(islice(dss, 0, 100))
-        samples = dss_slice.copy()
-        random.shuffle(samples)
-        zdict = DatasetCache.train_dictionary(samples, 8 * 1024)
-        dss = chain(dss_slice, dss)
-        msg(".. done")
+            msg("Training compression dictionary")
+            dss_slice = list(islice(dss, 0, 100))
+            samples = dss_slice.copy()
+            random.shuffle(samples)
+            zdict = DatasetCache.train_dictionary(samples, 8 * 1024)
+            dss = chain(dss_slice, dss)
+            msg(".. done")
 
-        cache = DatasetCache.create(
-            self._output,
-            zdict=zdict,
-            complevel=self._complevel,
-            truncate=self._overwrite,
-        )
-        cache.add_grid(self._gridspec, self._grid)
-        cache.append_info_dict("stats/", dict(config=cfg))
+            cache = DatasetCache.create(
+                self._output,
+                zdict=zdict,
+                complevel=self._complevel,
+                truncate=self._overwrite,
+            )
+            cache.add_grid(self._gridspec, self._grid)
+            cache.append_info_dict("stats/", dict(config=cfg))
 
-        cells: Dict[Tuple[int, int], Any] = {}
+            cells: Dict[Tuple[int, int], Any] = {}
 
-        if predicate is not None:
-            dss = filter(predicate, dss)
-        dss = cache.tee(dss)
-        dss = bin_dataset_stream(self._gridspec, dss, cells, persist=persist)
-        dss = tqdm(dss, total=n_dss)
+            if predicate is not None:
+                dss = filter(predicate, dss)
+            dss = cache.tee(dss)
+            dss = bin_dataset_stream(self._gridspec, dss, cells, persist=persist)
+            dss = tqdm(dss, total=n_dss)
 
-        rr = ds_stream_test_func(dss)
-        msg(rr.text)
+            rr = ds_stream_test_func(dss)
+            msg(rr.text)
 
-        if tiles is not None:
-            # prune out tiles that were not requested
-            cells = {
-                tidx: cell for tidx, cell in cells.items() if is_tile_in(tidx, tiles)
-            }
+            if tiles is not None:
+                # prune out tiles that were not requested
+                cells = {
+                    tidx: cell for tidx, cell in cells.items() if is_tile_in(tidx, tiles)
+                }
 
-        if temporal_range is not None:
-            # Prune Datasets outside of temporal range (after correcting for UTC offset)
-            for cell in cells.values():
-                utc_offset = cell.utc_offset
-                cell.dss = [
-                    ds for ds in cell.dss if (ds.time + utc_offset) in temporal_range
-                ]
+            if temporal_range is not None:
+                # Prune Datasets outside of temporal range (after correcting for UTC offset)
+                for cell in cells.values():
+                    utc_offset = cell.utc_offset
+                    cell.dss = [
+                        ds for ds in cell.dss if (ds.time + utc_offset) in temporal_range
+                    ]
 
-        n_tiles = len(cells)
-        msg(f"Total of {n_tiles:,d} spatial tiles")
+            n_tiles = len(cells)
+            msg(f"Total of {n_tiles:,d} spatial tiles")
 
-        if self._frequency == "all":
-            tasks = bin_full_history(cells, start=dt_range.start, end=dt_range.end)
-        elif self._frequency == "semiannual":
-            tasks = bin_seasonal(cells, months=6, anchor=1)
-        elif self._frequency == "seasonal":
-            tasks = bin_seasonal(cells, months=3, anchor=12)
-        elif self._frequency == "annual-fy":
-            tasks = bin_seasonal(cells, months=12, anchor=7)
-        elif self._frequency == "annual":
-            tasks = bin_annual(cells)
-        elif temporal_range is not None:
-            tasks = bin_generic(cells, [temporal_range])
-        else:
-            tasks = bin_annual(cells)
-        # Remove duplicate source uuids.
-        # Duplicates occur when queried datasets are captured around UTC midnight
-        # and around weekly boundary
-        tasks = {k: set(dss) for k, dss in tasks.items()}
-        tasks_uuid = {k: [ds.id for ds in dss] for k, dss in tasks.items()}
+            if self._frequency == "all":
+                tasks = bin_full_history(cells, start=dt_range.start, end=dt_range.end)
+            elif self._frequency == "semiannual":
+                tasks = bin_seasonal(cells, months=6, anchor=1)
+            elif self._frequency == "seasonal":
+                tasks = bin_seasonal(cells, months=3, anchor=12)
+            elif self._frequency == "annual-fy":
+                tasks = bin_seasonal(cells, months=12, anchor=7)
+            elif self._frequency == "annual":
+                tasks = bin_annual(cells)
+            elif temporal_range is not None:
+                tasks = bin_generic(cells, [temporal_range])
+            else:
+                tasks = bin_annual(cells)
+            # Remove duplicate source uuids.
+            # Duplicates occur when queried datasets are captured around UTC midnight
+            # and around weekly boundary
+            tasks = {k: set(dss) for k, dss in tasks.items()}
+            tasks_uuid = {k: [ds.id for ds in dss] for k, dss in tasks.items()}
 
-        msg(f"Saving tasks to disk ({len(tasks)})")
-        cache.add_grid_tiles(self._grid, tasks_uuid)
-        msg(".. done")
+            msg(f"Saving tasks to disk ({len(tasks)})")
+            cache.add_grid_tiles(self._grid, tasks_uuid)
+            msg(".. done")
 
-        self._write_info(tasks, msg, cells, debug)
+            self._write_info(tasks, msg, cells, debug)
 
         return True
 
