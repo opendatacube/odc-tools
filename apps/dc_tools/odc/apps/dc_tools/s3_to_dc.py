@@ -17,7 +17,7 @@ from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
 from odc.index import parse_doc_stream
-from odc.stac.transform import stac_transform, stac_transform_absolute
+from ._stac import stac_transform, stac_transform_absolute
 
 
 # Grab the URL from the resulting S3 item

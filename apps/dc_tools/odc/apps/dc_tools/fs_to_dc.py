@@ -10,7 +10,7 @@ from odc.apps.dc_tools.utils import (
     allow_unsafe,
     transform_stac,
 )
-from odc.stac.transform import stac_transform
+from ._stac import stac_transform
 from typing import Generator, Optional
 import logging
 

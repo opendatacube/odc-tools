@@ -16,7 +16,7 @@ from odc.apps.dc_tools.utils import (
     limit,
     update_if_exists,
 )
-from odc.stac.transform import stac_transform, stac_transform_absolute
+from ._stac import stac_transform, stac_transform_absolute
 from pystac.item import Item
 from pystac_client import Client
 
