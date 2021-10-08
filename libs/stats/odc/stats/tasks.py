@@ -325,7 +325,10 @@ class SaveTasks:
             tasks = bin_generic(cells, [temporal_range])
         else:
             tasks = bin_annual(cells)
-
+        # Remove duplicate source uuids.
+        # Duplicates occur when queried datasets are captured around UTC midnight
+        # and around weekly boundary
+        tasks = {k: set(dss) for k, dss in tasks.items()}
         tasks_uuid = {k: [ds.id for ds in dss] for k, dss in tasks.items()}
 
         msg(f"Saving tasks to disk ({len(tasks)})")
@@ -376,14 +379,14 @@ class SaveTasks:
 
 class TaskReader:
     def __init__(
-        self, 
-        cache: Union[str, DatasetCache], 
-        product: Optional[OutputProduct] = None, 
+        self,
+        cache: Union[str, DatasetCache],
+        product: Optional[OutputProduct] = None,
         resolution: Optional[Tuple[float, float]] = None
     ):
         self._cache_path = None
 
-        if len(cache) != 0 and isinstance(cache, str): 
+        if len(cache) != 0 and isinstance(cache, str):
             if cache.startswith("s3://"):
                 self._cache_path = s3_download(cache)
                 cache = self._cache_path
@@ -460,7 +463,7 @@ class TaskReader:
             _log.info(f"Changing resolution to {self.resolution[0], self.resolution[1]}")
             if self.is_compatible_resolution(self.resolution):
                 self.change_resolution(self.resolution)
-            else: # if resolution has issue, stop init 
+            else: # if resolution has issue, stop init
                 _log.error(
                     f"Requested resolution is not compatible with GridSpec in '{cfg.filedb}'"
                 )
@@ -553,7 +556,7 @@ class TaskReader:
             if urlparse(filedb).scheme == 's3':
                 bucket, key = s3_url_parse(filedb)
             else: # if it is the test_tiles.db, we load it from local
-                key = filedb 
+                key = filedb
             local_cache_file = key.split("/")[-1]
             if not os.path.isfile(local_cache_file):  # use the download filedb from S3 as the init context flag
                 self.init_from_sqs(filedb)
@@ -561,11 +564,11 @@ class TaskReader:
 
 
 class DatasetChecker:
-    
+
     def __init__(self, ds_filters):
         ds_filters = ds_filters.split('|')
         self.ds_filters = tuple(json.loads(ds_filter) for ds_filter in ds_filters)
-    
+
     @staticmethod
     def check_dt(ds_filter, datetime_str):
         time_range = DateTimeRange(ds_filter["datetime"])
