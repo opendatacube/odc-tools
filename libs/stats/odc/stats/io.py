@@ -344,6 +344,8 @@ class S3COGSink:
         proc_info_url = task.metadata_path("absolute", ext=self._proc_info_ext)
         dataset_assembler = task.render_assembler_metadata(ext=self._band_ext, output_dataset=ds)
 
+        dataset_assembler.extend_user_metadata("input-products", sorted(set([e.type.name for e in task.datasets])))
+
         dataset_assembler.extend_user_metadata("odc-stats-config", vars(task.product))
 
         dataset_assembler.note_software_version("eodatasets3",
