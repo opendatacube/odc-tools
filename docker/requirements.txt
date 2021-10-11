@@ -21,11 +21,11 @@ wheel
 setuptools
 pip
 
-datacube[dev]==1.8.5
+datacube[dev]==1.8.6
 
 # need to constrain this one for pip-sake
 # Fixing this allows pip resolution without constraints.txt
-aiobotocore[boto3,awscli]==1.3.3
+aiobotocore[boto3,awscli]==1.4.2
 
 # Make sure dask has all the features enabled
 dask[complete]
@@ -61,7 +61,7 @@ pytest-depends
 pyyaml
 rasterio
 requests
-rio-stac
+rio-stac>=0.3.1
 scikit-image
 thredds_crawler
 toolz
