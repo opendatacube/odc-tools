@@ -304,7 +304,6 @@ jobs:
         - odc-cloud
         - odc-dscache
         - odc-io
-        - odc-stac
         - odc-stats
         - odc-ui
         - odc-apps-cloud
@@ -371,37 +370,3 @@ jobs:
       run: |
         ls pips/${PKG}
         twine upload --non-interactive --skip-existing pips/${PKG}/*
-
-
-  check-docs:
-    runs-on: ubuntu-latest
-
-    needs:
-      - build-test-env-base
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Get Conda Environment from Cache
-      uses: actions/cache@v2
-      id: conda_cache
-      with:
-        path: |
-          tests/env
-
-        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
-
-    - name: Update PATH
-      shell: bash
-      run: |
-        echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
-
-    - name: Install in Edit mode
-      shell: bash
-      run: |
-        ./scripts/dev-install.sh --no-deps
-
-    - name: Build STAC docs
-      shell: bash
-      run: |
-        make -C libs/stac/docs html
