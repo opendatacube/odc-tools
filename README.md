@@ -19,7 +19,7 @@ Full list of libraries, and install instructions:
 - `odc.algo` algorithms (GeoMedian wrapper is here)
 - `odc.stats` large scale processing framework (under development)
 - `odc.ui` tools for data visualization in notebook/lab
-- `odc.stac` STAC to ODC conversion tools
+- `odc.stac` STAC to ODC conversion tools (Moved to [odc-stac](https://github.com/opendatacube/odc-stac))
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset`
 - `odc.io` common IO utilities, used by apps mainly
 - `odc-cloud[ASYNC,AZURE,THREDDS]` cloud crawling support package
