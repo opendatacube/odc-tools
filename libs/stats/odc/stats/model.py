@@ -383,7 +383,7 @@ class Task:
                 dataset_assembler.add_source_dataset(source_datasetdoc,
                                                     classifier=self.product.classifier,
                                                     auto_inherit_properties=True, # it will grab all useful input dataset preperties
-                                                    inherit_geometry=True,
+                                                    inherit_geometry=False,
                                                     inherit_skip_properties=self.product.inherit_skip_properties)
 
                 if 'eo:platform' in source_datasetdoc.properties:
@@ -393,6 +393,8 @@ class Task:
 
         dataset_assembler.platform = ','.join(sorted(set(platforms)))
         dataset_assembler.instrument = "_".join(sorted(set(instruments)))
+
+        dataset_assembler.geometry = self.geobox.extent.geom
 
         dataset_assembler.datetime = format_datetime(self.time_range.start)
         dataset_assembler.properties["dtr:start_datetime"] = format_datetime(self.time_range.start)
@@ -421,7 +423,7 @@ class Task:
                 # when we pass grid, the eodatasets will not load file from path
                 dataset_assembler.note_measurement(band,
                                                     path,
-                                                    pixels=numpy.zeros((self.geobox.shape[0], self.geobox.shape[1])),
+                                                    expand_valid_data=False,
                                                     grid=GridSpec(shape=self.geobox.shape,
                                                                     transform=self.geobox.transform,
                                                                     crs=CRS.from_epsg(self.geobox.crs.to_epsg())),
