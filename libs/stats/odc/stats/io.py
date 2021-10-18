@@ -27,7 +27,7 @@ from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF, StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
-from odc.stats import __version__
+from . import _version
 
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
@@ -354,7 +354,7 @@ class S3COGSink:
 
         dataset_assembler.note_software_version('odc-stats',
                                                 "https://github.com/opendatacube/odc-tools",
-                                                __version__)
+                                                _version.__version__)
 
         dataset_assembler.note_software_version(proc.NAME,
                                                 "https://github.com/opendatacube/odc-tools",
