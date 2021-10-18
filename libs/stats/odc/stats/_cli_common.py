@@ -8,7 +8,7 @@ def parse_task(s: str) -> TileIdx_txy:
     """
     Intentional copy of tasks.parse_task only for CLI parsing
     """
-    from odc.io.text import split_and_check
+    from .io import split_and_check
 
     sep = "/" if "/" in s else ","
     t, x, y = split_and_check(s, sep, 3)
@@ -61,7 +61,7 @@ def parse_all_tasks(
 
 
 def parse_resolution(s: str, separator: str = ",") -> Tuple[float, float]:
-    from odc.io.text import split_and_check
+    from .io import split_and_check
 
     parts = [float(v) for v in split_and_check(s, separator, (1, 2))]
 

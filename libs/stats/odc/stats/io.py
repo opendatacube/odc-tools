@@ -2,7 +2,7 @@
 Various I/O adaptors
 """
 
-from typing import Dict, Any, Optional, List, Union, cast
+from typing import Any, Dict, List, Optional, Union, Tuple, cast
 import json
 from urllib.parse import urlparse
 import logging
@@ -11,12 +11,7 @@ from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
 import io
-from PIL import Image
-import os
-import numpy
 from rasterio.crs import CRS
-from rasterio.enums import Resampling
-import rasterio
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -29,8 +24,8 @@ from hashlib import sha1
 from collections import namedtuple
 from odc.stats import __version__
 
-from eodatasets3.assemble import DatasetAssembler, serialise
-from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
+from eodatasets3.assemble import serialise
+from eodatasets3.scripts.tostac import json_fallback
 from eodatasets3.model import DatasetDoc
 from eodatasets3.images import FileWrite, GridSpec
 import eodatasets3.stac as eo3stac
@@ -97,6 +92,24 @@ def read_int(path: PathLike, default=None, base=10) -> Optional[int]:
             return int(f.read(), base)
     except (FileNotFoundError, ValueError):
         return default
+
+
+def split_and_check(
+        s: str, separator: str, n: Union[int, Tuple[int, ...]]
+) -> Tuple[str, ...]:
+    """Turn string into tuple, checking that there are exactly as many parts as expected.
+    :param s: String to parse
+    :param separator: Separator character
+    :param n: Expected number of parts, can be a single integer value or several,
+              example `(2, 3)` accepts 2 or 3 parts.
+    """
+    if isinstance(n, int):
+        n = (n,)
+
+    parts = s.split(separator)
+    if len(parts) not in n:
+        raise ValueError('Failed to parse "{}"'.format(s))
+    return tuple(parts)
 
 
 class S3COGSink:
