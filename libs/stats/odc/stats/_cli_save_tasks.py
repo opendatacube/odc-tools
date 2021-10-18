@@ -2,8 +2,7 @@ import json
 
 import click
 import sys
-from odc.io.text import click_range2d
-from ._cli_common import main
+from ._cli_common import click_range2d, main
 from .utils import fuse_products, fuse_ds
 from odc.index import ordered_dss, dataset_count
 from itertools import groupby

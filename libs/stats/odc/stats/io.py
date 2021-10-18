@@ -112,6 +112,25 @@ def split_and_check(
     return tuple(parts)
 
 
+def parse_slice(s: str) -> slice:
+    """
+    Parse slice syntax in the form start:stop[:step]
+    Examples "::4", "2:5", "2::10", "3:100:5"
+    """
+
+    def parse(part: str) -> Optional[int]:
+        if part == "":
+            return None
+        return int(part)
+
+    try:
+        parts = [parse(p) for p in split_and_check(s, ":", (2, 3))]
+    except ValueError:
+        raise ValueError(f'Expect <start>:<stop>[:<step>] syntax, got "{s}"') from None
+
+    return slice(*parts)
+
+
 class S3COGSink:
     def __init__(
         self,

@@ -33,7 +33,7 @@ def parse_all_tasks(
        2019--P1Y,10,-3
        x+10/y-3/2019--P1Y
     """
-    from odc.io.text import parse_slice
+    from .io import parse_slice
 
     out: List[TileIdx_txy] = []
     full_set = set(all_possible_tasks)
@@ -116,6 +116,29 @@ def setup_logging(level: int = -1):
         format="[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s",
         stream=sys.stdout,
     )
+
+
+def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    """Parse string like "0:3,4:5" -> ((0,3), (4,5))"""
+    from .io import split_and_check
+    try:
+        return ((int(x) for x in split_and_check(p, ":", 2)) for p in split_and_check(s, ",", 2))
+    except ValueError:
+        raise ValueError(
+            'Expect <int>:<int>,<int>:<int> syntax, got "{}"'.format(s)
+        ) from None
+
+
+# pylint: disable=import-outside-toplevel,inconsistent-return-statements
+def click_range2d(ctx, param, value):
+    """
+    @click.option('--range', callback=click_range2d)
+    """
+    if value is not None:
+        try:
+            return parse_range2d_int(value)
+        except ValueError as e:
+            raise click.ClickException(str(e)) from None
 
 
 @click.group(help="Stats command line interface")
