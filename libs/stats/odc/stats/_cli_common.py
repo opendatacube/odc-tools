@@ -1,4 +1,5 @@
-from typing import Tuple, List
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 import click
 
 TileIdx_txy = Tuple[str, int, int]
@@ -92,8 +93,6 @@ def click_yaml_cfg(*args, **kw):
     """
     def _parse(ctx, param, value):
         if value is not None:
-            from odc.io.text import parse_yaml_file_or_inline
-
             try:
                 return parse_yaml_file_or_inline(value)
             except Exception as e:
@@ -139,6 +138,31 @@ def click_range2d(ctx, param, value):
             return parse_range2d_int(value)
         except ValueError as e:
             raise click.ClickException(str(e)) from None
+
+
+def parse_yaml(s: str) -> Dict[str, Any]:
+    # pylint: disable=import-outside-toplevel
+    import yaml
+
+    return yaml.load(s, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))
+
+
+def parse_yaml_file_or_inline(s: str) -> Dict[str, Any]:
+    """
+    Accept on input either a path to yaml file or yaml text, return parsed yaml document.
+    """
+    try:
+        # if file
+        path = Path(s)
+        with open(path, "rt") as f:
+            txt = f.read()
+            assert isinstance(txt, str)
+    except (FileNotFoundError, IOError, ValueError):
+        txt = s
+    result = parse_yaml(txt)
+    if isinstance(result, str):
+        raise IOError(f"No such file: {s}")
+    return result
 
 
 @click.group(help="Stats command line interface")
