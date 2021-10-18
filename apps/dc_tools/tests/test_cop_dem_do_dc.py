@@ -13,6 +13,11 @@ def bbox():
     return '5,5,7,7'
 
 
+@pytest.fixture
+def bbox_africa():
+    return '-26.359944882003788,-47.96476498374171,64.4936701740102,38.34459242512347'
+
+
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_get_dem_tile_uris(bbox, product):
     uris = list(get_dem_tile_uris(bbox, product))
@@ -29,6 +34,12 @@ def test_get_dem_tile_uris(bbox, product):
         )
 
     assert len(uris) == 4
+
+
+def test_complex_bbox(bbox_africa):
+    uris = list(get_dem_tile_uris(bbox_africa, "cop_30"))
+
+    assert len(uris) == 8004
 
 
 # Test the actual process
