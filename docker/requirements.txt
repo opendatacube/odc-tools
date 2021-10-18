@@ -53,6 +53,7 @@ jupyter_ui_poll
 lmdb
 numexpr
 numpy
+odc-stac
 pyproj
 pystac-client>=0.2.0
 pystac>=1.0.0
