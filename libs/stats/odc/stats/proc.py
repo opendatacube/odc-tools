@@ -15,10 +15,9 @@ import math
 import psutil
 
 from .model import Task, TaskResult, TaskRunnerConfig
-from .io import S3COGSink
+from .io import S3COGSink, read_int
 from .tasks import TaskReader
 from . import _plugins
-from odc.io.cgroups import get_cpu_quota, get_mem_quota
 from odc.algo import wait_for_future
 from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
@@ -298,3 +297,27 @@ def get_max_cpu() -> int:
     if ncpu is not None:
         return int(math.ceil(ncpu))
     return psutil.cpu_count()
+
+
+def get_cpu_quota() -> Optional[float]:
+    """
+    :returns: ``None`` if unconstrained or there is an error
+    :returns: maximum amount of CPU this pod is allowed to use
+    """
+    quota = read_int("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+    if quota is None:
+        return None
+    period = read_int("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+    if period is None:
+        return None
+    return quota / period
+
+
+def get_mem_quota() -> Optional[int]:
+    """
+    :returns: ``None`` if there was some error
+    :returns: maximum RAM, in bytes, this pod can use according to Linux cgroups
+
+    Note that number returned can be larger than total available memory.
+    """
+    return read_int("/sys/fs/cgroup/memory/memory.limit_in_bytes")

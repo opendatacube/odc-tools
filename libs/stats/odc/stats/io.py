@@ -41,6 +41,8 @@ WriteResult = namedtuple("WriteResult", ["path", "sha1", "error"])
 _log = logging.getLogger(__name__)
 DEFAULT_COG_OPTS = dict(compress="deflate", zlevel=6, blocksize=512,)
 
+PathLike = Union[str, Path]
+
 
 def load_creds(profile: Optional[str] = None) -> ReadOnlyCredentials:
     session = mk_boto_session(profile=profile)
@@ -82,6 +84,19 @@ def _sha1_digest(*write_results):
         file = wr.path.split("/")[-1]
         lines.append(f"{wr.sha1}\t{file}\n")
     return "".join(lines)
+
+
+def read_int(path: PathLike, default=None, base=10) -> Optional[int]:
+    """
+    Read single integer from a text file.
+
+    Useful for things like parsing content of /sys/ or /proc.
+    """
+    try:
+        with open(path, "rt") as f:
+            return int(f.read(), base)
+    except (FileNotFoundError, ValueError):
+        return default
 
 
 class S3COGSink:
