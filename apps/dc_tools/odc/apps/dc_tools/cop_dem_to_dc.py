@@ -54,21 +54,22 @@ def add_cop_dem_product(dc: Datacube, product):
     print(f"Product definition added for {product}")
 
 
-def get_dem_tile_uris(bbox, product):
-    # Validate the BBOX
-    if bbox is None:
-        bbox = (-180, -90, 180, 90)
+def get_dem_tile_uris(bounding_box, product):
+    # Validate the bounding_box
+    if bounding_box is None:
+        logging.warning("No BBOX provided, running full extent... this will take a long time.")
+        bounding_box = (-180, -90, 180, 90)
     else:
-        bbox = bbox.split(",")
-        if len(bbox) != 4:
-            raise ValueError("BBOX must be in the format: minx,miny,maxx,maxy")
-        bbox = [float(x) for x in bbox]
+        bounding_box = bounding_box.split(",")
+        if len(bounding_box) != 4:
+            raise ValueError("bounding_box must be in the format: minx,miny,maxx,maxy")
+        bounding_box = [float(x) for x in bounding_box]
 
     # Get the uris
-    left = bbox[0]
-    right = bbox[2]
-    bottom = bbox[1]
-    top = bbox[3]
+    left = bounding_box[0]
+    right = bounding_box[2]
+    bottom = bounding_box[1]
+    top = bounding_box[3]
 
     x_range = range(floor(left), ceil(right))
     y_range = range(floor(bottom), ceil(top))
@@ -128,12 +129,12 @@ def process_uri_tile(
 
 
 def cop_dem_to_dc(
-    dc: Datacube, product: str, bbox, limit: int, update: bool
+    dc: Datacube, product: str, bounding_box, limit: int, update: bool
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
     # Get a generator of (uris)
-    uris_tiles = list(get_dem_tile_uris(bbox, product))
+    uris_tiles = list(get_dem_tile_uris(bounding_box, product))
     if limit:
         uris_tiles = uris_tiles[0:limit]
 
@@ -141,9 +142,9 @@ def cop_dem_to_dc(
     success = 0
     failure = 0
 
-    sys.stdout.write("\rIndexing Cop DEM...\n")
+    sys.stdout.write("Starting Cop DEM indexing with 40 workers...\n")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=40) as executor:
         future_to_uri = {
             executor.submit(
                 process_uri_tile, uri_tile, product, dc, doc2ds, update_if_exists=update
@@ -157,6 +158,8 @@ def cop_dem_to_dc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
+            except rasterio.errors.RasterioIOError:
+                logging.info(f"Couldn't find file for {uri}")
             except Exception as e:
                 logging.exception(f"Failed to handle uri {uri} with exception {e}")
                 failure += 1
@@ -193,6 +196,8 @@ def cli(limit, update_if_exists, bbox, product, add_product):
 
     if add_product:
         add_cop_dem_product(dc, product)
+
+    print(f"Indexing Copernicus DEM for {product} with bounding box of {bbox}")
 
     added, failed = cop_dem_to_dc(dc, product, bbox, limit, update_if_exists)
 
