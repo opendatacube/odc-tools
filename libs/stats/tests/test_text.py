@@ -1,9 +1,24 @@
 import pytest
-from odc.stats._text import parse_yaml, split_and_check, parse_slice, parse_range2d_int
+from odc.stats._text import read_int, parse_slice, parse_range2d_int, \
+                            parse_yaml, parse_yaml_file_or_inline, \
+                            split_and_check
+
+
+def test_read_int():
+    assert read_int("/not_a_real_file/already", default="bleagh") == "bleagh"
 
 
 def test_parse_yaml():
     o = parse_yaml(
+        """
+a: 3
+b: foo
+"""
+    )
+
+    assert o["a"] == 3 and o["b"] == "foo"
+    assert set(o) == {"a", "b"}
+    o = parse_yaml_file_or_inline(
         """
 a: 3
 b: foo
