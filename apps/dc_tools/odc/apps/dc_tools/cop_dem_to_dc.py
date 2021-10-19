@@ -33,12 +33,12 @@ PRODUCTS = {
 # URIs need north/south, which is N00 and east/west, which is E000
 URI_TEMPLATES = {
     "cop_30": (
-        "s3://copernicus-dem-30m/Copernicus_DSM_COG_10_{ns}_00_{ew}_00_DEM/"
-        "Copernicus_DSM_COG_10_{ns}_00_{ew}_00_DEM.tif"
+        "https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com/"
+        "Copernicus_DSM_COG_10_{ns}_00_{ew}_00_DEM/Copernicus_DSM_COG_10_{ns}_00_{ew}_00_DEM.tif"
     ),
     "cop_90": (
-        "s3://copernicus-dem-90m/Copernicus_DSM_COG_30_{ns}_00_{ew}_00_DEM/"
-        "Copernicus_DSM_COG_30_{ns}_00_{ew}_00_DEM.tif"
+        "https://copernicus-dem-90m.s3.eu-central-1.amazonaws.com/"
+        "Copernicus_DSM_COG_30_{ns}_00_{ew}_00_DEM/Copernicus_DSM_COG_30_{ns}_00_{ew}_00_DEM.tif"
     ),
 }
 
@@ -57,7 +57,9 @@ def add_cop_dem_product(dc: Datacube, product):
 def get_dem_tile_uris(bounding_box, product):
     # Validate the bounding_box
     if bounding_box is None:
-        logging.warning("No BBOX provided, running full extent... this will take a long time.")
+        logging.warning(
+            "No BBOX provided, running full extent... this will take a long time."
+        )
         bounding_box = (-180, -90, 180, 90)
     else:
         bounding_box = bounding_box.split(",")
@@ -129,7 +131,12 @@ def process_uri_tile(
 
 
 def cop_dem_to_dc(
-    dc: Datacube, product: str, bounding_box, limit: int, update: bool
+    dc: Datacube,
+    product: str,
+    bounding_box,
+    limit: int,
+    update: bool,
+    n_workers: int = 100,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
@@ -142,9 +149,9 @@ def cop_dem_to_dc(
     success = 0
     failure = 0
 
-    sys.stdout.write("Starting Cop DEM indexing with 40 workers...\n")
+    sys.stdout.write(f"Starting Cop DEM indexing with {n_workers} workers...\n")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=40) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
             executor.submit(
                 process_uri_tile, uri_tile, product, dc, doc2ds, update_if_exists=update
@@ -183,7 +190,13 @@ def cop_dem_to_dc(
     default=False,
     help="If set, add the product too",
 )
-def cli(limit, update_if_exists, bbox, product, add_product):
+@click.option(
+    "--workers",
+    default=100,
+    type=int,
+    help="Number of threads to use to process. Default is 100.",
+)
+def cli(limit, update_if_exists, bbox, product, add_product, workers):
     """
     Index the Copernicus DEM automatically.
     """
@@ -199,7 +212,9 @@ def cli(limit, update_if_exists, bbox, product, add_product):
 
     print(f"Indexing Copernicus DEM for {product} with bounding box of {bbox}")
 
-    added, failed = cop_dem_to_dc(dc, product, bbox, limit, update_if_exists)
+    added, failed = cop_dem_to_dc(
+        dc, product, bbox, limit, update_if_exists, n_workers=workers
+    )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
 
