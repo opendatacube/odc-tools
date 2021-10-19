@@ -1,6 +1,11 @@
 import pytest
-from odc.stats.proc import TaskRunner, TaskRunnerConfig
+from odc.stats.proc import TaskRunner, TaskRunnerConfig, get_cpu_quota, get_mem_quota
 
+def test_quotas():
+    cpuq = get_cpu_quota()
+    memq = get_mem_quota()
+    assert cpuq is None or isinstance(cpuq, float)
+    assert memq is None or isinstance(memq, int)
 
 def test_runner_product_cfg(test_db_path, dummy_plugin_name):
     cfg = TaskRunnerConfig(
