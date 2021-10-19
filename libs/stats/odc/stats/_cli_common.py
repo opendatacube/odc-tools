@@ -9,7 +9,7 @@ def parse_task(s: str) -> TileIdx_txy:
     """
     Intentional copy of tasks.parse_task only for CLI parsing
     """
-    from .io import split_and_check
+    from ._text import split_and_check
 
     sep = "/" if "/" in s else ","
     t, x, y = split_and_check(s, sep, 3)
@@ -34,7 +34,7 @@ def parse_all_tasks(
        2019--P1Y,10,-3
        x+10/y-3/2019--P1Y
     """
-    from .io import parse_slice
+    from ._text import parse_slice
 
     out: List[TileIdx_txy] = []
     full_set = set(all_possible_tasks)
@@ -62,7 +62,7 @@ def parse_all_tasks(
 
 
 def parse_resolution(s: str, separator: str = ",") -> Tuple[float, float]:
-    from .io import split_and_check
+    from ._text import split_and_check
 
     parts = [float(v) for v in split_and_check(s, separator, (1, 2))]
 
@@ -119,7 +119,7 @@ def setup_logging(level: int = -1):
 
 def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
     """Parse string like "0:3,4:5" -> ((0,3), (4,5))"""
-    from .io import split_and_check
+    from ._text import split_and_check
     try:
         return ((int(x) for x in split_and_check(p, ":", 2)) for p in split_and_check(s, ",", 2))
     except ValueError:

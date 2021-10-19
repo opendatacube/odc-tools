@@ -14,7 +14,7 @@ from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
 from odc.index import odc_uuid
-from .io import split_and_check
+from ._text import split_and_check
 from pystac.extensions.projection import ProjectionExtension
 from toolz import dicttoolz
 from rasterio.crs import CRS

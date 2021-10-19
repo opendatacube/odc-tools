@@ -15,7 +15,8 @@ import math
 import psutil
 
 from .model import Task, TaskResult, TaskRunnerConfig
-from .io import S3COGSink, read_int
+from .io import S3COGSink
+from ._text import read_int
 from .tasks import TaskReader
 from . import _plugins
 from odc.algo import wait_for_future
