@@ -1,6 +1,7 @@
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 import click
+
+from ._text import parse_yaml_file_or_inline, parse_range2d_int
 
 TileIdx_txy = Tuple[str, int, int]
 
@@ -117,18 +118,6 @@ def setup_logging(level: int = -1):
     )
 
 
-def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-    """Parse string like "0:3,4:5" -> ((0,3), (4,5))"""
-    from ._text import split_and_check
-    try:
-        return ((int(x) for x in split_and_check(p, ":", 2)) for p in split_and_check(s, ",", 2))
-    except ValueError:
-        raise ValueError(
-            'Expect <int>:<int>,<int>:<int> syntax, got "{}"'.format(s)
-        ) from None
-
-
-# pylint: disable=import-outside-toplevel,inconsistent-return-statements
 def click_range2d(ctx, param, value):
     """
     @click.option('--range', callback=click_range2d)
@@ -140,29 +129,7 @@ def click_range2d(ctx, param, value):
             raise click.ClickException(str(e)) from None
 
 
-def parse_yaml(s: str) -> Dict[str, Any]:
-    # pylint: disable=import-outside-toplevel
-    import yaml
-
-    return yaml.load(s, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))
-
-
-def parse_yaml_file_or_inline(s: str) -> Dict[str, Any]:
-    """
-    Accept on input either a path to yaml file or yaml text, return parsed yaml document.
-    """
-    try:
-        # if file
-        path = Path(s)
-        with open(path, "rt") as f:
-            txt = f.read()
-            assert isinstance(txt, str)
-    except (FileNotFoundError, IOError, ValueError):
-        txt = s
-    result = parse_yaml(txt)
-    if isinstance(result, str):
-        raise IOError(f"No such file: {s}")
-    return result
+# pylint: disable=import-outside-toplevel,inconsistent-return-statements
 
 
 @click.group(help="Stats command line interface")

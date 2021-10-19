@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional, Tuple
+from typing import Union, Optional, Tuple, Dict, Any
 
 PathLike = Union[str, Path]
 
@@ -54,3 +54,39 @@ def parse_slice(s: str) -> slice:
         raise ValueError(f'Expect <start>:<stop>[:<step>] syntax, got "{s}"') from None
 
     return slice(*parts)
+
+
+def parse_yaml(s: str) -> Dict[str, Any]:
+    # pylint: disable=import-outside-toplevel
+    import yaml
+
+    return yaml.load(s, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))
+
+
+def parse_yaml_file_or_inline(s: str) -> Dict[str, Any]:
+    """
+    Accept on input either a path to yaml file or yaml text, return parsed yaml document.
+    """
+    try:
+        # if file
+        path = Path(s)
+        with open(path, "rt") as f:
+            txt = f.read()
+            assert isinstance(txt, str)
+    except (FileNotFoundError, IOError, ValueError):
+        txt = s
+    result = parse_yaml(txt)
+    if isinstance(result, str):
+        raise IOError(f"No such file: {s}")
+    return result
+
+
+def parse_range2d_int(s: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    """Parse string like "0:3,4:5" -> ((0,3), (4,5))"""
+    from ._text import split_and_check
+    try:
+        return tuple(tuple(int(x) for x in split_and_check(p, ":", 2)) for p in split_and_check(s, ",", 2))
+    except ValueError:
+        raise ValueError(
+            'Expect <int>:<int>,<int>:<int> syntax, got "{}"'.format(s)
+        ) from None
