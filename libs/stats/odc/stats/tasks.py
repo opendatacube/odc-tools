@@ -242,11 +242,15 @@ class SaveTasks:
             n_dss = 0
             dss = iter(())
             for _product in products:
-                _dss, _n_dss, cfg = self._get_dss(dc, _product, msg, dataset_filter, temporal_range, tiles)
-                dss = chain.from_iterable((dss, _dss))
-                n_dss += _n_dss
+                dss_found = self._get_dss(dc, _product, msg, dataset_filter, temporal_range, tiles)
+                if dss_found:
+                    _dss, _n_dss, cfg = dss_found
+                    dss = chain.from_iterable((dss, _dss))
+                    n_dss += _n_dss
         elif dss is None:
-            dss, n_dss, cfg = self._get_dss(dc, product, msg, dataset_filter, temporal_range, tiles)
+            dss_found = self._get_dss(dc, _product, msg, dataset_filter, temporal_range, tiles)
+            if dss_found:
+                dss, n_dss, cfg = dss_found
         else:
 
             cfg: Dict[str, Any] = dict(
