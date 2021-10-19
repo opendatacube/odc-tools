@@ -24,13 +24,13 @@ def test_get_dem_tile_uris(bbox, product):
 
     if product == "cop_30":
         assert uris[0][0] == (
-            "s3://copernicus-dem-30m/Copernicus_DSM_COG_10_N05_00_E005_00_DEM/"
-            "Copernicus_DSM_COG_10_N05_00_E005_00_DEM.tif"
+            "https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com/"
+            "Copernicus_DSM_COG_10_N05_00_E005_00_DEM/Copernicus_DSM_COG_10_N05_00_E005_00_DEM.tif"
         )
     else:
         assert uris[0][0] == (
-            "s3://copernicus-dem-90m/Copernicus_DSM_COG_30_N05_00_E005_00_DEM/"
-            "Copernicus_DSM_COG_30_N05_00_E005_00_DEM.tif"
+            "https://copernicus-dem-90m.s3.eu-central-1.amazonaws.com/"
+            "Copernicus_DSM_COG_30_N05_00_E005_00_DEM/Copernicus_DSM_COG_30_N05_00_E005_00_DEM.tif"
         )
 
     assert len(uris) == 4
