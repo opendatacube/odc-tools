@@ -4,7 +4,7 @@ import random
 from types import SimpleNamespace
 from collections import namedtuple
 from datetime import datetime
-from itertools import chain, islice
+from itertools import islice
 import pickle
 import json
 import os
@@ -22,7 +22,7 @@ from datacube.utils.dates import normalise_dt
 from odc.index import chopped_dss, bin_dataset_stream, dataset_count, all_datasets
 from odc.dscache.tools.tiling import parse_gridspec_with_name
 from odc.dscache.tools.profiling import ds_stream_test_func
-from odc.io.text import split_and_check
+from ._text import split_and_check
 
 from odc.aws import s3_download, s3_url_parse
 from itertools import chain

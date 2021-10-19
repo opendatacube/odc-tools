@@ -2,7 +2,7 @@
 Various I/O adaptors
 """
 
-from typing import Dict, Any, Optional, List, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 import json
 from urllib.parse import urlparse
 import logging
@@ -11,12 +11,7 @@ from dask.delayed import Delayed
 from pathlib import Path
 import xarray as xr
 import io
-from PIL import Image
-import os
-import numpy
 from rasterio.crs import CRS
-from rasterio.enums import Resampling
-import rasterio
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -29,8 +24,8 @@ from hashlib import sha1
 from collections import namedtuple
 from odc.stats import __version__
 
-from eodatasets3.assemble import DatasetAssembler, serialise
-from eodatasets3.scripts.tostac import dc_to_stac, json_fallback
+from eodatasets3.assemble import serialise
+from eodatasets3.scripts.tostac import json_fallback
 from eodatasets3.model import DatasetDoc
 from eodatasets3.images import FileWrite, GridSpec
 import eodatasets3.stac as eo3stac

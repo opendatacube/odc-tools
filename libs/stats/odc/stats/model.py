@@ -7,28 +7,21 @@ from typing import Any, Dict, Optional, Tuple, Union, List, Mapping
 from uuid import UUID
 from pathlib import Path
 
-import json
 import pandas as pd
-import numpy
 import pystac
 import xarray as xr
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import GeoBox
-from datacube.testutils.io import native_geobox
 from odc.index import odc_uuid
-from odc.io.text import split_and_check
+from ._text import split_and_check
 from pystac.extensions.projection import ProjectionExtension
-from toolz import dicttoolz
 from toolz import dicttoolz
 from rasterio.crs import CRS
 import warnings
 
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.images import GridSpec
-from eodatasets3.model import DatasetDoc, ProductDoc, GridDoc
-from eodatasets3.properties import StacPropertyView
-from eodatasets3.verify import PackageChecksum
 
 TileIdx_xy = Tuple[int, int]
 TileIdx_txy = Tuple[str, int, int]
