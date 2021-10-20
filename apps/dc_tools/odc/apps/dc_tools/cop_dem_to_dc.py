@@ -108,7 +108,7 @@ def process_uri_tile(
         "end_datetime": "2100-01-01",
     }
 
-    with rasterio.Env(aws_unsigned=True):
+    with rasterio.Env(aws_unsigned=True, GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR"):
         item = create_stac_item(
             uri,
             collection=product_name,
@@ -192,9 +192,9 @@ def cop_dem_to_dc(
 )
 @click.option(
     "--workers",
-    default=100,
+    default=20,
     type=int,
-    help="Number of threads to use to process. Default is 100.",
+    help="Number of threads to use to process, default 20",
 )
 def cli(limit, update_if_exists, bbox, product, add_product, workers):
     """
