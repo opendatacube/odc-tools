@@ -36,7 +36,7 @@ class StatsTCWPC(StatsPluginInterface):
 
     @property
     def measurements(self) -> Tuple[str, ...]:
-        _measurments = ["tcw_pc_10", "tcw_pc_50", "tcw_pc_90"]
+        _measurments = ["wet_pc_10", "wet_pc_50", "wet_pc_90"]
         _measurments
         return _measurments
 
@@ -56,7 +56,7 @@ class StatsTCWPC(StatsPluginInterface):
         tcw.attrs['nodata'] = NODATA
         
         xx = xx.drop_vars(xx.data_vars.keys())
-        xx['tcw'] = tcw.astype(np.int16)
+        xx['wet'] = tcw.astype(np.int16)
         xx = keep_good_only(xx, ~bad, nodata=NODATA)
         return xx
 
