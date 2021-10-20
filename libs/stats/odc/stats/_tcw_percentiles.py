@@ -52,6 +52,8 @@ class StatsTCWPC(StatsPluginInterface):
             bad = bad | (xx[band] == -999)
 
         tcw = sum(coeff * xx[band] for band, coeff in self.coefficients.items())
+        tcw.attrs = xx.blue.attrs
+        tcw.attrs['nodata'] = NODATA
         
         xx = xx.drop_vars(xx.data_vars.keys())
         xx['tcw'] = tcw.astype(np.int16)
