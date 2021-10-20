@@ -12,6 +12,8 @@ from pathlib import Path
 import xarray as xr
 import io
 from rasterio.crs import CRS
+import types
+from ruamel.yaml import Representer
 
 from datacube.utils.aws import get_creds_with_retry, mk_boto_session, s3_client
 from odc.aws import s3_head_object  # TODO: move it to datacube
@@ -380,8 +382,15 @@ class S3COGSink:
         serialise.to_stream(odc_meta_stream, meta)
         odc_meta = odc_meta_stream.getvalue() # odc_meta is Python str
 
+        # use ruamel.yaml setup from eodatasets3
+        yaml = serialise._init_yaml()
+        # accept the func type in proc-info.yaml
+        def _represent_function(self, data: types.FunctionType):
+            return Representer.represent_str(self, data.__name__)
+        yaml.representer.add_representer(types.FunctionType, _represent_function)
+
         proc_info_meta_stream = io.StringIO("")
-        serialise._init_yaml().dump({**dataset_assembler._user_metadata, "software_versions": dataset_assembler._software_versions}, proc_info_meta_stream)
+        yaml.dump({**dataset_assembler._user_metadata, "software_versions": dataset_assembler._software_versions}, proc_info_meta_stream)
         proc_info_meta = proc_info_meta_stream.getvalue()
 
         # fake write result for metadata output, we want metadata file to be
