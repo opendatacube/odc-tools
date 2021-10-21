@@ -248,7 +248,7 @@ class SaveTasks:
                     dss = chain.from_iterable((dss, _dss))
                     n_dss += _n_dss
         elif dss is None:
-            dss_found = self._get_dss(dc, _product, msg, dataset_filter, temporal_range, tiles)
+            dss_found = self._get_dss(dc, product, msg, dataset_filter, temporal_range, tiles)
             if dss_found:
                 dss, n_dss, cfg = dss_found
         else:
