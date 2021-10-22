@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 import dask.array as da
-from odc.stats._pq_bitmask import StatsPQLSBitmask
+from odc.stats.plugins.pq_bitmask import StatsPQLSBitmask
 import pytest
 import pandas as pd
 from copy import deepcopy

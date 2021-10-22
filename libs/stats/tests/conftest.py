@@ -25,7 +25,7 @@ def test_db_path(test_dir):
 
 @pytest.fixture
 def dummy_plugin_name():
-    from odc.stats._plugins import register
+    from odc.stats.plugins import register
 
     name = "dummy-plugin"
     register(name, DummyPlugin)

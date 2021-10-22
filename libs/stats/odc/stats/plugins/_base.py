@@ -2,7 +2,7 @@ import pydoc
 from typing import Callable, Dict
 from functools import partial
 
-from .model import StatsPluginInterface
+from odc.stats.model import StatsPluginInterface
 
 PluginFactory = Callable[..., StatsPluginInterface]
 
@@ -36,13 +36,13 @@ def import_all():
 
     # TODO: make that more automatic
     modules = [
-        "odc.stats._fc_percentiles",
-        "odc.stats._tcw_percentiles",
-        "odc.stats._gm",
-        "odc.stats._gm_ls_bitmask",
-        "odc.stats._pq",
-        "odc.stats._pq_bitmask",
-        "odc.stats._wofs",
+        "odc.stats.plugins.fc_percentiles",
+        "odc.stats.plugins.tcw_percentiles",
+        "odc.stats.plugins.gm",
+        "odc.stats.plugins.gm_ls_bitmask",
+        "odc.stats.plugins.pq",
+        "odc.stats.plugins.pq_bitmask",
+        "odc.stats.plugins.wofs",
     ]
 
     for mod in modules:

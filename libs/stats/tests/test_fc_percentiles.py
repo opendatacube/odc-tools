@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 import dask.array as da
-from odc.stats._fc_percentiles import StatsFCP
+from odc.stats.plugins.fc_percentiles import StatsFCP
 import pytest 
 import pandas as pd
 

@@ -2,7 +2,7 @@
 Sentinel 2 pixel quality stats
 """
 from functools import partial
-from typing import List, Dict, Optional, Tuple, cast, Iterable
+from typing import Dict, Optional, Tuple, cast, Iterable
 
 import xarray as xr
 
@@ -11,8 +11,8 @@ from odc.algo._masking import _or_fuser
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
-from .model import StatsPluginInterface
-from . import _plugins
+from odc.stats.model import StatsPluginInterface
+from ._base import register
 
 cloud_classes = (
     "cloud shadows",
@@ -137,7 +137,7 @@ def _pq_fuser(
     return xx
 
 
-_plugins.register("pq", StatsPQ)
+register("pq", StatsPQ)
 
 
 def test_pq_product():
@@ -151,13 +151,13 @@ def test_pq_product():
 
 def test_plugin():
     location = "file:///tmp"
-    pq = _plugins.resolve("pq")()
+    pq = _base.resolve("pq")()
     product = pq.product(location)
 
     assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
     assert pq.filters == default_filters
 
-    pq = _plugins.resolve("pq")(filters={}, resampling="cubic")
+    pq = _base.resolve("pq")(filters={}, resampling="cubic")
     product = pq.product(location)
 
     assert product.measurements == ("total", "clear")

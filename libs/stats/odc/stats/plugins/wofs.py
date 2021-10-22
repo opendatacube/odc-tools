@@ -21,8 +21,8 @@ from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import safe_div, apply_numexpr, keep_good_only, binary_dilation
 from odc.algo.io import dc_load
-from .model import StatsPluginInterface
-from . import _plugins
+from odc.stats.model import StatsPluginInterface
+from ._base import register
 
 
 class StatsWofs(StatsPluginInterface):
@@ -168,7 +168,7 @@ class StatsWofs(StatsPluginInterface):
         return None
 
 
-_plugins.register("wofs-summary", StatsWofs)
+register("wofs-summary", StatsWofs)
 
 
 class StatsWofsFullHistory(StatsPluginInterface):
@@ -262,4 +262,4 @@ class StatsWofsFullHistory(StatsPluginInterface):
         return yy
 
 
-_plugins.register("wofs-summary-fh", StatsWofsFullHistory)
+register("wofs-summary-fh", StatsWofsFullHistory)

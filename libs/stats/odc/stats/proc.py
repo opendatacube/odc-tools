@@ -18,7 +18,7 @@ from .model import Task, TaskResult, TaskRunnerConfig
 from .io import S3COGSink
 from ._text import read_int
 from .tasks import TaskReader
-from . import _plugins
+from .plugins import resolve
 from odc.algo import wait_for_future
 from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
@@ -42,7 +42,7 @@ class TaskRunner:
         )
 
         _log.info(f"Resolving plugin: {cfg.plugin}")
-        mk_proc = _plugins.resolve(cfg.plugin)
+        mk_proc = resolve(cfg.plugin)
         self.proc = mk_proc(**cfg.plugin_config)
         self.product = self.proc.product(cfg.output_location, **cfg.product)
         _log.info(f"Output product: {self.product}")
