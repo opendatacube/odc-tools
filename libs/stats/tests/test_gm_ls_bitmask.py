@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 import dask.array as da
-from odc.stats._gm_ls_bitmask import StatsGMLSBitmask
+from odc.stats.plugins.gm_ls_bitmask import StatsGMLSBitmask
 import pytest
 import pandas as pd
 from .test_utils import usgs_ls8_sr_definition

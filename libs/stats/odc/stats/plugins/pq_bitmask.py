@@ -33,7 +33,7 @@ resampling = "nearest"
 """
 
 from functools import partial
-from typing import Any, Dict, List, Optional, Tuple, Iterable
+from typing import Any, Dict, Optional, Tuple, Iterable
 
 import dask.array as da
 import xarray as xr
@@ -43,8 +43,8 @@ from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_or_np
 from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
-from .model import StatsPluginInterface
-from . import _plugins
+from odc.stats.model import StatsPluginInterface
+from ._base import register
 
 
 class StatsPQLSBitmask(StatsPluginInterface):
@@ -206,4 +206,4 @@ class StatsPQLSBitmask(StatsPluginInterface):
         return fuser_result
 
 
-_plugins.register("pq-ls-bitmask", StatsPQLSBitmask)
+register("pq-ls-bitmask", StatsPQLSBitmask)

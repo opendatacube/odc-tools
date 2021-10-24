@@ -1,8 +1,6 @@
 import sys
 import click
 from ._cli_common import main, setup_logging, click_resolution, click_yaml_cfg
-from odc.aws.queue import get_messages, get_queue
-from ._sqs import SQSWorkToken
 
 
 @main.command("run")
@@ -102,7 +100,7 @@ def run(
     import logging
     from .model import TaskRunnerConfig
     from .proc import TaskRunner
-    from ._plugins import import_all
+    from .plugins import import_all
 
     _log = logging.getLogger(__name__)
 

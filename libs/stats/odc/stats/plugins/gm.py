@@ -1,14 +1,14 @@
 """
 Geomedian
 """
-from typing import Dict, Optional, Tuple, Iterable
+from typing import Optional, Tuple, Iterable
 import xarray as xr
 from odc.stats.model import Task
 from odc.algo.io import load_with_native_transform
 from odc.algo import erase_bad, geomedian_with_mads, to_rgba
 from odc.algo.io import load_enum_filtered
-from .model import StatsPluginInterface
-from . import _plugins
+from odc.stats.model import StatsPluginInterface
+from ._base import register
 
 
 class StatsGM(StatsPluginInterface):
@@ -133,7 +133,7 @@ class StatsGM(StatsPluginInterface):
         return to_rgba(xx, clamp=self.rgb_clamp, bands=self.rgb_bands)
 
 
-_plugins.register("gm-generic", StatsGM)
+register("gm-generic", StatsGM)
 
 
 class StatsGMS2(StatsGM):
@@ -194,7 +194,7 @@ class StatsGMS2(StatsGM):
         )
 
 
-_plugins.register("gm-s2", StatsGMS2)
+register("gm-s2", StatsGMS2)
 
 
 class StatsGMLS(StatsGM):
@@ -246,4 +246,4 @@ class StatsGMLS(StatsGM):
         )
 
 
-_plugins.register("gm-ls", StatsGMLS)
+register("gm-ls", StatsGMLS)

@@ -25,7 +25,7 @@ from . import gen_compressed_dss
 
 
 def test_stac(test_db_path):
-    from odc.stats._gm import StatsGMS2
+    from odc.stats.plugins.gm import StatsGMS2
 
     product = StatsGMS2().product(location="/tmp/")
     reader = TaskReader(test_db_path, product)
