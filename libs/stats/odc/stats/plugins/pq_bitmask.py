@@ -44,7 +44,7 @@ from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
 from odc.stats.model import StatsPluginInterface
-from ._base import register
+from ._registry import register
 
 
 class StatsPQLSBitmask(StatsPluginInterface):

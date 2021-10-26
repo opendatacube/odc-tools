@@ -12,7 +12,7 @@ from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_quantile_bands
 from odc.algo._masking import _xr_fuse, _or_fuser, _fuse_mean_np, _fuse_or_np
-from ._base import StatsPluginInterface, register
+from ._registry import StatsPluginInterface, register
 
 NODATA = 255
 

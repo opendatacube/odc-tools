@@ -11,7 +11,7 @@ from odc.algo import enum_to_bool, mask_cleanup
 from odc.algo._masking import _or_fuser
 from odc.algo.io import load_with_native_transform
 
-from ._base import StatsPluginInterface, register
+from ._registry import StatsPluginInterface, register
 
 cloud_classes = (
     "cloud shadows",

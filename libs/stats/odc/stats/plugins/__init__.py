@@ -1,6 +1,6 @@
-from ._base import (
+from ._base import StatsPluginInterface
+from ._registry import (
     resolve,
     import_all,
-    register,
-    StatsPluginInterface
+    register
 )
