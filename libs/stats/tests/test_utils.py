@@ -25,10 +25,10 @@ from . import gen_compressed_dss
 
 
 def test_stac(test_db_path):
-    from odc.stats.model import product_for_tests
+    from odc.stats.model import product_for_plugin
     from odc.stats.plugins.gm import StatsGMS2
 
-    product = product_for_tests(StatsGMS2(), location="/tmp/")
+    product = product_for_plugin(StatsGMS2(), location="/tmp/")
     reader = TaskReader(test_db_path, product)
     task = reader.load_task(reader.all_tiles[0])
 

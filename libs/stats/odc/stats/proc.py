@@ -14,7 +14,7 @@ import xarray as xr
 import math
 import psutil
 
-from .model import Task, TaskResult, TaskRunnerConfig
+from .model import Task, TaskResult, TaskRunnerConfig, product_for_plugin
 from .io import S3COGSink
 from ._text import read_int
 from .tasks import TaskReader
@@ -44,7 +44,7 @@ class TaskRunner:
         _log.info(f"Resolving plugin: {cfg.plugin}")
         mk_proc = resolve(cfg.plugin)
         self.proc = mk_proc(**cfg.plugin_config)
-        self.product = self.proc.product(cfg.output_location, **cfg.product)
+        self.product = product_for_plugin(self.proc, location=cfg.output_location, **cfg.product)
         _log.info(f"Output product: {self.product}")
 
         if not from_sqs:

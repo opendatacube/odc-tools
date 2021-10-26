@@ -522,7 +522,7 @@ class StatsPluginInterface(ABC):
         """
         return None
 
-def product_for_tests(
+def product_for_plugin(
     plugin: StatsPluginInterface,
     location: str,
     name: Optional[str] = None,
