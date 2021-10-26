@@ -11,8 +11,7 @@ from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_quantile_bands
 from odc.algo._masking import _xr_fuse, _fuse_mean_np, enum_to_bool
-from odc.stats.model import StatsPluginInterface
-from ._base import register
+from ._base import StatsPluginInterface, register
 
 NODATA = -9999 # output NODATA
 

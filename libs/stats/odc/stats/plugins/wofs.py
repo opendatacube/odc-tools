@@ -22,8 +22,7 @@ from datacube.utils.geometry import GeoBox
 from odc.algo.io import load_with_native_transform
 from odc.algo import safe_div, apply_numexpr, keep_good_only, binary_dilation
 from odc.algo.io import dc_load
-from odc.stats.model import StatsPluginInterface
-from ._base import register
+from ._base import StatsPluginInterface, register
 
 
 class StatsWofs(StatsPluginInterface):

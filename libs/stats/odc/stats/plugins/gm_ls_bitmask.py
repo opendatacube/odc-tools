@@ -12,8 +12,7 @@ from datacube.utils import masking
 from odc.algo import geomedian_with_mads, keep_good_only, erase_bad
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
 from odc.algo.io import load_with_native_transform
-from odc.stats.model import StatsPluginInterface
-from ._base import register
+from ._base import StatsPluginInterface, register
 
 class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"

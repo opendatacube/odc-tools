@@ -8,8 +8,7 @@ from datacube.utils.geometry import GeoBox
 from odc.algo.io import load_with_native_transform
 from odc.algo import erase_bad, geomedian_with_mads, to_rgba
 from odc.algo.io import load_enum_filtered
-from odc.stats.model import StatsPluginInterface
-from ._base import register
+from ._base import StatsPluginInterface, register
 
 
 class StatsGM(StatsPluginInterface):

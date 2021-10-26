@@ -8,7 +8,7 @@ import xarray as xr
 import dask.array as da
 import numpy as np
 from odc.stats.utils import CompressedDataset
-from odc.stats.model import StatsPluginInterface
+from odc.stats.plugins import StatsPluginInterface
 
 
 class DummyPlugin(StatsPluginInterface):
