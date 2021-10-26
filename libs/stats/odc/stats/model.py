@@ -522,92 +522,93 @@ class StatsPluginInterface(ABC):
         """
         return None
 
-    def product(
-        self,
-        location: str,
-        name: Optional[str] = None,
-        short_name: Optional[str] = None,
-        version: Optional[str] = None,
-        product_family: Optional[str] = None,
-        collections_site: str = "collections.dea.ga.gov.au",
-        producer: str = "ga.gov.au",
-        properties: Dict[str, Any] = dict(),
-        region_code_format: str = "x{x:02d}y{y:02d}",
-        naming_conventions_values: str = "dea_c3",
-        explorer_path: str = "https://explorer.dea.ga.gov.au",
-        inherit_skip_properties: Optional[List[str]] = None,
-        preview_image_ows_style: Optional[Dict[str, Any]] = None,
-        classifier: str = "level3",
-        maturity: Optional[str] = None,
-        collection_number: int = 3,
-        nodata: Optional[Dict[str, int]] = None
-    ) -> OutputProduct:
-        """
-        :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
-        :param name: Override for product name
-        :param short_name: Override for product short_name
-        :param version: Override for version
-        :param product_family: Override for odc:product_family
-        :param collections_site: href=f"https://{collections_site}/product/{name}"
-        :param producer: Producer ``ga.gov.au``
-        :param region_code_format: Change region code formatting, default ``"x{x:02d}y{y:02d}"``
-        :param naming_conventions_values: default ``dea_c3``
-        :param explorer_path: default ``https://explorer.dea.ga.gov.au``
-        :param inherit_skip_properties: block properties from source datasets.
-        :param preview_image_ows_style: define ows_styling_dict
-        :param classifier: default ``level3``
-        :param maturity: default ``None``
-        :param collection_number: default ``3``
-        :param nodata: band level nodata information. Pass it to eodatasets3 library only.
-        """
-        if name is None:
-            name = self.NAME
-        if short_name is None:
-            short_name = self.SHORT_NAME
-            if len(short_name) == 0:
-                short_name = name
-        if version is None:
-            version = self.VERSION
-        if product_family is None:
-            product_family = self.PRODUCT_FAMILY
+def product_for_tests(
+    plugin: StatsPluginInterface,
+    location: str,
+    name: Optional[str] = None,
+    short_name: Optional[str] = None,
+    version: Optional[str] = None,
+    product_family: Optional[str] = None,
+    collections_site: str = "collections.dea.ga.gov.au",
+    producer: str = "ga.gov.au",
+    properties: Dict[str, Any] = dict(),
+    region_code_format: str = "x{x:02d}y{y:02d}",
+    naming_conventions_values: str = "dea_c3",
+    explorer_path: str = "https://explorer.dea.ga.gov.au",
+    inherit_skip_properties: Optional[List[str]] = None,
+    preview_image_ows_style: Optional[Dict[str, Any]] = None,
+    classifier: str = "level3",
+    maturity: Optional[str] = None,
+    collection_number: int = 3,
+    nodata: Optional[Dict[str, int]] = None
+) -> OutputProduct:
+    """
+    :param plugin: An instance of a subclass of StatsPluginInterface, used for name defaults.
+    :param location: Output location string or template, example ``s3://bucket/{product}/{version}``
+    :param name: Override for product name
+    :param short_name: Override for product short_name
+    :param version: Override for version
+    :param product_family: Override for odc:product_family
+    :param collections_site: href=f"https://{collections_site}/product/{name}"
+    :param producer: Producer ``ga.gov.au``
+    :param region_code_format: Change region code formatting, default ``"x{x:02d}y{y:02d}"``
+    :param naming_conventions_values: default ``dea_c3``
+    :param explorer_path: default ``https://explorer.dea.ga.gov.au``
+    :param inherit_skip_properties: block properties from source datasets.
+    :param preview_image_ows_style: define ows_styling_dict
+    :param classifier: default ``level3``
+    :param maturity: default ``None``
+    :param collection_number: default ``3``
+    :param nodata: band level nodata information. Pass it to eodatasets3 library only.
+    """
+    if name is None:
+        name = plugin.NAME
+    if short_name is None:
+        short_name = plugin.SHORT_NAME
+        if len(short_name) == 0:
+            short_name = name
+    if version is None:
+        version = plugin.VERSION
+    if product_family is None:
+        product_family = plugin.PRODUCT_FAMILY
 
-        if "{" in location and "}" in location:
-            version_dashed = version.replace(".", "-")
-            location = location.format(
-                name=name,
-                product=name,
-                short_name=short_name,
-                version=version_dashed,
-                version_dashed=version_dashed,
-                version_raw=version,
-            )
-
-        # remove trailing / if present
-        location = location.rstrip("/")
-
-        return OutputProduct(
+    if "{" in location and "}" in location:
+        version_dashed = version.replace(".", "-")
+        location = location.format(
             name=name,
-            version=version,
+            product=name,
             short_name=short_name,
-            location=location,
-            properties={
-                "odc:file_format": "GeoTIFF",
-                "odc:product_family": product_family,
-                "odc:producer": producer,
-                **properties,
-            },
-            measurements=self.measurements,
-            href=f"https://{collections_site}/product/{name}",
-            region_code_format=region_code_format,
-            naming_conventions_values=naming_conventions_values,
-            explorer_path=explorer_path,
-            inherit_skip_properties=inherit_skip_properties,
-            preview_image_ows_style=preview_image_ows_style,
-            classifier=classifier,
-            maturity=maturity,
-            collection_number=collection_number,
-            nodata=nodata,
+            version=version_dashed,
+            version_dashed=version_dashed,
+            version_raw=version,
         )
+
+    # remove trailing / if present
+    location = location.rstrip("/")
+
+    return OutputProduct(
+        name=name,
+        version=version,
+        short_name=short_name,
+        location=location,
+        properties={
+            "odc:file_format": "GeoTIFF",
+            "odc:product_family": product_family,
+            "odc:producer": producer,
+            **properties,
+        },
+        measurements=plugin.measurements,
+        href=f"https://{collections_site}/product/{name}",
+        region_code_format=region_code_format,
+        naming_conventions_values=naming_conventions_values,
+        explorer_path=explorer_path,
+        inherit_skip_properties=inherit_skip_properties,
+        preview_image_ows_style=preview_image_ows_style,
+        classifier=classifier,
+        maturity=maturity,
+        collection_number=collection_number,
+        nodata=nodata,
+    )
 
 
 @dataclass
