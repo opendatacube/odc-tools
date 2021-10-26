@@ -20,7 +20,7 @@ from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
 from .model import Task, EXT_TIFF
-from .plugins._base import StatsPluginInterface
+from .plugins import StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
 from odc.stats import __version__
