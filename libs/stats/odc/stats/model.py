@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple, Union, List, Mapping
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from uuid import UUID
 from pathlib import Path
 
@@ -509,7 +509,7 @@ class StatsPluginInterface(ABC):
         pass
 
     @abstractmethod
-    def input_data(self, task: Task) -> xr.Dataset:
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         pass
 
     @abstractmethod

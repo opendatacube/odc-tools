@@ -2,17 +2,17 @@
 Sentinel 2 pixel quality stats
 """
 from functools import partial
-from typing import Dict, Optional, Tuple, cast, Iterable
+from typing import Dict, Iterable, Optional, Sequence, Tuple, cast
 
 import xarray as xr
-
+from datacube.model import Dataset
+from datacube.utils.geometry import GeoBox
 from odc.algo import enum_to_bool, mask_cleanup
 from odc.algo._masking import _or_fuser
 from odc.algo.io import load_with_native_transform
-from odc.stats.model import Task
 
 from odc.stats.model import StatsPluginInterface
-from ._base import register, resolve
+from ._base import register
 
 cloud_classes = (
     "cloud shadows",
@@ -55,7 +55,7 @@ class StatsPQ(StatsPluginInterface):
 
         return tuple(measurements)
 
-    def input_data(self, task: Task) -> xr.Dataset:
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         """
         .valid           Bool
         .erased          Bool
@@ -65,9 +65,9 @@ class StatsPQ(StatsPluginInterface):
         resampling = self.resampling
 
         return load_with_native_transform(
-            task.datasets,
+            datasets,
             ["SCL"],
-            task.geobox,
+            geobox,
             _pq_native_transform,
             groupby="solar_day",
             resampling=resampling,

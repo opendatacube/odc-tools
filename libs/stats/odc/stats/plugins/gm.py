@@ -1,9 +1,10 @@
 """
 Geomedian
 """
-from typing import Optional, Tuple, Iterable
+from typing import Optional, Sequence, Tuple, Iterable
 import xarray as xr
-from odc.stats.model import Task
+from datacube.model import Dataset
+from datacube.utils.geometry import GeoBox
 from odc.algo.io import load_with_native_transform
 from odc.algo import erase_bad, geomedian_with_mads, to_rgba
 from odc.algo.io import load_enum_filtered
@@ -72,15 +73,15 @@ class StatsGM(StatsPluginInterface):
 
         return xx
 
-    def input_data(self, task: Task) -> xr.Dataset:
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         basis = self._basis_band
         chunks = {"y": -1, "x": -1}
         groupby = "solar_day"
 
         erased = load_enum_filtered(
-            task.datasets,
+            datasets,
             self._mask_band,
-            task.geobox,
+            geobox,
             categories=self.cloud_classes,
             filters=self.filters,
             groupby=groupby,
@@ -95,9 +96,9 @@ class StatsGM(StatsPluginInterface):
             bands_to_load = (*bands_to_load, self._mask_band)
 
         xx = load_with_native_transform(
-            task.datasets,
+            datasets,
             bands_to_load,
-            task.geobox,
+            geobox,
             self._native_op_data_band,
             groupby=groupby,
             basis=basis,

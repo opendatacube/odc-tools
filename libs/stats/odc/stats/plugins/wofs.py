@@ -14,10 +14,11 @@ individual water observations, and the second generates a summary of summaries, 
 of time summary from existing annual summaries.
 
 """
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 import numpy as np
 import xarray as xr
-from odc.stats.model import Task
+from datacube.model import Dataset
+from datacube.utils.geometry import GeoBox
 from odc.algo.io import load_with_native_transform
 from odc.algo import safe_div, apply_numexpr, keep_good_only, binary_dilation
 from odc.algo.io import dc_load
@@ -124,14 +125,14 @@ class StatsWofs(StatsPluginInterface):
 
         return xr.Dataset(dict(wet=wet, dry=dry, bad=xx.bad, some=xx.some))
 
-    def input_data(self, task: Task) -> xr.Dataset:
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         chunks = {"y": -1, "x": -1}
         groupby = "solar_day"
 
         xx = load_with_native_transform(
-            task.datasets,
+            datasets,
             bands=["water"],
-            geobox=task.geobox,
+            geobox=geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
             groupby=groupby,
@@ -195,11 +196,11 @@ class StatsWofsFullHistory(StatsPluginInterface):
     def measurements(self) -> Tuple[str, ...]:
         return "count_wet", "count_clear", "frequency"
 
-    def input_data(self, task: Task) -> xr.Dataset:
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         return dc_load(
-            task.datasets,
+            datasets,
             measurements=["count_wet", "count_clear"],
-            geobox=task.geobox,
+            geobox=geobox,
             chunks={},
         )
 
