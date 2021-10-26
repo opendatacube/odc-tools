@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple, Union, List, Mapping
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 from pathlib import Path
 
@@ -22,6 +22,8 @@ import warnings
 
 from eodatasets3.assemble import DatasetAssembler, serialise
 from eodatasets3.images import GridSpec
+
+from .plugins import StatsPluginInterface
 
 TileIdx_xy = Tuple[int, int]
 TileIdx_txy = Tuple[str, int, int]
@@ -496,31 +498,6 @@ class Task:
 
         return item.to_dict()
 
-
-class StatsPluginInterface(ABC):
-    NAME = "*unset*"
-    SHORT_NAME = ""
-    VERSION = "0.0.0"
-    PRODUCT_FAMILY = "statistics"
-
-    @property
-    @abstractmethod
-    def measurements(self) -> Tuple[str, ...]:
-        pass
-
-    @abstractmethod
-    def input_data(self, task: Task) -> xr.Dataset:
-        pass
-
-    @abstractmethod
-    def reduce(self, xx: xr.Dataset) -> xr.Dataset:
-        pass
-
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        """
-        Given result of ``.reduce(..)`` optionally produce RGBA preview image
-        """
-        return None
 
 def product_for_plugin(
     plugin: StatsPluginInterface,

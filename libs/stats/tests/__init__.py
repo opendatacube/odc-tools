@@ -8,7 +8,7 @@ import xarray as xr
 import dask.array as da
 import numpy as np
 from odc.stats.utils import CompressedDataset
-from odc.stats.model import StatsPluginInterface
+from odc.stats.plugins import StatsPluginInterface
 
 
 class DummyPlugin(StatsPluginInterface):
@@ -27,10 +27,10 @@ class DummyPlugin(StatsPluginInterface):
     def measurements(self):
         return self._bands
 
-    def input_data(self, task):
-        ts = sorted([ds.center_time for ds in task.datasets])
+    def input_data(self, datasets, geobox):
+        ts = sorted([ds.center_time for ds in datasets])
         xx = mk_dask_xx(
-            task.geobox,
+            geobox,
             timestamps=ts,
             mode="random",
             attrs=dict(nodata=self._nodata),

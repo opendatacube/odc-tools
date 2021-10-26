@@ -2,17 +2,17 @@
 Fractional Cover Percentiles
 """
 from functools import partial
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 from itertools import product
 import xarray as xr
 import numpy as np
-from odc.stats.model import Task
+from datacube.model import Dataset
+from datacube.utils.geometry import GeoBox
 from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_quantile_bands
 from odc.algo._masking import _xr_fuse, _or_fuser, _fuse_mean_np, _fuse_or_np
-from odc.stats.model import StatsPluginInterface
-from ._base import register
+from ._registry import StatsPluginInterface, register
 
 NODATA = 255
 
@@ -69,14 +69,13 @@ class StatsFCP(StatsPluginInterface):
         xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name) & all_bands_invalid
         return xx
     
-    def input_data(self, task: Task) -> xr.Dataset:
-
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         chunks = {"y": -1, "x": -1}
 
         xx = load_with_native_transform(
-            task.datasets,
+            datasets,
             bands=["water", "pv", "bs", "npv"],
-            geobox=task.geobox,
+            geobox=geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
             groupby="solar_day",

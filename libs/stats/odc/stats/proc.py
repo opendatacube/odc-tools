@@ -203,7 +203,7 @@ class TaskRunner:
                     continue
 
             _log.debug("Building Dask Graph")
-            ds = proc.reduce(proc.input_data(task))
+            ds = proc.reduce(proc.input_data(task.datasets, task.geobox))
 
             _log.debug(f"Submitting to Dask ({task.location})")
             ds = client.persist(ds, fifo_timeout="1ms")

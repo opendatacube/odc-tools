@@ -2,17 +2,17 @@
 Landsat QA Pixel Geomedian
 """
 from functools import partial
-from typing import Dict, Optional, Tuple, Any, Iterable
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 import xarray as xr
 import numpy as np
+from datacube.model import Dataset
+from datacube.utils.geometry import GeoBox
 from datacube.utils import masking
 from odc.algo import geomedian_with_mads, keep_good_only, erase_bad
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
 from odc.algo.io import load_with_native_transform
-from odc.stats.model import StatsPluginInterface
-from odc.stats.model import Task
-from ._base import register
+from ._registry import StatsPluginInterface, register
 
 class StatsGMLSBitmask(StatsPluginInterface):
     NAME = "gm_ls_bitmask"
@@ -121,14 +121,13 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         return xx
 
-    def input_data(self, task: Task) -> xr.Dataset:
-
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         chunks = {"y": -1, "x": -1}
 
         xx = load_with_native_transform(
-            task.datasets,
+            datasets,
             bands=self.bands + [self.mask_band],
-            geobox=task.geobox,
+            geobox=geobox,
             native_transform=self._native_tr,
             fuser=self._fuser,
             groupby="solar_day",

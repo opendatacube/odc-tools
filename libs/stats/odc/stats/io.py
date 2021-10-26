@@ -19,7 +19,8 @@ from datacube.utils.dask import save_blob_to_s3, save_blob_to_file
 from datacube.utils.cog import to_cog
 from datacube.model import Dataset
 from botocore.credentials import ReadOnlyCredentials
-from .model import Task, EXT_TIFF, StatsPluginInterface
+from .model import Task, EXT_TIFF
+from .plugins import StatsPluginInterface
 from hashlib import sha1
 from collections import namedtuple
 from odc.stats import __version__
