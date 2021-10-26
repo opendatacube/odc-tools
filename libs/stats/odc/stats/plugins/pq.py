@@ -12,7 +12,7 @@ from odc.algo.io import load_with_native_transform
 from odc.stats.model import Task
 
 from odc.stats.model import StatsPluginInterface
-from ._base import register
+from ._base import register, resolve
 
 cloud_classes = (
     "cloud shadows",
@@ -138,28 +138,3 @@ def _pq_fuser(
 
 
 register("pq", StatsPQ)
-
-
-def test_pq_product():
-    location = "file:///tmp"
-    product = StatsPQ().product(location)
-    assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
-
-    product = StatsPQ(filters={}).product(location)
-    assert product.measurements == ("total", "clear")
-
-
-def test_plugin():
-    location = "file:///tmp"
-    pq = _base.resolve("pq")()
-    product = pq.product(location)
-
-    assert product.measurements == ("total", "clear", "clear_2_5", "clear_0_5")
-    assert pq.filters == default_filters
-
-    pq = _base.resolve("pq")(filters={}, resampling="cubic")
-    product = pq.product(location)
-
-    assert product.measurements == ("total", "clear")
-    assert pq.filters == {}
-    assert pq.resampling == "cubic"

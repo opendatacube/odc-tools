@@ -90,9 +90,10 @@ def test_parse_all_tasks():
             parse_all_tasks(bad, all_tasks)
 
 
-def test_plugin_product():
+def test_product_for_plugin():
+    from odc.stats.model import product_for_plugin
     plugin = DummyPlugin(bands=("red", "green"))
-    product = plugin.product("file:///tmp/{product}/v{version_raw}")
+    product = product_for_plugin(plugin, location="file:///tmp/{product}/v{version_raw}")
     assert product.name == DummyPlugin.NAME
     assert product.short_name == DummyPlugin.SHORT_NAME
     assert product.version == DummyPlugin.VERSION
@@ -101,7 +102,7 @@ def test_plugin_product():
     assert product.properties["odc:product_family"] == DummyPlugin.PRODUCT_FAMILY
     assert product.href == f"https://collections.dea.ga.gov.au/product/{product.name}"
 
-    product = plugin.product(
+    product = product_for_plugin(plugin,
         "file:///tmp/{product}/v{version}",
         name="custom-name",
         short_name="custom-short-name",
