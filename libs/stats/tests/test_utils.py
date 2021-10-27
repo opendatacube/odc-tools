@@ -92,9 +92,9 @@ def test_wo_season_binner():
     wo_nov_to_mar_seasons_rules = {
         11: "11--P5M",
         12: "11--P5M",
-        1: "11-P5M",
-        2: "11-P5M",
-        3: "11-P5M",
+        1: "11--P5M",
+        2: "11--P5M",
+        3: "11--P5M",
     }
 
     # start from Nov, length is 5 month
