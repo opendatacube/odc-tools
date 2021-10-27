@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Index the Copernicus DEM automatically.
+Index the ESA Worldcover data automatically.
 """
 import concurrent.futures
 import logging
@@ -152,7 +152,7 @@ def esa_wc_to_dc(
     success = 0
     failure = 0
 
-    sys.stdout.write(f"Starting Cop DEM indexing with {n_workers} workers...\n")
+    sys.stdout.write(f"Starting ESA Worldcover indexing with {n_workers} workers...\n")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
