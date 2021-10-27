@@ -42,6 +42,44 @@ def bin_generic(
     return tasks
 
 
+def bin_apr_oct(
+    cells: Dict[Tuple[int, int], Cell]
+) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
+
+    # length is 7 months, start with Apr
+    binner = season_binner(mk_wo_season_rules(7, 4))
+
+    tasks = {}
+    for tidx, cell in cells.items():
+        utc_offset = cell.utc_offset
+        grouped = toolz.groupby(lambda ds: binner(ds.time + utc_offset), cell.dss)
+
+        for temporal_k, dss in grouped.items():
+            if temporal_k != "":
+                tasks[(temporal_k,) + tidx] = dss
+
+    return tasks 
+
+
+def bin_nov_mar(
+    cells: Dict[Tuple[int, int], Cell]
+) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
+
+    # length is 5 months, start with Nov
+    binner = season_binner(mk_wo_season_rules(5, 11))
+
+    tasks = {}
+    for tidx, cell in cells.items():
+        utc_offset = cell.utc_offset
+        grouped = toolz.groupby(lambda ds: binner(ds.time + utc_offset), cell.dss)
+
+        for temporal_k, dss in grouped.items():
+            if temporal_k != "":
+                tasks[(temporal_k,) + tidx] = dss
+
+    return tasks
+
+
 def bin_seasonal(
     cells: Dict[Tuple[int, int], Cell], months: int, anchor: int
 ) -> Dict[Tuple[str, int, int], List[CompressedDataset]]:
@@ -84,6 +122,24 @@ def bin_annual(
             tasks[temporal_k + tidx] = dss
 
     return tasks
+
+    
+def mk_wo_season_rules(months: int, anchor: int) -> Dict[int, str]:
+    """
+    Construct rules for a wo summary seasons
+    :param months: Length of season in months can be one of (5, 7)
+    :param anchor: Start month of one of the seasons (4, 11)
+    """
+    assert months in (5, 7)
+    assert anchor in (4, 11)
+
+    rules: Dict[int, str] = {}
+
+    # not loop as mk_season_rules(). because it only return
+    # single season task cache each run
+    rules[anchor] = f"{anchor:02d}--P{months:d}M"
+
+    return rules
 
 
 def mk_season_rules(months: int, anchor: int) -> Dict[int, str]:
