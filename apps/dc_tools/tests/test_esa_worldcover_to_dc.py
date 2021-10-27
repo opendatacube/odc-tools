@@ -50,7 +50,7 @@ def test_get_dem_tile_uris(bbox):
 def test_complex_bbox(bbox_africa):
     uris = list(get_tile_uris(bbox_africa))
 
-    assert len(uris) == 8004
+    assert len(uris) == 899
 
 
 # Test the actual process
