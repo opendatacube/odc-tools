@@ -6,7 +6,7 @@ import xarray as xr
 from datacube.model import Dataset
 from datacube.utils.geometry import GeoBox
 from odc.algo.io import load_with_native_transform
-from odc.algo import erase_bad, geomedian_with_mads, to_rgba
+from odc.algo import erase_bad, geomedian_with_mads
 from odc.algo.io import load_enum_filtered
 from ._registry import StatsPluginInterface, register
 
@@ -126,11 +126,6 @@ class StatsGM(StatsPluginInterface):
         gm = gm.rename(self._renames)
 
         return gm
-
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        if self.rgb_bands is None:
-            return None
-        return to_rgba(xx, clamp=self.rgb_clamp, bands=self.rgb_bands)
 
 
 register("gm-generic", StatsGM)

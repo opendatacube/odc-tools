@@ -164,9 +164,6 @@ class StatsWofs(StatsPluginInterface):
             )
         )
 
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        return None
-
 
 register("wofs-summary", StatsWofs)
 

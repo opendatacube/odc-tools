@@ -107,8 +107,5 @@ class StatsFCP(StatsPluginInterface):
         yy["qa"] = 1 + all_bands_valid - is_ever_wet * (1 - all_bands_valid)
         return yy
 
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        return None
-
 
 register("fc-percentiles", StatsFCP)

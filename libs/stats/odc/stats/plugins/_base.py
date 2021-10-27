@@ -4,6 +4,7 @@ from typing import Tuple, Sequence, Optional
 import xarray as xr
 from datacube.model import Dataset
 from datacube.utils.geometry import GeoBox
+from odc.algo import to_rgba
 
 
 class StatsPluginInterface(ABC):
@@ -11,6 +12,10 @@ class StatsPluginInterface(ABC):
     SHORT_NAME = ""
     VERSION = "0.0.0"
     PRODUCT_FAMILY = "statistics"
+
+    def __init__(self, rgb_bands=None, rgb_clamp=[1, 3_000]):
+        self.rgb_bands = rgb_bands
+        self.rgb_clamp = rgb_clamp
 
     @property
     @abstractmethod
@@ -29,4 +34,6 @@ class StatsPluginInterface(ABC):
         """
         Given result of ``.reduce(..)`` optionally produce RGBA preview image
         """
-        return None
+        if self.rgb_bands is None:
+            return None
+        return to_rgba(xx, clamp=self.rgb_clamp, bands=self.reg_bands)

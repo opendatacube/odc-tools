@@ -88,8 +88,5 @@ class StatsTCWPC(StatsPluginInterface):
         yy = xr_quantile_bands(xx, [0.1, 0.5, 0.9], nodata=NODATA)
         return yy
 
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        return None
-
 
 register("tcw-percentiles", StatsTCWPC)

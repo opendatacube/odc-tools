@@ -189,8 +189,5 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         return xx
 
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        return None
-
 
 register("gm-ls-bitmask", StatsGMLSBitmask)
