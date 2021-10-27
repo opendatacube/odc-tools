@@ -19,7 +19,7 @@ from odc.stats.utils import (
     season_binner,
     fuse_products,
     fuse_ds,
-    mk_wo_season_rules
+    mk_single_season_rules
 )
 
 from . import gen_compressed_dss
@@ -87,7 +87,7 @@ def test_wo_season_binner():
     }
 
     # start from April, length is 7 month
-    assert mk_wo_season_rules(7, anchor=4) == wo_apr_to_oct_seasons_rules
+    assert mk_single_season_rules(7, anchor=4) == wo_apr_to_oct_seasons_rules
 
     wo_nov_to_mar_seasons_rules = {
         11: "11--P5M",
@@ -98,7 +98,7 @@ def test_wo_season_binner():
     }
 
     # start from Nov, length is 5 month
-    assert mk_wo_season_rules(5, anchor=11) == wo_nov_to_mar_seasons_rules
+    assert mk_single_season_rules(5, anchor=11) == wo_nov_to_mar_seasons_rules
 
     binner = season_binner(wo_apr_to_oct_seasons_rules)
     assert binner(datetime(2020, 1, 28)) == ""

@@ -29,7 +29,7 @@ from itertools import chain
 
 from .model import DateTimeRange, Task, OutputProduct, TileIdx, TileIdx_txy, TileIdx_xy
 from ._gjson import gs_bounds, compute_grid_info, gjson_from_tasks
-from .utils import bin_annual, bin_full_history, bin_generic, bin_seasonal, bin_apr_oct, bin_nov_mar
+from .utils import bin_annual, bin_full_history, bin_generic, bin_seasonal
 
 TilesRange2d = Tuple[Tuple[int, int], Tuple[int, int]]
 CompressedDataset = namedtuple("CompressedDataset", ["id", "time"])
@@ -322,9 +322,9 @@ class SaveTasks:
             elif self._frequency == "seasonal":
                 tasks = bin_seasonal(cells, months=3, anchor=12)
             elif self._frequency == "nov-mar":
-                tasks = bin_nov_mar(cells)
+                tasks = bin_seasonal(cells, months=5, anchor=11, extract_single_season=True)
             elif self._frequency == "apr-oct":
-                tasks = bin_apr_oct(cells)
+                tasks = bin_seasonal(cells, months=7, anchor=4, extract_single_season=True)
             elif self._frequency == "annual-fy":
                 tasks = bin_seasonal(cells, months=12, anchor=7)
             elif self._frequency == "annual":
