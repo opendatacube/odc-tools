@@ -6,3 +6,4 @@ nasadem,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/m
 dem_cop_30,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/dem_cop_30.odc-product.yaml
 dem_cop_90,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/dem_cop_90.odc-product.yaml
 io_lulc,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/io_lulc.odc-product.yaml
+esa_worldcover,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/esa_worldcover.odc-product.yaml

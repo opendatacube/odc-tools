@@ -58,14 +58,3 @@ def test_indexing_cli(bbox, product):
         ],
     )
     assert result.exit_code == 0
-
-    result = runner.invoke(
-        cli,
-        [
-            "--bbox",
-            bbox,
-            "--product",
-            "cop_90"
-        ],
-    )
-    assert result.exit_code == 0
