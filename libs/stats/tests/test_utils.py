@@ -18,7 +18,8 @@ from odc.stats.utils import (
     mk_season_rules,
     season_binner,
     fuse_products,
-    fuse_ds
+    fuse_ds,
+    mk_wo_season_rules
 )
 
 from . import gen_compressed_dss
@@ -74,6 +75,30 @@ def test_binning():
     tasks = bin_seasonal(cells, 6, 1)
     verify(tasks)
 
+def test_wo_season_binner():
+    wo_apr_to_oct_seasons_rules = {
+        4: "4--P7M",
+        5: "4--P7M",
+        6: "4--P7M",
+        7: "4--P7M",
+        8: "4--P7M",
+        9: "4--P7M",
+        10: "4--P7M",
+    }
+
+    # start from April, length is 7 month
+    assert mk_wo_season_rules(7, anchor=4) == wo_apr_to_oct_seasons_rules
+
+    wo_nov_to_mar_seasons_rules = {
+        11: "11--P5M",
+        12: "11--P5M",
+        1: "11-P5M",
+        2: "11-P5M",
+        3: "11-P5M",
+    }
+
+    # start from Nov, length is 5 month
+    assert mk_wo_season_rules(5, anchor=11) == wo_nov_to_mar_seasons_rules
 
 def test_season_binner():
     four_seasons_rules = {
