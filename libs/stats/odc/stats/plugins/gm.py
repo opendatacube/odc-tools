@@ -26,11 +26,11 @@ class StatsGM(StatsPluginInterface):
         filters: Optional[Iterable[Tuple[str, int]]] = None,
         basis_band=None,
         aux_names=dict(smad="smad", emad="emad", bcmad="bcmad", count="count"),
-        rgb_bands=None,
-        rgb_clamp=(1, 3_000),
         resampling: str = "bilinear",
         work_chunks: Tuple[int, int] = (400, 400),
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.bands = tuple(bands)
         self._basis_band = basis_band or self.bands[0]
 
@@ -46,8 +46,6 @@ class StatsGM(StatsPluginInterface):
         self.aux_bands = tuple(
             self._renames.get(k, k) for k in ("smad", "emad", "bcmad", "count")
         )
-        self.rgb_bands = rgb_bands
-        self.rgb_clamp = rgb_clamp
 
         self.resampling = resampling
         self._work_chunks = work_chunks
@@ -151,11 +149,10 @@ class StatsGMS2(StatsGM):
         filters: Optional[Iterable[Tuple[str, int]]] = [("opening", 2), ("dilation",5)],
         basis_band: Optional[str] = None,
         aux_names=dict(smad="SMAD", emad="EMAD", bcmad="BCMAD", count="COUNT"),
-        rgb_bands=None,
-        rgb_clamp=(1, 3_000),
         resampling: str = "bilinear",
         work_chunks: Tuple[int, int] = (400, 400),
-        **other,
+        rgb_bands=None,
+        **kwargs
     ):
         if bands is None:
             bands = (
@@ -181,11 +178,10 @@ class StatsGMS2(StatsGM):
             filters=filters,
             basis_band=basis_band,
             aux_names=aux_names,
-            rgb_bands=rgb_bands,
-            rgb_clamp=rgb_clamp,
             resampling=resampling,
             work_chunks=work_chunks,
-            **other,
+            rgb_bands=rgb_bands,
+            **kwargs
         )
 
 
@@ -211,7 +207,7 @@ class StatsGMLS(StatsGM):
         rgb_clamp=(1, 3_000),
         resampling: str = "bilinear",
         work_chunks: Tuple[int, int] = (400, 400),
-        **other,
+        **kwargs
     ):
         if bands is None:
             bands = (
@@ -234,10 +230,9 @@ class StatsGMLS(StatsGM):
             basis_band=basis_band,
             aux_names=aux_names,
             rgb_bands=rgb_bands,
-            rgb_clamp=rgb_clamp,
             resampling=resampling,
             work_chunks=work_chunks,
-            **other,
+            **kwargs,
         )
 
 

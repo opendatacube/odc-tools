@@ -38,7 +38,9 @@ class StatsPQ(StatsPluginInterface):
         self,
         filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
         resampling: str = "nearest",
+        **kwargs
     ):
+        super().__init__(**kwargs)
         if filters is None:
             filters = default_filters
         self.filters = filters

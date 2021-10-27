@@ -37,8 +37,9 @@ class StatsGMLSBitmask(StatsPluginInterface):
             offset: float = -0.2,
             output_scale: int = 10000, # gm rescaling - making SR range match sentinel-2 gm
             output_dtype: str = "uint16", # dtype of gm rescaling
-            **other,
+            **kwargs,
     ):
+        super().__init__(**kwargs)
         self.mask_band = mask_band
         self.resampling = resampling
         self.bands = bands

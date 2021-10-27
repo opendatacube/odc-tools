@@ -29,7 +29,9 @@ class StatsTCWPC(StatsPluginInterface):
         coefficients: Dict[str, float] = {
             'blue': 0.0315, 'green': 0.2021, 'red': 0.3102, 'nir': 0.1594, 'swir1': -0.6806, 'swir2': -0.6109
             },
+        **kwargs
     ):
+        super().__init__(**kwargs)
         self.resampling = resampling
         self.coefficients = coefficients
 

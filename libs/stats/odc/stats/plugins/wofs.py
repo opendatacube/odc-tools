@@ -51,7 +51,9 @@ class StatsWofs(StatsPluginInterface):
         self,
         resampling: str = "bilinear",
         dilation: int = 0,
+        **kwargs
     ):
+        super().__init__(**kwargs)
         self.resampling = resampling
         self._dilation = dilation  # number of pixels to pad around BAD pixels
 

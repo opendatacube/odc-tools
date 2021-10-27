@@ -27,7 +27,9 @@ class StatsFCP(StatsPluginInterface):
     def __init__(
         self,
         resampling: str = "bilinear",
+        **kwargs
     ):
+        super().__init__(**kwargs)
         self.resampling = resampling
 
     @property

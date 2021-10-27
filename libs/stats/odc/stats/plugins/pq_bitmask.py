@@ -66,7 +66,9 @@ class StatsPQLSBitmask(StatsPluginInterface):
             filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
             aerosol_filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
             resampling: str = "nearest",
+            **kwargs
     ):
+        super().__init__(**kwargs)
         self.pq_band = pq_band
         self.aerosol_band = aerosol_band
         self.flags = flags
