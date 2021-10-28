@@ -7,9 +7,6 @@ from datacube.utils.geometry import GeoBox
 from odc.algo import to_rgba
 from odc.algo.io import load_with_native_transform
 
-NODATA = -9999 # output NODATA
-
-
 
 class StatsPluginInterface(ABC):
     NAME = "*unset*"
