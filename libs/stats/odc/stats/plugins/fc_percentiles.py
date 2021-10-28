@@ -2,13 +2,10 @@
 Fractional Cover Percentiles
 """
 from functools import partial
-from typing import Optional, Sequence, Tuple
+from typing import Tuple
 from itertools import product
 import xarray as xr
 import numpy as np
-from datacube.model import Dataset
-from datacube.utils.geometry import GeoBox
-from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_quantile_bands
 from odc.algo._masking import _xr_fuse, _or_fuser, _fuse_mean_np, _fuse_or_np
@@ -26,11 +23,9 @@ class StatsFCP(StatsPluginInterface):
 
     def __init__(
         self,
-        resampling: str = "bilinear",
         **kwargs
     ):
-        super().__init__(**kwargs)
-        self.resampling = resampling
+        super().__init__(input_bands=["water", "pv", "bs", "npv"], **kwargs)
 
     @property
     def measurements(self) -> Tuple[str, ...]:
@@ -38,8 +33,7 @@ class StatsFCP(StatsPluginInterface):
         _measurments.append("qa")
         return _measurments
 
-    @staticmethod
-    def _native_tr(xx):
+    def native_transform(self, xx):
         """
         Loads data in its native projection. It performs the following:
 
@@ -57,9 +51,7 @@ class StatsFCP(StatsPluginInterface):
         xx["wet"] = water == 128
         return xx
 
-    @staticmethod
-    def _fuser(xx):
-
+    def fuser(self, xx):
         wet = xx["wet"]
         xx = _xr_fuse(xx.drop_vars(["wet"]), partial(_fuse_mean_np, nodata=NODATA), '')
 
@@ -71,24 +63,7 @@ class StatsFCP(StatsPluginInterface):
         xx["wet"] = _xr_fuse(wet, _fuse_or_np, wet.name) & all_bands_invalid
         return xx
     
-    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
-        chunks = {"y": -1, "x": -1}
-
-        xx = load_with_native_transform(
-            datasets,
-            bands=["water", "pv", "bs", "npv"],
-            geobox=geobox,
-            native_transform=self._native_tr,
-            fuser=self._fuser,
-            groupby="solar_day",
-            resampling=self.resampling,
-            chunks=chunks,
-        )
-        
-        return xx
-
-    @staticmethod
-    def reduce(xx: xr.Dataset) -> xr.Dataset: 
+    def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         # (!all_bands_valid) & is_ever_wet => 0
         # (!all_bands_valid) & (!is_ever_wet) => 1
         # all_bands_valid => 2  

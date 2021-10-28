@@ -92,7 +92,7 @@ def test_meaurements(dataset):
 def test_native_transform(dataset):
     pq = StatsPQLSBitmask()
 
-    xx = pq._native_tr(dataset)
+    xx = pq.native_transform(dataset)
     tr_result = xx.compute()
 
     expected_result = np.array([
@@ -114,8 +114,8 @@ def test_native_transform(dataset):
 def test_fuser(dataset):
     pq = StatsPQLSBitmask()
 
-    xx = pq._native_tr(dataset)
-    xx = xx.groupby("solar_day").map(pq._fuser)
+    xx = pq.native_transform(dataset)
+    xx = xx.groupby("solar_day").map(pq.fuser)
     fuser_result = xx.compute()
 
     expected_result = np.array(
@@ -127,7 +127,7 @@ def test_fuser(dataset):
 def test_reduce(dataset):
     pq = StatsPQLSBitmask()
 
-    xx = pq._native_tr(dataset)
+    xx = pq.native_transform(dataset)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
 
@@ -154,7 +154,7 @@ def test_reduce_with_filter(dataset):
     }
     pq = StatsPQLSBitmask(filters=filters)
 
-    xx = pq._native_tr(dataset)
+    xx = pq.native_transform(dataset)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
 
@@ -189,7 +189,7 @@ def test_reduce_with_filter(dataset):
 def test_native_transform_for_aerosol(dataset_with_aerosol_band):
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL")
 
-    xx = pq._native_tr(dataset_with_aerosol_band)
+    xx = pq.native_transform(dataset_with_aerosol_band)
     tr_result = xx.compute()
 
     expected_result = np.array([
@@ -203,8 +203,8 @@ def test_native_transform_for_aerosol(dataset_with_aerosol_band):
 def test_fuse_for_aerosol(dataset_with_aerosol_band):
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL")
 
-    xx = pq._native_tr(dataset_with_aerosol_band)
-    xx = xx.groupby("solar_day").map(pq._fuser)
+    xx = pq.native_transform(dataset_with_aerosol_band)
+    xx = xx.groupby("solar_day").map(pq.fuser)
     fuser_result = xx.compute()
 
     expected_result = np.array(
@@ -216,7 +216,7 @@ def test_fuse_for_aerosol(dataset_with_aerosol_band):
 def test_reduce_for_aerosol(dataset_with_aerosol_band):
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL")
 
-    xx = pq._native_tr(dataset_with_aerosol_band)
+    xx = pq.native_transform(dataset_with_aerosol_band)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
 
@@ -245,7 +245,7 @@ def test_reduce_for_aerosol_with_filter(dataset_with_aerosol_band):
     }
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_QA_AEROSOL", filters=filters, aerosol_filters=aerosol_filters)
 
-    xx = pq._native_tr(dataset_with_aerosol_band)
+    xx = pq.native_transform(dataset_with_aerosol_band)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
 
@@ -268,7 +268,7 @@ def test_reduce_for_aerosol_with_filter(dataset_with_aerosol_band):
 def test_native_transform_for_atmos_opacity(dataset_with_atmos_opacity_band):
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_ATMOS_OPACITY")
 
-    xx = pq._native_tr(dataset_with_atmos_opacity_band)
+    xx = pq.native_transform(dataset_with_atmos_opacity_band)
     tr_result = xx.compute()
 
     expected_result = np.array([
@@ -282,8 +282,8 @@ def test_native_transform_for_atmos_opacity(dataset_with_atmos_opacity_band):
 def test_fuse_for_atmos_opacity(dataset_with_atmos_opacity_band):
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_ATMOS_OPACITY")
 
-    xx = pq._native_tr(dataset_with_atmos_opacity_band)
-    xx = xx.groupby("solar_day").map(pq._fuser)
+    xx = pq.native_transform(dataset_with_atmos_opacity_band)
+    xx = xx.groupby("solar_day").map(pq.fuser)
     fuser_result = xx.compute()
 
     expected_result = np.array(
@@ -295,7 +295,7 @@ def test_fuse_for_atmos_opacity(dataset_with_atmos_opacity_band):
 def test_reduce_for_atmos_opacity(dataset_with_atmos_opacity_band):
     pq = StatsPQLSBitmask(pq_band = "QA_PIXEL", aerosol_band = "SR_ATMOS_OPACITY")
 
-    xx = pq._native_tr(dataset_with_atmos_opacity_band)
+    xx = pq.native_transform(dataset_with_atmos_opacity_band)
     xx = pq.reduce(xx)
     reduce_result = xx.compute()
 

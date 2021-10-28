@@ -6,12 +6,9 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 import xarray as xr
 import numpy as np
-from datacube.model import Dataset
-from datacube.utils.geometry import GeoBox
 from datacube.utils import masking
 from odc.algo import geomedian_with_mads, keep_good_only, erase_bad
 from odc.algo._masking import _xr_fuse, _first_valid_np, mask_cleanup, _fuse_or_np
-from odc.algo.io import load_with_native_transform
 from ._registry import StatsPluginInterface, register
 
 class StatsGMLSBitmask(StatsPluginInterface):
@@ -21,7 +18,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
     def __init__(
             self,
-            bands: Optional[Tuple[str, ...]] = None,
+            bands: Optional[Sequence[str]] = None,
             mask_band: str = "QA_PIXEL",
             # provide flags with high cloud bits definition
             flags: Dict[str, Optional[Any]] = dict(
@@ -31,7 +28,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
             nodata_flags: Dict[str, Optional[Any]] = dict(nodata=False),
             filters: Optional[Iterable[Tuple[str, int]]] = None, # e.g. [("closing", 10),("opening", 2),("dilation", 2)]
             aux_names=dict(smad="smad", emad="emad", bcmad="bcmad", count="count"),
-            resampling: str = "bilinear",
             work_chunks: Tuple[int, int] = (400, 400),
             scale: float = 0.0000275,
             offset: float = -0.2,
@@ -39,16 +35,15 @@ class StatsGMLSBitmask(StatsPluginInterface):
             output_dtype: str = "uint16", # dtype of gm rescaling
             **kwargs,
     ):
-        super().__init__(**kwargs)
+        self.bands = tuple(bands)
         self.mask_band = mask_band
-        self.resampling = resampling
-        self.bands = bands
+        super().__init__(input_bands=tuple(bands) + (mask_band,), **kwargs)
         self.flags = flags
         self.nodata_flags = nodata_flags
         self.filters = filters
         self.work_chunks = work_chunks
         self.renames = aux_names
-        self.aux_bands = list(aux_names.values())
+        self.aux_bands = tuple(aux_names.values())
         self.scale = scale
         self.offset = offset
         self.output_scale = output_scale
@@ -69,7 +64,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
     def measurements(self) -> Tuple[str, ...]:
         return self.bands + self.aux_bands
 
-    def _native_tr(self, xx):
+    def native_transform(self, xx):
         """
         Loads in the data in the native projection. It performs the following:
 
@@ -122,22 +117,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         return xx
 
-    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
-        chunks = {"y": -1, "x": -1}
-
-        xx = load_with_native_transform(
-            datasets,
-            bands=self.bands + [self.mask_band],
-            geobox=geobox,
-            native_transform=self._native_tr,
-            fuser=self._fuser,
-            groupby="solar_day",
-            resampling=self.resampling,
-            chunks=chunks,
-        )
-
-        return xx
-
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         cloud_mask = xx["cloud_mask"]
         cfg = dict(
@@ -180,7 +159,7 @@ class StatsGMLSBitmask(StatsPluginInterface):
 
         return gm
 
-    def _fuser(self, xx):
+    def fuser(self, xx):
         """
         Fuse cloud_mask with OR
         """
