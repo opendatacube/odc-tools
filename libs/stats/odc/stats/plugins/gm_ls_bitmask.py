@@ -35,7 +35,17 @@ class StatsGMLSBitmask(StatsPluginInterface):
             output_dtype: str = "uint16", # dtype of gm rescaling
             **kwargs,
     ):
-        self.bands = tuple(bands)
+        if bands is None:
+            self.bands = (
+                "red",
+                "green",
+                "blue",
+                "nir",
+                "swir_1",
+                "swir_2",
+            )
+        else:
+            self.bands = bands
         self.mask_band = mask_band
         super().__init__(input_bands=tuple(bands) + (mask_band,), **kwargs)
         self.flags = flags
@@ -49,16 +59,6 @@ class StatsGMLSBitmask(StatsPluginInterface):
         self.output_scale = output_scale
         self.output_dtype = np.dtype(output_dtype)
         self.output_nodata = 0
-
-        if self.bands is None:
-            self.bands = (
-                "red",
-                "green",
-                "blue",
-                "nir",
-                "swir_1",
-                "swir_2",
-            )
 
     @property
     def measurements(self) -> Tuple[str, ...]:
