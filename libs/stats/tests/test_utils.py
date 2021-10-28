@@ -18,7 +18,8 @@ from odc.stats.utils import (
     mk_season_rules,
     season_binner,
     fuse_products,
-    fuse_ds
+    fuse_ds,
+    mk_single_season_rules
 )
 
 from . import gen_compressed_dss
@@ -74,6 +75,48 @@ def test_binning():
     tasks = bin_seasonal(cells, 6, 1)
     verify(tasks)
 
+def test_wo_season_binner():
+    wo_apr_to_oct_seasons_rules = {
+        4: "04--P7M",
+        5: "04--P7M",
+        6: "04--P7M",
+        7: "04--P7M",
+        8: "04--P7M",
+        9: "04--P7M",
+        10: "04--P7M",
+    }
+
+    # start from April, length is 7 month
+    assert mk_single_season_rules(7, anchor=4) == wo_apr_to_oct_seasons_rules
+
+    wo_nov_to_mar_seasons_rules = {
+        11: "11--P5M",
+        12: "11--P5M",
+        1: "11--P5M",
+        2: "11--P5M",
+        3: "11--P5M",
+    }
+
+    # start from Nov, length is 5 month
+    assert mk_single_season_rules(5, anchor=11) == wo_nov_to_mar_seasons_rules
+
+    binner = season_binner(wo_apr_to_oct_seasons_rules)
+    assert binner(datetime(2020, 1, 28)) == ""
+    assert binner(datetime(2020, 2, 21)) == ""
+    assert binner(datetime(2020, 3, 1)) == ""
+    assert binner(datetime(2020, 4, 1)) == "2020-04--P7M"
+    assert binner(datetime(2020, 5, 31)) == "2020-04--P7M"
+    assert binner(datetime(2020, 10, 31)) == "2020-04--P7M"
+    assert binner(datetime(2020, 12, 30)) == ""
+
+    binner = season_binner(wo_nov_to_mar_seasons_rules)
+    assert binner(datetime(2020, 1, 28)) == "2019-11--P5M"
+    assert binner(datetime(2020, 2, 21)) == "2019-11--P5M"
+    assert binner(datetime(2020, 3, 1)) == "2019-11--P5M"
+    assert binner(datetime(2020, 4, 1)) == ""
+    assert binner(datetime(2020, 5, 31)) == ""
+    assert binner(datetime(2020, 10, 31)) == ""
+    assert binner(datetime(2020, 12, 30)) == "2020-11--P5M"
 
 def test_season_binner():
     four_seasons_rules = {

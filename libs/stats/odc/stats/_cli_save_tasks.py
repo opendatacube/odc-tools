@@ -35,7 +35,7 @@ from itertools import groupby
 @click.option(
     "--frequency",
     type=str,
-    help="Specify temporal binning: annual|annual-fy|semiannual|seasonal|all",
+    help="Specify temporal binning: annual|annual-fy|semiannual|seasonal|nov-mar|apr-oct|all",
 )
 @click.option("--env", "-E", type=str, help="Datacube environment name")
 @click.option(
@@ -120,8 +120,8 @@ def save_tasks(
         temporal_range = DateTimeRange.year(year)
 
     if frequency is not None:
-        if frequency not in ("annual", "annual-fy", "semiannual", "seasonal", "all"):
-            print(f"Frequency must be one of annual|annual-fy|semiannual|seasonal|all and not '{frequency}'")
+        if frequency not in ("annual", "annual-fy", "semiannual", "seasonal", "nov-mar", "apr-oct", "all"):
+            print(f"Frequency must be one of annual|annual-fy|semiannual|seasonal|nov-mar|apr-oct|all and not '{frequency}'")
             sys.exit(1)
 
     dc = Datacube(env=env)
