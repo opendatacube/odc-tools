@@ -40,8 +40,6 @@ import xarray as xr
 from datacube.utils import masking
 from odc.algo import mask_cleanup, keep_good_only
 from odc.algo._masking import _xr_fuse, _first_valid_np, _fuse_or_np
-from odc.algo.io import load_with_native_transform
-from odc.stats.model import Task
 
 from odc.stats.model import StatsPluginInterface
 from ._registry import register
@@ -66,14 +64,20 @@ class StatsPQLSBitmask(StatsPluginInterface):
             filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
             aerosol_filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
             resampling: str = "nearest",
+            **kwargs
     ):
         self.pq_band = pq_band
         self.aerosol_band = aerosol_band
+        input_bands = [self.pq_band]
+        if self.aerosol_band:
+            input_bands.append(self.aerosol_band)
+        super().__init__(
+                         input_bands=input_bands, resampling=resampling,
+                         **kwargs)
         self.flags = flags
         self.nodata_flags = nodata_flags
         self.filters = filters or {}
         self.aerosol_filters = aerosol_filters or {}
-        self.resampling = resampling
 
     @property
     def measurements(self) -> Tuple[str, ...]:
@@ -92,22 +96,6 @@ class StatsPQLSBitmask(StatsPluginInterface):
                 measurements.extend(list(self.aerosol_filters))
 
         return tuple(measurements)
-
-    def input_data(self, task: Task) -> xr.Dataset:
-        bands = [self.pq_band]
-        if self.aerosol_band:
-            bands.append(self.aerosol_band)
-
-        return load_with_native_transform(
-            task.datasets,
-            bands=bands,  # measurements to load
-            geobox=task.geobox,
-            native_transform=self._native_tr,
-            fuser=self._fuser,
-            groupby="solar_day",
-            resampling=self.resampling,
-            chunks={"x": -1, "y": -1},
-        )
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         """
@@ -145,7 +133,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
         return pq
 
-    def _native_tr(self, xx: xr.Dataset) -> xr.Dataset:
+    def native_transform(self, xx: xr.Dataset) -> xr.Dataset:
         """
         Loads the data in the native projection and perform transform
         bands:
@@ -188,7 +176,7 @@ class StatsPQLSBitmask(StatsPluginInterface):
 
         return xx
 
-    def _fuser(self, xx: xr.Dataset) -> xr.Dataset:
+    def fuser(self, xx: xr.Dataset) -> xr.Dataset:
         """
         Fuser cloud and aerosol masking bands with OR
         """

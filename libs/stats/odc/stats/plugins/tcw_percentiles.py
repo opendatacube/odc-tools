@@ -5,9 +5,6 @@ from functools import partial
 from typing import Optional, Sequence, Tuple, Dict
 import xarray as xr
 import numpy as np
-from datacube.model import Dataset
-from datacube.utils.geometry import GeoBox
-from odc.algo.io import load_with_native_transform
 from odc.algo import keep_good_only
 from odc.algo._percentile import xr_quantile_bands
 from odc.algo._masking import _xr_fuse, _fuse_mean_np, enum_to_bool
@@ -25,21 +22,21 @@ class StatsTCWPC(StatsPluginInterface):
 
     def __init__(
         self,
-        resampling: str = "bilinear",
         coefficients: Dict[str, float] = {
             'blue': 0.0315, 'green': 0.2021, 'red': 0.3102, 'nir': 0.1594, 'swir1': -0.6806, 'swir2': -0.6109
             },
+        input_bands: Sequence[str] = ["blue", "green", "red", "nir", "swir1", "swir2", "fmask", "nbart_contiguity"],
+        **kwargs
     ):
-        self.resampling = resampling
+        super().__init__(input_bands=input_bands, **kwargs)
         self.coefficients = coefficients
 
     @property
     def measurements(self) -> Tuple[str, ...]:
         _measurments = ["wet_pc_10", "wet_pc_50", "wet_pc_90"]
-        _measurments
         return _measurments
 
-    def _native_tr(self, xx):
+    def native_transform(self, xx):
         """
         Loads data in its native projection.
         """
@@ -60,36 +57,15 @@ class StatsTCWPC(StatsPluginInterface):
         return xx
 
     @staticmethod
-    def _fuser(xx):
-
+    def fuser(xx):
         xx = _xr_fuse(xx, partial(_fuse_mean_np, nodata=NODATA), '')
 
         return xx
     
-    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
-        chunks = {"y": -1, "x": -1}
-
-        xx = load_with_native_transform(
-            datasets,
-            bands=["blue", "green", "red", "nir", "swir1", "swir2", "fmask", "nbart_contiguity"],
-            geobox=geobox,
-            native_transform=self._native_tr,
-            fuser=self._fuser,
-            groupby="solar_day",
-            resampling=self.resampling,
-            chunks=chunks,
-        )
-
-        return xx
-
     @staticmethod
     def reduce(xx: xr.Dataset) -> xr.Dataset:
-
         yy = xr_quantile_bands(xx, [0.1, 0.5, 0.9], nodata=NODATA)
         return yy
-
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        return None
 
 
 register("tcw-percentiles", StatsTCWPC)

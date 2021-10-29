@@ -1,3 +1,4 @@
+from functools import partial
 import numpy as np
 import xarray as xr
 import dask.array as da
@@ -45,7 +46,7 @@ def test_native_transform(dataset, bits):
     
     xx = dataset.copy()
     xx['water'] = da.bitwise_or(xx['water'], bits)
-    xx = StatsFCP._native_tr(xx)
+    xx = StatsFCP.native_transform(None, xx)
     assert xx["band_1"].attrs["test_attr"] == 57
     
     expected_result = np.array([
@@ -66,8 +67,8 @@ def test_native_transform(dataset, bits):
 
 
 def test_fusing(dataset):
-    xx = StatsFCP._native_tr(dataset)
-    xx = xx.groupby("solar_day").map(StatsFCP._fuser)
+    xx = StatsFCP.native_transform(None, dataset)
+    xx = xx.groupby("solar_day").map(partial(StatsFCP.fuser, None))
     assert xx["band_1"].attrs["test_attr"] == 57
     
     expected_result = np.array(
@@ -87,7 +88,7 @@ def test_fusing(dataset):
 
 def test_reduce(dataset):
     fcp = StatsFCP()
-    xx = fcp._native_tr(dataset)
+    xx = fcp.native_transform(dataset)
     xx = fcp.reduce(xx)
 
     result = xx.compute()["band_1_pc_10"].data

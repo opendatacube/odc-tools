@@ -14,7 +14,7 @@ individual water observations, and the second generates a summary of summaries, 
 of time summary from existing annual summaries.
 
 """
-from typing import Optional, Sequence, Tuple
+from typing import Sequence, Tuple
 import numpy as np
 import xarray as xr
 from datacube.model import Dataset
@@ -49,17 +49,17 @@ class StatsWofs(StatsPluginInterface):
 
     def __init__(
         self,
-        resampling: str = "bilinear",
         dilation: int = 0,
+        **kwargs
     ):
-        self.resampling = resampling
+        super().__init__(input_bands=["water"], **kwargs)
         self._dilation = dilation  # number of pixels to pad around BAD pixels
 
     @property
     def measurements(self) -> Tuple[str, ...]:
         return "count_wet", "count_clear", "frequency"
 
-    def _native_tr(self, xx):
+    def native_transform(self, xx):
         """
         xx.water -- uint8 classifier bitmask
 
@@ -103,7 +103,7 @@ class StatsWofs(StatsPluginInterface):
         return xx
 
     @staticmethod
-    def _fuser(xx):
+    def fuser(xx):
         """
         xx.bad  -- don't count
         xx.wet  -- is wet
@@ -123,23 +123,6 @@ class StatsWofs(StatsPluginInterface):
         dry = apply_numexpr("dry & (~wet) & (~bad)", xx, dtype="bool")
 
         return xr.Dataset(dict(wet=wet, dry=dry, bad=xx.bad, some=xx.some))
-
-    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
-        chunks = {"y": -1, "x": -1}
-        groupby = "solar_day"
-
-        xx = load_with_native_transform(
-            datasets,
-            bands=["water"],
-            geobox=geobox,
-            native_transform=self._native_tr,
-            fuser=self._fuser,
-            groupby=groupby,
-            resampling=self.resampling,
-            chunks=chunks,
-        )
-
-        return xx
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
         nodata = -999
@@ -163,9 +146,6 @@ class StatsWofs(StatsPluginInterface):
                 frequency=frequency,
             )
         )
-
-    def rgba(self, xx: xr.Dataset) -> Optional[xr.DataArray]:
-        return None
 
 
 register("wofs-summary", StatsWofs)
@@ -191,6 +171,9 @@ class StatsWofsFullHistory(StatsPluginInterface):
     VERSION = "1.6.0"
     PRODUCT_FAMILY = "wo_summary"
 
+    def __init__(self, **kwargs):
+        super().__init__(input_bands=['count_wet', 'count_clear'])
+
     @property
     def measurements(self) -> Tuple[str, ...]:
         return "count_wet", "count_clear", "frequency"
@@ -198,7 +181,7 @@ class StatsWofsFullHistory(StatsPluginInterface):
     def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         return dc_load(
             datasets,
-            measurements=["count_wet", "count_clear"],
+            measurements=self.input_bands,
             geobox=geobox,
             chunks={},
         )

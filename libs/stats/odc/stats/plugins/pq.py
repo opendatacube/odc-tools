@@ -1,15 +1,11 @@
 """
 Sentinel 2 pixel quality stats
 """
-from functools import partial
-from typing import Dict, Iterable, Optional, Sequence, Tuple, cast
+from typing import Dict, Iterable, Optional, Tuple, cast
 
 import xarray as xr
-from datacube.model import Dataset
-from datacube.utils.geometry import GeoBox
 from odc.algo import enum_to_bool, mask_cleanup
 from odc.algo._masking import _or_fuser
-from odc.algo.io import load_with_native_transform
 
 from ._registry import StatsPluginInterface, register
 
@@ -38,11 +34,12 @@ class StatsPQ(StatsPluginInterface):
         self,
         filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None,
         resampling: str = "nearest",
+        **kwargs
     ):
+        super().__init__(input_bands=["SCL"], resampling=resampling, **kwargs)
         if filters is None:
             filters = default_filters
         self.filters = filters
-        self.resampling = resampling
 
     @property
     def measurements(self) -> Tuple[str, ...]:
@@ -54,24 +51,41 @@ class StatsPQ(StatsPluginInterface):
 
         return tuple(measurements)
 
-    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
+    def fuser(self, xx: xr.Dataset) -> xr.Dataset:
         """
-        .valid           Bool
-        .erased          Bool
-        .erased{postfix} Bool
-        """
-        filters = self.filters
-        resampling = self.resampling
+        Native:
+          .valid    -> .valid  (fuse with OR)
+          .erased   -> .erased (fuse with OR)
+                    -> .erased{postfix} for All Filters (mask_cleanup applied post-fusing)
+        Projected:
+         fuse all bands with OR
 
-        return load_with_native_transform(
-            datasets,
-            ["SCL"],
-            geobox,
-            _pq_native_transform,
-            groupby="solar_day",
-            resampling=resampling,
-            fuser=partial(_pq_fuser, filters=filters),
-            chunks={"x": -1, "y": -1},
+        """
+        is_native = xx.attrs.get("native", False)
+        xx = xx.map(_or_fuser)
+        xx.attrs.pop("native", None)
+
+        if is_native:
+            for band, mask_filters in self.filters.items():
+                erased_filter_band_name = band.replace("clear", "erased")
+                xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
+
+        return xx
+
+    def native_transform(self, xx: xr.Dataset) -> xr.Dataset:
+        """
+        config:
+        cloud_classes
+
+        .SCL -> .valid   (anything but nodata)
+                .erased  (cloud pixels only)
+        """
+        scl = xx.SCL
+        valid = scl != scl.nodata
+        erased = enum_to_bool(scl, cloud_classes)
+        return xr.Dataset(
+            dict(valid=valid, erased=erased),
+            attrs={"native": True},  # <- native flag needed for fuser
         )
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
@@ -92,48 +106,6 @@ class StatsPQ(StatsPluginInterface):
             pq[clear_name] = clear.sum(axis=0, dtype="uint16")
 
         return pq
-
-
-def _pq_native_transform(xx: xr.Dataset) -> xr.Dataset:
-    """
-    config:
-    cloud_classes
-
-    .SCL -> .valid   (anything but nodata)
-            .erased  (cloud pixels only)
-    """
-    scl = xx.SCL
-    valid = scl != scl.nodata
-    erased = enum_to_bool(scl, cloud_classes)
-    return xr.Dataset(
-        dict(valid=valid, erased=erased),
-        attrs={"native": True},  # <- native flag needed for fuser
-    )
-
-
-def _pq_fuser(
-    xx: xr.Dataset,
-    filters: Optional[Dict[str, Iterable[Tuple[str, int]]]] = None
-) -> xr.Dataset:
-    """
-    Native:
-      .valid    -> .valid  (fuse with OR)
-      .erased   -> .erased (fuse with OR)
-                -> .erased{postfix} for All Filters (mask_cleanup applied post-fusing)
-    Projected:
-     fuse all bands with OR
-
-    """
-    is_native = xx.attrs.get("native", False)
-    xx = xx.map(_or_fuser)
-    xx.attrs.pop("native", None)
-
-    if is_native:
-        for band, mask_filters in filters.items():
-            erased_filter_band_name = band.replace("clear", "erased")
-            xx[erased_filter_band_name] = mask_cleanup(xx["erased"], mask_filters=mask_filters)
-
-    return xx
 
 
 register("pq", StatsPQ)

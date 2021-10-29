@@ -47,7 +47,7 @@ def dataset(usgs_ls8_sr_definition):
 def test_native_transform(dataset):
     gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975)
 
-    xx = gm._native_tr(dataset)
+    xx = gm.native_transform(dataset)
     expected_result = np.array([
         [[255, 57], [0, 0]],
         [[0, 0], [70, 80]],
@@ -68,8 +68,8 @@ def test_native_transform(dataset):
 def test_fuser(dataset):
     gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975)
 
-    xx = gm._native_tr(dataset)
-    xx = xx.groupby("solar_day").map(gm._fuser)
+    xx = gm.native_transform(dataset)
+    xx = xx.groupby("solar_day").map(gm.fuser)
 
     expected_result = np.array(
         [[255, 57], [70, 80]],
@@ -87,7 +87,7 @@ def test_reduce(dataset):
     _ = pytest.importorskip("hdstats")
     gm = StatsGMLSBitmask(bands=["band_red"], offset=-0.2, scale=0.00975, output_scale=100)
 
-    xx = gm._native_tr(dataset)
+    xx = gm.native_transform(dataset)
     xx = gm.reduce(xx)
 
     result = xx.compute()
@@ -122,7 +122,7 @@ def test_reduce_with_filters(dataset):
     mask_filters = [("closing", 2), ("dilation",1)]
     gm = StatsGMLSBitmask(bands=["band_red"], filters=mask_filters, offset=-0.2, scale=0.00975, output_scale=100)
 
-    xx = gm._native_tr(dataset)
+    xx = gm.native_transform(dataset)
     xx = gm.reduce(xx)
 
     result = xx.compute()
@@ -154,7 +154,7 @@ def test_aux_result_bands_to_match_inputs(dataset):
     aux_names=dict(smad="SMAD", emad="EMAD", bcmad="BCMAD", count="COUNT")
     gm = StatsGMLSBitmask(bands=["band_red"], aux_names=aux_names, offset=-0.2, scale=0.00975, output_scale=100)
 
-    xx = gm._native_tr(dataset)
+    xx = gm.native_transform(dataset)
     xx = gm.reduce(xx)
 
     assert set(xx.data_vars.keys()) == set(
