@@ -22,8 +22,7 @@ from datacube.model import (
 )
 from datacube.utils.geometry import CRS
 from . import _jsoncache as base
-
-from odc.io.text import split_and_check
+from ._text import split_and_check
 
 # pylint: disable=invalid-name,too-many-public-methods
 
