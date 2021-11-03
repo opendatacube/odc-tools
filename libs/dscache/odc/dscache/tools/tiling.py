@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import toolz
 from datacube.utils.geometry import CRS
 from datacube.model import GridSpec, Dataset
-from odc.io.text import split_and_check, parse_range_int
+from .._text import split_and_check, parse_range_int
 
 
 epsg3577 = CRS("epsg:3577")
