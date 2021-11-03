@@ -302,7 +302,6 @@ jobs:
         pkg:
         - odc-algo
         - odc-cloud
-        - odc-dscache
         - odc-io
         - odc-stats
         - odc-ui

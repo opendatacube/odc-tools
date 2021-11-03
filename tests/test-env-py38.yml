@@ -71,6 +71,7 @@ dependencies:
   - pip=20
   - pip:
       - odc-stac
+      - odc-dscache
       # odc.apps.dc-tools
       - thredds-crawler
       - rio-stac==0.3.0
