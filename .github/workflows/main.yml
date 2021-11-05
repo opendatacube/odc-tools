@@ -303,7 +303,6 @@ jobs:
         - odc-algo
         - odc-cloud
         - odc-io
-        - odc-stats
         - odc-ui
         - odc-apps-cloud
         - odc-apps-dc-tools
