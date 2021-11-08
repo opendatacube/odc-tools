@@ -307,7 +307,7 @@ def load_enum_filtered(
     pad = kw.pop("pad", None)
     if pad is None:
         if filters is not None:
-            max(list(zip(*filters))[1])
+            pad = max(list(zip(*filters))[1])
 
     xx = load_with_native_transform(
         dss,
