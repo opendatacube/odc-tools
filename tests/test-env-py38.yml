@@ -39,15 +39,6 @@ dependencies:
   - aiobotocore==1.3.3
   - boto3
 
-  # eodatasets3 (for odc-stats)
-  - boltons
-  - ciso8601
-  - python-rapidjson
-  - requests-cache==0.7.4  # 0.8.0 broke eodatasets3
-  - ruamel.yaml
-  - structlog
-  - url-normalize
-
   # For tests
   - pytest
   - pytest-httpserver
@@ -76,9 +67,6 @@ dependencies:
       - thredds-crawler
       - rio-stac==0.3.0
 
-      # odc.stats
-      - eodatasets3
-
       # odc.algo optional dependency
       - hdstats
 
@@ -87,6 +75,3 @@ dependencies:
 
       # tests
       - pytest-depends
-
-      # for odc-stats
-      - datacube_ows==1.8.19
