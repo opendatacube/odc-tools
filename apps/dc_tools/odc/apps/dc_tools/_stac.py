@@ -60,6 +60,19 @@ def _get_region_code(properties: Dict[str, Any]) -> str:
     return region_code
 
 
+def _get_usgs_product_name(properties: Dict[str, Any]) -> str:
+    platform = get_in(["platform"], properties)
+
+    if platform == "LANDSAT_8":
+        return "ls8-c2l2-sr"
+    elif platform == "LANDSAT_7":
+        return "ls7-c2l2-sr"
+    elif platform == "LANDSAT_5":
+        return "ls5-c2l2-sr"
+    else:
+        return None
+
+
 def _stac_product_lookup(
     item: Document,
 ) -> Tuple[str, Optional[str], str, Optional[str], str]:
@@ -98,9 +111,15 @@ def _stac_product_lookup(
                 )
             default_grid = "g10m"
 
+    collection = item.get("collection")
+    # Special case for USGS Landsat Collection 2
+    if collection is not None and collection == "landsat-c2l2-sr":
+        product_name = _get_usgs_product_name(properties)
+
+
     # If we still don't have a product name, use collection
     if product_name is None:
-        product_name = item.get("collection")
+        product_name = collection
         if product_name is None:
             raise ValueError("Can't find product name from odc:product or collection.")
 
