@@ -1,16 +1,20 @@
-""" Mostly masking related, also converting between float[with nans] and int[with nodata]
+"""
+Mostly masking related.
 
+Also converting between float[with nans] and int[with nodata].
 """
 
-from typing import Dict, Tuple, Any, Iterable, Union, Optional
 from functools import partial
-import numpy as np
-import xarray as xr
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
+
 import dask
 import dask.array as da
-from dask.highlevelgraph import HighLevelGraph
 import numexpr as ne
-from ._dask import randomize, _get_chunks_asarray
+import numpy as np
+import xarray as xr
+from dask.highlevelgraph import HighLevelGraph
+
+from ._dask import _get_chunks_asarray, randomize
 
 
 def default_nodata(dtype):
@@ -53,7 +57,8 @@ def keep_good_only(x, where, inplace=False, nodata=None):
     """
     if isinstance(x, xr.Dataset):
         return x.apply(
-            lambda x: keep_good_only(x, where, inplace=inplace, nodata=nodata), keep_attrs=True
+            lambda x: keep_good_only(x, where, inplace=inplace, nodata=nodata),
+            keep_attrs=True,
         )
 
     assert x.shape == where.shape
@@ -414,17 +419,18 @@ def mask_cleanup_np(
 
 
 def _compute_overlap_depth(r: Iterable[int], ndim: int) -> Tuple[int, ...]:
-    r = max(r)
-    return (0,) * (ndim - 2) + (r, r)
+    _r = max(r)
+    return (0,) * (ndim - 2) + (_r, _r)
 
 
 def mask_cleanup(
     mask: xr.DataArray,
     mask_filters: Iterable[Tuple[str, int]] = [("opening", 2), ("dilation", 5)],
-    name: Optional[str] = None
+    name: Optional[str] = None,
 ) -> xr.DataArray:
     """
     Apply morphological operations on given binary mask.
+
     As we fuse those operations into single Dask task, it could be faster to run.
 
     Default mask_filters value is bit-equivalent to ``mask |> opening |> dilation``.
@@ -439,7 +445,6 @@ def mask_cleanup(
         radius: int
     :param name: Used when building Dask graphs
     """
-
     data = mask.data
     if dask.is_dask_collection(data):
         rr = [radius for _, radius in mask_filters]
@@ -451,7 +456,10 @@ def mask_cleanup(
                 name = name + f"_{radius}"
 
         data = data.map_overlap(
-            partial(mask_cleanup_np, mask_filters=mask_filters), depth, boundary="none", name=randomize(name)
+            partial(mask_cleanup_np, mask_filters=mask_filters),
+            depth,
+            boundary="none",
+            name=randomize(name),
         )
     else:
         data = mask_cleanup_np(data, mask_filters=mask_filters)
@@ -599,7 +607,7 @@ def _first_valid_np(
 
 def _fuse_min_np(*aa: np.ndarray) -> np.ndarray:
     """
-    Element wise min (propagates NaN values)
+    Element wise min (propagates NaN values).
     """
     out = aa[0].copy()
     for a in aa[1:]:
@@ -609,7 +617,7 @@ def _fuse_min_np(*aa: np.ndarray) -> np.ndarray:
 
 def _fuse_max_np(*aa: np.ndarray) -> np.ndarray:
     """
-    Element wise max (propagates NaN values)
+    Element wise max (propagates NaN values).
     """
     out = aa[0].copy()
     for a in aa[1:]:
@@ -619,7 +627,7 @@ def _fuse_max_np(*aa: np.ndarray) -> np.ndarray:
 
 def _fuse_and_np(*aa: np.ndarray) -> np.ndarray:
     """
-    Element wise bit and
+    Element wise bit and.
     """
     assert len(aa) > 0
     out = aa[0].copy()
@@ -630,7 +638,7 @@ def _fuse_and_np(*aa: np.ndarray) -> np.ndarray:
 
 def _fuse_or_np(*aa: np.ndarray) -> np.ndarray:
     """
-    Element wise bit or
+    Element wise bit or.
     """
     assert len(aa) > 0
     out = aa[0].copy()
@@ -751,7 +759,7 @@ def _fuse_mean_np(*aa, nodata):
     count = (aa[0] != nodata).astype(np.float32)
     for a in aa[1:]:
         out += a.astype(np.float32)
-        count += (a != nodata)
+        count += a != nodata
 
     out -= (len(aa) - count) * nodata
     out = np.round(out / count).astype(aa[0].dtype)
