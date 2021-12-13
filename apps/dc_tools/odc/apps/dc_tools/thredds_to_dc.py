@@ -7,7 +7,7 @@ from typing import Tuple
 
 import click
 from odc.thredds import thredds_find_glob, download_yamls
-from odc.index import from_yaml_doc_stream
+from ._docs import from_yaml_doc_stream
 from datacube import Datacube
 
 from typing import List, Tuple

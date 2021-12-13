@@ -16,7 +16,7 @@ from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe,
                                      request_payer, skip_check, skip_lineage,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
-from odc.index import parse_doc_stream
+from ._docs import parse_doc_stream
 from ._stac import stac_transform, stac_transform_absolute
 
 

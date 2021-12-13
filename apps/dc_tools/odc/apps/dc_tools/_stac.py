@@ -8,7 +8,7 @@ from uuid import UUID
 from toolz import get_in
 
 from datacube.utils.geometry import Geometry
-from odc.index import odc_uuid
+from ._docs import odc_uuid
 
 Document = Dict[str, Any]
 
