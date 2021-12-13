@@ -1,26 +1,25 @@
-from typing import (
-    Any,
-    Optional,
-    List,
-    Iterable,
-    Union,
-    Dict,
-    Tuple,
-    Callable,
-    cast,
-    Sequence,
-)
-from warnings import warn
-import xarray as xr
+"""Native load and masking."""
 
-from odc.index import group_by_nothing, solar_offset
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
+
+import xarray as xr
 from datacube import Datacube
 from datacube.model import Dataset
-from datacube.utils.geometry import GeoBox, gbox
-from datacube.api.core import output_geobox
 from datacube.testutils.io import native_geobox
-from odc.stac import dc_load
-from ._masking import _max_fuser, _nodata_fuser, enum_to_bool
+from datacube.utils.geometry import GeoBox, gbox
+from odc.index import group_by_nothing, solar_offset
+
+from ._masking import _max_fuser, _nodata_fuser, _or_fuser, enum_to_bool, mask_cleanup
 from ._warp import xr_reproject
 
 
@@ -28,6 +27,8 @@ def compute_native_load_geobox(
     dst_geobox: GeoBox, ds: Dataset, band: str, buffer: Optional[float] = None
 ) -> GeoBox:
     """
+    Compute area of interest for a given Dataset given query.
+
     Take native projection and resolution from ``ds, band`` pair and compute
     region in that projection that fully encloses footprint of the
     ``dst_geobox`` with some padding. Construct GeoBox that encloses that
@@ -38,11 +39,11 @@ def compute_native_load_geobox(
     :param band: Reference band to use (resolution of output GeoBox will match resolution of this band)
     :param buffer: Buffer in units of CRS of ``ds`` (meters usually), default is 10 pixels worth
     """
-
-    native = native_geobox(ds, basis=band)
+    native: GeoBox = native_geobox(ds, basis=band)
     if buffer is None:
-        buffer = 10 * cast(float, max(map(abs, native.resolution)))
+        buffer = 10 * cast(float, max(map(abs, native.resolution)))  # type: ignore
 
+    assert native.crs is not None
     return GeoBox.from_geopolygon(
         dst_geobox.extent.to_crs(native.crs).buffer(buffer),
         crs=native.crs,
@@ -92,14 +93,14 @@ def _load_with_native_transform_1(
 
     if groupby is not None:
         if fuser is None:
-            fuser = _nodata_fuser
+            fuser = _nodata_fuser  # type: ignore
         xx = xx.groupby(groupby).map(fuser)
 
     _chunks = None
     if chunks is not None:
         _chunks = tuple(chunks.get(ax, -1) for ax in ("y", "x"))
 
-    return xr_reproject(xx, geobox, chunks=_chunks, resampling=resampling)
+    return xr_reproject(xx, geobox, chunks=_chunks, resampling=resampling)  # type: ignore
 
 
 def load_with_native_transform(
@@ -157,11 +158,11 @@ def load_with_native_transform(
     if chunks is None:
         chunks = kw.get("dask_chunks", None)
 
-    sources = group_by_nothing(dss, solar_offset(geobox.extent))
+    sources = group_by_nothing(list(dss), solar_offset(geobox.extent))
     _xx = [
         _load_with_native_transform_1(
             srcs,
-            bands,
+            tuple(bands),
             geobox,
             native_transform,
             basis=basis,
@@ -178,7 +179,7 @@ def load_with_native_transform(
     if len(_xx) == 1:
         xx = _xx[0]
     else:
-        xx = xr.concat(_xx, sources.dims[0])
+        xx = xr.concat(_xx, sources.dims[0])  # type: ignore
         if groupby != "idx":
             xx = xx.groupby(groupby).map(fuser)
 
@@ -278,20 +279,21 @@ def load_enum_filtered(
     4. Reproject to destination GeoBox (any resampling mode is ok)
     5. Optionally group observations on the same day using OR for pixel fusing T,F->T
     """
-    from ._masking import mask_cleanup, _or_fuser
 
     def native_op(xx: xr.Dataset) -> xr.Dataset:
         _xx = enum_to_bool(xx[band], categories)
         return xr.Dataset(
-            {band: _xx}, attrs={"native": True},  # <- native flag needed for fuser
+            {band: _xx},
+            attrs={"native": True},  # <- native flag needed for fuser
         )
 
     def fuser(xx: xr.Dataset) -> xr.Dataset:
         """
+        Fuse with OR.
+
         Fuse with OR, and when fusing in native pixel domain apply mask_cleanup if
         requested
         """
-
         is_native = xx.attrs.get("native", False)
         xx = xx.map(_or_fuser)
         xx.attrs.pop("native", None)
@@ -304,10 +306,10 @@ def load_enum_filtered(
         return xx
 
     # unless set by user to some value use largest filter radius for pad value
-    pad = kw.pop("pad", None)
+    pad: Optional[int] = kw.pop("pad", None)
     if pad is None:
         if filters is not None:
-            pad = max(list(zip(*filters))[1])
+            pad = max(list(zip(*filters))[1])  # type: ignore
 
     xx = load_with_native_transform(
         dss,
