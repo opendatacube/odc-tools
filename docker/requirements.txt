@@ -30,8 +30,6 @@ aiobotocore[boto3,awscli]==1.4.2
 # Make sure dask has all the features enabled
 dask[complete]
 
-eodatasets3
-
 # not needed for python 3.8 and up, and are not installed,
 # but `pip check` doesn't know better
 dataclasses
@@ -50,10 +48,8 @@ ipyleaflet
 ipywidgets
 jinja2
 jupyter_ui_poll
-lmdb
 numexpr
 numpy
-odc-stac
 pyproj
 pystac-client>=0.2.0
 pystac>=1.0.0
@@ -68,4 +64,3 @@ thredds_crawler
 toolz
 tqdm
 xarray
-zstandard
