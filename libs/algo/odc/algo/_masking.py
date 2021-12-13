@@ -442,14 +442,14 @@ def mask_cleanup(
 
     data = mask.data
     if dask.is_dask_collection(data):
+        rr = [radius for _, radius in mask_filters]
+        depth = _compute_overlap_depth(rr, data.ndim)
+
         if name is None:
             name = "mask_cleanup"
-            r = []
-            for _, radius in mask_filters:
+            for radius in rr:
                 name = name + f"_{radius}"
-                r.append(radius)
 
-        depth = _compute_overlap_depth(r, data.ndim)
         data = data.map_overlap(
             partial(mask_cleanup_np, mask_filters=mask_filters), depth, boundary="none", name=randomize(name)
         )
