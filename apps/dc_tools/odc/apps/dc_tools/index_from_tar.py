@@ -6,7 +6,7 @@ import sys
 import click
 import datacube
 from datacube.utils.changes import allow_any
-from odc.index import from_yaml_doc_stream
+from ._docs import from_yaml_doc_stream
 from ._stac import stac_transform
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
