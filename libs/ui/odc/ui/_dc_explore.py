@@ -1,17 +1,22 @@
-""" Interactive dc viewer
-"""
+"""Interactive dc viewer"""
 from types import SimpleNamespace
-from pandas import Period
+
 from datacube.api.query import Query
-from odc.index import dataset_count
+from pandas import Period
+
 from ._map import show_datasets
 
 
-def query_polygon(**kw):
+def _dataset_count(index, **query):
+    """Return number of datasets matching a query."""
+    return index.datasets.count(**Query(**query).search_terms)
+
+
+def _query_polygon(**kw):
     return Query(**kw).geopolygon
 
 
-def dt_step(d: str, step: int = 1) -> str:
+def _dt_step(d: str, step: int = 1) -> str:
     return str(Period(d) + step)
 
 
@@ -69,8 +74,8 @@ class DcViewer:
     def _build_ui(
         self, product_names, time, zoom=None, center=None, height=None, width=None
     ):
-        from ipywidgets import widgets as w
         import ipyleaflet as L
+        from ipywidgets import widgets as w
 
         pp = {"zoom": zoom or 1}
 
@@ -182,7 +187,7 @@ class DcViewer:
             self.on_show()
 
         def time_advance(step):
-            date_txt.value = dt_step(date_txt.value, step)
+            date_txt.value = _dt_step(date_txt.value, step)
             on_date_change(date_txt)
 
         date_txt.on_submit(on_date_change)
@@ -198,7 +203,7 @@ class DcViewer:
         s = self._state
         spatial_query = s.bounds
 
-        s.count = dataset_count(
+        s.count = _dataset_count(
             self._dc.index, product=s.product, time=s.time, **spatial_query
         )
         self._gui.info.value = "{:,d} datasets in view".format(s.count)
@@ -225,7 +230,7 @@ class DcViewer:
 
             self._dss_layer = new_layer
             self._last_query_bounds = dict(**s.bounds)
-            self._last_query_polygon = query_polygon(**s.bounds)
+            self._last_query_polygon = _query_polygon(**s.bounds)
         else:
             self._clear_footprints()
 
@@ -242,7 +247,7 @@ class DcViewer:
         self._update_info_count()
         skip_refresh = False
         if self._last_query_polygon is not None:
-            if self._last_query_polygon.contains(query_polygon(**bounds)):
+            if self._last_query_polygon.contains(_query_polygon(**bounds)):
                 skip_refresh = True
 
         if not skip_refresh:
