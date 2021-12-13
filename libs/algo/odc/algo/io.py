@@ -17,8 +17,8 @@ from datacube import Datacube
 from datacube.model import Dataset
 from datacube.testutils.io import native_geobox
 from datacube.utils.geometry import GeoBox, gbox
-from odc.index import group_by_nothing, solar_offset
 
+from ._grouper import group_by_nothing, solar_offset
 from ._masking import _max_fuser, _nodata_fuser, _or_fuser, enum_to_bool, mask_cleanup
 from ._warp import xr_reproject
 
