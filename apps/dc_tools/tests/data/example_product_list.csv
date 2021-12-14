@@ -1,7 +1,7 @@
 product,definition
 s2_l2a,https://raw.githubusercontent.com/digitalearthafrica/config/master/products/esa_s2_l2a.odc-product.yaml
 cemp_insar_alos_displacement,https://raw.githubusercontent.com/GeoscienceAustralia/digitalearthau/885e3d3a00bcc9c9fe3ed43e82201d7121898aed/digitalearthau/config/products/cemp_insar_alos_displacement.yaml
-ls5_c2l2_sr;ls7_c2l2_sr;ls8_c2l2_sr,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/lsX_c2l2_sr.yaml
+ls5_c2l2_sr;ls7_c2l2_sr;ls8_c2l2_sr,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/4b4e67e7fac9b15beb57fc87f3e0556c23872adb/products/lsX_c2l2_sr.odc-product.yaml
 nasadem,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/nasadem.odc-product.yaml
 dem_cop_30,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/dem_cop_30.odc-product.yaml
 dem_cop_90,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/dem_cop_90.odc-product.yaml
