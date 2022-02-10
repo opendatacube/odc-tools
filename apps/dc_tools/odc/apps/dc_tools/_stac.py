@@ -180,8 +180,16 @@ def _get_stac_bands(
         path = URL(asset["href"])
         if relative:
             try:
+                if self_link is None:
+                    raise ValueError
                 path = path.relative_to(URL(self_link).parent)
-            except (ValueError, TypeError):
+            # Value error is raised if the path is not relative to the parent
+            # or if the self link cannot be found.
+            except ValueError:
+                # If the path is not relative to the parent force_relative
+                # is still used for data assets, due to a historical assumption.
+                # TODO: Implement rewrite_assets (like in stac_to_dc) in all 
+                # tools so that this is no longer necessary.
                 if force_relative:
                     path = path.name
                 else:
