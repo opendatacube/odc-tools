@@ -5,9 +5,11 @@ import math
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
-from toolz import get_in
 
 from datacube.utils.geometry import Geometry
+from toolz import get_in
+from urlpath import URL
+
 from ._docs import odc_uuid
 
 Document = Dict[str, Any]
@@ -33,11 +35,7 @@ MAPPING_STAC_TO_EO3 = {
 }
 
 # Add more here as they are discovered
-CANDIDATE_REGION_CODES = [
-    "odc:region_code",
-    "s2:mgrs_tile",
-    "io:supercell_id"
-]
+CANDIDATE_REGION_CODES = ["odc:region_code", "s2:mgrs_tile", "io:supercell_id"]
 
 
 def _get_region_code(properties: Dict[str, Any]) -> str:
@@ -90,7 +88,9 @@ def _stac_product_lookup(
     default_grid = None
 
     # Maybe this should be the default product_name
-    constellation = properties.get("constellation") or properties.get("eo:constellation")
+    constellation = properties.get("constellation") or properties.get(
+        "eo:constellation"
+    )
     if constellation is not None:
         constellation = constellation.lower().replace(" ", "-")
 
@@ -100,7 +100,9 @@ def _stac_product_lookup(
         if constellation == "sentinel-2":
             # The third option here shouldn't actually be encountered. If we're parsing
             # a document that isn't from E84 of M PC, then we're in trouble.
-            dataset_id = properties.get("sentinel:product_id") or properties.get("s2:granule_id", dataset_id)
+            dataset_id = properties.get("sentinel:product_id") or properties.get(
+                "s2:granule_id", dataset_id
+            )
             product_name = "s2_l2a"
             if region_code is None:
                 # Let this throw an exception if there's something missing
@@ -115,7 +117,6 @@ def _stac_product_lookup(
     # Special case for USGS Landsat Collection 2
     if collection is not None and collection == "landsat-c2l2-sr":
         product_name = _get_usgs_product_name(properties)
-
 
     # If we still don't have a product name, use collection
     if product_name is None:
@@ -153,9 +154,9 @@ def _find_self_href(item: Document) -> str:
     ]
 
     if len(self_uri) < 1:
-        raise ValueError("Can't find link for 'self'")
+        return None
     if len(self_uri) > 1:
-        raise ValueError("Too many links to 'self'")
+        print("More than one links to 'self', returning the first one")
     return self_uri[0]
 
 
@@ -171,19 +172,29 @@ def _get_stac_bands(
     grids = {}
     accessories = {}
 
+    self_link = _find_self_href(item)
+
     assets = item.get("assets", {})
 
-    def _get_path(asset):
-        path = asset["href"]
+    def _get_path(asset, force_relative=False):
+        path = URL(asset["href"])
         if relative:
-            path = Path(path).name
+            try:
+                path = path.relative_to(URL(self_link).parent)
+            except (ValueError, TypeError):
+                if force_relative:
+                    path = path.name
+                else:
+                    pass
 
-        return path
+        return str(path)
 
     for asset_name, asset in assets.items():
         # If something's not a geotiff, make it an accessory
         # include thumbnails in accessories
-        if "geotiff" not in asset.get("type", []) or "thumbnail" in asset.get("roles", []):
+        if "geotiff" not in asset.get("type", []) or "thumbnail" in asset.get(
+            "roles", []
+        ):
             accessories[asset_name] = {"path": _get_path(asset)}
             continue
 
@@ -201,7 +212,7 @@ def _get_stac_bands(
                 "transform": transform,
             }
 
-        path = _get_path(asset)
+        path = _get_path(asset, force_relative=True)
         band_index = asset.get("band", None)
 
         band_info = {"path": path}

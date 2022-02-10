@@ -63,4 +63,5 @@ scikit-image
 thredds_crawler
 toolz
 tqdm
+urlpath
 xarray

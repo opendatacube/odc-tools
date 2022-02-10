@@ -30,7 +30,7 @@ def test_s3_to_dc_stac(aws_env):
         [
             "--no-sign-request",
             "--stac",
-            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/2020/S2A_32NNF_20200127_0_L2A/*.json",
+            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2A_42TUM_20220102_0_L2A/*.json",
             "s2_l2a",
         ],
     )

@@ -3,7 +3,6 @@ Test for stac_transform
 """
 from functools import partial
 from pprint import pformat
-import pytest
 from deepdiff import DeepDiff
 from odc.apps.dc_tools._stac import stac_transform
 
