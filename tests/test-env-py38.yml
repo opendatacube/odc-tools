@@ -29,6 +29,7 @@ dependencies:
   - azure-storage-blob
   - fsspec
   - lxml # needed for thredds-crawler
+  - urlpath
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
