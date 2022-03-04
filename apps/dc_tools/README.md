@@ -10,6 +10,27 @@ pip install odc-apps-dc-tools
 
 ## Usage
 
+### dc-sync-products
+
+The tool `dc-sync-products` helps you by keeping a Datacube instance's list of products up to date
+with a CSV list of product names and definitions.
+
+Basic usage is:
+
+``` bash
+dc-sync-products <path-to-csv> --update-if-exists
+```
+
+The `--update-if-exists` flag is optional, and will update a product, including unsafe changes, if it already exists.
+The format for the CSV is as follows (note that you can have multiple products defined in one file):
+
+```
+product,definition
+dem_srtm,https://raw.githubusercontent.com/digitalearthafrica/config/master/products/dem_srtm.odc-product.yaml
+ls5_c2l2_sr;ls7_c2l2_sr;ls8_c2l2_sr;ls9_c2l2_sr,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/lsX_c2l2_sr.odc-product.yaml
+
+```
+
 ### dc-index-export-md
 
 Metadata transformer
