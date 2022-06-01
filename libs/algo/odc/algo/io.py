@@ -13,6 +13,8 @@ from typing import (
 )
 
 import xarray as xr
+import numpy as np
+import itertools
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.testutils.io import native_geobox
@@ -84,17 +86,32 @@ def _load_with_native_transform_1(
 
     (ds,) = sources.data[0]
     load_geobox = compute_native_load_geobox(geobox, ds, basis)
+
     if pad is not None:
         load_geobox = gbox.pad(load_geobox, pad)
 
     mm = ds.type.lookup_measurements(bands)
     xx = Datacube.load_data(sources, load_geobox, mm, dask_chunks=load_chunks)
-    xx = native_transform(xx)
+
+
+    xxs = native_transform(xx)
+    xxss = []
 
     if groupby is not None:
         if fuser is None:
             fuser = _nodata_fuser  # type: ignore
-        xx = xx.groupby(groupby).map(fuser)
+        if isinstance(xxs, list):
+            idx = 0
+            for x in xxs:
+                xxss.append(x.groupby(groupby).map(fuser, [idx]))
+                idx += 1
+
+            xx = xxss[0]
+            for xs in xxss[1:]:
+                xx =  np.logical_and(xx, xs)
+        else:
+           xx = xxs.groupby(groupby).map(fuser)
+
 
     _chunks = None
     if chunks is not None:
@@ -159,6 +176,7 @@ def load_with_native_transform(
         chunks = kw.get("dask_chunks", None)
 
     sources = group_by_nothing(list(dss), solar_offset(geobox.extent))
+
     _xx = [
         _load_with_native_transform_1(
             srcs,
@@ -281,35 +299,50 @@ def load_enum_filtered(
     """
 
     def native_op(xx: xr.Dataset) -> xr.Dataset:
-        _xx = enum_to_bool(xx[band], categories)
-        return xr.Dataset(
+        if len(np.array(filters).shape) < 3:
+            _xx = enum_to_bool(xx[band], categories)
+            return xr.Dataset(
             {band: _xx},
-            attrs={"native": True},  # <- native flag needed for fuser
-        )
+            attrs={"native": True},)  # <- native flag needed for fuser
 
-    def fuser(xx: xr.Dataset) -> xr.Dataset:
+        else:
+            _xxs = []
+            for x in categories:
+                _xx = enum_to_bool(xx[band], (x, ))
+                _xxs.append(xr.Dataset(
+                    {band: _xx},
+                    attrs={"native": True},  # <- native flag needed for fuser
+                ))
+            return _xxs
+
+
+    def fuser(xx: xr.Dataset, idx=None) -> xr.Dataset:
         """
         Fuse with OR.
 
         Fuse with OR, and when fusing in native pixel domain apply mask_cleanup if
         requested
         """
+
         is_native = xx.attrs.get("native", False)
         xx = xx.map(_or_fuser)
         xx.attrs.pop("native", None)
-
         if is_native and filters is not None:
             _xx = xx[band]
             assert isinstance(_xx, xr.DataArray)
-            xx[band] = mask_cleanup(_xx, mask_filters=filters)
-
+            if idx is not None:
+                xx[band] = mask_cleanup(_xx, mask_filters=filters[idx])
+            else:
+                xx[band] = mask_cleanup(_xx, mask_filters=filters)
         return xx
 
     # unless set by user to some value use largest filter radius for pad value
     pad: Optional[int] = kw.pop("pad", None)
     if pad is None:
         if filters is not None:
-            pad = max(list(zip(*filters))[1])  # type: ignore
+            elements = np.array(filters).flatten()
+            index = np.arange(1, len(elements), 2)
+            pad = max(np.array(filters).flatten()[index].astype(int)).item()
 
     xx = load_with_native_transform(
         dss,
