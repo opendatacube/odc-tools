@@ -96,7 +96,6 @@ def _load_with_native_transform_1(
 
     xxs = native_transform(xx)
     xxss = []
-
     if groupby is not None:
         if fuser is None:
             fuser = _nodata_fuser  # type: ignore
@@ -108,10 +107,9 @@ def _load_with_native_transform_1(
 
             xx = xxss[0]
             for xs in xxss[1:]:
-                xx =  np.logical_and(xx, xs)
+                xx =  np.logical_or(xx, xs)
         else:
            xx = xxs.groupby(groupby).map(fuser)
-
 
     _chunks = None
     if chunks is not None:
@@ -308,7 +306,7 @@ def load_enum_filtered(
         else:
             _xxs = []
             for x in categories:
-                _xx = enum_to_bool(xx[band], (x, ))
+                _xx = enum_to_bool(xx[band], [x])
                 _xxs.append(xr.Dataset(
                     {band: _xx},
                     attrs={"native": True},  # <- native flag needed for fuser
@@ -334,6 +332,7 @@ def load_enum_filtered(
                 xx[band] = mask_cleanup(_xx, mask_filters=filters[idx])
             else:
                 xx[band] = mask_cleanup(_xx, mask_filters=filters)
+
         return xx
 
     # unless set by user to some value use largest filter radius for pad value
