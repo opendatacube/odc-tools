@@ -123,7 +123,6 @@ jobs:
     - name: Update PATH
       shell: bash
       run: |
-        pip list --format=freeze
         echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
         pip list --format=freeze
 
