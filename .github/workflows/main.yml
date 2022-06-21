@@ -124,20 +124,18 @@ jobs:
       shell: bash
       run: |
         echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+        export PATH="$(pwd)/tests/env/bin"
         pip list --format=freeze
+
 
     - name: Install in Edit mode
       shell: bash
       run: |
-        pip list --format=freeze
-
         which python
         which createdb
         which datacube
 
         ./scripts/dev-install.sh --no-deps
-
-        pip list --format=freeze
 
     - name: Start Test DB
       shell: bash
