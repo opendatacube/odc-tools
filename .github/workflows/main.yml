@@ -129,10 +129,11 @@ jobs:
     - name: Install in Edit mode
       shell: bash
       run: |
+        pip list --format=freeze
+
         which python
         which createdb
         which datacube
-        pip list --format=freeze
 
         ./scripts/dev-install.sh --no-deps
 
