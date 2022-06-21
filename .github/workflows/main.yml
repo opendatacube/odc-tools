@@ -152,7 +152,7 @@ jobs:
       shell: bash
       run: |
         datacube system check
-
+        pip freeze
         echo "Running Tests"
         pytest --cov=. \
         --cov-report=html \
