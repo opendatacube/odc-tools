@@ -72,7 +72,7 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v2
       if: steps.conda_cache.outputs.cache-hit != 'true'
       with:
-        channels: conda-forge,defaults
+        channels: conda-forge,defaults,pystac
         channel-priority: true
         activate-environment: ""
         mamba-version: "*"
@@ -125,8 +125,6 @@ jobs:
       run: |
         echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
         export PATH="$(pwd)/tests/env/bin"
-        pip list --format=freeze
-
 
     - name: Install in Edit mode
       shell: bash
