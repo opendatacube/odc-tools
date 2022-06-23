@@ -5,6 +5,7 @@
 name: odc-tests-py38
 channels:
   - conda-forge
+
 dependencies:
   - python=3.8
 
@@ -24,8 +25,8 @@ dependencies:
   - tqdm
 
   # odc-apps-dc-tools
-  - pystac>=1.1.0
-  - pystac-client>=0.2.0
+  - pystac>=1.2.0
+  - pystac-client>=0.4.0
   - azure-storage-blob
   - fsspec
   - lxml # needed for thredds-crawler
@@ -60,7 +61,7 @@ dependencies:
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
-      - rio-stac==0.3.0
+      - rio-stac
 
       # odc.algo optional dependency
       - hdstats
