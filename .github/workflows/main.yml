@@ -124,7 +124,6 @@ jobs:
       shell: bash
       run: |
         echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
-        export PATH="$(pwd)/tests/env/bin"
 
     - name: Install in Edit mode
       shell: bash
@@ -153,7 +152,7 @@ jobs:
       shell: bash
       run: |
         datacube system check
-        
+
         echo "Running Tests"
         pytest --cov=. \
         --cov-report=html \
