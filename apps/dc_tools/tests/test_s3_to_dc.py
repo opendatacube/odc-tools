@@ -38,7 +38,7 @@ def test_s3_to_dc_stac(aws_env):
     assert result.output == "Added 1 datasets and failed 0 datasets.\n"
 
 
-@pytest.mark.xFail
+@pytest.mark.xfail
 @pytest.mark.depends(on=['add_products'])
 def test_s3_to_dc_stac_update_if_exist(aws_env):
     runner = CliRunner()
