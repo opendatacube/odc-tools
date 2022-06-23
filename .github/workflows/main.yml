@@ -124,6 +124,7 @@ jobs:
       shell: bash
       run: |
         echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+        export PATH="$(pwd)/tests/env/bin"
 
     - name: Install in Edit mode
       shell: bash
@@ -134,7 +135,6 @@ jobs:
 
         ./scripts/dev-install.sh --no-deps
 
-
     - name: Start Test DB
       shell: bash
       run: |
@@ -144,6 +144,7 @@ jobs:
         pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
         createdb datacube
         datacube system init
+        pip list --format=freeze
 
       env:
         DATACUBE_DB_URL: postgresql:///datacube
