@@ -5,6 +5,7 @@
 name: odc-tests-py38
 channels:
   - conda-forge
+
 dependencies:
   - python=3.8
 
@@ -60,7 +61,7 @@ dependencies:
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
-      - rio-stac==0.3.0
+      - rio-stac
 
       # odc.algo optional dependency
       - hdstats
