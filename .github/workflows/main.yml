@@ -124,6 +124,7 @@ jobs:
       shell: bash
       run: |
         echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+        export PATH="$(pwd)/tests/env/bin"
 
     - name: Install in Edit mode
       shell: bash
