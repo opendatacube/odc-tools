@@ -400,5 +400,8 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 
 # TODO: This is a temporary fix
 def transform_geom_json_coordinates_to_list(geom_json):
-    geom_json["coordinates"] = list(geom_json["coordinates"])
+    reformated = []
+    for coord in geom_json["coordinates"]:
+        reformated.append([list(i) for i in coord])
+    geom_json["coordinates"] = reformated
     return geom_json
