@@ -188,7 +188,7 @@ def _get_stac_bands(
             except ValueError:
                 # If the path is not relative to the parent force_relative
                 # is still used for data assets, due to a historical assumption.
-                # TODO: Implement rewrite_assets (like in stac_to_dc) in all 
+                # TODO: Implement rewrite_assets (like in stac_to_dc) in all
                 # tools so that this is no longer necessary.
                 if force_relative:
                     path = path.name
@@ -312,6 +312,7 @@ def _check_valid_uuid(uuid_string: str) -> bool:
         return False
 
 
+
 def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     """Takes in a raw STAC 1.0 dictionary and returns an ODC dictionary"""
     # pylint: disable=too-many-locals
@@ -389,9 +390,15 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
         stac_odc["properties"]["odc:region_code"] = region_code
 
     if geometry:
-        stac_odc["geometry"] = geometry.json
+        stac_odc["geometry"] = transform_geom_json_coordinates_to_list(geometry.json)
 
     if lineage:
         stac_odc["lineage"] = lineage
 
     return stac_odc
+
+
+# TODO: This is a temporary fix
+def transform_geom_json_coordinates_to_list(geom_json):
+    geom_json["coordinates"] = list(geom_json["coordinates"])
+    return geom_json
