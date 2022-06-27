@@ -17,11 +17,11 @@ def test_sentinel_stac_transform(sentinel_stac, sentinel_odc):
     assert len(get_doc_changes(transformed_stac_doc, sentinel_odc)) == 2
 
 
-@pytest.mark.skip(reason="Incomplete test")
 def test_usgs_landsat_stac_transform(usgs_landsat_stac):
-    _ = stac_transform(usgs_landsat_stac)
+    transformed_stac_doc = stac_transform(usgs_landsat_stac)
+    assert transformed_stac_doc['geometry']['coordinates'] == (((1087485.0, -313215.0), (904635.0, -356445.0), (860745.0, -172485.0), (1043085.0, -128325.0), (1087485.0, -313215.0)), )
 
 
-@pytest.mark.skip(reason="Incomplete test")
 def test_lidar_stac_transform(lidar_stac):
-    _ = stac_transform(lidar_stac)
+    transformed_stac_doc = stac_transform(lidar_stac)
+    assert transformed_stac_doc['geometry']['coordinates'] == (((765999.0, 6731999.0), (765999.0, 6729999.0), (767999.0, 6729999.0), (767999.0, 6731999.0), (765999.0, 6731999.0)),)
