@@ -88,4 +88,4 @@ def test_s3_to_dc_proc_info_yaml(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 25 datasets and failed 0 datasets.\n"
+    assert result.output == "Added 0 datasets and failed 0 datasets.\n"
