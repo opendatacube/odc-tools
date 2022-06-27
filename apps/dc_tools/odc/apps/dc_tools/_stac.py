@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
+import numpy
+
 from datacube.utils.geometry import Geometry
 from toolz import get_in
 from urlpath import URL
@@ -400,8 +402,7 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 
 # TODO: This is a temporary fix
 def transform_geom_json_coordinates_to_list(geom_json):
-    reformated = []
-    for coord in geom_json["coordinates"]:
-        reformated.append([list(i) for i in coord])
-    geom_json["coordinates"] = reformated
+    geom_json["coordinates"] = numpy.array(
+        geom_json["coordinates"]
+    ).tolist()
     return geom_json
