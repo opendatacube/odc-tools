@@ -76,7 +76,7 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
 
 
 @pytest.mark.depends(on=['add_products'])
-def test_s3_to_dc_proc_info_yaml(aws_env):
+def test_s3_to_dc_single_proc_info_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
@@ -89,3 +89,19 @@ def test_s3_to_dc_proc_info_yaml(aws_env):
     )
     assert result.exit_code == 0
     assert result.output == "Added 0 datasets and failed 0 datasets.\n"
+
+
+@pytest.mark.depends(on=['add_products'])
+def test_s3_to_glob_dc_proc_info_yaml(aws_env):
+    runner = CliRunner()
+    # This will fail if requester pays is enabled
+    result = runner.invoke(
+        cli,
+        [
+            "--no-sign-request",
+            "s3://dea-public-data/derivative/ga_ls5t_nbart_gm_cyear_3/3-0-0/x08/y23/1994--P1Y/*.yaml",
+            "ga_ls5t_nbart_gm_cyear_3",
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.output == "Added 1 datasets and failed 0 datasets.\n"
