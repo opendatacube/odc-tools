@@ -52,7 +52,7 @@ def test_s3_to_dc_single_stac(aws_env):
             "s2_l2a",
         ],
     )
-    # assert result.exit_code == 1
+    assert result.exit_code == 0
     assert result.output == "Added 1 datasets and failed 0 datasets.\n"
 
 
