@@ -234,6 +234,9 @@ dc-index-from-tar --protocol gs --env mangroves --ignore-lineage metadata.tar.gz
 Local Development
 =================
 
+Docker
+------
+
 Requires docker, procedure was only tested on Linux hosts.
 
 ```bash
@@ -253,6 +256,42 @@ run specific tests you are developing with `py.test ./path/to/test_file.py`. Any
 changes you make to code outside of the docker environment are available without
 any further action from you for testing.
 
+conda/mamba
+------
+
+The following steps is used in github workflow `main.yml`
+
+```bash
+
+# build environment from file
+mamba env create -f tests/test-env-py38.yml
+
+# this environment name is defined in tests/test-env-py38.yml file
+conda activate odc-tests-py38
+
+# install additional packages
+./scripts/dev-install.sh --no-deps
+
+# setup database for testing
+export DATACUBE_DB_URL=postgresql:///datacube
+pgdata=$(pwd)/.dbdata
+initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
+pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start # if this step fails, check log in ${pgdata}/pg.log
+
+createdb datacube
+datacube system init
+
+# run test
+echo "Running Tests"
+pytest --cov=. \
+--cov-report=html \
+--cov-report=xml:coverage.xml \
+--timeout=30 \
+libs apps
+
+# Optional, to delete the environment
+conda env remove -n odc-tests-py38
+```
 
 Release Process
 ===============
