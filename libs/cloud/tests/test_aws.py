@@ -173,11 +173,14 @@ def test_get_queues_empty(aws_env):
 
 def test_parse_query():
     E = SimpleNamespace
-    base = "s3://bucket/path/a/"
+    base = "s3://bucket.aws/path/a/"
 
     assert parse_query(base) == E(base=base, depth=None, glob=None, file=None)
     assert parse_query(base + "some") == E(
         base=base + "some/", depth=None, glob=None, file=None
+    )
+    assert parse_query(base + "something/file.yaml") == E(
+        base=base+"something/", depth=None, glob=None, file="file.yaml"
     )
     assert parse_query(base + "*") == E(base=base, depth=0, glob="*", file=None)
     assert parse_query(base + "*/*txt") == E(base=base, depth=1, glob="*txt", file=None)

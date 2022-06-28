@@ -68,5 +68,10 @@ def parse_query(url_query):
 
     base = "/".join(base)
     base = base.rstrip("/") + "/"
+    if not depth and not _file and not glob:
+        if '.' in base.split("/")[-2]:
+            _file = base.split("/")[-2]
+            base = "/".join(base.split("/")[:-2]) + "/"
+
 
     return SimpleNamespace(base=base, depth=depth, file=_file, glob=glob)
