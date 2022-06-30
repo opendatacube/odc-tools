@@ -94,7 +94,7 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
 
 
 
-# @pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=['add_products'])
 def test_s3_to_dc_index_proc_info_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
