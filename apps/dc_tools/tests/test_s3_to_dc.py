@@ -89,5 +89,5 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
             "ga_ls5t_nbart_gm_cyear_3",
         ],
     )
-    assert result.exit_code == 0
-    assert result.output == "Added 0 datasets and failed 0 datasets.\n"
+    assert result.exit_code == 1
+    assert result.output == "Added 0 datasets and failed 1 datasets.\n"
