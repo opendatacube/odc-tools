@@ -7,6 +7,9 @@ from pprint import pformat
 
 import pytest
 
+import boto3
+from moto import mock_sqs
+
 from pathlib import Path
 
 from datacube.utils import documents
@@ -15,8 +18,13 @@ from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.sqs_to_dc import (
     handle_json_message,
     handle_bucket_notification_message,
+    extract_metadata_from_message,
+    cli,
 )
-
+from click.testing import CliRunner
+from datacube import Datacube
+from datacube.index.hl import Doc2Dataset
+from odc.aws.queue import get_messages
 
 record_message = {
     "Records":[
@@ -81,6 +89,57 @@ deep_diff = partial(
     DeepDiff, significant_digits=6, ignore_type_in_groups=[(tuple, list)]
 )
 
+
+def test_extract_metadata_from_message(sqs_client):
+    TEST_QUEUE_NAME = "a_test_queue"
+    sqs_resource = boto3.resource("sqs")
+    dc = Datacube()
+
+    a_queue = sqs_resource.create_queue(QueueName=TEST_QUEUE_NAME)
+
+    a_queue.send_message(MessageBody=json.dumps(sqs_message))
+    assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 1
+
+    assert dc.index.datasets.get("69a6eca2-ca45-4808-a5b3-694029200c43") is None
+
+    queue = sqs_resource.get_queue_by_name(QueueName=TEST_QUEUE_NAME)
+
+    # runner = CliRunner()
+    # # This will fail if requester pays is enabled
+    # result = runner.invoke(
+    #     cli,
+    #     [
+    #         TEST_QUEUE_NAME,
+    #         'cemp_insar_alos_displacement',
+    #         "--no-sign-request",
+    #         "--update-if-exists",
+    #     ],
+    # )
+
+    # assert result.exit_code == 1
+    # assert result.output == "Added 0 Dataset(s), Failed 0 Dataset(s)\n"
+
+    for m in get_messages(queue):
+        metadata = extract_metadata_from_message(m)
+        data, uri = handle_bucket_notification_message(
+            m, metadata, "cemp_insar/insar/displacement/alos/*", True
+        )
+
+        assert uri == "s3://dea-public-data/cemp_insar/insar/displacement/alos/2009/06/17/alos_cumul_2009-06-17.yaml"
+        assert type(data)  == dict
+
+        doc2ds = Doc2Dataset(dc.index, products=['cemp_insar_alos_displacement'])
+        from odc.apps.dc_tools.utils import index_update_dataset
+        index_update_dataset(
+            data,
+            uri,
+            dc,
+            doc2ds,
+        )
+
+        assert dc.index.datasets.get("69a6eca2-ca45-4808-a5b3-694029200c43") is not None
+        m.delete()
+    assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 0
 
 
 def test_hand_bucket_notification_message():
