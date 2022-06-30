@@ -23,7 +23,7 @@ from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
 from odc.aws.queue import get_messages
 from ._stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
-from yaml import load
+from yaml import safe_load
 
 # Added log handler
 logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
@@ -125,7 +125,7 @@ def handle_bucket_notification_message(
             try:
                 s3 = boto3.resource("s3")
                 obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
-                data = load(obj["Body"].read())
+                data = safe_load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
             except Exception as e:
                 raise IndexingException(

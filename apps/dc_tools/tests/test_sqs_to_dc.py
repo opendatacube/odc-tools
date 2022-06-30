@@ -11,7 +11,6 @@ from pathlib import Path
 
 from datacube.utils import documents
 from deepdiff import DeepDiff
-from datetime import date
 from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.sqs_to_dc import (
     handle_json_message,
@@ -19,27 +18,78 @@ from odc.apps.dc_tools.sqs_to_dc import (
 )
 
 
+record_message = {
+    "Records":[
+        {
+            "eventVersion":"2.1",
+            "eventSource":"aws:s3",
+            "awsRegion":"us-east-2",
+            "eventTime":"2018-12-19T01:51:03.251Z",
+            "eventName":"ObjectCreated:Put",
+            "userIdentity":{
+                "principalId":"AWS:AIDAIZLCFC5TZD36YHNZY"
+            },
+            "requestParameters":{
+                "sourceIPAddress":"52.46.82.38"
+            },
+            "responseElements":{
+                "x-amz-request-id":"6C05F1340AA50D21",
+                "x-amz-id-2":"9e8KovdAUJwmYu1qnEv+urrO8T0vQ+UOpkPnFYLE6agmJSn745/T3/tVs0Low/vXonTdATvW23M="
+            },
+            "s3":{
+                "s3SchemaVersion":"1.0",
+                "configurationId":"test_SQS_Notification_1",
+                "bucket":{
+                    "name":"dea-public-data",
+                    "ownerIdentity":{
+                        "principalId":"A2SGQBYRFBZET"
+                    },
+                    "arn":"arn:aws:s3:::dea-public-data"
+                },
+                "object":{
+                    "key":"cemp_insar/insar/displacement/alos/2009/06/17/alos_cumul_2009-06-17.yaml",
+                    "size":713,
+                    "eTag":"1ff1209e4140b4ff7a9d2b922f57f486",
+                    "sequencer":"005C19A40717D99642"
+                }
+            }
+        }
+    ]
+}
+
+sqs_message = {
+    "Type" : "Notification",
+    "MessageId" : "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxxxx",
+    "TopicArn" : "arn:aws:sns:ap-southeast-2:xxxxxxxxxxxxxxxxx:DEANewData",
+    "Subject" : "Amazon S3 Notification",
+    "Message": json.dumps(record_message),
+    "Timestamp" : "2020-08-21T08:28:45.921Z",
+    "SignatureVersion" : "1",
+    "Signature" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "SigningCertURL" : "https://sns.ap-southeast-2.amazonaws.com/SimpleNotificationService-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.pem",
+    "UnsubscribeURL" : "https://sns.ap-southeast-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:ap-southeast-2:xxxxxxxxxxxxxxx:DEANewData:xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxx"
+}
+
+
+
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LANDSAT_C3_SQS_MESSAGE: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.sqs.json"
 LANDSAT_C3_ODC_YAML: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.sqs.yaml"
 SENTINEL_2_NRT_MESSAGE: str = "sentinel-2-nrt_2020_08_21.json"
-SENTINEL_2_NRT_RECORD_PATH = ("L2/sentinel-2-nrt/S2MSIARD/*/*/ARD-METADATA.yaml",)
 
 deep_diff = partial(
     DeepDiff, significant_digits=6, ignore_type_in_groups=[(tuple, list)]
 )
 
 
-@pytest.mark.skip(reason="Test requires mocked S3")
-@pytest.mark.skipif(
-    date.today() > date(2020, 11, 10), reason="dataset has been rotated out"
-)
-def test_get_metadata_s3_object(sentinel_2_nrt_message, sentinel_2_nrt_record_path):
+
+def test_hand_bucket_notification_message(aws_env):
     data, uri = handle_bucket_notification_message(
-        sentinel_2_nrt_message, sentinel_2_nrt_record_path
+        sqs_message, record_message, "cemp_insar/insar/displacement/alos/*"
     )
 
-    assert type(data) is dict
+    assert uri == "s3://dea-public-data/cemp_insar/insar/displacement/alos/2009/06/17/alos_cumul_2009-06-17.yaml"
+    assert type(data)  == dict
 
 
 def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
@@ -139,19 +189,6 @@ def test_transform(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
 @pytest.fixture
 def ga_ls8c_ard_3_message():
     with TEST_DATA_FOLDER.joinpath(LANDSAT_C3_SQS_MESSAGE).open("r") as f:
-        body = json.load(f)
-    metadata = json.loads(body["Message"])
-    return metadata
-
-
-@pytest.fixture
-def sentinel_2_nrt_record_path():
-    return SENTINEL_2_NRT_RECORD_PATH
-
-
-@pytest.fixture
-def sentinel_2_nrt_message():
-    with TEST_DATA_FOLDER.joinpath(SENTINEL_2_NRT_MESSAGE).open("r") as f:
         body = json.load(f)
     metadata = json.loads(body["Message"])
     return metadata
