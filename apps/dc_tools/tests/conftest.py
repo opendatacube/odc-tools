@@ -3,6 +3,16 @@ from pathlib import Path
 import pytest
 from datacube.utils import documents
 
+import os
+
+REGION='us-east-'
+@pytest.fixture(scope='function')
+def aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'testing'
+    os.environ['AWS_SECURITY_TOKEN'] = 'testing'
+    os.environ['AWS_SESSION_TOKEN'] = 'testing'
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LANDSAT_STAC: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
@@ -15,11 +25,7 @@ LIDAR_STAC: str = "lidar_dem.json"
 
 @pytest.fixture
 def aws_env(monkeypatch):
-    monkeypatch.setenv('AWS_ACCESS_KEY_ID', 'testing')
-    monkeypatch.setenv('AWS_SECRET_ACCESS_KEY', 'testing')
-    monkeypatch.setenv('AWS_SECURITY_TOKEN', 'testing')
-    monkeypatch.setenv('AWS_SESSION_TOKEN', 'testing')
-    monkeypatch.setenv('AWS_DEFAULT_REGION', 'us-east-1')
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
 
 
 @pytest.fixture

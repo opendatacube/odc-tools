@@ -83,7 +83,7 @@ deep_diff = partial(
 
 
 
-def test_hand_bucket_notification_message(aws_env):
+def test_hand_bucket_notification_message():
     data, uri = handle_bucket_notification_message(
         sqs_message, record_message, "cemp_insar/insar/displacement/alos/*"
     )
