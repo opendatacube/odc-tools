@@ -91,3 +91,22 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
     )
     assert result.exit_code == 1
     assert result.output == "Added 0 datasets and failed 1 datasets.\n"
+
+
+
+# @pytest.mark.depends(on=['add_products'])
+def test_s3_to_dc_index_proc_info_yaml(aws_env):
+    runner = CliRunner()
+    # This will fail if requester pays is enabled
+    result = runner.invoke(
+        cli,
+        [
+            "--no-sign-request",
+            "--skip-lineage",
+            # This folder contains two yaml one valid dataset yaml and another non dataset yaml
+            "s3://dea-public-data/derivative/ga_ls5t_nbart_gm_cyear_3/3-0-0/x08/y23/1994--P1Y/*.yaml",
+            "ga_ls5t_nbart_gm_cyear_3",
+        ],
+    )
+    assert result.exit_code == 1
+    assert result.output == "Added 1 datasets and failed 1 datasets.\n"
