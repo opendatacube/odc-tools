@@ -90,7 +90,7 @@ deep_diff = partial(
 )
 
 
-def test_extract_metadata_from_message(sqs_client):
+def test_extract_metadata_from_message():
     TEST_QUEUE_NAME = "a_test_queue"
     sqs_resource = boto3.resource("sqs")
     dc = Datacube()
@@ -103,21 +103,6 @@ def test_extract_metadata_from_message(sqs_client):
     assert dc.index.datasets.get("69a6eca2-ca45-4808-a5b3-694029200c43") is None
 
     queue = sqs_resource.get_queue_by_name(QueueName=TEST_QUEUE_NAME)
-
-    # runner = CliRunner()
-    # # This will fail if requester pays is enabled
-    # result = runner.invoke(
-    #     cli,
-    #     [
-    #         TEST_QUEUE_NAME,
-    #         'cemp_insar_alos_displacement',
-    #         "--no-sign-request",
-    #         "--update-if-exists",
-    #     ],
-    # )
-
-    # assert result.exit_code == 1
-    # assert result.output == "Added 0 Dataset(s), Failed 0 Dataset(s)\n"
 
     for m in get_messages(queue):
         metadata = extract_metadata_from_message(m)
@@ -139,7 +124,6 @@ def test_extract_metadata_from_message(sqs_client):
 
         assert dc.index.datasets.get("69a6eca2-ca45-4808-a5b3-694029200c43") is not None
         m.delete()
-    assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 0
 
 
 def test_hand_bucket_notification_message():
