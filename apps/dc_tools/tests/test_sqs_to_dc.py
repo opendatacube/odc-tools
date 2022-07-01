@@ -90,6 +90,7 @@ deep_diff = partial(
 )
 
 
+@pytest.mark.depends(on=['add_products'])
 def test_extract_metadata_from_message():
     TEST_QUEUE_NAME = "a_test_queue"
     sqs_resource = boto3.resource("sqs")
