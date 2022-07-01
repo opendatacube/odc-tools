@@ -25,6 +25,7 @@ from click.testing import CliRunner
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.aws.queue import get_messages
+import os
 
 record_message = {
     "Records":[
@@ -89,9 +90,17 @@ deep_diff = partial(
     DeepDiff, significant_digits=6, ignore_type_in_groups=[(tuple, list)]
 )
 
+@pytest.fixture
+def aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+
 
 @pytest.mark.depends(on=['add_products'])
-def test_extract_metadata_from_message(aws_env):
+def test_extract_metadata_from_message(aws_credentials):
     TEST_QUEUE_NAME = "a_test_queue"
     sqs_resource = boto3.resource("sqs")
     dc = Datacube()
