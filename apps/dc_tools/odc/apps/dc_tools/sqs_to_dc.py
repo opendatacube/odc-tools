@@ -9,6 +9,8 @@ from pathlib import PurePath
 from typing import Tuple
 
 import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
 import click
 import pandas as pd
 import requests
@@ -17,13 +19,14 @@ from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
 from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
                                      fail_on_missing_lineage,
-                                     index_update_dataset, limit, skip_lineage,
+                                     index_update_dataset, limit, no_sign_request,
+                                     skip_lineage,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
 from ._stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
-from yaml import load
+from yaml import safe_load
 
 # Added log handler
 logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
@@ -79,7 +82,7 @@ def handle_json_message(metadata, transform, odc_metadata_link):
 
 
 def handle_bucket_notification_message(
-    message, metadata: dict, record_path: tuple
+    message, metadata: dict, record_path: tuple, no_sign_request: bool = False
 ) -> Tuple[dict, str]:
     """[summary]
 
@@ -123,10 +126,16 @@ def handle_bucket_notification_message(
             # We have enough information to proceed, get the key and extract
             # the contents...
             try:
-                s3 = boto3.resource("s3")
-                obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
-                data = load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
+                if no_sign_request:
+                    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+                    data = s3.get_object(Bucket=bucket_name, Key=key)
+                    contents = data['Body'].read()
+                    data = safe_load(contents.decode("utf-8"))
+                else:
+                    s3 = boto3.resource("s3")
+                    obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
+                    data = safe_load(obj["Body"].read())
             except Exception as e:
                 raise IndexingException(
                     f"Exception thrown when trying to load s3 object: {e}"
@@ -165,6 +174,7 @@ def queue_to_odc(
     limit=None,
     update=False,
     update_if_exists=False,
+    no_sign_request=False,
     archive=False,
     allow_unsafe=False,
     odc_metadata_link=False,
@@ -211,7 +221,7 @@ def queue_to_odc(
                     # Extract metadata from an S3 bucket notification
                     # or similar for indexing
                     metadata, uri = handle_bucket_notification_message(
-                        message, metadata, record_path
+                        message, metadata, record_path, no_sign_request=no_sign_request
                     )
 
                 # If we have a region_code filter, do it here
@@ -263,6 +273,7 @@ def queue_to_odc(
 @allow_unsafe
 @archive
 @limit
+@no_sign_request
 @click.option(
     "--odc-metadata-link",
     default=None,
@@ -296,6 +307,7 @@ def cli(
     allow_unsafe,
     archive,
     limit,
+    no_sign_request,
     odc_metadata_link,
     record_path,
     region_code_list_uri,
@@ -328,6 +340,7 @@ def cli(
         transform=transform,
         limit=limit,
         update=update,
+        no_sign_request=no_sign_request,
         update_if_exists=update_if_exists,
         archive=archive,
         allow_unsafe=allow_unsafe,

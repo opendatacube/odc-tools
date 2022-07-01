@@ -22,7 +22,7 @@ def test_find_json(test_data_dir):
     # Search for JSON files
     files = [str(x) for x in _find_files(test_data_dir, stac=True)]
 
-    assert len(files) == 9
+    assert len(files) == 8
     assert (
         str(
             Path(test_data_dir)
