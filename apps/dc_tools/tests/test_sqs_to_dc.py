@@ -99,7 +99,8 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
-@pytest.mark.depends(on=['add_products'])
+# @pytest.mark.depends(on=['add_products'])
+@mock_sqs
 def test_extract_metadata_from_message(aws_credentials):
     TEST_QUEUE_NAME = "a_test_queue"
     sqs_resource = boto3.resource("sqs")
@@ -138,7 +139,7 @@ def test_extract_metadata_from_message(aws_credentials):
 
 def test_hand_bucket_notification_message():
     data, uri = handle_bucket_notification_message(
-        sqs_message, record_message, "cemp_insar/insar/displacement/alos/*"
+        sqs_message, record_message, "cemp_insar/insar/displacement/alos/*", True
     )
 
     assert uri == "s3://dea-public-data/cemp_insar/insar/displacement/alos/2009/06/17/alos_cumul_2009-06-17.yaml"
