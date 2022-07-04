@@ -63,6 +63,8 @@ def _get_region_code(properties: Dict[str, Any]) -> str:
 def _get_usgs_product_name(properties: Dict[str, Any]) -> str:
     platform = get_in(["platform"], properties)
 
+    if platform == "LANDSAT_9":
+        return "ls9-c2l2-sr"
     if platform == "LANDSAT_8":
         return "ls8-c2l2-sr"
     elif platform == "LANDSAT_7":
