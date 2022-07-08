@@ -83,10 +83,13 @@ def _guess_location(
 
 
 def item_to_meta_uri(
-    item: Item, rewrite: Optional[Tuple[str, str]] = None
+    item: Item, rewrite: Optional[Tuple[str, str]] = None, rename_product: Optional[str] = None
 ) -> Generator[Tuple[dict, str, bool], None, None]:
     uri, relative = _guess_location(item, rewrite)
     metadata = item.to_dict()
+    if rename_product is not None:
+        metadata["properties"]["odc:product"] = rename_product
+
     if relative:
         metadata = stac_transform(metadata)
     else:
@@ -102,8 +105,9 @@ def process_item(
     update_if_exists: bool,
     allow_unsafe: bool,
     rewrite: Optional[Tuple[str, str]] = None,
+    rename_product: Optional[str] = None,
 ):
-    meta, uri = item_to_meta_uri(item, rewrite)
+    meta, uri = item_to_meta_uri(item, rewrite, rename_product)
     index_update_dataset(
         meta,
         uri,
@@ -121,6 +125,7 @@ def stac_api_to_odc(
     catalog_href: str,
     allow_unsafe: bool = True,
     rewrite: Optional[Tuple[str, str]] = None,
+    rename_product: Optional[str] = None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
@@ -150,6 +155,7 @@ def stac_api_to_odc(
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
                 rewrite=rewrite,
+                rename_product=rename_product,
             ): item.id
             for item in search.get_all_items()
         }
@@ -206,6 +212,14 @@ def stac_api_to_odc(
         "HTTPS to S3 URIs, --rewrite-assets=https://example.com/,s3://"
     )
 )
+@click.option(
+    "--rename-product",
+    type=str,
+    default=None,
+    help=(
+        "Name of product to overwrite collection(s) names, only one product name can overwrite, despite multiple collections "
+    )
+)
 def cli(
     limit,
     update_if_exists,
@@ -216,6 +230,7 @@ def cli(
     datetime,
     options,
     rewrite_assets,
+    rename_product,
 ):
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -244,7 +259,7 @@ def cli(
     # Do the thing
     dc = Datacube()
     added, failed = stac_api_to_odc(
-        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe, rewrite=rewrite
+        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe, rewrite=rewrite, rename_product=rename_product
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
