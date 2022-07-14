@@ -248,8 +248,9 @@ def cli(
     if datetime:
         config["datetime"] = datetime
 
-    if limit is not None:
-        config["max_items"] = limit
+    # Always set the limit, because some APIs will stop at an arbitrary
+    # number if max_items is not None.
+    config["max_items"] = limit
 
     if rewrite_assets is not None:
         rewrite = list(rewrite_assets.split(","))
