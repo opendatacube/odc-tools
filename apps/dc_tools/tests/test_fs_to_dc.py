@@ -44,7 +44,13 @@ def test_fs_to_fc_yaml(test_data_dir):
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        [test_data_dir, "--stac", "--glob=**/NASADEM_HGT_s56w072.stac-item.json"],
+        [
+            test_data_dir,
+            "--stac",
+            "--glob=**/NASADEM_HGT_s56w072.stac-item.json",
+            "--statsd-setting",
+            "localhost:8125",
+        ],
     )
     assert result.exit_code == 0
 

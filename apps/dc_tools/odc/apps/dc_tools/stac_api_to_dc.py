@@ -16,6 +16,7 @@ from odc.apps.dc_tools.utils import (
     limit,
     update_if_exists,
     bbox,
+    statsd_gauge_reporting, statsd_setting,
 )
 from ._stac import stac_transform, stac_transform_absolute
 from pystac.item import Item
@@ -220,6 +221,7 @@ def stac_api_to_odc(
         "Name of product to overwrite collection(s) names, only one product name can overwrite, despite multiple collections "
     )
 )
+@statsd_setting
 def cli(
     limit,
     update_if_exists,
@@ -231,6 +233,7 @@ def cli(
     options,
     rewrite_assets,
     rename_product,
+    statsd_setting,
 ):
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -263,6 +266,9 @@ def cli(
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
+    if statsd_setting:
+        statsd_gauge_reporting('stac_api_to_dc', added, ["action:added"], statsd_setting)
+        statsd_gauge_reporting('stac_api_to_dc', failed, ["action:failed"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)

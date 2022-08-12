@@ -12,6 +12,8 @@ def test_s3_to_dc_yaml(aws_env):
     result = runner.invoke(
         cli,
         [
+            "--statsd-setting",
+            "localhost:8125",
             "--no-sign-request",
             "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/**/*.yaml",
             "cemp_insar_alos_displacement",
@@ -28,6 +30,8 @@ def test_s3_to_dc_stac(aws_env):
     result = runner.invoke(
         cli,
         [
+            "--statsd-setting",
+            "localhost:8125",
             "--no-sign-request",
             "--stac",
             "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2A_42TUM_20220102_0_L2A/*.json",
@@ -45,6 +49,8 @@ def test_s3_to_dc_stac_update_if_exist(aws_env):
     result = runner.invoke(
         cli,
         [
+            "--statsd-setting",
+            "localhost:8125",
             "--no-sign-request",
             "--stac",
             "--update-if-exists",
@@ -63,6 +69,8 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
     result = runner.invoke(
         cli,
         [
+            "--statsd-setting",
+            "localhost:8125",
             "--no-sign-request",
             "--stac",
             "--update-if-exists",

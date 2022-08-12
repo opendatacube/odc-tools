@@ -1,12 +1,14 @@
 """Crawl Thredds for prefixes and fetch YAML's for indexing
 and dump them into a Datacube instance
 """
+import imp
 import sys
 import logging
 from typing import Tuple
 
 import click
 from odc.azure import find_blobs, download_yamls
+from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
 from ._docs import from_yaml_doc_stream
 from datacube import Datacube
 
@@ -75,6 +77,7 @@ def dump_list_to_odc(
               help=('Only match against products specified with this option, '
                     'you can supply several by repeating this option with a new product name'),
               multiple=True)
+@statsd_setting
 @click.argument("account_url", type=str, nargs=1)
 @click.argument("containter_name", type=str, nargs=1)
 @click.argument("credential", type=str, nargs=1)
@@ -84,6 +87,7 @@ def cli(
         skip_lineage: bool,
         fail_on_missing_lineage: bool,
         verify_lineage: bool,
+        statsd_setting: str,
         account_url: str,
         container_name: str,
         credential: str,
@@ -113,3 +117,6 @@ def cli(
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
+    if statsd_setting:
+        statsd_gauge_reporting('azure_to_dc', added, ["action:added"], statsd_setting)
+        statsd_gauge_reporting('azure_to_dc', failed, ["action:failed"], statsd_setting)

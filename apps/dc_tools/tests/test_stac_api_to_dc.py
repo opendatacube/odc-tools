@@ -16,6 +16,8 @@ def test_stac_to_dc_earthsearch():
             "--limit=10",
             "--collections=sentinel-s2-l2a-cogs",
             "--datetime=2020-08-01/2020-08-31",
+            "--statsd-setting",
+            "localhost:8125",
         ],
     )
     assert result.exit_code == 0
@@ -33,6 +35,8 @@ def test_stac_to_dc_usgs():
             "--limit=10",
             "--collections=landsat-c2l2-sr",
             "--datetime=2020-08-01/2020-08-31",
+            "--statsd-setting",
+            "localhost:8125",
         ],
     )
     assert result.exit_code == 0
@@ -48,6 +52,8 @@ def test_stac_to_dc_planetarycomputer():
             f"--catalog-href={MICROSOFT_PC_STAC_URI}",
             "--limit=1",
             "--collections=nasadem",
+            "--statsd-setting",
+            "localhost:8125",
         ],
     )
     assert result.exit_code == 0

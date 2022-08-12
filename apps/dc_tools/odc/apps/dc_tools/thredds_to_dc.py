@@ -7,6 +7,7 @@ from typing import Tuple
 
 import click
 from odc.thredds import thredds_find_glob, download_yamls
+from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
 from ._docs import from_yaml_doc_stream
 from datacube import Datacube
 
@@ -70,12 +71,14 @@ def dump_list_to_odc(
     default=False,
     help="Default is no verification. Set to verify parent dataset definitions.",
 )
+@statsd_setting
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
     skip_lineage: bool,
     fail_on_missing_lineage: bool,
     verify_lineage: bool,
+    statsd_setting: str,
     uri: str,
     product: str,
 ):
@@ -101,3 +104,6 @@ def cli(
     )
 
     print(f"Added {added} Datasets, Failed {failed} Datasets")
+    if statsd_setting:
+        statsd_gauge_reporting('thredds_to_dc', added, ["action:added"], statsd_setting)
+        statsd_gauge_reporting('thredds_to_dc', failed, ["action:failed"], statsd_setting)
