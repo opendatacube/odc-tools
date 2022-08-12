@@ -51,12 +51,12 @@ def test_indexing_cli(bbox, product):
     result = runner.invoke(
         cli,
         [
+            "--statsd-setting",
+            "localhost:8125",
             "--bbox",
             bbox,
             "--product",
             product,
-            "--statsd-setting",
-            "localhost:8125",
         ],
     )
     assert result.exit_code == 0
