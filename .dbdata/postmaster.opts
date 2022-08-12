@@ -1,0 +1,1 @@
+/home/ubuntu/yes/envs/odc-tests-py38/bin/postgres "-D" "/home/ubuntu/odc-tools/.dbdata"

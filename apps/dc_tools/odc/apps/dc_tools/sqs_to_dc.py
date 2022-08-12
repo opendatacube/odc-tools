@@ -21,6 +21,7 @@ from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
                                      fail_on_missing_lineage,
                                      index_update_dataset, limit, no_sign_request,
                                      skip_lineage,
+                                     statsd_setting, statsd_gauge_reporting,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
@@ -274,6 +275,7 @@ def queue_to_odc(
 @archive
 @limit
 @no_sign_request
+@statsd_setting
 @click.option(
     "--odc-metadata-link",
     default=None,
@@ -307,6 +309,7 @@ def cli(
     allow_unsafe,
     archive,
     limit,
+    statsd_setting,
     no_sign_request,
     odc_metadata_link,
     record_path,
@@ -352,12 +355,21 @@ def cli(
     result_msg = ""
     if update:
         result_msg += f"Updated {success} Dataset(s), "
+        if statsd_setting:
+            statsd_gauge_reporting('sqs_to_dc', success, ["action:update"])
     elif archive:
         result_msg += f"Archived {success} Dataset(s), "
+        if statsd_setting:
+            statsd_gauge_reporting('sqs_to_dc', success, ["action:archive"])
     else:
         result_msg += f"Added {success} Dataset(s), "
+        if statsd_setting:
+            statsd_gauge_reporting('sqs_to_dc', success, ["action:added"])
     result_msg += f"Failed {failed} Dataset(s)"
     print(result_msg)
+
+    if statsd_setting:
+        statsd_gauge_reporting('s3_to_dc', failed, ["action:failed"])
 
     if failed > 0:
         sys.exit(failed)

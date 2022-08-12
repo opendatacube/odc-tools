@@ -9,11 +9,14 @@ from typing import Tuple
 import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+
+
 from odc.aio import S3Fetcher, s3_find_glob
 from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe,
                                      fail_on_missing_lineage,
                                      index_update_dataset, no_sign_request,
                                      request_payer, skip_check, skip_lineage,
+                                     statsd_gauge_reporting, statsd_setting,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
 from ._docs import parse_doc_stream
@@ -75,6 +78,7 @@ def dump_to_odc(
 @allow_unsafe
 @skip_check
 @no_sign_request
+@statsd_setting
 @request_payer
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
@@ -89,6 +93,7 @@ def cli(
     allow_unsafe,
     skip_check,
     no_sign_request,
+    statsd_setting,
     request_payer,
     uri,
     product,
@@ -140,6 +145,9 @@ def cli(
     )
 
     print(f"Added {added} datasets and failed {failed} datasets.")
+    if statsd_setting:
+        statsd_gauge_reporting('s3_to_dc', added, ["action:added"], statsd_setting)
+        statsd_gauge_reporting('s3_to_dc', failed, ["action:failed"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)
