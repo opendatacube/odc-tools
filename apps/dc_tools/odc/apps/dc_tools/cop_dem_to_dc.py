@@ -14,7 +14,10 @@ import rasterio
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
-from odc.apps.dc_tools.utils import bbox, index_update_dataset, limit, update_if_exists
+from odc.apps.dc_tools.utils import (
+    bbox, index_update_dataset, limit, update_if_exists,
+    statsd_gauge_reporting, statsd_setting,
+)
 from rio_stac import create_stac_item
 
 from ._stac import stac_transform
@@ -179,6 +182,7 @@ def cop_dem_to_dc(
 @limit
 @update_if_exists
 @bbox
+@statsd_setting
 @click.option(
     "--product",
     default="cop_30",
@@ -196,7 +200,7 @@ def cop_dem_to_dc(
     type=int,
     help="Number of threads to use to process, default 20",
 )
-def cli(limit, update_if_exists, bbox, product, add_product, workers):
+def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, workers):
     """
     Index the Copernicus DEM automatically.
     """
@@ -217,6 +221,11 @@ def cli(limit, update_if_exists, bbox, product, add_product, workers):
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
+
+    if statsd_setting:
+        statsd_gauge_reporting(added, ["app:cop_dem_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting)
+
 
     if failed > 0:
         sys.exit(failed)

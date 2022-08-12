@@ -31,6 +31,7 @@ dependencies:
   - fsspec
   - lxml # needed for thredds-crawler
   - urlpath
+  - datadog
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
