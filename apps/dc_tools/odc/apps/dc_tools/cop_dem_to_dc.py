@@ -223,8 +223,8 @@ def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, wor
     print(f"Added {added} Datasets, failed {failed} Datasets")
 
     if statsd_setting:
-        statsd_gauge_reporting('cop_dem_to_dc', added, ["action:added"], statsd_setting)
-        statsd_gauge_reporting('cop_dem_to_dc', failed, ["action:failed"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:cop_dem_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting)
 
 
     if failed > 0:

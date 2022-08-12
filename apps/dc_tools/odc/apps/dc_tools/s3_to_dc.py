@@ -146,8 +146,8 @@ def cli(
 
     print(f"Added {added} datasets and failed {failed} datasets.")
     if statsd_setting:
-        statsd_gauge_reporting('s3_to_dc', added, ["action:added"], statsd_setting)
-        statsd_gauge_reporting('s3_to_dc', failed, ["action:failed"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:s3_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:s3_to_dc", "action:failed"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)

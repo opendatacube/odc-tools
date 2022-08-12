@@ -105,5 +105,5 @@ def cli(
 
     print(f"Added {added} Datasets, Failed {failed} Datasets")
     if statsd_setting:
-        statsd_gauge_reporting('thredds_to_dc', added, ["action:added"], statsd_setting)
-        statsd_gauge_reporting('thredds_to_dc', failed, ["action:failed"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:thredds_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:thredds_to_dc", "action:failed"], statsd_setting)

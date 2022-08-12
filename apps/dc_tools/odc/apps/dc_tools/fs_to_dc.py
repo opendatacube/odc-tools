@@ -86,8 +86,8 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, statsd_setting, g
 
     logging.info(f"Added {added} and failed {failed} datasets.")
     if statsd_setting:
-        statsd_gauge_reporting('fs_to_dc', added, ["action:added"], statsd_setting)
-        statsd_gauge_reporting('fs_to_dc', failed, ["action:failed"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:fs_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:fs_to_dc", "action:failed"], statsd_setting)
 
 
 if __name__ == "__main__":

@@ -124,9 +124,9 @@ def cli(csv_path: str, update_if_exists: bool, statsd_setting: str):
 
     print(f"Added: {added}, Updated: {updated} and Failed: {failed}")
     if statsd_setting:
-        statsd_gauge_reporting('add_update_products', added, ["action:added"], statsd_setting)
-        statsd_gauge_reporting('add_update_products', failed, ["action:failed"], statsd_setting)
-        statsd_gauge_reporting('add_update_products', failed, ["action:updated"], statsd_setting)
+        statsd_gauge_reporting(added, ["app: add_update_products", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app: add_update_products", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app: add_update_products", "action:updated"], statsd_setting)
 
     # If nothing failed then this exists with success code 0
     sys.exit(failed)

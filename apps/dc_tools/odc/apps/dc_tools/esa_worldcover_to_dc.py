@@ -217,8 +217,8 @@ def cli(limit, update_if_exists, bbox, add_product, workers, statsd_setting):
     print(f"Added {added} Datasets, failed {failed} Datasets")
 
     if statsd_setting:
-        statsd_gauge_reporting('esa_worldcover_to_dc', added, ["action:added"], statsd_setting)
-        statsd_gauge_reporting('esa_worldcover_to_dc', failed, ["action:failed"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:esa_worldcover_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:esa_worldcover_to_dc", "action:failed"], statsd_setting)
 
 
     if failed > 0:

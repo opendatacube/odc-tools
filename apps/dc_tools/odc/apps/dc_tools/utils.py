@@ -194,7 +194,7 @@ def index_update_dataset(
 
 
 def statsd_gauge_reporting(
-    metrics, value, tags=[],
+    value, tags=[],
     statsd_setting="localhost:8125"
 ):
     host = statsd_setting.split(":")[0]
@@ -207,4 +207,4 @@ def statsd_gauge_reporting(
 
     if os.environ.get("HOSTNAME"):
         tags.append(f"pod:{os.getenv('HOSTNAME')}")
-    statsd.gauge(metrics, value, tags=tags)
+    statsd.gauge('datacube_index', value, tags=tags)

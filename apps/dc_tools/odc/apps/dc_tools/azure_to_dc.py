@@ -118,5 +118,5 @@ def cli(
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
     if statsd_setting:
-        statsd_gauge_reporting('azure_to_dc', added, ["action:added"], statsd_setting)
-        statsd_gauge_reporting('azure_to_dc', failed, ["action:failed"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:azure_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:azure_to_dc", "action:failed"], statsd_setting)

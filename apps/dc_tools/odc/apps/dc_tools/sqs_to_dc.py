@@ -356,20 +356,20 @@ def cli(
     if update:
         result_msg += f"Updated {success} Dataset(s), "
         if statsd_setting:
-            statsd_gauge_reporting('sqs_to_dc', success, ["action:update"])
+            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:update"], statsd_setting)
     elif archive:
         result_msg += f"Archived {success} Dataset(s), "
         if statsd_setting:
-            statsd_gauge_reporting('sqs_to_dc', success, ["action:archive"])
+            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:archive"], statsd_setting)
     else:
         result_msg += f"Added {success} Dataset(s), "
         if statsd_setting:
-            statsd_gauge_reporting('sqs_to_dc', success, ["action:added"])
+            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:added"], statsd_setting)
     result_msg += f"Failed {failed} Dataset(s)"
     print(result_msg)
 
     if statsd_setting:
-        statsd_gauge_reporting('s3_to_dc', failed, ["action:failed"])
+        statsd_gauge_reporting(failed, ["app:sqs_to_dc", "action:failed"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)
