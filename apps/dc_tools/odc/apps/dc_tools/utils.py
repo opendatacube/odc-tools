@@ -26,6 +26,13 @@ class IndexingException(Exception):
     pass
 
 
+class SkippedException(Exception):
+    """
+    Exception to raise for error if dataset exists  and not updating
+    """
+
+    pass
+
 # A whole bunch of generic Click options
 skip_lineage = click.option(
     "--skip-lineage",
@@ -177,6 +184,9 @@ def index_update_dataset(
                         )
                 else:
                     logging.warning("Dataset already exists, not indexing")
+                    raise SkippedException(
+                        "Dataset already exists, not indexing"
+                    )
             else:
                 if update:
                     # We're expecting to update a dataset, but it doesn't exist

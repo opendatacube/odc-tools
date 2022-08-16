@@ -20,7 +20,26 @@ def test_s3_to_dc_yaml(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 25 datasets and failed 0 datasets.\n"
+    assert result.output == "Added 25 datasets, skipped 0 datasets and failed 0 datasets.\n"
+
+
+
+@pytest.mark.depends(on=['add_products'])
+def test_s3_to_dc_yaml_rerun(aws_env):
+    runner = CliRunner()
+    # This will fail if requester pays is enabled
+    result = runner.invoke(
+        cli,
+        [
+            "--statsd-setting",
+            "localhost:8125",
+            "--no-sign-request",
+            "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/**/*.yaml",
+            "cemp_insar_alos_displacement",
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.output == "Added 0 datasets, skipped 25 datasets and failed 0 datasets.\n"
 
 
 @pytest.mark.depends(on=['add_products'])
@@ -39,7 +58,7 @@ def test_s3_to_dc_stac(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 datasets and failed 0 datasets.\n"
+    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
 
 
 @pytest.mark.depends(on=['add_products'])
@@ -59,7 +78,7 @@ def test_s3_to_dc_stac_update_if_exist(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 datasets and failed 0 datasets.\n"
+    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
 
 
 @pytest.mark.depends(on=['add_products'])
@@ -80,4 +99,4 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 datasets and failed 0 datasets.\n"
+    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
