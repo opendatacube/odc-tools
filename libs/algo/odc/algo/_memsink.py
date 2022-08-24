@@ -150,7 +150,8 @@ class _YXBTSink:
 
 class _YXTSink:
     def __init__(
-        self, token_or_key: CacheKey,
+        self,
+        token_or_key: CacheKey,
     ):
         self._tk = token_or_key
 

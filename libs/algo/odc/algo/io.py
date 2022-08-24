@@ -75,6 +75,7 @@ def _load_with_native_transform_1(
     chunks: Optional[Dict[str, int]] = None,
     load_chunks: Optional[Dict[str, int]] = None,
     pad: Optional[int] = None,
+    **kwargs,
 ) -> xr.Dataset:
     if basis is None:
         basis = bands[0]
@@ -100,7 +101,7 @@ def _load_with_native_transform_1(
     if chunks is not None:
         _chunks = tuple(chunks.get(ax, -1) for ax in ("y", "x"))
 
-    return xr_reproject(xx, geobox, chunks=_chunks, resampling=resampling)  # type: ignore
+    return xr_reproject(xx, geobox, chunks=_chunks, resampling=resampling, **kwargs)  # type: ignore
 
 
 def load_with_native_transform(
@@ -140,6 +141,7 @@ def load_with_native_transform(
                 filter or morphological operators on input data.
 
     :param kw: Used to support old names ``dask_chunks`` and ``group_by``
+               also kwargs for reproject
 
     1. Partition datasets by native Projection
     2. For every group do
@@ -153,10 +155,13 @@ def load_with_native_transform(
     if fuser is None:
         fuser = _nodata_fuser
 
+    tmp = kw.pop("group_by", "idx")
     if groupby is None:
-        groupby = kw.get("group_by", "idx")
+        groupby = tmp
+
+    tmp = kw.pop("dask_chunks", None)
     if chunks is None:
-        chunks = kw.get("dask_chunks", None)
+        chunks = tmp
 
     sources = group_by_nothing(list(dss), solar_offset(geobox.extent))
     _xx = [
@@ -172,6 +177,7 @@ def load_with_native_transform(
             chunks=chunks,
             load_chunks=load_chunks,
             pad=pad,
+            **kw,
         )
         for srcs in _split_by_grid(sources)
     ]

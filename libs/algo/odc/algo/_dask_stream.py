@@ -59,7 +59,7 @@ def dask_compute_stream(
 
     data_name = _randomize("data_" + name)
     name = _randomize(name)
-    priority = 2 ** 31
+    priority = 2**31
 
     def feeder(its, lump, q, client):
         for i, x in enumerate(toolz.partition_all(lump, its)):
