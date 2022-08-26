@@ -185,6 +185,7 @@ def queue_to_odc(
 
     ds_success = 0
     ds_failed = 0
+    ds_skipped = 0
 
     region_codes = None
     if region_code_list_uri:
@@ -253,6 +254,7 @@ def queue_to_odc(
                     ds_success += 1
                 else:
                     logging.warning("Found None for metadata and uri, skipping")
+                    ds_skipped += 1
 
             # Success, so delete the message.
             message.delete()
@@ -260,7 +262,7 @@ def queue_to_odc(
             logging.exception(f"Failed to handle message with exception: {err}")
             ds_failed += 1
 
-    return ds_success, ds_failed
+    return ds_success, ds_failed, ds_skipped
 
 
 @click.command("sqs-to-dc")
@@ -333,7 +335,7 @@ def cli(
 
     # Do the thing
     dc = Datacube()
-    success, failed = queue_to_odc(
+    success, failed, skipped = queue_to_odc(
         queue,
         dc,
         candidate_products,
@@ -360,16 +362,17 @@ def cli(
     elif archive:
         result_msg += f"Archived {success} Dataset(s), "
         if statsd_setting:
-            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:archive"], statsd_setting)
+            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:archived"], statsd_setting)
     else:
         result_msg += f"Added {success} Dataset(s), "
         if statsd_setting:
             statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:added"], statsd_setting)
-    result_msg += f"Failed {failed} Dataset(s)"
+    result_msg += f"Failed {failed} Dataset(s), Skipped {skipped} Dataset(s)"
     print(result_msg)
 
     if statsd_setting:
         statsd_gauge_reporting(failed, ["app:sqs_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:sqs_to_dc", "action:skipped"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)
