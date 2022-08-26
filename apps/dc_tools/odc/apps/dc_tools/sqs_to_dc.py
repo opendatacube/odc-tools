@@ -17,7 +17,7 @@ import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
+from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_unsafe, archive,
                                      fail_on_missing_lineage,
                                      index_update_dataset, limit, no_sign_request,
                                      skip_lineage,
@@ -242,16 +242,19 @@ def queue_to_odc(
 
                 # Index the dataset
                 if metadata is not None and uri is not None:
-                    index_update_dataset(
-                        metadata,
-                        uri,
-                        dc,
-                        doc2ds,
-                        update=update,
-                        update_if_exists=update_if_exists,
-                        allow_unsafe=allow_unsafe,
-                    )
-                    ds_success += 1
+                    try:
+                        index_update_dataset(
+                            metadata,
+                            uri,
+                            dc,
+                            doc2ds,
+                            update=update,
+                            update_if_exists=update_if_exists,
+                            allow_unsafe=allow_unsafe,
+                        )
+                        ds_success += 1
+                    except (SkippedException) as e:
+                        ds_skipped += 1
                 else:
                     logging.warning("Found None for metadata and uri, skipping")
                     ds_skipped += 1
