@@ -183,7 +183,7 @@ def cop_dem_to_dc(
                 failure += 1
     sys.stdout.write("\r")
 
-    return success, failure
+    return success, failure, skipped
 
 
 @click.command("cop-dem-to-dc")
@@ -224,15 +224,16 @@ def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, wor
 
     print(f"Indexing Copernicus DEM for {product} with bounding box of {bbox}")
 
-    added, failed = cop_dem_to_dc(
+    added, failed, skipped = cop_dem_to_dc(
         dc, product, bbox, limit, update_if_exists, n_workers=workers
     )
 
-    print(f"Added {added} Datasets, failed {failed} Datasets")
+    print(f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets")
 
     if statsd_setting:
         statsd_gauge_reporting(added, ["app:cop_dem_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:cop_dem_to_dc", "action:skipped"], statsd_setting)
 
 
     if failed > 0:

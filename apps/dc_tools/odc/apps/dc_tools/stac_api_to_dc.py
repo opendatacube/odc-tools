@@ -273,7 +273,7 @@ def cli(
     if statsd_setting:
         statsd_gauge_reporting(added, ["app:stac_api_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(failed, ["app:stac_api_to_dc", "action:failed"], statsd_setting)
-        statsd_gauge_reporting(skipped, ["app:stac_api_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:stac_api_to_dc", "action:skipped"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)
