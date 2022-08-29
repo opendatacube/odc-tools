@@ -1,10 +1,10 @@
 [MASTER]
 ignore-patterns=test_.*py
 
+load-plugins=pylint.extensions.bad_builtin
+
 [MESSAGES CONTROL]
-disable=no-self-use,
-    star-args,
-    duplicate-code,
+disable=duplicate-code,
     unused-argument,
     missing-docstring,
     no-member,
