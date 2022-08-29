@@ -43,14 +43,13 @@ def test_complex_bbox(bbox_africa):
 
 
 # Test the actual process
-@pytest.mark.depends(on='have_db')
-@pytest.mark.depends(on=['add_products'])
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_indexing_cli(bbox, product):
     runner = CliRunner()
     result = runner.invoke(
         cli,
         [
+            "--add-product",
             "--statsd-setting",
             "localhost:8125",
             "--bbox",
@@ -60,3 +59,24 @@ def test_indexing_cli(bbox, product):
         ],
     )
     assert result.exit_code == 0
+    assert "Product definition added for cop_90" in result.output
+    assert "Added 4 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_indexing_cli_repeat(bbox, product):
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "--add-product",
+            "--statsd-setting",
+            "localhost:8125",
+            "--bbox",
+            bbox,
+            "--product",
+            product,
+        ],
+    )
+    assert result.exit_code == 0
+    assert "Product definition added for cop_90" in result.output
+    assert "Added 0 Datasets, failed 0 Datasets, skipped 4 Datasets" in result.output

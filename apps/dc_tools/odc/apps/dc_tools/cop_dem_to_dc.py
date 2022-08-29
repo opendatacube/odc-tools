@@ -122,17 +122,14 @@ def process_uri_tile(
             asset_name="elevation",
         )
 
-    try:
-        index_update_dataset(
-            stac_transform(item.to_dict()),
-            uri,
-            dc,
-            doc2ds,
-            update_if_exists=update_if_exists,
-            allow_unsafe=True,
-        )
-    except (SkippedException) as e:
-        ds_skipped +=1
+    index_update_dataset(
+        stac_transform(item.to_dict()),
+        uri,
+        dc,
+        doc2ds,
+        update_if_exists=update_if_exists,
+        allow_unsafe=True,
+    )
 
     return True
 
