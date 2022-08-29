@@ -15,6 +15,7 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
+    SkippedException,
     bbox, index_update_dataset, limit, update_if_exists,
     statsd_gauge_reporting, statsd_setting,
 )
@@ -151,6 +152,7 @@ def cop_dem_to_dc(
     # Do the indexing of all the things
     success = 0
     failure = 0
+    skipped = 0
 
     sys.stdout.write(f"Starting Cop DEM indexing with {n_workers} workers...\n")
 
@@ -168,6 +170,9 @@ def cop_dem_to_dc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
+            except SkippedException as e:
+                logging.exception(f"{uri} Skipped")
+                skipped += 1
             except rasterio.errors.RasterioIOError:
                 logging.info(f"Couldn't find file for {uri}")
             except Exception as e:
@@ -175,7 +180,7 @@ def cop_dem_to_dc(
                 failure += 1
     sys.stdout.write("\r")
 
-    return success, failure
+    return success, failure, skipped
 
 
 @click.command("cop-dem-to-dc")
@@ -216,15 +221,16 @@ def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, wor
 
     print(f"Indexing Copernicus DEM for {product} with bounding box of {bbox}")
 
-    added, failed = cop_dem_to_dc(
+    added, failed, skipped = cop_dem_to_dc(
         dc, product, bbox, limit, update_if_exists, n_workers=workers
     )
 
-    print(f"Added {added} Datasets, failed {failed} Datasets")
+    print(f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets")
 
     if statsd_setting:
         statsd_gauge_reporting(added, ["app:cop_dem_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:cop_dem_to_dc", "action:skipped"], statsd_setting)
 
 
     if failed > 0:
