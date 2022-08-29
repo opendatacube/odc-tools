@@ -59,7 +59,7 @@ def test_indexing_cli(bbox, product):
         ],
     )
     assert result.exit_code == 0
-    assert "Product definition added for cop_30" in result.output
+    assert f"Product definition added for {product}" in result.output
     assert "Added 4 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
 
 @pytest.mark.parametrize("product", PRODUCTS)
@@ -78,5 +78,5 @@ def test_indexing_cli_repeat(bbox, product):
         ],
     )
     assert result.exit_code == 0
-    assert "Product definition added for cop_30" in result.output
+    assert f"Product definition added for {product}" in result.output
     assert "Added 0 Datasets, failed 0 Datasets, skipped 4 Datasets" in result.output
