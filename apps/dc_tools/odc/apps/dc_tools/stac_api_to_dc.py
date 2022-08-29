@@ -12,6 +12,7 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools.utils import (
     allow_unsafe,
+    SkippedException,
     index_update_dataset,
     limit,
     update_if_exists,
@@ -118,7 +119,6 @@ def process_item(
         allow_unsafe=allow_unsafe,
     )
 
-
 def stac_api_to_odc(
     dc: Datacube,
     update_if_exists: bool,
@@ -144,6 +144,7 @@ def stac_api_to_odc(
     # Do the indexing of all the things
     success = 0
     failure = 0
+    skipped = 0
 
     sys.stdout.write("\rIndexing from STAC API...\n")
     with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
@@ -167,12 +168,15 @@ def stac_api_to_odc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
+            except SkippedException as e:
+                logging.exception(f"{item} Skipped")
+                skipped += 1
             except Exception as e:
                 logging.exception(f"Failed to handle item {item} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 
-    return success, failure
+    return success, failure, skipped
 
 
 @click.command("stac-to-dc")
@@ -261,14 +265,15 @@ def cli(
 
     # Do the thing
     dc = Datacube()
-    added, failed = stac_api_to_odc(
+    added, failed, skipped = stac_api_to_odc(
         dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe, rewrite=rewrite, rename_product=rename_product
     )
 
-    print(f"Added {added} Datasets, failed {failed} Datasets")
+    print(f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets")
     if statsd_setting:
         statsd_gauge_reporting(added, ["app:stac_api_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(failed, ["app:stac_api_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:stac_api_to_dc", "action:failed"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)

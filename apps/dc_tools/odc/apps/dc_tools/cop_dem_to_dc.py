@@ -15,6 +15,7 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
+    SkippedException,
     bbox, index_update_dataset, limit, update_if_exists,
     statsd_gauge_reporting, statsd_setting,
 )
@@ -121,14 +122,17 @@ def process_uri_tile(
             asset_name="elevation",
         )
 
-    index_update_dataset(
-        stac_transform(item.to_dict()),
-        uri,
-        dc,
-        doc2ds,
-        update_if_exists=update_if_exists,
-        allow_unsafe=True,
-    )
+    try:
+        index_update_dataset(
+            stac_transform(item.to_dict()),
+            uri,
+            dc,
+            doc2ds,
+            update_if_exists=update_if_exists,
+            allow_unsafe=True,
+        )
+    except (SkippedException) as e:
+        ds_skipped +=1
 
     return True
 
@@ -151,6 +155,7 @@ def cop_dem_to_dc(
     # Do the indexing of all the things
     success = 0
     failure = 0
+    skipped = 0
 
     sys.stdout.write(f"Starting Cop DEM indexing with {n_workers} workers...\n")
 
@@ -168,6 +173,9 @@ def cop_dem_to_dc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
+            except SkippedException as e:
+                logging.exception(f"{uri} Skipped")
+                skipped += 1
             except rasterio.errors.RasterioIOError:
                 logging.info(f"Couldn't find file for {uri}")
             except Exception as e:
