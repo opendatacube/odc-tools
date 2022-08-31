@@ -57,11 +57,19 @@ def compute_native_load_geobox(
 
 
 def choose_transform_path(
-    src_crs: str, dst_crs: str, transform_code: Optional[str] = None
+    src_crs: str,
+    dst_crs: str,
+    transform_code: Optional[str] = None,
+    area_of_interest: Optional[Sequence[float]] = None,
 ) -> str:
-    # generally it is a bad idea to make aoi global
-    # here is to accommodate the fact that 326xx not overlapping with 3577
-    area_of_interest = aoi.AreaOfInterest(-180.0, -90.0, 180.0, 90)
+    # leave gdal to choose the best option if nothing is specified
+    if transform_code is None and area_of_interest is None:
+        return {}
+
+    if area_of_interest is not None:
+        assert len(area_of_interest) == 4
+        area_of_interest = aoi.AreaOfInterest(*area_of_interest)
+
     transformer_group = transformer.TransformerGroup(
         src_crs, dst_crs, area_of_interest=area_of_interest
     )
@@ -177,7 +185,8 @@ def load_with_native_transform(
 
     :param kw: Used to support old names ``dask_chunks`` and ``group_by``
                also kwargs for reproject ``tranform_code`` in the form of
-               "authority:code", e.g., "epsg:9688"
+               "authority:code", e.g., "epsg:9688", and ``area_of_interest``,
+               e.g., [-180, -90, 180, 90]
 
     1. Partition datasets by native Projection
     2. For every group do
@@ -202,15 +211,14 @@ def load_with_native_transform(
     # fail if the intended transform not available
     # to avoid any unexpected results
     for srcs in _split_by_grid(sources):
-        extra_args = (
-            {
-                "COORDINATE_OPERATION": choose_transform_path(
-                    srcs.crs, geobox.crs, kw.get("transform_code")
-                )
-            }
-            if kw.get("transform_code") is not None
-            else {}
-        )
+        extra_args = {
+            "COORDINATE_OPERATION": choose_transform_path(
+                srcs.crs,
+                geobox.crs,
+                kw.get("transform_code"),
+                kw.get("area_of_interest"),
+            )
+        }
 
         _xx += [
             _load_with_native_transform_1(

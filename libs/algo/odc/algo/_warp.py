@@ -87,6 +87,7 @@ def _reproject_block_bool_impl(
     return dst > 64
 
 
+# pylint: disable=too-many-locals
 def dask_reproject(
     src: da.Array,
     src_geobox: GeoBox,
@@ -105,12 +106,14 @@ def dask_reproject(
     :param src       : Input src[(time,) y,x (, band)]
     :param src_geobox: GeoBox of the source array
     :param dst_geobox: GeoBox of the destination
-    :param resampling: Resampling strategy as a string: nearest, bilinear, average, mode ...
+    :param resampling: Resampling strategy as a string:
+                       nearest, bilinear, average, mode ...
     :param chunks    : In Y,X dimensions only, default is to use same input chunk size
     :param axis      : Index of Y axis (default is 0)
     :param src_nodata: nodata marker for source image
     :param dst_nodata: nodata marker for dst image
     :param name      : Dask graph name, "reproject" is the default
+    :param kwargs: Options given to GDAL as in rasterio.warp
     """
     if chunks is None:
         chunks = src.chunksize[axis : axis + 2]
@@ -128,7 +131,7 @@ def dask_reproject(
     #  tuple(*dims1, y, x, *dims2) -- complete shape in blocks
     dims1 = tuple(map(len, dst_chunks[:axis]))
     dims2 = tuple(map(len, dst_chunks[axis + 2 :]))
-    assert dims2 == ()
+    assert not dims2
     deps = [src]
 
     tile_shape = (yx_chunks[0][0], yx_chunks[1][0])
@@ -197,9 +200,11 @@ def xr_reproject_array(
 
     :param src       : Input src[(time,) y,x (, band)]
     :param geobox    : GeoBox of the destination
-    :param resampling: Resampling strategy as a string: nearest, bilinear, average, mode ...
+    :param resampling: Resampling strategy as a string:
+                       nearest, bilinear, average, mode ...
     :param chunks    : In Y,X dimensions only, default is to use input chunk size
     :param dst_nodata: nodata marker for dst image (default is to use src.nodata)
+    :param kwargs: Options given to GDAL as in rasterio.warp
     """
     src_nodata = getattr(src, "nodata", None)
     if dst_nodata is None:
@@ -253,6 +258,7 @@ def xr_reproject_array(
     return xr.DataArray(data, name=src.name, coords=coords, dims=dst_dims, attrs=attrs)
 
 
+# pylint: enable=too-many-locals
 def xr_reproject(
     src: Union[xr.DataArray, xr.Dataset],
     geobox: GeoBox,
@@ -266,9 +272,12 @@ def xr_reproject(
 
     :param src       : Input src[(time,) y, x]
     :param geobox    : GeoBox of the destination
-    :param resampling: Resampling strategy as a string: nearest, bilinear, average, mode ...
-    :param chunks    : In Y,X dimensions only, default is to use input chunk size (ignored if input is not a dask array)
+    :param resampling: Resampling strategy as a string:
+                       nearest, bilinear, average, mode ...
+    :param chunks    : In Y,X dimensions only, default is to use input chunk size
+                       (ignored if input is not a dask array)
     :param dst_nodata: nodata marker for dst image (default is to use src.nodata)
+    :param kwargs: Options given to GDAL as in rasterio.warp
     """
 
     if isinstance(src, xr.DataArray):
