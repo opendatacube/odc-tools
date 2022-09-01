@@ -506,7 +506,9 @@ def save_cog(
             _creds = get_creds_with_retry(mk_boto_session())
 
             if _creds is None:
-                warnings.warn("Found no credentials locally assuming workers can credentialize")
+                warnings.warn(
+                    "Found no credentials locally assuming workers can credentialize"
+                )
             else:
                 creds = _creds.get_frozen_credentials()
 
