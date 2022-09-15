@@ -33,8 +33,8 @@ def test_choose_transform_path(transform_code, area_of_interest):
     elif transform_code is None:
         assert choose_transform_path(
             src_crs, dst_crs, transform_code, area_of_interest
-        ) == proj_str.get("9688")
+        ) == {"COORDINATE_OPERATION": proj_str.get("9688")}
     else:
         assert choose_transform_path(
             src_crs, dst_crs, transform_code, area_of_interest
-        ) == proj_str.get(transform_code.split(":")[1], "")
+        ) == {"COORDINATE_OPERATION": proj_str.get(transform_code.split(":")[1], "")}

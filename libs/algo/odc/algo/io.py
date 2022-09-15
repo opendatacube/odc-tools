@@ -74,7 +74,7 @@ def choose_transform_path(
         src_crs, dst_crs, area_of_interest=area_of_interest
     )
     if transform_code is None:
-        return transformer_group.transformers[0].to_proj4()
+        return {"COORDINATE_OPERATION": transformer_group.transformers[0].to_proj4()}
     else:
         for t in transformer_group.transformers:
             for step in json.loads(t.to_json()).get("steps", []):
@@ -85,7 +85,7 @@ def choose_transform_path(
                     ) and transform_code.split(":")[1] == str(
                         authority_code.get("code", "")
                     ):
-                        return t.to_proj4()
+                        return {"COORDINATE_OPERATION": t.to_proj4()}
     # raise error if nothing is available
     raise ValueError(f"Not able to find transform path by {transform_code}")
 
@@ -211,14 +211,12 @@ def load_with_native_transform(
     # fail if the intended transform not available
     # to avoid any unexpected results
     for srcs in _split_by_grid(sources):
-        extra_args = {
-            "COORDINATE_OPERATION": choose_transform_path(
-                srcs.crs,
-                geobox.crs,
-                kw.get("transform_code"),
-                kw.get("area_of_interest"),
-            )
-        }
+        extra_args = choose_transform_path(
+            srcs.crs,
+            geobox.crs,
+            kw.get("transform_code"),
+            kw.get("area_of_interest"),
+        )
 
         _xx += [
             _load_with_native_transform_1(
