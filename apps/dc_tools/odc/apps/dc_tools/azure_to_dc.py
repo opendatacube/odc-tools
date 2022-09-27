@@ -79,7 +79,7 @@ def dump_list_to_odc(
               multiple=True)
 @statsd_setting
 @click.argument("account_url", type=str, nargs=1)
-@click.argument("containter_name", type=str, nargs=1)
+@click.argument("container_name", type=str, nargs=1)
 @click.argument("credential", type=str, nargs=1)
 @click.argument("prefix", type=str, nargs=1)
 @click.argument("suffix", type=str, nargs=1)
