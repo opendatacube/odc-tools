@@ -17,6 +17,7 @@ from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
     SkippedException,
     bbox, index_update_dataset, limit, update_if_exists,
+    archive_less_mature,
     statsd_gauge_reporting, statsd_setting,
 )
 from rio_stac import create_stac_item
@@ -102,6 +103,7 @@ def process_uri_tile(
     dc: Datacube,
     doc2ds: Doc2Dataset,
     update_if_exists: bool = True,
+    archive_less_mature: bool = False
 ) -> Tuple[pystac.Item, str]:
     product_name = f"dem_{product}"
     uri, tile = uri_tile
@@ -129,6 +131,7 @@ def process_uri_tile(
         doc2ds,
         update_if_exists=update_if_exists,
         allow_unsafe=True,
+        archive_less_mature=archive_less_mature
     )
 
     return True
@@ -141,6 +144,7 @@ def cop_dem_to_dc(
     limit: int,
     update: bool,
     n_workers: int = 100,
+    archive_less_mature=None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
@@ -159,7 +163,8 @@ def cop_dem_to_dc(
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
             executor.submit(
-                process_uri_tile, uri_tile, product, dc, doc2ds, update_if_exists=update
+                process_uri_tile, uri_tile, product, dc, doc2ds,
+                update_if_exists=update, archive_less_mature=archive_less_mature
             ): uri_tile[0]
             for uri_tile in uris_tiles
         }
@@ -188,6 +193,7 @@ def cop_dem_to_dc(
 @update_if_exists
 @bbox
 @statsd_setting
+@archive_less_mature
 @click.option(
     "--product",
     default="cop_30",
@@ -222,7 +228,7 @@ def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, wor
     print(f"Indexing Copernicus DEM for {product} with bounding box of {bbox}")
 
     added, failed, skipped = cop_dem_to_dc(
-        dc, product, bbox, limit, update_if_exists, n_workers=workers
+        dc, product, bbox, limit, update_if_exists, n_workers=workers, archive_less_mature=archive_less_mature
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets")

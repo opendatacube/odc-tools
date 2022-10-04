@@ -15,7 +15,7 @@ from odc.apps.dc_tools.utils import (
     SkippedException,
     index_update_dataset,
     limit,
-    update_if_exists,
+    archive_less_mature, update_if_exists,
     bbox,
     statsd_gauge_reporting, statsd_setting,
 )
@@ -225,6 +225,7 @@ def stac_api_to_odc(
         "Name of product to overwrite collection(s) names, only one product name can overwrite, despite multiple collections "
     )
 )
+@archive_less_mature
 @statsd_setting
 def cli(
     limit,
@@ -238,6 +239,7 @@ def cli(
     rewrite_assets,
     rename_product,
     statsd_setting,
+    archive_less_mature,
 ):
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -267,7 +269,9 @@ def cli(
     # Do the thing
     dc = Datacube()
     added, failed, skipped = stac_api_to_odc(
-        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe, rewrite=rewrite, rename_product=rename_product
+        dc, update_if_exists, config, catalog_href,
+        allow_unsafe=allow_unsafe, rewrite=rewrite,
+        rename_product=rename_product, archive_less_mature=archive_less_mature,
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets")

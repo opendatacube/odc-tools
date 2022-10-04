@@ -7,6 +7,7 @@ from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools.utils import (
     index_update_dataset,
     update_if_exists,
+    archive_less_mature,
     allow_unsafe,
     transform_stac,
     statsd_gauge_reporting, statsd_setting,
@@ -42,6 +43,7 @@ def _find_files(
 @click.argument("input_directory", type=str, nargs=1)
 @update_if_exists
 @allow_unsafe
+@archive_less_mature
 @transform_stac
 @statsd_setting
 @click.option(
@@ -49,7 +51,7 @@ def _find_files(
     default=None,
     help="File system glob to use, defaults to **/*.yaml or **/*.json for STAC.",
 )
-def cli(input_directory, update_if_exists, allow_unsafe, stac, statsd_setting, glob):
+def cli(input_directory, update_if_exists, allow_unsafe, stac, statsd_setting, glob, archive_less_mature):
 
     dc = datacube.Datacube()
     doc2ds = Doc2Dataset(dc.index)
@@ -78,6 +80,7 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, statsd_setting, g
                     doc2ds=doc2ds,
                     update_if_exists=update_if_exists,
                     allow_unsafe=allow_unsafe,
+                    archive_less_mature=archive_less_mature,
                 )
                 added += 1
             except Exception as e:

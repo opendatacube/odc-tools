@@ -12,7 +12,8 @@ from datacube.index.hl import Doc2Dataset
 
 
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_unsafe,
+from odc.apps.dc_tools.utils import (IndexingException, SkippedException,
+                                     archive_less_mature, allow_unsafe,
                                      fail_on_missing_lineage,
                                      index_update_dataset, no_sign_request,
                                      request_payer, skip_check, skip_lineage,
@@ -48,6 +49,7 @@ def dump_to_odc(
     update=False,
     update_if_exists=False,
     allow_unsafe=False,
+    archive_less_mature=None,
     **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
@@ -59,7 +61,11 @@ def dump_to_odc(
 
     for uri, metadata in uris_docs:
         try:
-            index_update_dataset(metadata, uri, dc, doc2ds, update, update_if_exists, allow_unsafe)
+            index_update_dataset(metadata, uri, dc, doc2ds,
+                                 update=update,
+                                 update_if_exists=update_if_exists,
+                                 allow_unsafe=allow_unsafe,
+                                 archive_less_mature=archive_less_mature)
             ds_added += 1
         except (IndexingException) as e:
             logging.exception(f"Failed to index dataset {uri} with error {e}")
@@ -83,6 +89,7 @@ def dump_to_odc(
 @no_sign_request
 @statsd_setting
 @request_payer
+@archive_less_mature
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -98,6 +105,7 @@ def cli(
     no_sign_request,
     statsd_setting,
     request_payer,
+    archive_less_mature,
     uri,
     product,
 ):
@@ -145,6 +153,7 @@ def cli(
         update=update,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
+        archive_less_mature=archive_less_mature
     )
 
     print(f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets.")
