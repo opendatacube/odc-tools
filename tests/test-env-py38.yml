@@ -35,7 +35,7 @@ dependencies:
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore
+  - aiobotocore==1.4.2
   - boto3
 
   # For tests
