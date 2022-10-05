@@ -85,7 +85,6 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
         ]
     )
     assert result.exit_code == 0
-    assert "Added 1 datasets, skipped 0 datasets and failed 0 datasets." in result.output
     have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
     assert have_nrt and not have_final
 
@@ -101,7 +100,6 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
         ]
     )
     assert result.exit_code == 0
-    assert "Added 1 datasets, skipped 0 datasets and failed 0 datasets." in result.output
     have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
     assert not have_nrt and have_final
 
