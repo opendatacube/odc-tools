@@ -117,7 +117,7 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
         ],
     )
     assert result.exit_code == 1
-    assert result.output == "Added 0 datasets, skipped 1 datasets and failed 0 datasets.\n"
+    assert result.output == "Added 0 datasets, skipped 0 datasets and failed 1 datasets.\n"
 
 
 
@@ -136,4 +136,4 @@ def test_s3_to_dc_index_proc_info_yaml(aws_env):
         ],
     )
     assert result.exit_code == 1
-    assert result.output == "Added 1 datasets, skipped 1 datasets and failed 0 datasets.\n"
+    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 1 datasets.\n"

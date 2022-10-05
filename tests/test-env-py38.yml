@@ -10,7 +10,7 @@ dependencies:
   - python=3.8
 
   # Datacube
-  - datacube>=1.8.6
+  - datacube>=1.8.8
 
   # odc.algo
   - dask-image
@@ -35,7 +35,7 @@ dependencies:
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.4.2
+  - aiobotocore
   - boto3
 
   # For tests
