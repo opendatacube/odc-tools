@@ -66,8 +66,7 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, statsd_setting, g
     for in_file in files_to_process:
         with in_file.open() as f:
             try:
-                str_fn = str(in_file)
-                if str_fn.endswith(".yml") or str_fn.endswith(".yaml"):
+                if in_file.suffix == ".yml" or in_file.suffix == ".yaml":
                     metadata = yaml.safe_load(f, Loader=Loader)
                 else:
                     metadata = json.load(f)
