@@ -18,10 +18,6 @@ import logging
 
 
 import yaml
-try:
-    from yaml import CLoader as Loader
-except ImportError:
-    from yaml import Loader
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -67,7 +63,7 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, statsd_setting, g
         with in_file.open() as f:
             try:
                 if in_file.suffix == ".yml" or in_file.suffix == ".yaml":
-                    metadata = yaml.safe_load(f, Loader=Loader)
+                    metadata = yaml.safe_load(f)
                 else:
                     metadata = json.load(f)
                 # Do the STAC Transform if it's flagged
