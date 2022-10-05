@@ -78,7 +78,7 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
         cli,
         [
             test_data_dir,
-            "--glob=**/ga_ls8c_ard_3-1-0_088080_2020-05-25_nrt.odc-metadata.yaml",
+            "--glob=**/ls8_maturity_nrt.odc-metadata.yaml",
             "--statsd-setting",
             "localhost:8125",
             "--archive-less-mature"
@@ -93,7 +93,7 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
         cli,
         [
             test_data_dir,
-            "--glob=**/ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml",
+            "--glob=**/ls8_maturity_final.odc-metadata.yaml",
             "--statsd-setting",
             "localhost:8125",
             "--archive-less-mature"
