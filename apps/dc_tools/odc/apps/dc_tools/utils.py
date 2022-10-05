@@ -254,11 +254,11 @@ def index_update_dataset(
 
     # Transaction committed : Log actions
     for arch_id in archive_ids:
-        logger.info("Archived less mature dataset: %s", arch_id)
+        logging.info("Archived less mature dataset: %s", arch_id)
     if added:
-        logger.info("New Dataset Added: %s", ds.id)
+        logging.info("New Dataset Added: %s", ds.id)
     if updated:
-        logger.info("Existing Dataset Updated: %s", ds.id)
+        logging.info("Existing Dataset Updated: %s", ds.id)
     return ()
 
 def statsd_gauge_reporting(
