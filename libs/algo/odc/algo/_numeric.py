@@ -62,7 +62,9 @@ def roi_shrink2(idx: NumpyIndex, axis: int = 0) -> NumpyIndex:
                 maybe_half(idx.start), maybe_half(idx.stop), maybe_half(idx.step)
             )
 
-    return idx[:axis] + tuple(_shrink2(i) for i in idx[axis:axis+2]) + idx[axis+2:]
+    return (
+        idx[:axis] + tuple(_shrink2(i) for i in idx[axis : axis + 2]) + idx[axis + 2 :]
+    )
 
 
 def shape_shrink2(shape: Tuple[int, ...], axis: int = 0) -> Tuple[int, ...]:

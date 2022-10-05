@@ -1,10 +1,13 @@
+import os
 import logging
+import click
 
 import pkg_resources
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
-import click
+
+from datadog import statsd, initialize
 
 
 ESRI_LANDCOVER_BASE_URI = (
@@ -22,6 +25,13 @@ class IndexingException(Exception):
 
     pass
 
+
+class SkippedException(Exception):
+    """
+    Exception to raise for error if dataset exists  and not updating
+    """
+
+    pass
 
 # A whole bunch of generic Click options
 skip_lineage = click.option(
@@ -122,6 +132,13 @@ bbox = click.option(
     help="Comma separated list of bounding box coords, lon-min, lat-min, lon-max, lat-max",
 )
 
+statsd_setting = click.option(
+    "--statsd-setting",
+    is_flag=False,
+    default=None,
+    help="statsd exporter hostname and port, i.e. prometheus-statsd-exporter:9125"
+)
+
 
 def get_esri_list():
     stream = pkg_resources.resource_stream(__name__, "esri-lc-tiles-list.txt")
@@ -167,6 +184,9 @@ def index_update_dataset(
                         )
                 else:
                     logging.warning("Dataset already exists, not indexing")
+                    raise SkippedException(
+                        "Dataset already exists, not indexing"
+                    )
             else:
                 if update:
                     # We're expecting to update a dataset, but it doesn't exist
@@ -181,3 +201,20 @@ def index_update_dataset(
             )
     else:
         raise IndexingException("Failed to get URI from metadata doc")
+
+
+def statsd_gauge_reporting(
+    value, tags=[],
+    statsd_setting="localhost:8125"
+):
+    host = statsd_setting.split(":")[0]
+    port = statsd_setting.split(":")[1]
+    options = {
+        'statsd_host': host,
+        'statsd_port': port
+    }
+    initialize(**options)
+
+    if os.environ.get("HOSTNAME"):
+        tags.append(f"pod:{os.getenv('HOSTNAME')}")
+    statsd.gauge('datacube_index', value, tags=tags)

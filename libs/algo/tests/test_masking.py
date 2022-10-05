@@ -12,7 +12,7 @@ from odc.algo._masking import (
     _get_enum_values,
     _enum_to_mask_numexpr,
     _fuse_mean_np,
-    mask_cleanup_np
+    mask_cleanup_np,
 )
 
 
@@ -217,19 +217,23 @@ def test_enum_to_mask_numexpr():
 
 
 def test_fuse_mean_np():
-    data = np.array([
-        [[255, 255], [255, 50]],
-        [[30, 40], [255, 80]],
-        [[25, 52], [255, 98]],
-    ]).astype(np.uint8)
+    data = np.array(
+        [
+            [[255, 255], [255, 50]],
+            [[30, 40], [255, 80]],
+            [[25, 52], [255, 98]],
+        ]
+    ).astype(np.uint8)
 
-    slices = [data[i:i+1] for i in range(data.shape[0])]
+    slices = [data[i : i + 1] for i in range(data.shape[0])]
     out = _fuse_mean_np(*slices, nodata=255)
     assert (out == np.array([[28, 46], [255, 76]])).all()
 
 
 def test_mask_cleanup_np():
-    mask = np.ndarray(shape=(2,2), dtype=bool, buffer=np.array([[True, False], [False, True]]))
+    mask = np.ndarray(
+        shape=(2, 2), dtype=bool, buffer=np.array([[True, False], [False, True]])
+    )
 
     mask_filter_with_opening_dilation = [("opening", 1), ("dilation", 1)]
     result = mask_cleanup_np(mask, mask_filter_with_opening_dilation)

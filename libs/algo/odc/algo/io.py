@@ -12,7 +12,9 @@ from typing import (
     cast,
 )
 
+import json
 import xarray as xr
+from pyproj import aoi, transformer
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.testutils.io import native_geobox
@@ -36,8 +38,10 @@ def compute_native_load_geobox(
 
     :param dst_geobox:
     :param ds: Sample dataset (only resolution and projection is used, not footprint)
-    :param band: Reference band to use (resolution of output GeoBox will match resolution of this band)
-    :param buffer: Buffer in units of CRS of ``ds`` (meters usually), default is 10 pixels worth
+    :param band: Reference band to use
+                 (resolution of output GeoBox will match resolution of this band)
+    :param buffer: Buffer in units of CRS of ``ds`` (meters usually),
+                   default is 10 pixels worth
     """
     native: GeoBox = native_geobox(ds, basis=band)
     if buffer is None:
@@ -52,6 +56,40 @@ def compute_native_load_geobox(
     )
 
 
+def choose_transform_path(
+    src_crs: str,
+    dst_crs: str,
+    transform_code: Optional[str] = None,
+    area_of_interest: Optional[Sequence[float]] = None,
+) -> str:
+    # leave gdal to choose the best option if nothing is specified
+    if transform_code is None and area_of_interest is None:
+        return {}
+
+    if area_of_interest is not None:
+        assert len(area_of_interest) == 4
+        area_of_interest = aoi.AreaOfInterest(*area_of_interest)
+
+    transformer_group = transformer.TransformerGroup(
+        src_crs, dst_crs, area_of_interest=area_of_interest
+    )
+    if transform_code is None:
+        return {"COORDINATE_OPERATION": transformer_group.transformers[0].to_proj4()}
+    else:
+        for t in transformer_group.transformers:
+            for step in json.loads(t.to_json()).get("steps", []):
+                if step.get("type", "") == "Transformation":
+                    authority_code = step.get("id", {})
+                    if transform_code.split(":")[0].upper() in authority_code.get(
+                        "authority", ""
+                    ) and transform_code.split(":")[1] == str(
+                        authority_code.get("code", "")
+                    ):
+                        return {"COORDINATE_OPERATION": t.to_proj4()}
+    # raise error if nothing is available
+    raise ValueError(f"Not able to find transform path by {transform_code}")
+
+
 def _split_by_grid(xx: xr.DataArray) -> List[xr.DataArray]:
     def extract(ii):
         yy = xx[ii]
@@ -63,6 +101,7 @@ def _split_by_grid(xx: xr.DataArray) -> List[xr.DataArray]:
     return [extract(ii) for ii in xx.groupby(xx.grid).groups.values()]
 
 
+# pylint: disable=too-many-arguments, too-many-locals
 def _load_with_native_transform_1(
     sources: xr.DataArray,
     bands: Tuple[str, ...],
@@ -75,6 +114,7 @@ def _load_with_native_transform_1(
     chunks: Optional[Dict[str, int]] = None,
     load_chunks: Optional[Dict[str, int]] = None,
     pad: Optional[int] = None,
+    **kwargs,
 ) -> xr.Dataset:
     if basis is None:
         basis = bands[0]
@@ -100,7 +140,9 @@ def _load_with_native_transform_1(
     if chunks is not None:
         _chunks = tuple(chunks.get(ax, -1) for ax in ("y", "x"))
 
-    return xr_reproject(xx, geobox, chunks=_chunks, resampling=resampling)  # type: ignore
+    return xr_reproject(
+        xx, geobox, chunks=_chunks, resampling=resampling, **kwargs
+    )  # type: ignore
 
 
 def load_with_native_transform(
@@ -123,13 +165,15 @@ def load_with_native_transform(
     :param dss: A list of datasets to load
     :param bands: Which measurements to load
     :param geobox: GeoBox of the final output
-    :param native_transform: ``xr.Dataset -> xr.Dataset`` transform, should support Dask inputs/outputs
+    :param native_transform: ``xr.Dataset -> xr.Dataset`` transform,
+                             should support Dask inputs/outputs
     :param basis: Name of the band to use as a reference for what is "native projection"
     :param groupby: One of 'solar_day'|'time'|'idx'|None
     :param fuser: Optional ``xr.Dataset -> xr.Dataset`` transform
     :param resampling: Any resampling mode supported by GDAL as a string:
                        nearest, bilinear, average, mode, cubic, etc...
-    :param chunks: If set use Dask, must be in dictionary form ``{'x': 4000, 'y': 4000}``
+    :param chunks: If set use Dask, must be in dictionary form
+                   ``{'x': 4000, 'y': 4000}``
 
     :param load_chunks: Defaults to ``chunks`` but can be different if supplied
                         (different chunking for native read vs reproject)
@@ -140,6 +184,9 @@ def load_with_native_transform(
                 filter or morphological operators on input data.
 
     :param kw: Used to support old names ``dask_chunks`` and ``group_by``
+               also kwargs for reproject ``tranform_code`` in the form of
+               "authority:code", e.g., "epsg:9688", and ``area_of_interest``,
+               e.g., [-180, -90, 180, 90]
 
     1. Partition datasets by native Projection
     2. For every group do
@@ -155,26 +202,38 @@ def load_with_native_transform(
 
     if groupby is None:
         groupby = kw.get("group_by", "idx")
+
     if chunks is None:
         chunks = kw.get("dask_chunks", None)
 
     sources = group_by_nothing(list(dss), solar_offset(geobox.extent))
-    _xx = [
-        _load_with_native_transform_1(
-            srcs,
-            tuple(bands),
-            geobox,
-            native_transform,
-            basis=basis,
-            resampling=resampling,
-            groupby=groupby,
-            fuser=fuser,
-            chunks=chunks,
-            load_chunks=load_chunks,
-            pad=pad,
+    _xx = []
+    # fail if the intended transform not available
+    # to avoid any unexpected results
+    for srcs in _split_by_grid(sources):
+        extra_args = choose_transform_path(
+            srcs.crs,
+            geobox.crs,
+            kw.get("transform_code"),
+            kw.get("area_of_interest"),
         )
-        for srcs in _split_by_grid(sources)
-    ]
+
+        _xx += [
+            _load_with_native_transform_1(
+                srcs,
+                tuple(bands),
+                geobox,
+                native_transform,
+                basis=basis,
+                resampling=resampling,
+                groupby=groupby,
+                fuser=fuser,
+                chunks=chunks,
+                load_chunks=load_chunks,
+                pad=pad,
+                **extra_args,
+            )
+        ]
 
     if len(_xx) == 1:
         xx = _xx[0]
@@ -204,7 +263,8 @@ def load_enum_mask(
 
     1. Load each mask time slice separately in native projection of the file
     2. Convert enum to Boolean (F:0, T:255)
-    3. Optionally (groupby='solar_day') group observations on the same day using OR for pixel fusing: T,F->T
+    3. Optionally (groupby='solar_day') group observations on the same day
+       using OR for pixel fusing: T,F->T
     4. Reproject to destination GeoBox (any resampling mode is ok)
     5. Optionally group observations on the same day using OR for pixel fusing T,F->T
     6. Finally convert to real Bool
@@ -263,18 +323,20 @@ def load_enum_filtered(
     :param geobox: GeoBox of the final output
     :param categories: Enum values or names
 
-    :param filters: iterable tuples of morphological operations in the order you want them to perform
-                    e.g. [("opening", 2), ("dilation", 5)]
+    :param filters: iterable tuples of morphological operations in the order
+                    you want them to perform, e.g., [("opening", 2), ("dilation", 5)]
     :param groupby: One of 'solar_day'|'time'|'idx'|None
     :param resampling: Any resampling mode supported by GDAL as a string:
                        nearest, bilinear, average, mode, cubic, etc...
-    :param chunks: If set use Dask, must be in dictionary form ``{'x': 4000, 'y': 4000}``
+    :param chunks: If set use Dask, must be in dictionary form
+                   ``{'x': 4000, 'y': 4000}``
     :param kw: Passed on to ``load_with_native_transform``
 
 
     1. Load each mask time slice separately in native projection of the file
     2. Convert enum to Boolean
-    3. Optionally (groupby='solar_day') group observations on the same day using OR for pixel fusing: T,F->T
+    3. Optionally (groupby='solar_day') group observations on the same day
+       using OR for pixel fusing: T,F->T
     4. Optionally apply ``mask_cleanup`` in native projection (after fusing)
     4. Reproject to destination GeoBox (any resampling mode is ok)
     5. Optionally group observations on the same day using OR for pixel fusing T,F->T

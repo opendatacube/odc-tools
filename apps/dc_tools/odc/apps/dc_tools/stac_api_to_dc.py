@@ -12,10 +12,12 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools.utils import (
     allow_unsafe,
+    SkippedException,
     index_update_dataset,
     limit,
     update_if_exists,
     bbox,
+    statsd_gauge_reporting, statsd_setting,
 )
 from ._stac import stac_transform, stac_transform_absolute
 from pystac.item import Item
@@ -83,10 +85,13 @@ def _guess_location(
 
 
 def item_to_meta_uri(
-    item: Item, rewrite: Optional[Tuple[str, str]] = None
+    item: Item, rewrite: Optional[Tuple[str, str]] = None, rename_product: Optional[str] = None
 ) -> Generator[Tuple[dict, str, bool], None, None]:
     uri, relative = _guess_location(item, rewrite)
     metadata = item.to_dict()
+    if rename_product is not None:
+        metadata["properties"]["odc:product"] = rename_product
+
     if relative:
         metadata = stac_transform(metadata)
     else:
@@ -102,8 +107,9 @@ def process_item(
     update_if_exists: bool,
     allow_unsafe: bool,
     rewrite: Optional[Tuple[str, str]] = None,
+    rename_product: Optional[str] = None,
 ):
-    meta, uri = item_to_meta_uri(item, rewrite)
+    meta, uri = item_to_meta_uri(item, rewrite, rename_product)
     index_update_dataset(
         meta,
         uri,
@@ -113,7 +119,6 @@ def process_item(
         allow_unsafe=allow_unsafe,
     )
 
-
 def stac_api_to_odc(
     dc: Datacube,
     update_if_exists: bool,
@@ -121,6 +126,7 @@ def stac_api_to_odc(
     catalog_href: str,
     allow_unsafe: bool = True,
     rewrite: Optional[Tuple[str, str]] = None,
+    rename_product: Optional[str] = None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
@@ -138,6 +144,7 @@ def stac_api_to_odc(
     # Do the indexing of all the things
     success = 0
     failure = 0
+    skipped = 0
 
     sys.stdout.write("\rIndexing from STAC API...\n")
     with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
@@ -150,6 +157,7 @@ def stac_api_to_odc(
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
                 rewrite=rewrite,
+                rename_product=rename_product,
             ): item.id
             for item in search.get_all_items()
         }
@@ -160,12 +168,15 @@ def stac_api_to_odc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
+            except SkippedException as e:
+                logging.exception(f"{item} Skipped")
+                skipped += 1
             except Exception as e:
                 logging.exception(f"Failed to handle item {item} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 
-    return success, failure
+    return success, failure, skipped
 
 
 @click.command("stac-to-dc")
@@ -206,6 +217,15 @@ def stac_api_to_odc(
         "HTTPS to S3 URIs, --rewrite-assets=https://example.com/,s3://"
     )
 )
+@click.option(
+    "--rename-product",
+    type=str,
+    default=None,
+    help=(
+        "Name of product to overwrite collection(s) names, only one product name can overwrite, despite multiple collections "
+    )
+)
+@statsd_setting
 def cli(
     limit,
     update_if_exists,
@@ -216,6 +236,8 @@ def cli(
     datetime,
     options,
     rewrite_assets,
+    rename_product,
+    statsd_setting,
 ):
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -233,8 +255,9 @@ def cli(
     if datetime:
         config["datetime"] = datetime
 
-    if limit is not None:
-        config["max_items"] = limit
+    # Always set the limit, because some APIs will stop at an arbitrary
+    # number if max_items is not None.
+    config["max_items"] = limit
 
     if rewrite_assets is not None:
         rewrite = list(rewrite_assets.split(","))
@@ -243,11 +266,15 @@ def cli(
 
     # Do the thing
     dc = Datacube()
-    added, failed = stac_api_to_odc(
-        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe, rewrite=rewrite
+    added, failed, skipped = stac_api_to_odc(
+        dc, update_if_exists, config, catalog_href, allow_unsafe=allow_unsafe, rewrite=rewrite, rename_product=rename_product
     )
 
-    print(f"Added {added} Datasets, failed {failed} Datasets")
+    print(f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets")
+    if statsd_setting:
+        statsd_gauge_reporting(added, ["app:stac_api_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:stac_api_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:stac_api_to_dc", "action:skipped"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)

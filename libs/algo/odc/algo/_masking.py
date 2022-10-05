@@ -42,7 +42,8 @@ def keep_good_np(xx, where, nodata, out=None):
 def keep_good_only(x, where, inplace=False, nodata=None):
     """Return a copy of x, but with some pixels replaced with `nodata`.
 
-    This function can work on dask arrays, in which case output will be a dask array as well.
+    This function can work on dask arrays,
+    in which case output will be a dask array as well.
 
     If x is a Dataset then operation will be applied to all data variables.
 
@@ -103,12 +104,14 @@ def erase_bad(x, where, inplace=False, nodata=None):
     """
     Return a copy of x, but with some pixels replaced with `nodata`.
 
-    This function can work on dask arrays, in which case output will be a dask array as well.
+    This function can work on dask arrays,
+    in which case output will be a dask array as well.
 
     If x is a Dataset then operation will be applied to all data variables.
 
     :param x: xarray.DataArray with `nodata` property
-    :param where: xarray.DataArray<bool> True -- replace with `x.nodata` False -- keep as it were
+    :param where: xarray.DataArray<bool> True -- replace with `x.nodata`
+                  False -- keep as it were
     :param inplace: Modify pixels in x directly, not valid for dask arrays.
 
     For every pixel of x[idx], output is:
@@ -300,9 +303,8 @@ def _get_enum_values(
 
     if len(flags_definition) > 1:
         raise ValueError("Can not find flags definitions that match query")
-    else:
-        unmatched_human = ",".join(f'"{name}"' for name in unmatched)
-        raise ValueError(f"Not all enumeration names were found: {unmatched_human}")
+    unmatched_human = ",".join(f'"{name}"' for name in unmatched)
+    raise ValueError(f"Not all enumeration names were found: {unmatched_human}")
 
 
 def _mk_ne_isin_condition(
@@ -336,6 +338,7 @@ def _enum_to_mask_numexpr(
     return out
 
 
+# pylint: disable=import-outside-toplevel
 def _disk(r: int, ndim: int = 2) -> np.ndarray:
     from skimage.morphology import disk
 
@@ -390,7 +393,7 @@ def binary_closing(xx: xr.DataArray, radius: int = 1, **kw) -> xr.DataArray:
 
 def mask_cleanup_np(
     mask: np.ndarray,
-    mask_filters: Iterable[Tuple[str, int]] = [("opening", 2), ("dilation", 5)],
+    mask_filters: Iterable[Tuple[str, int]] = None,
 ) -> np.ndarray:
     """
     Apply morphological operations on given binary mask.
@@ -409,6 +412,9 @@ def mask_cleanup_np(
         erosion=morph.binary_erosion,
     )
 
+    mask_filters = (
+        [("opening", 2), ("dilation", 5)] if mask_filters is None else mask_filters
+    )
     for operation, radius in mask_filters:
         op = ops.get(operation, None)
         if op is None:
@@ -418,6 +424,7 @@ def mask_cleanup_np(
     return mask
 
 
+# pylint: enable=import-outside-toplevel
 def _compute_overlap_depth(r: Iterable[int], ndim: int) -> Tuple[int, ...]:
     _r = max(r)
     return (0,) * (ndim - 2) + (_r, _r)
@@ -425,7 +432,7 @@ def _compute_overlap_depth(r: Iterable[int], ndim: int) -> Tuple[int, ...]:
 
 def mask_cleanup(
     mask: xr.DataArray,
-    mask_filters: Iterable[Tuple[str, int]] = [("opening", 2), ("dilation", 5)],
+    mask_filters: Iterable[Tuple[str, int]] = None,
     name: Optional[str] = None,
 ) -> xr.DataArray:
     """
@@ -436,8 +443,9 @@ def mask_cleanup(
     Default mask_filters value is bit-equivalent to ``mask |> opening |> dilation``.
 
     :param mask: Binary image to process
-    :param mask_filters: iterable tuples of morphological operations - ("<operation>", <radius>) - to apply on mask, where
-        operation: string, can be one of this morphological operations -
+    :param mask_filters: iterable tuples of morphological operations -
+                ("<operation>", <radius>) - to apply on mask, where
+                operation: string, can be one of this morphological operations -
                 closing  = remove small holes in cloud - morphological closing
                 opening  = shrinks away small areas of the mask
                 dilation = adds padding to the mask
@@ -446,6 +454,11 @@ def mask_cleanup(
     :param name: Used when building Dask graphs
     """
     data = mask.data
+
+    mask_filters = (
+        [("opening", 2), ("dilation", 5)] if mask_filters is None else mask_filters
+    )
+
     if dask.is_dask_collection(data):
         rr = [radius for _, radius in mask_filters]
         depth = _compute_overlap_depth(rr, data.ndim)
@@ -652,7 +665,7 @@ def _da_fuse_with_custom_op(xx: da.Array, op, name="fuse") -> da.Array:
     Out[0, y, x] = op(In[0:1, y, x], In[1:2, y, x], In[2:3, y, x]...)
 
     """
-    can_do_flat = all([ch == 1 for ch in xx.chunks[0]])
+    can_do_flat = all(ch == 1 for ch in xx.chunks[0])
     if not can_do_flat:
         slices = [xx[i : i + 1] for i in range(xx.shape[0])]
         return da.map_blocks(op, *slices, name=name)
@@ -683,7 +696,7 @@ def _fuse_with_custom_op(x: xr.DataArray, op, name="fuse") -> xr.DataArray:
         slices = [x.data[i : i + 1] for i in range(x.shape[0])]
         data = op(*slices)
 
-    coords = {k: v for k, v in x.coords.items()}
+    coords = dict(x.coords.items())
     coords[x.dims[0]] = x.coords[x.dims[0]][0:1]
 
     return xr.DataArray(data, attrs=x.attrs, dims=x.dims, coords=coords, name=x.name)
@@ -762,6 +775,7 @@ def _fuse_mean_np(*aa, nodata):
         count += a != nodata
 
     out -= (len(aa) - count) * nodata
-    out = np.round(out / count).astype(aa[0].dtype)
-    out[count == 0] = nodata
+    with np.errstate(divide="ignore", invalid="ignore"):
+        out = np.round(out / count).astype(aa[0].dtype)
+        out[count == 0] = nodata
     return out

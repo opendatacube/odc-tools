@@ -57,6 +57,8 @@ def test_add_products(local_csv):
         [
             local_csv,
             "--update-if-exists",
+            "--statsd-setting",
+            "localhost:8125",
         ],
     )
     assert result.exit_code == 0

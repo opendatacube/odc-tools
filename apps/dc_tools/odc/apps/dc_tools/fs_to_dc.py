@@ -9,6 +9,7 @@ from odc.apps.dc_tools.utils import (
     update_if_exists,
     allow_unsafe,
     transform_stac,
+    statsd_gauge_reporting, statsd_setting,
 )
 from ._stac import stac_transform
 from typing import Generator, Optional
@@ -42,12 +43,13 @@ def _find_files(
 @update_if_exists
 @allow_unsafe
 @transform_stac
+@statsd_setting
 @click.option(
     "--glob",
     default=None,
     help="File system glob to use, defaults to **/*.yaml or **/*.json for STAC.",
 )
-def cli(input_directory, update_if_exists, allow_unsafe, stac, glob):
+def cli(input_directory, update_if_exists, allow_unsafe, stac, statsd_setting, glob):
 
     dc = datacube.Datacube()
     doc2ds = Doc2Dataset(dc.index)
@@ -83,6 +85,9 @@ def cli(input_directory, update_if_exists, allow_unsafe, stac, glob):
                 failed += 1
 
     logging.info(f"Added {added} and failed {failed} datasets.")
+    if statsd_setting:
+        statsd_gauge_reporting(added, ["app:fs_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:fs_to_dc", "action:failed"], statsd_setting)
 
 
 if __name__ == "__main__":

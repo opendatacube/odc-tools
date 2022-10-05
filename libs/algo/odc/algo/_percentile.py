@@ -20,14 +20,14 @@ def np_percentile(xx, percentile, nodata):
     valid_counts = mask.sum(axis=0)
 
     xx = np.sort(xx, axis=0)
-    
+
     indices = np.round(percentile * (valid_counts - 1))
     if not high:
-        indices += (xx.shape[0] - valid_counts)
+        indices += xx.shape[0] - valid_counts
         indices[valid_counts == 0] = 0
 
     indices = indices.astype(np.int64).flatten()
-    step = (xx.size // xx.shape[0])
+    step = xx.size // xx.shape[0]
     indices = step * indices + np.arange(len(indices))
 
     xx = xx.take(indices).reshape(xx.shape[1:])
@@ -57,28 +57,28 @@ def xr_quantile_bands(
 
     data_vars = {}
     for band, xx in src.data_vars.items():
-       
+
         xx_data = xx.data
 
         if dask.is_dask_collection(xx_data):
             if len(xx.chunks[0]) > 1:
                 xx_data = xx_data.rechunk({0: -1})
-        
+
         tk = tokenize(xx_data, quantiles, nodata)
         for quantile in quantiles:
             name = f"{band}_pc_{int(100 * quantile)}"
             if dask.is_dask_collection(xx_data):
                 yy = da.map_blocks(
-                    partial(np_percentile, percentile=quantile, nodata=nodata), 
-                    xx_data, 
-                    drop_axis=0, 
+                    partial(np_percentile, percentile=quantile, nodata=nodata),
+                    xx_data,
+                    drop_axis=0,
                     meta=np.array([], dtype=xx.dtype),
                     name=f"{name}-{tk}",
                 )
             else:
                 yy = np_percentile(xx_data, percentile=quantile, nodata=nodata)
             data_vars[name] = xr.DataArray(yy, dims=xx.dims[1:], attrs=xx.attrs)
-            
+
     coords = dict((dim, src.coords[dim]) for dim in xx.dims[1:])
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=src.attrs)
 
@@ -105,23 +105,23 @@ def xr_quantile(
 
     data_vars = {}
     for band, xx in src.data_vars.items():
-       
+
         xx_data = xx.data
-        out_dims = ('quantile',) + xx.dims[1:]
+        out_dims = ("quantile",) + xx.dims[1:]
 
         if dask.is_dask_collection(xx_data):
             if len(xx.chunks[0]) > 1:
                 xx_data = xx_data.rechunk({0: -1})
-        
+
         tk = tokenize(xx_data, quantiles, nodata)
         data = []
         for quantile in quantiles:
             name = f"{band}_pc_{int(100 * quantile)}"
             if dask.is_dask_collection(xx_data):
                 yy = da.map_blocks(
-                    partial(np_percentile, percentile=quantile, nodata=nodata), 
-                    xx_data, 
-                    drop_axis=0, 
+                    partial(np_percentile, percentile=quantile, nodata=nodata),
+                    xx_data,
+                    drop_axis=0,
                     meta=np.array([], dtype=xx.dtype),
                     name=f"{name}-{tk}",
                 )
@@ -135,5 +135,5 @@ def xr_quantile(
             data_vars[band] = (out_dims, np.stack(data, axis=0))
 
     coords = dict((dim, src.coords[dim]) for dim in xx.dims[1:])
-    coords['quantile'] = np.array(quantiles)
+    coords["quantile"] = np.array(quantiles)
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=src.attrs)

@@ -60,6 +60,10 @@ def test_indexing_cli(bbox):
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ["--bbox", bbox],
+        [
+            "--bbox", bbox,
+            "--statsd-setting",
+            "localhost:8125",
+        ],
     )
     assert result.exit_code == 0

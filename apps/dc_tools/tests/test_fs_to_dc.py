@@ -22,7 +22,7 @@ def test_find_json(test_data_dir):
     # Search for JSON files
     files = [str(x) for x in _find_files(test_data_dir, stac=True)]
 
-    assert len(files) == 9
+    assert len(files) == 8
     assert (
         str(
             Path(test_data_dir)
@@ -44,7 +44,13 @@ def test_fs_to_fc_yaml(test_data_dir):
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        [test_data_dir, "--stac", "--glob=**/NASADEM_HGT_s56w072.stac-item.json"],
+        [
+            test_data_dir,
+            "--stac",
+            "--glob=**/NASADEM_HGT_s56w072.stac-item.json",
+            "--statsd-setting",
+            "localhost:8125",
+        ],
     )
     assert result.exit_code == 0
 

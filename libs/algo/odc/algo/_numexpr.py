@@ -107,7 +107,7 @@ def apply_numexpr(
         # Passing through dictionary of Dask Arrays didn't work, so we have
         # adaptor that accepts var args in the form of [k0,v0,  k1,v1, ...] and then reconstructs dict
         data = da.map_blocks(
-            lambda op, *bands : op(unflatten_kv(bands)),
+            lambda op, *bands: op(unflatten_kv(bands)),
             op,
             *flatten_kv(bands),
             name=randomize(name),
@@ -125,7 +125,7 @@ def apply_numexpr(
     )
 
 
-def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype='float32') -> xr.DataArray:
+def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype="float32") -> xr.DataArray:
     """
     Compute ``x1.astype(dtype)/x2.astype(dtype)`` taking care of cases where x2==0.
 
@@ -141,8 +141,10 @@ def safe_div(x1: xr.DataArray, x2: xr.DataArray, dtype='float32') -> xr.DataArra
     dtype = np.dtype(dtype)
 
     # TODO: support nodata on input
-    return apply_numexpr("where(x2 == 0, nan, (_1f * x1) / x2)",
-                         xr.Dataset(dict(x1=x1, x2=x2)),
-                         dtype=dtype,
-                         nan=dtype.type("nan"),
-                         _1f=dtype.type(1))
+    return apply_numexpr(
+        "where(x2 == 0, nan, (_1f * x1) / x2)",
+        xr.Dataset(dict(x1=x1, x2=x2)),
+        dtype=dtype,
+        nan=dtype.type("nan"),
+        _1f=dtype.type(1),
+    )

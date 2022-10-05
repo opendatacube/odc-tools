@@ -9,11 +9,14 @@ from typing import Tuple
 import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+
+
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe,
+from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_unsafe,
                                      fail_on_missing_lineage,
                                      index_update_dataset, no_sign_request,
                                      request_payer, skip_check, skip_lineage,
+                                     statsd_gauge_reporting, statsd_setting,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
 from ._docs import parse_doc_stream
@@ -51,6 +54,7 @@ def dump_to_odc(
 
     ds_added = 0
     ds_failed = 0
+    ds_skipped = 0
     uris_docs = parse_doc_stream(stream_docs(document_stream), on_error=doc_error, transform=transform)
 
     for uri, metadata in uris_docs:
@@ -60,8 +64,10 @@ def dump_to_odc(
         except (IndexingException) as e:
             logging.exception(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
+        except (SkippedException) as e:
+            ds_skipped +=1
 
-    return ds_added, ds_failed
+    return ds_added, ds_failed, ds_skipped
 
 
 @click.command("s3-to-dc")
@@ -75,6 +81,7 @@ def dump_to_odc(
 @allow_unsafe
 @skip_check
 @no_sign_request
+@statsd_setting
 @request_payer
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
@@ -89,6 +96,7 @@ def cli(
     allow_unsafe,
     skip_check,
     no_sign_request,
+    statsd_setting,
     request_payer,
     uri,
     product,
@@ -126,7 +134,7 @@ def cli(
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
 
-    added, failed = dump_to_odc(
+    added, failed, skipped = dump_to_odc(
         fetcher(document_stream),
         dc,
         candidate_products,
@@ -139,7 +147,11 @@ def cli(
         allow_unsafe=allow_unsafe,
     )
 
-    print(f"Added {added} datasets and failed {failed} datasets.")
+    print(f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets.")
+    if statsd_setting:
+        statsd_gauge_reporting(added, ["app:s3_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:s3_to_dc", "action:skipped"], statsd_setting)
+        statsd_gauge_reporting(failed, ["app:s3_to_dc", "action:failed"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)

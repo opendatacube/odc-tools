@@ -16,9 +16,31 @@ def test_stac_to_dc_earthsearch():
             "--limit=10",
             "--collections=sentinel-s2-l2a-cogs",
             "--datetime=2020-08-01/2020-08-31",
+            "--statsd-setting",
+            "localhost:8125",
         ],
     )
     assert result.exit_code == 0
+    assert "Added 10 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
+
+
+@pytest.mark.depends(on=['add_products'])
+def test_stac_to_dc_earthsearch_rerun():
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "--catalog-href=https://earth-search.aws.element84.com/v0/",
+            "--bbox=5,15,10,20",
+            "--limit=10",
+            "--collections=sentinel-s2-l2a-cogs",
+            "--datetime=2020-08-01/2020-08-31",
+            "--statsd-setting",
+            "localhost:8125",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "Added 0 Datasets, failed 0 Datasets, skipped 10 Datasets" in result.output
 
 
 @pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
@@ -33,6 +55,8 @@ def test_stac_to_dc_usgs():
             "--limit=10",
             "--collections=landsat-c2l2-sr",
             "--datetime=2020-08-01/2020-08-31",
+            "--statsd-setting",
+            "localhost:8125",
         ],
     )
     assert result.exit_code == 0
@@ -48,6 +72,8 @@ def test_stac_to_dc_planetarycomputer():
             f"--catalog-href={MICROSOFT_PC_STAC_URI}",
             "--limit=1",
             "--collections=nasadem",
+            "--statsd-setting",
+            "localhost:8125",
         ],
     )
     assert result.exit_code == 0

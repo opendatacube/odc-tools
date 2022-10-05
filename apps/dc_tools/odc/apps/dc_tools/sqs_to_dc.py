@@ -9,21 +9,25 @@ from pathlib import PurePath
 from typing import Tuple
 
 import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
 import click
 import pandas as pd
 import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from odc.apps.dc_tools.utils import (IndexingException, allow_unsafe, archive,
+from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_unsafe, archive,
                                      fail_on_missing_lineage,
-                                     index_update_dataset, limit, skip_lineage,
+                                     index_update_dataset, limit, no_sign_request,
+                                     skip_lineage,
+                                     statsd_setting, statsd_gauge_reporting,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
 from ._stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
-from yaml import load
+from yaml import safe_load
 
 # Added log handler
 logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
@@ -79,7 +83,7 @@ def handle_json_message(metadata, transform, odc_metadata_link):
 
 
 def handle_bucket_notification_message(
-    message, metadata: dict, record_path: tuple
+    message, metadata: dict, record_path: tuple, no_sign_request: bool = False
 ) -> Tuple[dict, str]:
     """[summary]
 
@@ -123,10 +127,16 @@ def handle_bucket_notification_message(
             # We have enough information to proceed, get the key and extract
             # the contents...
             try:
-                s3 = boto3.resource("s3")
-                obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
-                data = load(obj["Body"].read())
                 uri = f"s3://{bucket_name}/{key}"
+                if no_sign_request:
+                    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+                    data = s3.get_object(Bucket=bucket_name, Key=key)
+                    contents = data['Body'].read()
+                    data = safe_load(contents.decode("utf-8"))
+                else:
+                    s3 = boto3.resource("s3")
+                    obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
+                    data = safe_load(obj["Body"].read())
             except Exception as e:
                 raise IndexingException(
                     f"Exception thrown when trying to load s3 object: {e}"
@@ -165,6 +175,7 @@ def queue_to_odc(
     limit=None,
     update=False,
     update_if_exists=False,
+    no_sign_request=False,
     archive=False,
     allow_unsafe=False,
     odc_metadata_link=False,
@@ -174,6 +185,7 @@ def queue_to_odc(
 
     ds_success = 0
     ds_failed = 0
+    ds_skipped = 0
 
     region_codes = None
     if region_code_list_uri:
@@ -211,7 +223,7 @@ def queue_to_odc(
                     # Extract metadata from an S3 bucket notification
                     # or similar for indexing
                     metadata, uri = handle_bucket_notification_message(
-                        message, metadata, record_path
+                        message, metadata, record_path, no_sign_request=no_sign_request
                     )
 
                 # If we have a region_code filter, do it here
@@ -230,18 +242,22 @@ def queue_to_odc(
 
                 # Index the dataset
                 if metadata is not None and uri is not None:
-                    index_update_dataset(
-                        metadata,
-                        uri,
-                        dc,
-                        doc2ds,
-                        update=update,
-                        update_if_exists=update_if_exists,
-                        allow_unsafe=allow_unsafe,
-                    )
-                    ds_success += 1
+                    try:
+                        index_update_dataset(
+                            metadata,
+                            uri,
+                            dc,
+                            doc2ds,
+                            update=update,
+                            update_if_exists=update_if_exists,
+                            allow_unsafe=allow_unsafe,
+                        )
+                        ds_success += 1
+                    except (SkippedException) as e:
+                        ds_skipped += 1
                 else:
                     logging.warning("Found None for metadata and uri, skipping")
+                    ds_skipped += 1
 
             # Success, so delete the message.
             message.delete()
@@ -249,7 +265,7 @@ def queue_to_odc(
             logging.exception(f"Failed to handle message with exception: {err}")
             ds_failed += 1
 
-    return ds_success, ds_failed
+    return ds_success, ds_failed, ds_skipped
 
 
 @click.command("sqs-to-dc")
@@ -263,6 +279,8 @@ def queue_to_odc(
 @allow_unsafe
 @archive
 @limit
+@no_sign_request
+@statsd_setting
 @click.option(
     "--odc-metadata-link",
     default=None,
@@ -296,6 +314,8 @@ def cli(
     allow_unsafe,
     archive,
     limit,
+    statsd_setting,
+    no_sign_request,
     odc_metadata_link,
     record_path,
     region_code_list_uri,
@@ -318,7 +338,7 @@ def cli(
 
     # Do the thing
     dc = Datacube()
-    success, failed = queue_to_odc(
+    success, failed, skipped = queue_to_odc(
         queue,
         dc,
         candidate_products,
@@ -328,6 +348,7 @@ def cli(
         transform=transform,
         limit=limit,
         update=update,
+        no_sign_request=no_sign_request,
         update_if_exists=update_if_exists,
         archive=archive,
         allow_unsafe=allow_unsafe,
@@ -339,12 +360,22 @@ def cli(
     result_msg = ""
     if update:
         result_msg += f"Updated {success} Dataset(s), "
+        if statsd_setting:
+            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:update"], statsd_setting)
     elif archive:
         result_msg += f"Archived {success} Dataset(s), "
+        if statsd_setting:
+            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:archived"], statsd_setting)
     else:
         result_msg += f"Added {success} Dataset(s), "
-    result_msg += f"Failed {failed} Dataset(s)"
+        if statsd_setting:
+            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:added"], statsd_setting)
+    result_msg += f"Failed {failed} Dataset(s), Skipped {skipped} Dataset(s)"
     print(result_msg)
+
+    if statsd_setting:
+        statsd_gauge_reporting(failed, ["app:sqs_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(skipped, ["app:sqs_to_dc", "action:skipped"], statsd_setting)
 
     if failed > 0:
         sys.exit(failed)
