@@ -7,3 +7,4 @@ dem_cop_30,https://raw.githubusercontent.com/opendatacube/datacube-dataset-confi
 dem_cop_90,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/dem_cop_90.odc-product.yaml
 io_lulc,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/io_lulc.odc-product.yaml
 esa_worldcover,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/esa_worldcover.odc-product.yaml
+ga_ls5t_nbart_gm_cyear_3,https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/414c7bb065d15e838679c309285137f15cfb885c/products/baseline_satellite_data/geomedian-au/ga_ls5t_nbart_gm_cyear_3.yaml
