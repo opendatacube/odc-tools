@@ -211,7 +211,7 @@ def cop_dem_to_dc(
     type=int,
     help="Number of threads to use to process, default 20",
 )
-def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, workers):
+def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, workers, archive_less_mature):
     """
     Index the Copernicus DEM automatically.
     """

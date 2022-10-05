@@ -108,6 +108,7 @@ def process_item(
     allow_unsafe: bool,
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
+    archive_less_mature: bool = False,
 ):
     meta, uri = item_to_meta_uri(item, rewrite, rename_product)
     index_update_dataset(
@@ -117,6 +118,7 @@ def process_item(
         doc2ds,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
+        archive_less_mature=archive_less_mature
     )
 
 def stac_api_to_odc(
@@ -127,6 +129,7 @@ def stac_api_to_odc(
     allow_unsafe: bool = True,
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
+    archive_less_mature: bool = False,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
@@ -158,6 +161,7 @@ def stac_api_to_odc(
                 allow_unsafe=allow_unsafe,
                 rewrite=rewrite,
                 rename_product=rename_product,
+                archive_less_mature=archive_less_mature
             ): item.id
             for item in search.get_all_items()
         }
