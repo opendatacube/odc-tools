@@ -12,7 +12,7 @@ def test_find_yamls(test_data_dir):
     # Default is to find YAML files
     files = [str(x) for x in _find_files(test_data_dir)]
 
-    assert len(files) == 3
+    assert len(files) == 4
     assert str(
         Path(test_data_dir)
         / "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.sqs.yaml"
@@ -85,8 +85,8 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
         ]
     )
     assert result.exit_code == 0
-    have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
-    assert have_nrt and not have_final
+    assert dc.index.datasets.get(final_dsid) is None
+    assert dc.index.datasets.get(nrt_dsid).archived_time is None
 
     # Index Final dataset (autoarchiving NRT)
     result = runner.invoke(
@@ -100,8 +100,8 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
         ]
     )
     assert result.exit_code == 0
-    have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
-    assert not have_nrt and have_final
+    assert dc.index.datasets.get(final_dsid).archived_time is not None
+    assert dc.index.datasets.get(nrt_dsid).archived_time is None
 
 
 @pytest.fixture
