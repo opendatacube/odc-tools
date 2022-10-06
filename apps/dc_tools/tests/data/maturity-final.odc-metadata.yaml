@@ -1,0 +1,69 @@
+---
+# Dataset
+# url: https://explorer.dea.ga.gov.au/dataset/9f27a15e-3cdf-4e3f-a58e-dd624b2c3bef.odc-metadata.yaml
+$schema: https://schemas.opendatacube.org/dataset
+id: 9f27a15e-3cdf-4e3f-a58e-dd624b2c3bef
+
+label: ga_ls5t_nbart_gm_cyear_3_x33y24_1990-01-01_final
+product:
+  href: https://collections.dea.ga.gov.au/product/ga_ls5t_nbart_gm_cyear_3
+  name: ga_ls5t_nbart_gm_cyear_3
+
+crs: epsg:3577
+geometry:
+  type: Polygon
+  coordinates: [[[4.8e+05, -3.072e+06], [4.8e+05, -3.168e+06], [5.76e+05, -3.168e+06],
+      [5.76e+05, -3.072e+06], [4.8e+05, -3.072e+06]]]
+grids:
+  default:
+    shape: [3200, 3200]
+    transform: [3.e+01, 0.e+00, 4.8e+05, 0.e+00, -3.e+01, -3.072e+06, 0.e+00, 0.e+00,
+      1.e+00]
+
+properties:
+  datetime: '1990-01-01 00:00:00Z'
+  dea:dataset_maturity: final
+  dtr:end_datetime: '1990-12-31 23:59:59.999999Z'
+  dtr:start_datetime: '1990-01-01 00:00:00Z'
+  eo:gsd: 3.e+01  # Ground sample distance (m)
+  eo:instrument: TM
+  eo:platform: landsat-5
+  odc:collection_number: 3
+  odc:dataset_version: 3.0.0
+  odc:file_format: GeoTIFF
+  odc:processing_datetime: '2021-10-20 00:00:29.270331Z'
+  odc:producer: ga.gov.au
+  odc:product: ga_ls5t_nbart_gm_cyear_3
+  odc:product_family: geomedian
+  odc:region_code: x33y24
+
+measurements:
+  nir:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_nir.tif
+  red:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_red.tif
+  blue:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_blue.tif
+  edev:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_edev.tif
+  sdev:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_sdev.tif
+  bcdev:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_bcdev.tif
+  count:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_count.tif
+  green:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_green.tif
+  swir1:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_swir1.tif
+  swir2:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_swir2.tif
+
+accessories:
+  thumbnail:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final_thumbnail.jpg
+  checksum:sha1:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final.sha1
+  metadata:processor:
+    path: ga_ls5t_nbart_gm_cyear_3_x33y24_1990--P1Y_final.proc-info.yaml
+...
