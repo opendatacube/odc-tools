@@ -240,7 +240,7 @@ def index_update_dataset(
             else:
                 logging.warning("Dataset already exists, not indexing")
                 raise SkippedException(
-                    "Dataset already exists, not indexing"
+                    f"Dataset {metadata.get('id')} already exists, not indexing"
                 )
         else:
             if update:

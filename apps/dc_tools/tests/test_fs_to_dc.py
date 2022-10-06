@@ -59,7 +59,7 @@ def test_fs_to_fc_yaml(test_data_dir):
 @pytest.mark.depends(on=["add_products"])
 def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
     # Make sure test db is clean wrt to this test
-    # Required as database existence is assumed, not a fixture.
+    # TODO: Make this a fixture
     dc = Datacube()
     have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
     for_deletion = []
@@ -70,6 +70,9 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
     if for_deletion:
         dc.index.datasets.archive(for_deletion)
         dc.index.datasets.purge(for_deletion)
+
+    have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
+    assert not have_nrt and not have_final
 
     runner = CliRunner()
 
@@ -100,8 +103,8 @@ def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
         ]
     )
     assert result.exit_code == 0
-    assert dc.index.datasets.get(final_dsid).archived_time is not None
-    assert dc.index.datasets.get(nrt_dsid).archived_time is None
+    assert dc.index.datasets.get(final_dsid).archived_time is None
+    assert dc.index.datasets.get(nrt_dsid).archived_time is not None
 
 
 @pytest.fixture

@@ -12,7 +12,7 @@ from odc.apps.dc_tools.utils import (
     transform_stac,
     statsd_gauge_reporting, statsd_setting,
 )
-from ._stac import stac_transform
+from odc.apps.dc_tools._stac import stac_transform
 from typing import Generator, Optional
 import logging
 
