@@ -201,8 +201,8 @@ def index_update_dataset(
         added = False
         updated = False
         if archive_less_mature:
-            dupes =  dc.index.datasets.search(
-                product=ds.type,
+            dupes = dc.index.datasets.search(
+                product=ds.type.name,
                 **dupe_query
             )
             for dupe in dupes:
@@ -218,7 +218,7 @@ def index_update_dataset(
                     )
                 archive_ids.append(dupe.id)
             if archive_ids:
-                dc.index.dataset.archive(archive_ids)
+                dc.index.datasets.archive(archive_ids)
 
         # Now do something with the dataset
         # Note that any of the exceptions raised below will rollback any archiving performed above.

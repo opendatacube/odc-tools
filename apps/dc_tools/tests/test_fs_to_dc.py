@@ -56,24 +56,11 @@ def test_fs_to_fc_yaml(test_data_dir):
     assert result.exit_code == 0
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_archive_less_mature(test_data_dir, nrt_dsid, final_dsid):
-    # Make sure test db is clean wrt to this test
-    # TODO: Make this a fixture
-    dc = Datacube()
-    have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
-    for_deletion = []
-    if have_nrt:
-        for_deletion.append(nrt_dsid)
-    if have_final:
-        for_deletion.append(final_dsid)
-    if for_deletion:
-        dc.index.datasets.archive(for_deletion)
-        dc.index.datasets.purge(for_deletion)
-
-    have_nrt, have_final = dc.index.datasets.bulk_has([nrt_dsid, final_dsid])
-    assert not have_nrt and not have_final
-
+def test_archive_less_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid):
+    if not odc_db_for_maturity_tests:
+        pytest.skip("No database")
+        return
+    dc = odc_db_for_maturity_tests
     runner = CliRunner()
 
     # Index NRT dataset

@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
 import pytest
+import yaml
+from datacube import Datacube
 from datacube.utils import documents
-
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LANDSAT_STAC: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
@@ -12,7 +13,7 @@ SENTINEL_STAC: str = "S2A_28QCH_20200714_0_L2A.json"
 SENTINEL_ODC: str = "S2A_28QCH_20200714_0_L2A.odc-metadata.json"
 USGS_LANDSAT_STAC: str = "LC08_L2SR_081119_20200101_20200823_02_T2.json"
 LIDAR_STAC: str = "lidar_dem.json"
-
+MATURITY_PRODUCT: str = "ga_ls5t_gm_product.yaml"
 
 @pytest.fixture
 def aws_env(monkeypatch):
@@ -62,6 +63,13 @@ def sentinel_odc():
 
 
 @pytest.fixture
+def maturity_product_doc():
+    with TEST_DATA_FOLDER.joinpath(MATURITY_PRODUCT).open("r") as f:
+        doc = yaml.safe_load(f)
+    return doc
+
+
+@pytest.fixture
 def nrt_dsid():
     return "2e9f4623-c51c-5233-869a-bb690f8c2cac"
 
@@ -69,3 +77,30 @@ def nrt_dsid():
 @pytest.fixture
 def final_dsid():
     return "9f27a15e-3cdf-4e3f-a58e-dd624b2c3bef"
+
+
+@pytest.fixture
+def odc_db():
+    try:
+        return Datacube()
+    except Exception:
+        return None
+
+
+@pytest.fixture
+def odc_db_for_maturity_tests(odc_db, maturity_product_doc, nrt_dsid, final_dsid):
+    if odc_db is None:
+        return None
+    # Ensure product present
+    odc_db.index.products.add_document(maturity_product_doc)
+    have_nrt, have_final = odc_db.index.datasets.bulk_has([nrt_dsid, final_dsid])
+    # Ensure datasets absent
+    for_deletion = []
+    if have_nrt:
+        for_deletion.append(nrt_dsid)
+    if have_final:
+        for_deletion.append(final_dsid)
+    if for_deletion:
+        odc_db.index.datasets.archive(for_deletion)
+        odc_db.index.datasets.purge(for_deletion)
+    return odc_db
