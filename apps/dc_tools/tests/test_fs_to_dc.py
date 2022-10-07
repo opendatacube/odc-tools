@@ -94,6 +94,44 @@ def test_archive_less_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid,
     assert dc.index.datasets.get(nrt_dsid).archived_time is not None
 
 
+def test_keep_more_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid):
+    if not odc_db_for_maturity_tests:
+        pytest.skip("No database")
+        return
+    dc = odc_db_for_maturity_tests
+    runner = CliRunner()
+
+    # Index Final dataset
+    result = runner.invoke(
+        cli,
+        [
+            test_data_dir,
+            "--glob=**/maturity-final.odc-metadata.yaml",
+            "--statsd-setting",
+            "localhost:8125",
+            "--archive-less-mature"
+        ]
+    )
+    assert result.exit_code == 0
+    assert dc.index.datasets.get(nrt_dsid) is None
+    assert dc.index.datasets.get(final_dsid).archived_time is None
+
+    # Index NRT dataset (less mature - should be skipped)
+    result = runner.invoke(
+        cli,
+        [
+            test_data_dir,
+            "--glob=**/maturity-nrt.odc-metadata.yaml",
+            "--statsd-setting",
+            "localhost:8125",
+            "--archive-less-mature"
+        ]
+    )
+    assert result.exit_code == 0
+    assert dc.index.datasets.get(final_dsid).archived_time is None
+    assert dc.index.datasets.get(nrt_dsid) is None
+
+
 @pytest.fixture
 def test_data_dir():
     return str(TEST_DATA_FOLDER)
