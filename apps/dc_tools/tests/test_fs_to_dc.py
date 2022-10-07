@@ -12,7 +12,7 @@ def test_find_yamls(test_data_dir):
     # Default is to find YAML files
     files = [str(x) for x in _find_files(test_data_dir)]
 
-    assert len(files) == 4
+    assert len(files) == 5
     assert str(
         Path(test_data_dir)
         / "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.sqs.yaml"
