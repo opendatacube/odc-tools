@@ -1,16 +1,15 @@
 """Crawl Thredds for prefixes and fetch YAML's for indexing
 and dump them into a Datacube instance
 """
-import sys
 import logging
+import sys
 from typing import List, Tuple
 
 import click
 from datacube import Datacube
+from odc.apps.dc_tools._docs import from_yaml_doc_stream
 from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
 from odc.azure import download_yamls, find_blobs
-
-from ._docs import from_yaml_doc_stream
 
 
 def dump_list_to_odc(
