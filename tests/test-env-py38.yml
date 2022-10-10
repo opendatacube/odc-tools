@@ -10,7 +10,7 @@ dependencies:
   - python=3.8
 
   # Datacube
-  - datacube>=1.8.6
+  - datacube>=1.8.8
 
   # odc.algo
   - dask-image
