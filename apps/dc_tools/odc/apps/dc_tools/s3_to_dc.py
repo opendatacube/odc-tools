@@ -20,8 +20,8 @@ from odc.apps.dc_tools.utils import (IndexingException, SkippedException,
                                      statsd_gauge_reporting, statsd_setting,
                                      transform_stac, transform_stac_absolute,
                                      update, update_if_exists, verify_lineage)
-from ._docs import parse_doc_stream
-from ._stac import stac_transform, stac_transform_absolute
+from odc.apps.dc_tools._docs import parse_doc_stream
+from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
 
 
 # Grab the URL from the resulting S3 item
