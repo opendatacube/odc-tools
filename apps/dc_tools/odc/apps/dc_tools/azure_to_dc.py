@@ -1,31 +1,30 @@
 """Crawl Thredds for prefixes and fetch YAML's for indexing
 and dump them into a Datacube instance
 """
-import imp
 import sys
 import logging
-from typing import Tuple
+from typing import List, Tuple
 
 import click
-from odc.azure import find_blobs, download_yamls
-from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
-from ._docs import from_yaml_doc_stream
 from datacube import Datacube
+from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
+from odc.azure import download_yamls, find_blobs
 
-from typing import List, Tuple
+from ._docs import from_yaml_doc_stream
 
 
 def dump_list_to_odc(
-        account_url,
-        container_name,
-        yaml_content_list: List[Tuple[bytes, str, str]],
-        dc: Datacube,
-        products: List[str],
-        **kwargs,
+    account_url,
+    container_name,
+    yaml_content_list: List[Tuple[bytes, str, str]],
+    dc: Datacube,
+    products: List[str],
+    **kwargs,
 ):
     expand_stream = (
-        (account_url + "/" + container_name + "/" + d[1][:d[1].rfind("/") + 1], d[0]) for d in yaml_content_list if
-        d[0] is not None
+        (account_url + "/" + container_name + "/" + d[1][: d[1].rfind("/") + 1], d[0])
+        for d in yaml_content_list
+        if d[0] is not None
     )
 
     ds_stream = from_yaml_doc_stream(
@@ -45,7 +44,7 @@ def dump_list_to_odc(
                 dc.index.datasets.add(ds)
                 ds_added += 1
             except Exception as e:
-                logging.error(e)
+                logging.exception(e)
                 ds_failed += 1
 
     return ds_added, ds_failed
@@ -63,8 +62,8 @@ def dump_list_to_odc(
     is_flag=True,
     default=True,
     help=(
-            "Default is to fail if lineage documents not present in the database. "
-            "Set auto add to try to index lineage documents."
+        "Default is to fail if lineage documents not present in the database. "
+        "Set auto add to try to index lineage documents."
     ),
 )
 @click.option(
@@ -73,10 +72,16 @@ def dump_list_to_odc(
     default=False,
     help="Default is no verification. Set to verify parent dataset definitions.",
 )
-@click.option('--product', '-p', 'product_names',
-              help=('Only match against products specified with this option, '
-                    'you can supply several by repeating this option with a new product name'),
-              multiple=True)
+@click.option(
+    "--product",
+    "-p",
+    "product_names",
+    help=(
+        "Only match against products specified with this option, "
+        "you can supply several by repeating this option with a new product name"
+    ),
+    multiple=True,
+)
 @statsd_setting
 @click.argument("account_url", type=str, nargs=1)
 @click.argument("container_name", type=str, nargs=1)
@@ -84,22 +89,28 @@ def dump_list_to_odc(
 @click.argument("prefix", type=str, nargs=1)
 @click.argument("suffix", type=str, nargs=1)
 def cli(
-        skip_lineage: bool,
-        fail_on_missing_lineage: bool,
-        verify_lineage: bool,
-        statsd_setting: str,
-        account_url: str,
-        container_name: str,
-        credential: str,
-        product_names: List[str],
-        prefix: str,
-        suffix: str,
+    skip_lineage: bool,
+    fail_on_missing_lineage: bool,
+    verify_lineage: bool,
+    product_names: List[str],
+    statsd_setting: str,
+    account_url: str,
+    container_name: str,
+    credential: str,
+    prefix: str,
+    suffix: str,
 ):
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
-    yaml_urls = find_blobs(account_url, container_name, credential, prefix, suffix)
+    yaml_urls = list(find_blobs(container_name, credential, prefix, suffix, account_url))
+    n_urls = len(yaml_urls)
 
-    print(f"Found {len(yaml_urls)} datasets")
+    if n_urls != 0:
+        print(f"Found {len(yaml_urls)} datasets")
+    else:
+        print("Didn't find any files to index... finishing")
+        sys.exit(1)
+
     yaml_contents = download_yamls(yaml_urls)
 
     print(f"Matching to {product_names} products")
@@ -113,10 +124,14 @@ def cli(
         product_names,
         skip_lineage=skip_lineage,
         fail_on_missing_lineage=fail_on_missing_lineage,
-        verify_lineage=verify_lineage
+        verify_lineage=verify_lineage,
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
     if statsd_setting:
-        statsd_gauge_reporting(added, ["app:azure_to_dc", "action:added"], statsd_setting)
-        statsd_gauge_reporting(failed, ["app:azure_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(
+            added, ["app:azure_to_dc", "action:added"], statsd_setting
+        )
+        statsd_gauge_reporting(
+            failed, ["app:azure_to_dc", "action:failed"], statsd_setting
+        )
