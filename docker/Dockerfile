@@ -1,29 +1,42 @@
 #syntax=docker/dockerfile:1.2
-ARG ORG=opendatacube
-ARG V_BASE=3.3.0
-ARG V_PG=12
+ARG V_PG=14
+ARG V_PGIS=14-postgis-3
 
-FROM ${ORG}/geobase-builder:${V_BASE}
-ARG V_PG
+FROM osgeo/gdal:ubuntu-small-latest
 ENV LC_ALL=C.UTF-8
 ENV PATH="/env/bin:${PATH}"
 
-RUN apt-get update \
+USER root
+RUN apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends --allow-change-held-packages \
-    # git is needed for sdist|bdist_wheel
+    # git is needed for sdist|bdist_wheel \
+    python3-dev python3-distutils python3-pip \
     git \
     # for docs
-    make \
+    build-essential \
     graphviz \
-    # for integration tests
+    # for integration tests \
+    libpq-dev libproj-dev \
     postgresql \
     postgresql-client-${V_PG} \
     postgresql-${V_PG} \
-    # for matching directory permissions when running tests as non-root user
+    postgresql-${V_PGIS} \
+    # for matching directory permissions when running tests as non-root user \
+    tini \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-RUN install -d -o odc -g odc /env \
+RUN groupadd --gid 1000 odc \
+  && useradd --gid 1000 \
+  --uid 1000 \
+  --create-home \
+  --shell /bin/bash -N odc \
+  && adduser odc users \
+  && adduser odc sudo \
+  && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
+  && install -d -o odc -g odc /env \
   && install -d -o odc -g odc /code \
   && install -d -o odc -g odc -D /var/run/postgresql /srv/postgresql \
   && install -d -o odc -g odc -D /home/odc/.cache/pip \
@@ -31,18 +44,20 @@ RUN install -d -o odc -g odc /env \
   && true
 
 COPY constraints.txt requirements.txt /conf/
-USER odc
 
-RUN --mount=type=cache,target=/home/odc/.cache/pip,uid=1000,gid=1000 \
-    --mount=type=cache,target=/wheels,uid=1000,gid=1000 \
-  env-build-tool wheels /conf/requirements.txt /conf/constraints.txt /wheels \
-  && env-build-tool new_no_index /conf/requirements.txt /conf/constraints.txt /env /wheels
+RUN python3 -m pip install -U pip cython
+
+RUN python3 -m pip install \
+       -r /conf/requirements.txt \
+       -c /conf/constraints.txt
 
 
 # Bake in fresh empty datacube db into docker image (owned by odc user)
 # Need to run after environment setup as it needs datacube
 COPY --chown=0:0 assets/with-bootstrap /usr/local/bin/
 COPY --chown=0:0 assets/with-test-db /usr/local/bin/
+
+USER odc
 RUN with-bootstrap with-test-db prepare
 
 USER root
