@@ -163,11 +163,31 @@ def index_update_dataset(
     uri: str,
     dc: Datacube,
     doc2ds: Doc2Dataset,
-    update=False,
-    update_if_exists=False,
-    allow_unsafe=False,
+    update: bool = False,
+    update_if_exists: bool = False,
+    allow_unsafe: bool = False,
     archive_less_mature: Optional[Union[bool, Iterable[str]]]=None
 ) -> int:
+    """
+    Index and/or update a dataset.  Called by all the **_to_dc CLI tools.
+
+    :param metadata: A dataset metadata dictionary, read from yaml or json, converted from STAC, etc.
+    :param uri: The URI of the metadata and associated data.
+    :param dc: A datacube object (carries a database index and potentially an active transaction).
+    :param doc2ds: A Doc2Dataset object (metadata_type and product resolver)
+    :param update: If true, allow update only.
+    :param update_if_exists: If true allow insert or update.
+    :param allow_unsafe: Allow unsafe (arbitrary) dataset updates.
+    :param archive_less_mature: Enforce dataset maturity.
+           * If None (the default) or False or an empty iterable, ignore dataset maturity.
+           * If True, enforce dataset maturity by looking for existing datasets with same product, region_code and time
+             values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
+             If a match of the same or greater maturity is found an IndexException is raised.
+           * If an iterable of valid search field names is provided, it is used as the "grouping" fields for
+             identifying dataset maturity matches.
+             (i.e. `archive_less_mature=True` is the same as `archive_less_mature=['region_code', 'time'])
+    :return: Returns nothing.  Raises an exception if anything goes wrong.
+    """
     if uri is None:
         raise IndexingException("Failed to get URI from metadata doc")
     # Make sure we can create a dataset first
@@ -259,7 +279,7 @@ def index_update_dataset(
         logging.info("New Dataset Added: %s", ds.id)
     if updated:
         logging.info("Existing Dataset Updated: %s", ds.id)
-    return ()
+
 
 def statsd_gauge_reporting(
     value, tags=[],
