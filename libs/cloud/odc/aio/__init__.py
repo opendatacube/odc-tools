@@ -417,7 +417,7 @@ class S3Fetcher(object):
                 await q.put(EOS_MARKER)
             return True
 
-        q = asyncio.Queue(1000, loop=self._async.loop)
+        q = asyncio.Queue(1000)
         ff = self._async.submit(find_to_queue, url, self._s3, q, **kw)
         clean_exit = False
         raise_error = False
@@ -439,7 +439,7 @@ class S3Fetcher(object):
             finally:
                 await q.put(EOS_MARKER)
 
-        q = asyncio.Queue(1000, loop=self._async.loop)
+        q = asyncio.Queue(1000)
         ff = self._async.submit(action, q, self._s3, **kw)
         clean_exit = False
 
