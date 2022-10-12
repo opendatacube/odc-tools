@@ -1,11 +1,12 @@
 # Tests using the Click framework the s3-to-dc CLI tool
+# flake8: noqa
 
 import pytest
 from click.testing import CliRunner
 from odc.apps.dc_tools.s3_to_dc import cli
 
 
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_s3_to_dc_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -20,11 +21,13 @@ def test_s3_to_dc_yaml(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 25 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    assert (
+        result.output
+        == "Added 25 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
 
 
-
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_s3_to_dc_yaml_rerun(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -39,10 +42,13 @@ def test_s3_to_dc_yaml_rerun(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 0 datasets, skipped 25 datasets and failed 0 datasets.\n"
+    assert (
+        result.output
+        == "Added 0 datasets, skipped 25 datasets and failed 0 datasets.\n"
+    )
 
 
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_s3_to_dc_stac(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -58,10 +64,12 @@ def test_s3_to_dc_stac(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    assert (
+        result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
 
 
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_s3_to_dc_stac_update_if_exist(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -78,10 +86,12 @@ def test_s3_to_dc_stac_update_if_exist(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    assert (
+        result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
 
 
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -99,10 +109,12 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
         ],
     )
     assert result.exit_code == 0
-    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    assert (
+        result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
 
 
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -117,11 +129,12 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
         ],
     )
     assert result.exit_code == 1
-    assert result.output == "Added 0 datasets, skipped 0 datasets and failed 1 datasets.\n"
+    assert (
+        result.output == "Added 0 datasets, skipped 0 datasets and failed 1 datasets.\n"
+    )
 
 
-
-@pytest.mark.depends(on=['add_products'])
+@pytest.mark.depends(on=["add_products"])
 def test_s3_to_dc_index_proc_info_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -136,4 +149,26 @@ def test_s3_to_dc_index_proc_info_yaml(aws_env):
         ],
     )
     assert result.exit_code == 1
-    assert result.output == "Added 1 datasets, skipped 0 datasets and failed 1 datasets.\n"
+    assert (
+        result.output == "Added 1 datasets, skipped 0 datasets and failed 1 datasets.\n"
+    )
+
+
+@pytest.mark.depends(on=["add_products"])
+def test_s3_to_dc_dea_s2(aws_env):
+    runner = CliRunner()
+    # This will fail if requester pays is enabled
+    result = runner.invoke(
+        cli,
+        [
+            "--no-sign-request",
+            "--skip-lineage",
+            "--stac",
+            "s3://dea-public-data-dev/baseline/ga_s2am_ard_3/53/KQB/2022/01/10/20220110T022746/*.stac-item.json",
+            "ga_s2am_ard_3",
+        ],
+    )
+    assert result.exit_code == 0
+    assert (
+        result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
