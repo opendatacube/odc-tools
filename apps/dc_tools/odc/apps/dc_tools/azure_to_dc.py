@@ -8,12 +8,12 @@ from typing import List, Optional
 import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from odc.apps.dc_tools.utils import (allow_unsafe, index_update_dataset,
+from odc.apps.dc_tools._stac import stac_transform
+from odc.apps.dc_tools.utils import (allow_unsafe, archive_less_mature,
+                                     index_update_dataset,
                                      statsd_gauge_reporting, statsd_setting,
                                      transform_stac, update, update_if_exists)
 from odc.azure import download_blob, find_blobs
-
-from odc.apps.dc_tools._stac import stac_transform
 
 
 def stream_blob_urls(account_url, container_name, credential, blobs: List[str]):
@@ -32,6 +32,7 @@ def dump_list_to_odc(
     update: Optional[bool] = False,
     update_if_exists: Optional[bool] = False,
     allow_unsafe: Optional[bool] = False,
+    archive_less_mature: Optional[bool] = False,
 ):
     ds_added = 0
     ds_failed = 0
@@ -51,6 +52,7 @@ def dump_list_to_odc(
                 update=update,
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
+                archive_less_mature=archive_less_mature
             )
             ds_added += 1
         except Exception as e:
@@ -67,6 +69,7 @@ def dump_list_to_odc(
 @allow_unsafe
 @transform_stac
 @statsd_setting
+@archive_less_mature
 @click.option(
     "--account_url",
     "-a",
@@ -87,6 +90,7 @@ def cli(
     allow_unsafe: bool,
     stac: bool,
     statsd_setting: str,
+    archive_less_mature: bool,
     account_url: str,
     container_name: str,
     credential: str,
@@ -112,6 +116,7 @@ def cli(
         update=update,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
+        archive_less_mature=archive_less_mature
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
