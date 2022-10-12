@@ -1,8 +1,10 @@
 import os
 import logging
 import click
-
 import pkg_resources
+
+from typing import Iterable, Optional, Union
+
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
@@ -111,6 +113,14 @@ request_payer = click.option(
     help="Needed when accessing requester pays public buckets.",
 )
 
+archive_less_mature = click.option(
+    "--archive-less-mature",
+    is_flag=True,
+    default=False,
+    help="""Archive existing any datasets that match product, time and region-code, but have lower dataset-maturity.
+Note: An error will be raised and the dataset add will fail if a matching dataset with higher or equal dataset-maturity."""
+)
+
 archive = click.option(
     "--archive",
     is_flag=True,
@@ -153,54 +163,122 @@ def index_update_dataset(
     uri: str,
     dc: Datacube,
     doc2ds: Doc2Dataset,
-    update=False,
-    update_if_exists=False,
-    allow_unsafe=False,
-):
-    if uri is not None:
-        # Make sure we can create a dataset first
-        try:
-            ds, err = doc2ds(metadata, uri)
-        except ValueError as e:
-            raise IndexingException(
-                f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
-            )
+    update: bool = False,
+    update_if_exists: bool = False,
+    allow_unsafe: bool = False,
+    archive_less_mature: Optional[Union[bool, Iterable[str]]]=None
+) -> int:
+    """
+    Index and/or update a dataset.  Called by all the **_to_dc CLI tools.
 
-        # Now do something with the dataset
-        if ds is not None:
-            if dc.index.datasets.has(metadata.get("id")):
-                # Update
-                if update or update_if_exists:
-                    # Set up update fields
-                    updates = {}
-                    if allow_unsafe:
-                        updates = {tuple(): changes.allow_any}
-                    # Do the updating
-                    try:
-                        dc.index.datasets.update(ds, updates_allowed=updates)
-                    except ValueError as e:
-                        raise IndexingException(
-                            f"Updating the dataset raised an exception: {e}"
-                        )
-                else:
-                    logging.warning("Dataset already exists, not indexing")
-                    raise SkippedException(
-                        "Dataset already exists, not indexing"
-                    )
-            else:
-                if update:
-                    # We're expecting to update a dataset, but it doesn't exist
-                    raise IndexingException(
-                        "Can't update dataset because it doesn't exist."
-                    )
-                # Everything is working as expected, add the dataset
-                dc.index.datasets.add(ds)
-        else:
+    :param metadata: A dataset metadata dictionary, read from yaml or json, converted from STAC, etc.
+    :param uri: The URI of the metadata and associated data.
+    :param dc: A datacube object (carries a database index and potentially an active transaction).
+    :param doc2ds: A Doc2Dataset object (metadata_type and product resolver)
+    :param update: If true, allow update only.
+    :param update_if_exists: If true allow insert or update.
+    :param allow_unsafe: Allow unsafe (arbitrary) dataset updates.
+    :param archive_less_mature: Enforce dataset maturity.
+           * If None (the default) or False or an empty iterable, ignore dataset maturity.
+           * If True, enforce dataset maturity by looking for existing datasets with same product, region_code and time
+             values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
+             If a match of the same or greater maturity is found an IndexException is raised.
+           * If an iterable of valid search field names is provided, it is used as the "grouping" fields for
+             identifying dataset maturity matches.
+             (i.e. `archive_less_mature=True` is the same as `archive_less_mature=['region_code', 'time'])
+    :return: Returns nothing.  Raises an exception if anything goes wrong.
+    """
+    if uri is None:
+        raise IndexingException("Failed to get URI from metadata doc")
+    # Make sure we can create a dataset first
+    try:
+        ds, err = doc2ds(metadata, uri)
+    except ValueError as e:
+        raise IndexingException(
+            f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
+        )
+    if ds is None:
+        raise IndexingException(
+            f"Failed to create dataset with error {err}\n The URI was {uri}"
+        )
+
+    if archive_less_mature:
+        if archive_less_mature == True:
+            # if set explicitly to True, default to [region_code, time]
+            archive_less_mature = ["region_code", "time"]
+        try:
+            dupe_query = {k: getattr(ds.metadata, k) for k in archive_less_mature}
+        except AttributeError as e:
             raise IndexingException(
-                f"Failed to create dataset with error {err}\n The URI was {uri}"
+                f"Cannot extract matching value from dataset for maturity check: {e}\n The URI was {uri}"
             )
     else:
-        raise IndexingException("Failed to get URI from metadata doc")
+        dupe_query = {}
+
+    with dc.index.transaction():
+        # Process in a transaction
+        archive_ids = []
+        added = False
+        updated = False
+        if archive_less_mature:
+            dupes = dc.index.datasets.search(
+                product=ds.type.name,
+                **dupe_query
+            )
+            for dupe in dupes:
+                if dupe.id == ds.id:
+                    # Same dataset, for update.  Ignore
+                    continue
+                if dupe.metadata.dataset_maturity <= ds.metadata.dataset_maturity:
+                    # Duplicate is as mature, or more mature than ds
+                    # E.g. "final" < "nrt"
+                    raise IndexingException(
+                        f"Matching dataset of maturity {dupe.metadata.dataset_maturity} already exists (id: {dupe.id})\n"
+                        f" Cannot load dataset of maturity {ds.metadata.dataset_maturity} URI {uri} "
+                    )
+                archive_ids.append(dupe.id)
+            if archive_ids:
+                dc.index.datasets.archive(archive_ids)
+
+        # Now do something with the dataset
+        # Note that any of the exceptions raised below will rollback any archiving performed above.
+        if dc.index.datasets.has(metadata.get("id")):
+            # Update
+            if update or update_if_exists:
+                # Set up update fields
+                updates = {}
+                if allow_unsafe:
+                    updates = {tuple(): changes.allow_any}
+                # Do the updating
+                try:
+                    dc.index.datasets.update(ds, updates_allowed=updates)
+                    updated = True
+                except ValueError as e:
+                    raise IndexingException(
+                        f"Updating the dataset raised an exception: {e}"
+                    )
+            else:
+                logging.warning("Dataset already exists, not indexing")
+                raise SkippedException(
+                    f"Dataset {metadata.get('id')} already exists, not indexing"
+                )
+        else:
+            if update:
+                # We're expecting to update a dataset, but it doesn't exist
+                raise IndexingException(
+                    "Can't update dataset because it doesn't exist."
+                )
+            # Everything is working as expected, add the dataset
+            dc.index.datasets.add(ds)
+            added = True
+
+    # Transaction committed : Log actions
+    for arch_id in archive_ids:
+        logging.info("Archived less mature dataset: %s", arch_id)
+    if added:
+        logging.info("New Dataset Added: %s", ds.id)
+    if updated:
+        logging.info("Existing Dataset Updated: %s", ds.id)
 
 
 def statsd_gauge_reporting(
