@@ -21,7 +21,7 @@ DEA_LANDSAT_PRODUCTS = ["ga_ls8c_ard_3", "ga_ls7e_ard_3", "ga_ls8t_ard_3"]
 
 # This is hack for not changing the current behavior of DEAfrica sentinel-2
 # It is not ideal but to remain the impact minimum
-TO_BE_HARD_CODED_COLLECTION = ["s2_l2a"]
+TO_BE_HARD_CODED_COLLECTION = ["s2_l2a", "sentinel_s2_l2a_cogs", "sentinel-s2-l2a-cogs"]
 
 # Mapping between EO3 field names and STAC properties object field names
 MAPPING_STAC_TO_EO3 = {
@@ -104,26 +104,27 @@ def _stac_product_lookup(
     if collection is not None and collection == "landsat-c2l2-sr":
         product_name = _get_usgs_product_name(properties)
 
+    # It is an ugly hack without interrupting DEAfric sentinel 2
+    if constellation is not None and product_name is None:
+        if constellation == "sentinel-2" and collection in TO_BE_HARD_CODED_COLLECTION:
+            dataset_id = properties.get("sentinel:product_id") or properties.get(
+                "s2:granule_id", dataset_id
+            )
+            product_name = "s2_l2a"
+            if region_code is None:
+                # Let this throw an exception if there's something missing
+                region_code = (
+                    f"{str(properties['proj:epsg'])[-2:]}"
+                    f"{properties['sentinel:latitude_band']}"
+                    f"{properties['sentinel:grid_square']}"
+                )
+            default_grid = "g10m"
+
     # If we still don't have a product name, use collection
     if product_name is None:
         product_name = collection
         if product_name is None:
             raise ValueError("Can't find product name from odc:product or collection.")
-
-    # It is an ugly hack without interrupting DEAfric sentinel 2
-    if collection in TO_BE_HARD_CODED_COLLECTION:
-        dataset_id = properties.get("sentinel:product_id") or properties.get(
-            "s2:granule_id", dataset_id
-        )
-        product_name = "s2_l2a"
-        if region_code is None:
-            # Let this throw an exception if there's something missing
-            region_code = (
-                f"{str(properties['proj:epsg'])[-2:]}"
-                f"{properties['sentinel:latitude_band']}"
-                f"{properties['sentinel:grid_square']}"
-            )
-            default_grid = "g10m"
 
     # Product names can't have dashes in them
     product_name = product_name.replace("-", "_")
