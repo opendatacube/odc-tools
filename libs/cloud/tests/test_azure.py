@@ -14,7 +14,7 @@ def test_find_blobs():
     suffix = "odc-metadata.yaml"
     prefix = "baseline/ga_ls7e_ard_3/092/087/2018/05/25"
 
-    blob_names = find_blobs(account_url, container_name, credential, prefix, suffix)
+    blob_names = list(find_blobs(container_name, credential, prefix, suffix, account_url=account_url))
     assert blob_names
     assert len(blob_names) == 1
 
@@ -31,9 +31,9 @@ def test_download_yamls():
     test_blob_names = [
         "baseline/ga_ls7e_ard_3/092/087/2018/05/25/ga_ls7e_ard_3-0-0_092087_2018-05-25_final.odc-metadata.yaml"
     ]
+
     results = download_yamls(account_url, container_name, credential, test_blob_names)
     assert results
     assert len(results) == 1
     print(results)
     assert results[0][0] is not None
-
