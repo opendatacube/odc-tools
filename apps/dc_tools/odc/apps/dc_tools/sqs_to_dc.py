@@ -23,6 +23,7 @@ from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_
                                      skip_lineage,
                                      statsd_setting, statsd_gauge_reporting,
                                      transform_stac, transform_stac_absolute,
+                                     archive_less_mature,
                                      update, update_if_exists, verify_lineage)
 from odc.aws.queue import get_messages
 from ._stac import stac_transform, stac_transform_absolute
@@ -180,6 +181,7 @@ def queue_to_odc(
     allow_unsafe=False,
     odc_metadata_link=False,
     region_code_list_uri=None,
+    archive_less_mature=None,
     **kwargs,
 ) -> Tuple[int, int]:
 
@@ -251,6 +253,7 @@ def queue_to_odc(
                             update=update,
                             update_if_exists=update_if_exists,
                             allow_unsafe=allow_unsafe,
+                            archive_less_mature=archive_less_mature
                         )
                         ds_success += 1
                     except (SkippedException) as e:
@@ -301,6 +304,7 @@ def queue_to_odc(
     default=None,
     help="A path to a list (one item per line, in txt or gzip format) of valide region_codes to include",
 )
+@archive_less_mature
 @click.argument("queue_name", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -319,6 +323,7 @@ def cli(
     odc_metadata_link,
     record_path,
     region_code_list_uri,
+    archive_less_mature,
     queue_name,
     product,
 ):
@@ -355,6 +360,7 @@ def cli(
         record_path=record_path,
         odc_metadata_link=odc_metadata_link,
         region_code_list_uri=region_code_list_uri,
+        archive_less_mature=archive_less_mature,
     )
 
     result_msg = ""
