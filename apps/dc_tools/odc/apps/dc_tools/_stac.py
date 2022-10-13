@@ -19,8 +19,9 @@ Document = Dict[str, Any]
 # This is an old hack, should be refactored out
 DEA_LANDSAT_PRODUCTS = ["ga_ls8c_ard_3", "ga_ls7e_ard_3", "ga_ls8t_ard_3"]
 
-# This is an old hack too.
-KNOWN_CONSTELLATIONS = ["sentinel-2"]
+# This is hack for not changing the current behavior of DEAfrica sentinel-2
+# It is not ideal but to remain the impact minimum
+TO_BE_HARD_CODED_COLLECTION = ["s2_l2a", "sentinel_s2_l2a_cogs", "sentinel-s2-l2a-cogs"]
 
 # Mapping between EO3 field names and STAC properties object field names
 MAPPING_STAC_TO_EO3 = {
@@ -98,29 +99,26 @@ def _stac_product_lookup(
     if constellation is not None:
         constellation = constellation.lower().replace(" ", "-")
 
-    # Let's check for Sentinel-2, which is a special case
-    # The below section handles the Element 84 and Microsft PC STAC documents
-    if product_name is None and constellation in KNOWN_CONSTELLATIONS:
-        if constellation == "sentinel-2":
-            # The third option here shouldn't actually be encountered. If we're parsing
-            # a document that isn't from E84 of M PC, then we're in trouble.
+    collection = item.get("collection")
+    # Special case for USGS Landsat Collection 2
+    if collection is not None and collection == "landsat-c2l2-sr":
+        product_name = _get_usgs_product_name(properties)
+
+    # It is an ugly hack without interrupting DEAfric sentinel 2
+    if constellation is not None and product_name is None:
+        if constellation == "sentinel-2" and collection in TO_BE_HARD_CODED_COLLECTION:
             dataset_id = properties.get("sentinel:product_id") or properties.get(
                 "s2:granule_id", dataset_id
             )
             product_name = "s2_l2a"
             if region_code is None:
                 # Let this throw an exception if there's something missing
-                region_code = "{}{}{}".format(
-                    str(properties["proj:epsg"])[-2:],
-                    properties["sentinel:latitude_band"],
-                    properties["sentinel:grid_square"],
+                region_code = (
+                    f"{str(properties['proj:epsg'])[-2:]}"
+                    f"{properties['sentinel:latitude_band']}"
+                    f"{properties['sentinel:grid_square']}"
                 )
             default_grid = "g10m"
-
-    collection = item.get("collection")
-    # Special case for USGS Landsat Collection 2
-    if collection is not None and collection == "landsat-c2l2-sr":
-        product_name = _get_usgs_product_name(properties)
 
     # If we still don't have a product name, use collection
     if product_name is None:
@@ -316,7 +314,6 @@ def _check_valid_uuid(uuid_string: str) -> bool:
         return False
 
 
-
 def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     """Takes in a raw STAC 1.0 dictionary and returns an ODC dictionary"""
     # pylint: disable=too-many-locals
@@ -331,7 +328,8 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 
     # Generating UUID for products not having UUID.
     # Checking if provided id is valid UUID.
-    # If not valid, creating new deterministic uuid using odc_uuid function based on product_name and product_label.
+    # If not valid, creating new deterministic uuid using odc_uuid function
+    # based on product_name and product_label.
     # TODO: Verify if this approach to create UUID is valid.
     if _check_valid_uuid(input_stac["id"]):
         deterministic_uuid = input_stac["id"]
@@ -404,7 +402,5 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 
 # TODO: This is a temporary fix
 def transform_geom_json_coordinates_to_list(geom_json):
-    geom_json["coordinates"] = numpy.array(
-        geom_json["coordinates"]
-    ).tolist()
+    geom_json["coordinates"] = numpy.array(geom_json["coordinates"]).tolist()
     return geom_json

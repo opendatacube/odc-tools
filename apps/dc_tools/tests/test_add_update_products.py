@@ -25,13 +25,13 @@ def have_db():
 def test_parse_local_csv(local_csv):
     local_contents = [x for x in _parse_csv(local_csv)]
 
-    assert len(local_contents) == 11
+    assert len(local_contents) == 12
     assert local_contents[0].name == "s2_l2a"
 
 
 def test_parse_remote_csv(remote_csv):
     remote_contents = [x for x in _parse_csv(remote_csv)]
-    assert len(remote_contents) == 11
+    assert len(remote_contents) == 12
     assert remote_contents[0].name == "s2_l2a"
 
 
@@ -42,13 +42,13 @@ def test_load_product_def(remote_product):
 
 
 @pytest.mark.skipif(have_db() is False, reason="No database")
-@pytest.mark.depends(name='have_db')
+@pytest.mark.depends(name="have_db")
 def test_havedb():
     assert have_db()
 
 
-@pytest.mark.depends(on='have_db')
-@pytest.mark.depends(name='add_products')
+@pytest.mark.depends(on="have_db")
+@pytest.mark.depends(name="add_products")
 def test_add_products(local_csv):
     runner = CliRunner()
     # This will fail if requester pays is enabled
@@ -76,5 +76,5 @@ def local_csv():
 
 @pytest.fixture
 def remote_csv(httpserver, local_csv):
-    httpserver.expect_request('/some.csv').respond_with_data(open(local_csv).read())
-    yield httpserver.url_for('/some.csv')
+    httpserver.expect_request("/some.csv").respond_with_data(open(local_csv).read())
+    yield httpserver.url_for("/some.csv")
