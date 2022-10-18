@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Index datasets found from an SQS queue into Postgres
 """
+import concurrent
+import json
 import logging
 import os
 import sys
@@ -39,6 +41,11 @@ def _parse_options(options: Optional[str]) -> Dict[str, Any]:
         for option in options.split("#"):
             try:
                 key, value = option.split("=")
+
+                try:
+                    value = json.loads(value)
+                except Exception:
+                    logging.warning(f"Failed to handle value {value} for key {key} as JSON, using str")
                 parsed_options[key] = value
             except Exception as e:
                 logging.warning(
