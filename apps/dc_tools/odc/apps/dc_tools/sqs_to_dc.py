@@ -256,7 +256,7 @@ def queue_to_odc(
                             archive_less_mature=archive_less_mature
                         )
                         ds_success += 1
-                    except (SkippedException) as e:
+                    except SkippedException:
                         ds_skipped += 1
                 else:
                     logging.warning("Found None for metadata and uri, skipping")
@@ -264,8 +264,8 @@ def queue_to_odc(
 
             # Success, so delete the message.
             message.delete()
-        except (IndexingException) as err:
-            logging.exception(f"Failed to handle message with exception: {err}")
+        except IndexingException as e:
+            logging.exception(f"Failed to handle message with exception: {e}")
             ds_failed += 1
 
     return ds_success, ds_failed, ds_skipped

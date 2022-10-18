@@ -35,6 +35,7 @@ class SkippedException(Exception):
 
     pass
 
+
 # A whole bunch of generic Click options
 skip_lineage = click.option(
     "--skip-lineage",
@@ -117,8 +118,12 @@ archive_less_mature = click.option(
     "--archive-less-mature",
     is_flag=True,
     default=False,
-    help="""Archive existing any datasets that match product, time and region-code, but have lower dataset-maturity.
-Note: An error will be raised and the dataset add will fail if a matching dataset with higher or equal dataset-maturity."""
+    help=(
+        "Archive existing any datasets that match product, "
+        "time and region-code, but have lower dataset-maturity."
+        "Note: An error will be raised and the dataset add will "
+        "fail if a matching dataset with higher or equal dataset-maturity."
+    )
 )
 
 archive = click.option(
@@ -166,7 +171,7 @@ def index_update_dataset(
     update: bool = False,
     update_if_exists: bool = False,
     allow_unsafe: bool = False,
-    archive_less_mature: Optional[Union[bool, Iterable[str]]]=None
+    archive_less_mature: Optional[Union[bool, Iterable[str]]] = None
 ) -> int:
     """
     Index and/or update a dataset.  Called by all the **_to_dc CLI tools.
@@ -203,7 +208,7 @@ def index_update_dataset(
         )
 
     if archive_less_mature:
-        if archive_less_mature == True:
+        if archive_less_mature is True:
             # if set explicitly to True, default to [region_code, time]
             archive_less_mature = ["region_code", "time"]
         try:
@@ -233,8 +238,9 @@ def index_update_dataset(
                     # Duplicate is as mature, or more mature than ds
                     # E.g. "final" < "nrt"
                     raise IndexingException(
-                        f"Matching dataset of maturity {dupe.metadata.dataset_maturity} already exists (id: {dupe.id})\n"
-                        f" Cannot load dataset of maturity {ds.metadata.dataset_maturity} URI {uri} "
+                        f"Matching dataset of maturity {dupe.metadata.dataset_maturity} already exists"
+                        "with id: {dupe.id}\n"
+                        f"Cannot load dataset of maturity {ds.metadata.dataset_maturity} URI {uri} "
                     )
                 archive_ids.append(dupe.id)
             if archive_ids:

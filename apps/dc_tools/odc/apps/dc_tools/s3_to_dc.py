@@ -67,11 +67,11 @@ def dump_to_odc(
                                  allow_unsafe=allow_unsafe,
                                  archive_less_mature=archive_less_mature)
             ds_added += 1
-        except (IndexingException) as e:
+        except IndexingException as e:
             logging.exception(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
-        except (SkippedException) as e:
-            ds_skipped +=1
+        except SkippedException:
+            ds_skipped += 1
 
     return ds_added, ds_failed, ds_skipped
 

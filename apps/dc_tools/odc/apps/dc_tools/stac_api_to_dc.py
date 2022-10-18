@@ -177,7 +177,6 @@ def stac_api_to_odc(
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
             except SkippedException:
-                logging.exception(f"{item} Skipped")
                 skipped += 1
             except Exception as e:
                 logging.exception(f"Failed to handle item {item} with exception {e}")

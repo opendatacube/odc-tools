@@ -175,8 +175,7 @@ def cop_dem_to_dc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
-            except SkippedException as e:
-                logging.exception(f"{uri} Skipped")
+            except SkippedException:
                 skipped += 1
             except rasterio.errors.RasterioIOError:
                 logging.info(f"Couldn't find file for {uri}")
@@ -237,7 +236,6 @@ def cli(limit, update_if_exists, bbox, statsd_setting, product, add_product, wor
         statsd_gauge_reporting(added, ["app:cop_dem_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting)
         statsd_gauge_reporting(skipped, ["app:cop_dem_to_dc", "action:skipped"], statsd_setting)
-
 
     if failed > 0:
         sys.exit(failed)
