@@ -12,16 +12,12 @@ import click
 import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from odc.apps.dc_tools.utils import (
-    allow_unsafe,
-    SkippedException,
-    index_update_dataset,
-    limit,
-    archive_less_mature, update_if_exists,
-    bbox,
-    statsd_gauge_reporting, statsd_setting,
-)
-from ._stac import stac_transform, stac_transform_absolute
+from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
+from odc.apps.dc_tools.utils import (SkippedException, allow_unsafe,
+                                     archive_less_mature, bbox,
+                                     index_update_dataset, limit,
+                                     statsd_gauge_reporting, statsd_setting,
+                                     update_if_exists)
 from pystac.item import Item
 from pystac_client import Client
 
@@ -30,8 +26,6 @@ logging.basicConfig(
     format="%(asctime)s: %(levelname)s: %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S",
 )
-
-import concurrent
 
 
 def _parse_options(options: Optional[str]) -> Dict[str, Any]:
@@ -92,7 +86,9 @@ def _guess_location(
 
 
 def item_to_meta_uri(
-    item: Item, rewrite: Optional[Tuple[str, str]] = None, rename_product: Optional[str] = None
+    item: Item,
+    rewrite: Optional[Tuple[str, str]] = None,
+    rename_product: Optional[str] = None,
 ) -> Generator[Tuple[dict, str, bool], None, None]:
     uri, relative = _guess_location(item, rewrite)
     metadata = item.to_dict()
@@ -125,8 +121,9 @@ def process_item(
         doc2ds,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
-        archive_less_mature=archive_less_mature
+        archive_less_mature=archive_less_mature,
     )
+
 
 def stac_api_to_odc(
     dc: Datacube,
@@ -137,7 +134,7 @@ def stac_api_to_odc(
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
     archive_less_mature: bool = False,
-) -> Tuple[int, int]:
+) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
 
@@ -168,7 +165,7 @@ def stac_api_to_odc(
                 allow_unsafe=allow_unsafe,
                 rewrite=rewrite,
                 rename_product=rename_product,
-                archive_less_mature=archive_less_mature
+                archive_less_mature=archive_less_mature,
             ): item.id
             for item in search.get_all_items()
         }
@@ -179,7 +176,7 @@ def stac_api_to_odc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
-            except SkippedException as e:
+            except SkippedException:
                 logging.exception(f"{item} Skipped")
                 skipped += 1
             except Exception as e:
@@ -226,15 +223,16 @@ def stac_api_to_odc(
     help=(
         "Rewrite asset hrefs, for example, to change from "
         "HTTPS to S3 URIs, --rewrite-assets=https://example.com/,s3://"
-    )
+    ),
 )
 @click.option(
     "--rename-product",
     type=str,
     default=None,
     help=(
-        "Name of product to overwrite collection(s) names, only one product name can overwrite, despite multiple collections "
-    )
+        "Name of product to overwrite collection(s) names, "
+        "only one product name can overwrite, despite multiple collections "
+    ),
 )
 @archive_less_mature
 @statsd_setting
@@ -275,21 +273,36 @@ def cli(
     if rewrite_assets is not None:
         rewrite = list(rewrite_assets.split(","))
         if len(rewrite) != 2:
-            raise ValueError("Rewrite assets argument needs to be two strings split by ','")
+            raise ValueError(
+                "Rewrite assets argument needs to be two strings split by ','"
+            )
 
     # Do the thing
     dc = Datacube()
     added, failed, skipped = stac_api_to_odc(
-        dc, update_if_exists, config, catalog_href,
-        allow_unsafe=allow_unsafe, rewrite=rewrite,
-        rename_product=rename_product, archive_less_mature=archive_less_mature,
+        dc,
+        update_if_exists,
+        config,
+        catalog_href,
+        allow_unsafe=allow_unsafe,
+        rewrite=rewrite,
+        rename_product=rename_product,
+        archive_less_mature=archive_less_mature,
     )
 
-    print(f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets")
+    print(
+        f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets"
+    )
     if statsd_setting:
-        statsd_gauge_reporting(added, ["app:stac_api_to_dc", "action:added"], statsd_setting)
-        statsd_gauge_reporting(failed, ["app:stac_api_to_dc", "action:failed"], statsd_setting)
-        statsd_gauge_reporting(skipped, ["app:stac_api_to_dc", "action:skipped"], statsd_setting)
+        statsd_gauge_reporting(
+            added, ["app:stac_api_to_dc", "action:added"], statsd_setting
+        )
+        statsd_gauge_reporting(
+            failed, ["app:stac_api_to_dc", "action:failed"], statsd_setting
+        )
+        statsd_gauge_reporting(
+            skipped, ["app:stac_api_to_dc", "action:skipped"], statsd_setting
+        )
 
     if failed > 0:
         sys.exit(failed)
