@@ -62,7 +62,6 @@ dependencies:
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
-      - rio-stac
 
       # odc.algo optional dependency
       - hdstats
