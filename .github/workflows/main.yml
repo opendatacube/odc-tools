@@ -268,7 +268,7 @@ jobs:
         && github.event_name == 'push'
         && github.repository == 'opendatacube/odc-tools'
       run: |
-        echo "::set-output name=publish::yes"
+        echo "publish=yes" >> $GITHUB_OUTPUT
     - uses: actions/cache@v2
       id: wheels_cache
       if: steps.cfg.outputs.publish == 'yes'
@@ -331,8 +331,8 @@ jobs:
         PKG: ${{ matrix.pkg }}
       run: |
         tk="pypi_token_${PKG//-/_}"
-        echo "::set-output name=tk::${tk}"
-        echo "::set-output name=publish::yes"
+        echo "tk=${tk}" >> $GITHUB_OUTPUT
+        echo "publish=yes" >> $GITHUB_OUTPUT
 
     - name: Setup Python
       if: steps.cfg.outputs.publish == 'yes'
