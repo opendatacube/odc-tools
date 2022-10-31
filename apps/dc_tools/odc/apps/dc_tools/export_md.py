@@ -30,7 +30,7 @@ _LOG = logging.getLogger(__name__)
 )
 @click.pass_context
 def cli(ctx, datacube_config):
-    """ Specify datacube index to be used for the given datacube config"""
+    """Specify datacube index to be used for the given datacube config"""
     ctx.obj = Datacube(config=datacube_config).index
 
 

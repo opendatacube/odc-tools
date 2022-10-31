@@ -61,7 +61,8 @@ def test_indexing_cli(bbox):
     result = runner.invoke(
         cli,
         [
-            "--bbox", bbox,
+            "--bbox",
+            bbox,
             "--statsd-setting",
             "localhost:8125",
         ],

@@ -4,8 +4,7 @@ from odc.azure import find_blobs, download_yamls
 
 
 def test_find_blobs():
-    """Find blobs in a sample Azure account, this will fail if the blob store changes or is removed
-    """
+    """Find blobs in a sample Azure account, this will fail if the blob store changes or is removed"""
 
     account_name = "geoau"
     account_url = "https://" + account_name + ".blob.core.windows.net"
@@ -14,14 +13,15 @@ def test_find_blobs():
     suffix = "odc-metadata.yaml"
     prefix = "baseline/ga_ls7e_ard_3/092/087/2018/05/25"
 
-    blob_names = list(find_blobs(container_name, credential, prefix, suffix, account_url=account_url))
+    blob_names = list(
+        find_blobs(container_name, credential, prefix, suffix, account_url=account_url)
+    )
     assert blob_names
     assert len(blob_names) == 1
 
 
 def test_download_yamls():
-    """Test pass/fail arms of YAML download from Azure blobstore
-    """
+    """Test pass/fail arms of YAML download from Azure blobstore"""
 
     account_name = "geoau"
     account_url = "https://" + account_name + ".blob.core.windows.net"

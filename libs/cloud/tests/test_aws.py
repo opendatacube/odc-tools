@@ -110,7 +110,10 @@ def test_redrive_to_queue_cli(aws_env):
     )
 
     assert returned.exit_code == 0
-    assert int(get_queue(ALIVE_QUEUE_NAME).attributes.get('ApproximateNumberOfMessages')) == 1
+    assert (
+        int(get_queue(ALIVE_QUEUE_NAME).attributes.get("ApproximateNumberOfMessages"))
+        == 1
+    )
 
     # Valid value None (all)
     returned = CliRunner().invoke(
@@ -119,7 +122,10 @@ def test_redrive_to_queue_cli(aws_env):
     )
 
     assert returned.exit_code == 0
-    assert int(get_queue(DEAD_QUEUE_NAME).attributes.get('ApproximateNumberOfMessages')) == 0
+    assert (
+        int(get_queue(DEAD_QUEUE_NAME).attributes.get("ApproximateNumberOfMessages"))
+        == 0
+    )
 
 
 @mock_sqs

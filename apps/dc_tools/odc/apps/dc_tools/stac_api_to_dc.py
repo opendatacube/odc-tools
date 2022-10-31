@@ -13,11 +13,17 @@ import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
-from odc.apps.dc_tools.utils import (SkippedException, allow_unsafe,
-                                     archive_less_mature, bbox,
-                                     index_update_dataset, limit,
-                                     statsd_gauge_reporting, statsd_setting,
-                                     update_if_exists)
+from odc.apps.dc_tools.utils import (
+    SkippedException,
+    allow_unsafe,
+    archive_less_mature,
+    bbox,
+    index_update_dataset,
+    limit,
+    statsd_gauge_reporting,
+    statsd_setting,
+    update_if_exists,
+)
 from pystac.item import Item
 from pystac_client import Client
 
@@ -39,7 +45,9 @@ def _parse_options(options: Optional[str]) -> Dict[str, Any]:
                 try:
                     value = json.loads(value)
                 except Exception:
-                    logging.warning(f"Failed to handle value {value} for key {key} as JSON, using str")
+                    logging.warning(
+                        f"Failed to handle value {value} for key {key} as JSON, using str"
+                    )
                 parsed_options[key] = value
             except Exception as e:
                 logging.warning(
