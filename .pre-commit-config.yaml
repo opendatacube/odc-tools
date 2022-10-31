@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.26.3
+    rev: v1.28.0
     hooks:
       - id: yamllint
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -20,11 +20,11 @@ repos:
     rev: 'v3.0.0a5'  # Use the sha / tag you want to point at
     hooks:
       - id: pylint
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: '3.9.2'
+  - repo: https://github.com/PyCQA/flake8
+    rev: '5.0.4'
     hooks:
       - id: flake8
   - repo: https://github.com/psf/black
-    rev: 22.6.0
+    rev: 22.10.0
     hooks:
       - id: black
