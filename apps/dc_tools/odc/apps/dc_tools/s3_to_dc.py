@@ -12,14 +12,25 @@ from datacube.index.hl import Doc2Dataset
 
 
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.apps.dc_tools.utils import (IndexingException, SkippedException,
-                                     archive_less_mature, allow_unsafe,
-                                     fail_on_missing_lineage,
-                                     index_update_dataset, no_sign_request,
-                                     request_payer, skip_check, skip_lineage,
-                                     statsd_gauge_reporting, statsd_setting,
-                                     transform_stac, transform_stac_absolute,
-                                     update, update_if_exists, verify_lineage)
+from odc.apps.dc_tools.utils import (
+    IndexingException,
+    SkippedException,
+    archive_less_mature,
+    allow_unsafe,
+    fail_on_missing_lineage,
+    index_update_dataset,
+    no_sign_request,
+    request_payer,
+    skip_check,
+    skip_lineage,
+    statsd_gauge_reporting,
+    statsd_setting,
+    transform_stac,
+    transform_stac_absolute,
+    update,
+    update_if_exists,
+    verify_lineage,
+)
 from odc.apps.dc_tools._docs import parse_doc_stream
 from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
 
@@ -57,15 +68,22 @@ def dump_to_odc(
     ds_added = 0
     ds_failed = 0
     ds_skipped = 0
-    uris_docs = parse_doc_stream(stream_docs(document_stream), on_error=doc_error, transform=transform)
+    uris_docs = parse_doc_stream(
+        stream_docs(document_stream), on_error=doc_error, transform=transform
+    )
 
     for uri, metadata in uris_docs:
         try:
-            index_update_dataset(metadata, uri, dc, doc2ds,
-                                 update=update,
-                                 update_if_exists=update_if_exists,
-                                 allow_unsafe=allow_unsafe,
-                                 archive_less_mature=archive_less_mature)
+            index_update_dataset(
+                metadata,
+                uri,
+                dc,
+                doc2ds,
+                update=update,
+                update_if_exists=update_if_exists,
+                allow_unsafe=allow_unsafe,
+                archive_less_mature=archive_less_mature,
+            )
             ds_added += 1
         except IndexingException as e:
             logging.exception(f"Failed to index dataset {uri} with error {e}")
@@ -109,7 +127,7 @@ def cli(
     uri,
     product,
 ):
-    """ Iterate through files in an S3 bucket and add them to datacube"""
+    """Iterate through files in an S3 bucket and add them to datacube"""
 
     transform = None
     if stac:
@@ -140,7 +158,9 @@ def cli(
 
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-    document_stream = stream_urls(s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts))
+    document_stream = stream_urls(
+        s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
+    )
 
     added, failed, skipped = dump_to_odc(
         fetcher(document_stream),
@@ -153,14 +173,20 @@ def cli(
         update=update,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
-        archive_less_mature=archive_less_mature
+        archive_less_mature=archive_less_mature,
     )
 
-    print(f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets.")
+    print(
+        f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets."
+    )
     if statsd_setting:
         statsd_gauge_reporting(added, ["app:s3_to_dc", "action:added"], statsd_setting)
-        statsd_gauge_reporting(skipped, ["app:s3_to_dc", "action:skipped"], statsd_setting)
-        statsd_gauge_reporting(failed, ["app:s3_to_dc", "action:failed"], statsd_setting)
+        statsd_gauge_reporting(
+            skipped, ["app:s3_to_dc", "action:skipped"], statsd_setting
+        )
+        statsd_gauge_reporting(
+            failed, ["app:s3_to_dc", "action:failed"], statsd_setting
+        )
 
     if failed > 0:
         sys.exit(failed)

@@ -13,12 +13,20 @@ import datacube
 import fsspec
 import yaml
 from datacube import Datacube
-from odc.apps.dc_tools.utils import update_if_exists, statsd_gauge_reporting, statsd_setting
+from odc.apps.dc_tools.utils import (
+    update_if_exists,
+    statsd_gauge_reporting,
+    statsd_setting,
+)
 from typing import Any, Dict, List
 
-Product = namedtuple('Product', ['name', 'doc'])
+Product = namedtuple("Product", ["name", "doc"])
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s: %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
 
 
 def _get_product(product_path: str) -> List[Dict[str, Any]]:
@@ -48,7 +56,9 @@ def _parse_csv(csv_path: str) -> Dict[str, str]:
 
             # Check we have the same number of names as content
             if len(names) != len(content):
-                logging.error(f"{len(names)} product names and {len(content)} documents found. This is different!")
+                logging.error(
+                    f"{len(names)} product names and {len(content)} documents found. This is different!"
+                )
                 fail = True
 
             # Check we have the same names as are in the product definitions
@@ -104,7 +114,9 @@ def add_update_products(
                 logging.info(f"Updated product {product.name}")
         except Exception as e:
             failed += 1
-            logging.error(f"Failed to add/update product {product.name} with exception: {e}")
+            logging.error(
+                f"Failed to add/update product {product.name} with exception: {e}"
+            )
 
     # Return results
     return added, updated, failed
@@ -117,16 +129,24 @@ def add_update_products(
 def cli(csv_path: str, update_if_exists: bool, statsd_setting: str):
     # Check we can connect to the Datacube
     dc = datacube.Datacube(app="add_update_products")
-    logging.info(f"Starting up: connected to Datacube, and update-if-exists is {update_if_exists}")
+    logging.info(
+        f"Starting up: connected to Datacube, and update-if-exists is {update_if_exists}"
+    )
 
     # TODO: Add in some QA/QC checks
     added, updated, failed = add_update_products(dc, csv_path, update_if_exists)
 
     print(f"Added: {added}, Updated: {updated} and Failed: {failed}")
     if statsd_setting:
-        statsd_gauge_reporting(added, ["app: add_update_products", "action:added"], statsd_setting)
-        statsd_gauge_reporting(failed, ["app: add_update_products", "action:failed"], statsd_setting)
-        statsd_gauge_reporting(failed, ["app: add_update_products", "action:updated"], statsd_setting)
+        statsd_gauge_reporting(
+            added, ["app: add_update_products", "action:added"], statsd_setting
+        )
+        statsd_gauge_reporting(
+            failed, ["app: add_update_products", "action:failed"], statsd_setting
+        )
+        statsd_gauge_reporting(
+            failed, ["app: add_update_products", "action:updated"], statsd_setting
+        )
 
     # If nothing failed then this exists with success code 0
     sys.exit(failed)

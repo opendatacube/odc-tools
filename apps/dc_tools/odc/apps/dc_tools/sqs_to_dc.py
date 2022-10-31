@@ -17,14 +17,25 @@ import requests
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_unsafe, archive,
-                                     fail_on_missing_lineage,
-                                     index_update_dataset, limit, no_sign_request,
-                                     skip_lineage,
-                                     statsd_setting, statsd_gauge_reporting,
-                                     transform_stac, transform_stac_absolute,
-                                     archive_less_mature,
-                                     update, update_if_exists, verify_lineage)
+from odc.apps.dc_tools.utils import (
+    IndexingException,
+    SkippedException,
+    allow_unsafe,
+    archive,
+    fail_on_missing_lineage,
+    index_update_dataset,
+    limit,
+    no_sign_request,
+    skip_lineage,
+    statsd_setting,
+    statsd_gauge_reporting,
+    transform_stac,
+    transform_stac_absolute,
+    archive_less_mature,
+    update,
+    update_if_exists,
+    verify_lineage,
+)
 from odc.aws.queue import get_messages
 from ._stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
@@ -130,13 +141,15 @@ def handle_bucket_notification_message(
             try:
                 uri = f"s3://{bucket_name}/{key}"
                 if no_sign_request:
-                    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+                    s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
                     data = s3.get_object(Bucket=bucket_name, Key=key)
-                    contents = data['Body'].read()
+                    contents = data["Body"].read()
                     data = safe_load(contents.decode("utf-8"))
                 else:
                     s3 = boto3.resource("s3")
-                    obj = s3.Object(bucket_name, key).get(ResponseCacheControl="no-cache")
+                    obj = s3.Object(bucket_name, key).get(
+                        ResponseCacheControl="no-cache"
+                    )
                     data = safe_load(obj["Body"].read())
             except Exception as e:
                 raise IndexingException(
@@ -253,7 +266,7 @@ def queue_to_odc(
                             update=update,
                             update_if_exists=update_if_exists,
                             allow_unsafe=allow_unsafe,
-                            archive_less_mature=archive_less_mature
+                            archive_less_mature=archive_less_mature,
                         )
                         ds_success += 1
                     except SkippedException:
@@ -327,7 +340,7 @@ def cli(
     queue_name,
     product,
 ):
-    """ Iterate through messages on an SQS queue and add them to datacube"""
+    """Iterate through messages on an SQS queue and add them to datacube"""
 
     transform = None
     if stac:
@@ -367,21 +380,31 @@ def cli(
     if update:
         result_msg += f"Updated {success} Dataset(s), "
         if statsd_setting:
-            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:update"], statsd_setting)
+            statsd_gauge_reporting(
+                success, ["app:sqs_to_dc", "action:update"], statsd_setting
+            )
     elif archive:
         result_msg += f"Archived {success} Dataset(s), "
         if statsd_setting:
-            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:archived"], statsd_setting)
+            statsd_gauge_reporting(
+                success, ["app:sqs_to_dc", "action:archived"], statsd_setting
+            )
     else:
         result_msg += f"Added {success} Dataset(s), "
         if statsd_setting:
-            statsd_gauge_reporting(success, ["app:sqs_to_dc", "action:added"], statsd_setting)
+            statsd_gauge_reporting(
+                success, ["app:sqs_to_dc", "action:added"], statsd_setting
+            )
     result_msg += f"Failed {failed} Dataset(s), Skipped {skipped} Dataset(s)"
     print(result_msg)
 
     if statsd_setting:
-        statsd_gauge_reporting(failed, ["app:sqs_to_dc", "action:failed"], statsd_setting)
-        statsd_gauge_reporting(skipped, ["app:sqs_to_dc", "action:skipped"], statsd_setting)
+        statsd_gauge_reporting(
+            failed, ["app:sqs_to_dc", "action:failed"], statsd_setting
+        )
+        statsd_gauge_reporting(
+            skipped, ["app:sqs_to_dc", "action:skipped"], statsd_setting
+        )
 
     if failed > 0:
         sys.exit(failed)

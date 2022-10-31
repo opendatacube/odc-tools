@@ -41,7 +41,9 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
         credentials = creds
         auth = S3SigV4Auth(credentials, "s3", region_name)
 
-    def build_request(bucket=None, key=None, url=None, range=None):  #pylint: disable=redefined-builtin
+    def build_request(
+        bucket=None, key=None, url=None, range=None
+    ):  # pylint: disable=redefined-builtin
         if key is None and url is None:
             if bucket is None:
                 raise ValueError("Have to supply bucket,key or url")

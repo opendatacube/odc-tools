@@ -13,10 +13,13 @@ def test_find_yamls(test_data_dir):
     files = [str(x) for x in _find_files(test_data_dir)]
 
     assert len(files) == 5
-    assert str(
-        Path(test_data_dir)
-        / "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.sqs.yaml"
-    ) in files
+    assert (
+        str(
+            Path(test_data_dir)
+            / "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.sqs.yaml"
+        )
+        in files
+    )
 
 
 def test_find_json(test_data_dir):
@@ -56,7 +59,9 @@ def test_fs_to_fc_yaml(test_data_dir):
     assert result.exit_code == 0
 
 
-def test_archive_less_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid):
+def test_archive_less_mature(
+    odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid
+):
     if not odc_db_for_maturity_tests:
         pytest.skip("No database")
         return
@@ -71,8 +76,8 @@ def test_archive_less_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid,
             "--glob=**/maturity-nrt.odc-metadata.yaml",
             "--statsd-setting",
             "localhost:8125",
-            "--archive-less-mature"
-        ]
+            "--archive-less-mature",
+        ],
     )
     assert result.exit_code == 0
     assert dc.index.datasets.get(final_dsid) is None
@@ -86,15 +91,17 @@ def test_archive_less_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid,
             "--glob=**/maturity-final.odc-metadata.yaml",
             "--statsd-setting",
             "localhost:8125",
-            "--archive-less-mature"
-        ]
+            "--archive-less-mature",
+        ],
     )
     assert result.exit_code == 0
     assert dc.index.datasets.get(final_dsid).archived_time is None
     assert dc.index.datasets.get(nrt_dsid).archived_time is not None
 
 
-def test_keep_more_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid):
+def test_keep_more_mature(
+    odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid
+):
     if not odc_db_for_maturity_tests:
         pytest.skip("No database")
         return
@@ -109,8 +116,8 @@ def test_keep_more_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid, fi
             "--glob=**/maturity-final.odc-metadata.yaml",
             "--statsd-setting",
             "localhost:8125",
-            "--archive-less-mature"
-        ]
+            "--archive-less-mature",
+        ],
     )
     assert result.exit_code == 0
     assert dc.index.datasets.get(nrt_dsid) is None
@@ -124,8 +131,8 @@ def test_keep_more_mature(odc_db_for_maturity_tests, test_data_dir, nrt_dsid, fi
             "--glob=**/maturity-nrt.odc-metadata.yaml",
             "--statsd-setting",
             "localhost:8125",
-            "--archive-less-mature"
-        ]
+            "--archive-less-mature",
+        ],
     )
     assert result.exit_code == 0
     assert dc.index.datasets.get(final_dsid).archived_time is None

@@ -41,13 +41,13 @@ def retrieve_manifest_files(key: str, s3, schema, **kw):
 
 
 def list_inventory(
-        manifest,
-        s3=None,
-        prefix: str = '',
-        suffix: str = '',
-        contains: str = '',
-        n_threads: int = None,
-        **kw
+    manifest,
+    s3=None,
+    prefix: str = "",
+    suffix: str = "",
+    contains: str = "",
+    n_threads: int = None,
+    **kw
 ):
     """
     Returns a generator of inventory records
@@ -87,12 +87,7 @@ def list_inventory(
     if n_threads:
         with ThreadPoolExecutor(max_workers=1000) as executor:
             tasks = [
-                executor.submit(
-                    retrieve_manifest_files,
-                    key,
-                    s3,
-                    schema
-                )
+                executor.submit(retrieve_manifest_files, key, s3, schema)
                 for key in data_urls
             ]
 
@@ -100,22 +95,14 @@ def list_inventory(
                 for namespace in future.result():
                     key = namespace.Key
                     if (
-                            key.startswith(prefix) and
-                            key.endswith(suffix) and
-                            contains in key
+                        key.startswith(prefix)
+                        and key.endswith(suffix)
+                        and contains in key
                     ):
                         yield namespace
     else:
         for u in data_urls:
-            for namespace in retrieve_manifest_files(
-                    u,
-                    s3,
-                    schema
-            ):
+            for namespace in retrieve_manifest_files(u, s3, schema):
                 key = namespace.Key
-                if (
-                        key.startswith(prefix) and
-                        key.endswith(suffix) and
-                        contains in key
-                ):
+                if key.startswith(prefix) and key.endswith(suffix) and contains in key:
                     yield namespace

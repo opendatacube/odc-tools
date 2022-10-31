@@ -104,7 +104,10 @@ skip_check = click.option(
 )
 
 no_sign_request = click.option(
-    "--no-sign-request", is_flag=True, default=False, help="Do not sign AWS S3 requests."
+    "--no-sign-request",
+    is_flag=True,
+    default=False,
+    help="Do not sign AWS S3 requests.",
 )
 
 request_payer = click.option(
@@ -123,7 +126,7 @@ archive_less_mature = click.option(
         "time and region-code, but have lower dataset-maturity."
         "Note: An error will be raised and the dataset add will "
         "fail if a matching dataset with higher or equal dataset-maturity."
-    )
+    ),
 )
 
 archive = click.option(
@@ -151,7 +154,7 @@ statsd_setting = click.option(
     "--statsd-setting",
     is_flag=False,
     default=None,
-    help="statsd exporter hostname and port, i.e. prometheus-statsd-exporter:9125"
+    help="statsd exporter hostname and port, i.e. prometheus-statsd-exporter:9125",
 )
 
 
@@ -159,7 +162,7 @@ def get_esri_list():
     stream = pkg_resources.resource_stream(__name__, "esri-lc-tiles-list.txt")
     with stream as f:
         for tile in f.readlines():
-            id = tile.decode().rstrip('\n')
+            id = tile.decode().rstrip("\n")
             yield ESRI_LANDCOVER_BASE_URI.format(id=id)
 
 
@@ -171,7 +174,7 @@ def index_update_dataset(
     update: bool = False,
     update_if_exists: bool = False,
     allow_unsafe: bool = False,
-    archive_less_mature: Optional[Union[bool, Iterable[str]]] = None
+    archive_less_mature: Optional[Union[bool, Iterable[str]]] = None,
 ) -> int:
     """
     Index and/or update a dataset.  Called by all the **_to_dc CLI tools.
@@ -226,10 +229,7 @@ def index_update_dataset(
         added = False
         updated = False
         if archive_less_mature:
-            dupes = dc.index.datasets.search(
-                product=ds.type.name,
-                **dupe_query
-            )
+            dupes = dc.index.datasets.search(product=ds.type.name, **dupe_query)
             for dupe in dupes:
                 if dupe.id == ds.id:
                     # Same dataset, for update.  Ignore
@@ -287,18 +287,12 @@ def index_update_dataset(
         logging.info("Existing Dataset Updated: %s", ds.id)
 
 
-def statsd_gauge_reporting(
-    value, tags=[],
-    statsd_setting="localhost:8125"
-):
+def statsd_gauge_reporting(value, tags=[], statsd_setting="localhost:8125"):
     host = statsd_setting.split(":")[0]
     port = statsd_setting.split(":")[1]
-    options = {
-        'statsd_host': host,
-        'statsd_port': port
-    }
+    options = {"statsd_host": host, "statsd_port": port}
     initialize(**options)
 
     if os.environ.get("HOSTNAME"):
         tags.append(f"pod:{os.getenv('HOSTNAME')}")
-    statsd.gauge('datacube_index', value, tags=tags)
+    statsd.gauge("datacube_index", value, tags=tags)

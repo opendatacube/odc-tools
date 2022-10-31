@@ -10,12 +10,12 @@ PRODUCTS = ["cop_30", "cop_90"]
 
 @pytest.fixture
 def bbox():
-    return '5,5,7,7'
+    return "5,5,7,7"
 
 
 @pytest.fixture
 def bbox_africa():
-    return '-26.359944882003788,-47.96476498374171,64.4936701740102,38.34459242512347'
+    return "-26.359944882003788,-47.96476498374171,64.4936701740102,38.34459242512347"
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
@@ -61,6 +61,7 @@ def test_indexing_cli(bbox, product):
     assert result.exit_code == 0
     assert f"Product definition added for {product}" in result.output
     assert "Added 4 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
+
 
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_indexing_cli_repeat(bbox, product):

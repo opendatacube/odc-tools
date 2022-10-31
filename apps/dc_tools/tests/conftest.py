@@ -15,6 +15,7 @@ USGS_LANDSAT_STAC: str = "LC08_L2SR_081119_20200101_20200823_02_T2.json"
 LIDAR_STAC: str = "lidar_dem.json"
 MATURITY_PRODUCT: str = "ga_ls5t_gm_product.yaml"
 
+
 @pytest.fixture
 def aws_env(monkeypatch):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")

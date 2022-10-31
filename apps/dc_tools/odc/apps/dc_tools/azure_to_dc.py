@@ -9,10 +9,16 @@ import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._stac import stac_transform
-from odc.apps.dc_tools.utils import (allow_unsafe, archive_less_mature,
-                                     index_update_dataset,
-                                     statsd_gauge_reporting, statsd_setting,
-                                     transform_stac, update, update_if_exists)
+from odc.apps.dc_tools.utils import (
+    allow_unsafe,
+    archive_less_mature,
+    index_update_dataset,
+    statsd_gauge_reporting,
+    statsd_setting,
+    transform_stac,
+    update,
+    update_if_exists,
+)
 from odc.azure import download_blob, find_blobs
 
 
@@ -52,7 +58,7 @@ def dump_list_to_odc(
                 update=update,
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
-                archive_less_mature=archive_less_mature
+                archive_less_mature=archive_less_mature,
             )
             ds_added += 1
         except Exception as e:
@@ -116,7 +122,7 @@ def cli(
         update=update,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
-        archive_less_mature=archive_less_mature
+        archive_less_mature=archive_less_mature,
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
