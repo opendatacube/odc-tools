@@ -4,6 +4,12 @@ name: Run Code Checks
 on:
   pull_request:
   push:
+    # Only run on push to `develop` branch to prevent double execution of
+    # all the code checks.
+    # Everything should be merged through PRs anyway.
+    branches:
+      - develop
+      - test-ci-*
     paths:
       - '**'
       - '!notebooks/**'
