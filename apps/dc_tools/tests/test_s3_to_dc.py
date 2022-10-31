@@ -3,7 +3,7 @@
 
 import pytest
 from click.testing import CliRunner
-from odc.apps.dc_tools.s3_to_dc import cli
+from odc.apps.dc_tools.s3_to_dc import cli as s3_to_dc
 
 
 @pytest.mark.depends(on=["add_products"])
@@ -11,7 +11,7 @@ def test_s3_to_dc_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        s3_to_dc,
         [
             "--statsd-setting",
             "localhost:8125",
@@ -32,7 +32,7 @@ def test_s3_to_dc_yaml_rerun(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        s3_to_dc,
         [
             "--statsd-setting",
             "localhost:8125",
@@ -53,7 +53,7 @@ def test_s3_to_dc_stac(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        s3_to_dc,
         [
             "--statsd-setting",
             "localhost:8125",
@@ -74,7 +74,7 @@ def test_s3_to_dc_stac_update_if_exist(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        s3_to_dc,
         [
             "--statsd-setting",
             "localhost:8125",
@@ -96,7 +96,7 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        s3_to_dc,
         [
             "--statsd-setting",
             "localhost:8125",
@@ -119,7 +119,7 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        s3_to_dc,
         [
             "--no-sign-request",
             # absolute single file s3 uri won't work with s3-to-dc, only uri string contain *
@@ -139,7 +139,7 @@ def test_s3_to_dc_index_proc_info_yaml(aws_env):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        s3_to_dc,
         [
             "--no-sign-request",
             "--skip-lineage",
@@ -151,24 +151,4 @@ def test_s3_to_dc_index_proc_info_yaml(aws_env):
     assert result.exit_code == 1
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 1 datasets.\n"
-    )
-
-
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_dea_s2(aws_env):
-    runner = CliRunner()
-    # This will fail if requester pays is enabled
-    result = runner.invoke(
-        cli,
-        [
-            "--no-sign-request",
-            "--skip-lineage",
-            "--stac",
-            "s3://dea-public-data-dev/baseline/ga_s2am_ard_3/53/KQB/2022/01/10/20220110T022746/*.stac-item.json",
-            "ga_s2am_ard_3",
-        ],
-    )
-    assert result.exit_code == 0
-    assert (
-        result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
