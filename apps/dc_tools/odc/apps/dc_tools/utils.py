@@ -7,7 +7,11 @@ import pkg_resources
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
-from datadog import initialize, statsd
+
+from datadog import statsd, initialize
+
+from odc.aws.queue import publish_to_topic
+from ._stac import ds_to_stac
 
 ESRI_LANDCOVER_BASE_URI = (
     "https://ai4edataeuwest.blob.core.windows.net/io-lulc/"
@@ -15,6 +19,8 @@ ESRI_LANDCOVER_BASE_URI = (
 )
 
 MICROSOFT_PC_STAC_URI = "https://planetarycomputer.microsoft.com/api/stac/v1/"
+
+SNS_TOPIC_NAME = "DEADataIndexed"
 
 
 class IndexingException(Exception):
@@ -126,6 +132,16 @@ archive_less_mature = click.option(
     ),
 )
 
+publish_action = click.option(
+    "--publish-action",
+    is_flag=True,
+    default=False,
+    help=(
+        "Publish indexing action to kickstart downstream products "
+        "and/or fully remove archived datasets."
+    )
+)
+
 archive = click.option(
     "--archive",
     is_flag=True,
@@ -172,6 +188,8 @@ def index_update_dataset(
     update_if_exists: bool = False,
     allow_unsafe: bool = False,
     archive_less_mature: Optional[Union[bool, Iterable[str]]] = None,
+    publish_action: bool = False,
+    stac_doc: Optional[dict] = None,
 ) -> int:
     """
     Index and/or update a dataset.  Called by all the **_to_dc CLI tools.
@@ -191,6 +209,8 @@ def index_update_dataset(
            * If an iterable of valid search field names is provided, it is used as the "grouping" fields for
              identifying dataset maturity matches.
              (i.e. `archive_less_mature=True` is the same as `archive_less_mature=['region_code', 'time'])
+    :param publish_action: Publish action to SNS topic.
+    :param stac_doc: STAC document for publication to SNS topic.
     :return: Returns nothing.  Raises an exception if anything goes wrong.
     """
     if uri is None:
@@ -212,7 +232,8 @@ def index_update_dataset(
             # if set explicitly to True, default to [region_code, time]
             archive_less_mature = ["region_code", "time"]
         try:
-            dupe_query = {k: getattr(ds.metadata, k) for k in archive_less_mature}
+            dupe_query = {k: getattr(ds.metadata, k)
+                          for k in archive_less_mature}
         except AttributeError as e:
             raise IndexingException(
                 f"Cannot extract matching value from dataset for maturity check: {e}\n The URI was {uri}"
@@ -223,6 +244,7 @@ def index_update_dataset(
     with dc.index.transaction():
         # Process in a transaction
         archive_ids = []
+        archive_stacs = []
         added = False
         updated = False
         if archive_less_mature:
@@ -240,6 +262,8 @@ def index_update_dataset(
                         f"Cannot load dataset of maturity {ds.metadata.dataset_maturity} URI {uri} "
                     )
                 archive_ids.append(dupe.id)
+                if publish_action:
+                    archive_stacs.append(ds_to_stac(dupe))
             if archive_ids:
                 dc.index.datasets.archive(archive_ids)
 
@@ -278,8 +302,17 @@ def index_update_dataset(
     # Transaction committed : Log actions
     for arch_id in archive_ids:
         logging.info("Archived less mature dataset: %s", arch_id)
+    if publish_action:
+        for arch_stac in archive_stacs:
+            publish_to_topic(action="ARCHIVED", doc=arch_stac)
+
     if added:
         logging.info("New Dataset Added: %s", ds.id)
+        if publish_action:
+            if stac_doc is None:  # if STAC was not provided, generate from dataset
+                stac_doc = ds_to_stac(ds)
+            publish_to_topic(action="ADDED", doc=stac_doc)
+
     if updated:
         logging.info("Existing Dataset Updated: %s", ds.id)
 

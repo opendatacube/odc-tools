@@ -1,7 +1,10 @@
 import itertools
+import json
 from typing import Any, Iterable, Mapping, Optional
 
 import boto3
+
+SNS_TOPIC_NAME = "DEADataUpdateArchiveDev"
 
 
 def redrive_queue(
@@ -51,7 +54,8 @@ def redrive_queue(
         messages_per_request=messages_per_request,
     )
     count_messages = 0
-    approx_n_messages = dead_queue.attributes.get("ApproximateNumberOfMessages")
+    approx_n_messages = dead_queue.attributes.get(
+        "ApproximateNumberOfMessages")
     try:
         count_messages = int(approx_n_messages)
     except TypeError:
@@ -181,3 +185,16 @@ def get_messages(
         raise Exception(f"Limit {limit} is not valid.")
 
     return itertools.islice(messages, limit)
+
+
+def publish_to_topic(action, stac):
+    """
+    Publish a message to an sns topic
+    """
+    sns = boto3.resource("sns")
+    sns_topic = sns.create_topic(Name=SNS_TOPIC_NAME)
+
+    stac = json.dumps(stac)
+    sns_topic.publish(
+        Message='{"action": {action}, "stac": {stac}}',
+    )

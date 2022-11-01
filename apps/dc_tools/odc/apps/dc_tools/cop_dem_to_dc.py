@@ -73,7 +73,8 @@ def get_dem_tile_uris(bounding_box, product):
     else:
         bounding_box = bounding_box.split(",")
         if len(bounding_box) != 4:
-            raise ValueError("bounding_box must be in the format: minx,miny,maxx,maxy")
+            raise ValueError(
+                "bounding_box must be in the format: minx,miny,maxx,maxy")
         bounding_box = [float(x) for x in bounding_box]
 
     # Get the uris
@@ -108,6 +109,7 @@ def process_uri_tile(
     doc2ds: Doc2Dataset,
     update_if_exists: bool = True,
     archive_less_mature: bool = False,
+    publish_action: bool = False
 ) -> Tuple[pystac.Item, str]:
     product_name = f"dem_{product}"
     uri, tile = uri_tile
@@ -136,6 +138,8 @@ def process_uri_tile(
         update_if_exists=update_if_exists,
         allow_unsafe=True,
         archive_less_mature=archive_less_mature,
+        publish_action=publish_action,
+        stac_doc=item.to_dict(),
     )
 
     return True
@@ -162,7 +166,8 @@ def cop_dem_to_dc(
     failure = 0
     skipped = 0
 
-    sys.stdout.write(f"Starting Cop DEM indexing with {n_workers} workers...\n")
+    sys.stdout.write(
+        f"Starting Cop DEM indexing with {n_workers} workers...\n")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
@@ -189,7 +194,8 @@ def cop_dem_to_dc(
             except rasterio.errors.RasterioIOError:
                 logging.info(f"Couldn't find file for {uri}")
             except Exception as e:
-                logging.exception(f"Failed to handle uri {uri} with exception {e}")
+                logging.exception(
+                    f"Failed to handle uri {uri} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 

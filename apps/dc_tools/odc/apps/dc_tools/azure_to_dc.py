@@ -18,13 +18,15 @@ from odc.apps.dc_tools.utils import (
     transform_stac,
     update,
     update_if_exists,
+    publish_action,
 )
 from odc.azure import download_blob, find_blobs
 
 
 def stream_blob_urls(account_url, container_name, credential, blobs: List[str]):
     for blob in blobs:
-        doc, uri, _ = download_blob(account_url, container_name, credential, blob)
+        doc, uri, _ = download_blob(
+            account_url, container_name, credential, blob)
         yield (json.loads(doc), uri)
 
 
@@ -39,6 +41,7 @@ def dump_list_to_odc(
     update_if_exists: Optional[bool] = False,
     allow_unsafe: Optional[bool] = False,
     archive_less_mature: Optional[bool] = False,
+    publish_action: Optional[bool] = False,
 ):
     ds_added = 0
     ds_failed = 0
@@ -48,7 +51,9 @@ def dump_list_to_odc(
         account_url, container_name, credential, blob_urls
     ):
         try:
+            stac_doc = None
             if stac:
+                stac_doc = doc
                 doc = stac_transform(doc)
             index_update_dataset(
                 doc,
@@ -59,6 +64,8 @@ def dump_list_to_odc(
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
                 archive_less_mature=archive_less_mature,
+                publish_action=publish_action,
+                stac_doc=stac_doc,
             )
             ds_added += 1
         except Exception as e:
@@ -76,6 +83,7 @@ def dump_list_to_odc(
 @transform_stac
 @statsd_setting
 @archive_less_mature
+@publish_action
 @click.option(
     "--account_url",
     "-a",
@@ -106,7 +114,8 @@ def cli(
     # Set up the datacube first, to ensure we have a connection
     dc = Datacube()
     print(f"Opening AZ Container {container_name} on {account_url}")
-    print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
+    print(
+        f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
     yaml_urls = find_blobs(
         container_name, credential, prefix, suffix, account_url=account_url
     )
@@ -123,6 +132,7 @@ def cli(
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
         archive_less_mature=archive_less_mature,
+        publish_action=publish_action,
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")

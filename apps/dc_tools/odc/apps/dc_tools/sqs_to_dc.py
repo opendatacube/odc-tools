@@ -36,7 +36,7 @@ from odc.apps.dc_tools.utils import (
     update_if_exists,
     verify_lineage,
 )
-from odc.aws.queue import get_messages
+from odc.aws.queue import get_messages, publish_to_topic
 from toolz import dicttoolz
 from yaml import safe_load
 
@@ -71,7 +71,8 @@ def handle_json_message(metadata, transform, odc_metadata_link):
             odc_yaml_uri = get_uri(metadata, rel_val)
         else:
             # if odc_metadata_link is provided, it will look for value with dict path provided
-            odc_yaml_uri = dicttoolz.get_in(odc_metadata_link.split("/"), metadata)
+            odc_yaml_uri = dicttoolz.get_in(
+                odc_metadata_link.split("/"), metadata)
 
         # if odc_yaml_uri exist, it will load the metadata content from that URL
         if odc_yaml_uri:
@@ -142,7 +143,8 @@ def handle_bucket_notification_message(
             try:
                 uri = f"s3://{bucket_name}/{key}"
                 if no_sign_request:
-                    s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
+                    s3 = boto3.client("s3", config=Config(
+                        signature_version=UNSIGNED))
                     data = s3.get_object(Bucket=bucket_name, Key=key)
                     contents = data["Body"].read()
                     data = safe_load(contents.decode("utf-8"))
@@ -173,12 +175,18 @@ def get_uri(metadata, rel_value):
     return uri
 
 
-def do_archiving(metadata, dc: Datacube):
+def do_archiving(metadata, dc: Datacube, publish_action=False):
     dataset_id = uuid.UUID(metadata.get("id"))
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
+        if publish_action:
+            publish_to_topic(
+                action="ARCHIVED",
+                doc=ds_to_stac(dc.index.datasets.get(dataset_id))
+            )
     else:
-        raise IndexingException("Failed to get an ID from the message, can't archive.")
+        raise IndexingException(
+            "Failed to get an ID from the message, can't archive.")
 
 
 def queue_to_odc(
@@ -196,6 +204,7 @@ def queue_to_odc(
     odc_metadata_link=False,
     region_code_list_uri=None,
     archive_less_mature=None,
+    publish_action=False,
     **kwargs,
 ) -> Tuple[int, int]:
 
@@ -225,11 +234,14 @@ def queue_to_odc(
         try:
             # Extract metadata from message
             metadata = extract_metadata_from_message(message)
+            stac_doc = None
             if archive:
                 # Archive metadata
-                do_archiving(metadata, dc)
+                do_archiving(metadata, dc, publish_action)
             else:
                 if not record_path:
+                    if transform:
+                        stac_doc = metadata
                     # Extract metadata and URI from a STAC or similar
                     # json structure for indexing
                     metadata, uri = handle_json_message(
@@ -268,12 +280,14 @@ def queue_to_odc(
                             update_if_exists=update_if_exists,
                             allow_unsafe=allow_unsafe,
                             archive_less_mature=archive_less_mature,
+                            stac_doc=stac_doc,
                         )
                         ds_success += 1
                     except SkippedException:
                         ds_skipped += 1
                 else:
-                    logging.warning("Found None for metadata and uri, skipping")
+                    logging.warning(
+                        "Found None for metadata and uri, skipping")
                     ds_skipped += 1
 
             # Success, so delete the message.
@@ -338,6 +352,7 @@ def cli(
     record_path,
     region_code_list_uri,
     archive_less_mature,
+    publish_action,
     queue_name,
     product,
 ):
@@ -375,6 +390,7 @@ def cli(
         odc_metadata_link=odc_metadata_link,
         region_code_list_uri=region_code_list_uri,
         archive_less_mature=archive_less_mature,
+        publish_action=publish_action,
     )
 
     result_msg = ""
