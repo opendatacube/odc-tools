@@ -4,7 +4,6 @@ Tools for STAC to EO3 translation
 import math
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
-from unittest import skip
 from uuid import UUID
 
 import numpy
@@ -427,4 +426,5 @@ def ds_to_stac(ds: Dataset) -> dict:
         )
         return stac
     else:
-        raise ValueError(f"Cannot convert to STAC for dataset with metadata of type {ds.metadata_type}")
+        raise ValueError(
+            f"Cannot convert to STAC for dataset with metadata of type {ds.metadata_type}")
