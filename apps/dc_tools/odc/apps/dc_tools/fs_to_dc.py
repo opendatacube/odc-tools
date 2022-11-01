@@ -53,6 +53,7 @@ def cli(
     statsd_setting,
     glob,
     archive_less_mature,
+    publish_action,
 ):
 
     dc = datacube.Datacube()

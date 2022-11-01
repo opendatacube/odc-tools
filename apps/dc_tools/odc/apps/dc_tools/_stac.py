@@ -15,7 +15,7 @@ from ._docs import odc_uuid
 
 from eodatasets3.serialise import from_doc
 from eodatasets3.stac import to_stac_item
-from datacube import Dataset
+from datacube.model import Dataset
 
 Document = Dict[str, Any]
 

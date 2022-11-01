@@ -17,25 +17,14 @@ from botocore.config import Config
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from odc.apps.dc_tools.utils import (
-    IndexingException,
-    SkippedException,
-    allow_unsafe,
-    archive,
-    archive_less_mature,
-    fail_on_missing_lineage,
-    index_update_dataset,
-    limit,
-    no_sign_request,
-    skip_lineage,
-    statsd_gauge_reporting,
-    statsd_setting,
-    transform_stac,
-    transform_stac_absolute,
-    update,
-    update_if_exists,
-    verify_lineage,
-)
+from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_unsafe, archive,
+                                     fail_on_missing_lineage,
+                                     index_update_dataset, limit, no_sign_request,
+                                     skip_lineage,
+                                     statsd_setting, statsd_gauge_reporting,
+                                     transform_stac, transform_stac_absolute,
+                                     archive_less_mature,
+                                     update, update_if_exists, verify_lineage, publish_action)
 from odc.aws.queue import get_messages, publish_to_topic
 from toolz import dicttoolz
 from yaml import safe_load
@@ -175,14 +164,15 @@ def get_uri(metadata, rel_value):
     return uri
 
 
-def do_archiving(metadata, dc: Datacube, publish_action=False):
+def do_archiving(metadata, dc: Datacube, publish_action):
     dataset_id = uuid.UUID(metadata.get("id"))
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
         if publish_action:
             publish_to_topic(
+                topic_name=publish_action,
                 action="ARCHIVED",
-                doc=ds_to_stac(dc.index.datasets.get(dataset_id))
+                stac=ds_to_stac(dc.index.datasets.get(dataset_id))
             )
     else:
         raise IndexingException(
@@ -204,7 +194,7 @@ def queue_to_odc(
     odc_metadata_link=False,
     region_code_list_uri=None,
     archive_less_mature=None,
-    publish_action=False,
+    publish_action=None,
     **kwargs,
 ) -> Tuple[int, int]:
 
@@ -280,6 +270,7 @@ def queue_to_odc(
                             update_if_exists=update_if_exists,
                             allow_unsafe=allow_unsafe,
                             archive_less_mature=archive_less_mature,
+                            publish_action=publish_action,
                             stac_doc=stac_doc,
                         )
                         ds_success += 1
@@ -333,6 +324,7 @@ def queue_to_odc(
     help="A path to a list (one item per line, in txt or gzip format) of valide region_codes to include",
 )
 @archive_less_mature
+@publish_action
 @click.argument("queue_name", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(

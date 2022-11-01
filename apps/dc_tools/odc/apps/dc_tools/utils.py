@@ -20,8 +20,6 @@ ESRI_LANDCOVER_BASE_URI = (
 
 MICROSOFT_PC_STAC_URI = "https://planetarycomputer.microsoft.com/api/stac/v1/"
 
-SNS_TOPIC_NAME = "DEADataIndexed"
-
 
 class IndexingException(Exception):
     """
@@ -134,11 +132,11 @@ archive_less_mature = click.option(
 
 publish_action = click.option(
     "--publish-action",
-    is_flag=True,
-    default=False,
+    type=str,
+    default=None,
+    nargs=1,
     help=(
-        "Publish indexing action to kickstart downstream products "
-        "and/or fully remove archived datasets."
+        "Name of SNS topic to publish indexing/archiving actions to."
     )
 )
 
@@ -188,7 +186,7 @@ def index_update_dataset(
     update_if_exists: bool = False,
     allow_unsafe: bool = False,
     archive_less_mature: Optional[Union[bool, Iterable[str]]] = None,
-    publish_action: bool = False,
+    publish_action: Optional[str] = None,
     stac_doc: Optional[dict] = None,
 ) -> int:
     """
@@ -209,7 +207,7 @@ def index_update_dataset(
            * If an iterable of valid search field names is provided, it is used as the "grouping" fields for
              identifying dataset maturity matches.
              (i.e. `archive_less_mature=True` is the same as `archive_less_mature=['region_code', 'time'])
-    :param publish_action: Publish action to SNS topic.
+    :param publish_action: SNS topic to publish action to.
     :param stac_doc: STAC document for publication to SNS topic.
     :return: Returns nothing.  Raises an exception if anything goes wrong.
     """
@@ -304,14 +302,16 @@ def index_update_dataset(
         logging.info("Archived less mature dataset: %s", arch_id)
     if publish_action:
         for arch_stac in archive_stacs:
-            publish_to_topic(action="ARCHIVED", doc=arch_stac)
+            publish_to_topic(topic_name=publish_action,
+                             action="ARCHIVED", stac=arch_stac)
 
     if added:
         logging.info("New Dataset Added: %s", ds.id)
         if publish_action:
-            if stac_doc is None:  # if STAC was not provided, generate from dataset
-                stac_doc = ds_to_stac(ds)
-            publish_to_topic(action="ADDED", doc=stac_doc)
+            # if STAC was not provided, generate from dataset
+            stac_doc = stac_doc if stac_doc else ds_to_stac(ds)
+            publish_to_topic(topic_name=publish_action,
+                             action="ADDED", stac=stac_doc)
 
     if updated:
         logging.info("Existing Dataset Updated: %s", ds.id)
