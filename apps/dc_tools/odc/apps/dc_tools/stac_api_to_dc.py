@@ -13,17 +13,11 @@ import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
-from odc.apps.dc_tools.utils import (
-    SkippedException,
-    allow_unsafe,
-    archive_less_mature,
-    bbox,
-    index_update_dataset,
-    limit,
-    statsd_gauge_reporting,
-    statsd_setting,
-    update_if_exists,
-)
+from odc.apps.dc_tools.utils import (SkippedException, allow_unsafe,
+                                     archive_less_mature, bbox,
+                                     index_update_dataset, limit,
+                                     statsd_gauge_reporting, statsd_setting,
+                                     update_if_exists, publish_action,)
 from pystac.item import Item
 from pystac_client import Client
 
@@ -102,13 +96,14 @@ def item_to_meta_uri(
     metadata = item.to_dict()
     if rename_product is not None:
         metadata["properties"]["odc:product"] = rename_product
+    stac = metadata
 
     if relative:
         metadata = stac_transform(metadata)
     else:
         metadata = stac_transform_absolute(metadata)
 
-    return (metadata, uri)
+    return (metadata, uri, stac)
 
 
 def process_item(
@@ -120,8 +115,9 @@ def process_item(
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
     archive_less_mature: bool = False,
+    publish_action: bool = False,
 ):
-    meta, uri = item_to_meta_uri(item, rewrite, rename_product)
+    meta, uri, stac = item_to_meta_uri(item, rewrite, rename_product)
     index_update_dataset(
         meta,
         uri,
@@ -130,6 +126,8 @@ def process_item(
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
         archive_less_mature=archive_less_mature,
+        publish_action=publish_action,
+        stac_doc=stac,
     )
 
 
@@ -142,6 +140,7 @@ def stac_api_to_odc(
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
     archive_less_mature: bool = False,
+    publish_action: bool = False,
 ) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
@@ -174,6 +173,7 @@ def stac_api_to_odc(
                 rewrite=rewrite,
                 rename_product=rename_product,
                 archive_less_mature=archive_less_mature,
+                publish_action=publish_action,
             ): item.id
             for item in search.get_all_items()
         }
@@ -187,7 +187,8 @@ def stac_api_to_odc(
             except SkippedException:
                 skipped += 1
             except Exception as e:
-                logging.exception(f"Failed to handle item {item} with exception {e}")
+                logging.exception(
+                    f"Failed to handle item {item} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 
@@ -242,6 +243,7 @@ def stac_api_to_odc(
     ),
 )
 @archive_less_mature
+@publish_action
 @statsd_setting
 def cli(
     limit,
@@ -256,6 +258,7 @@ def cli(
     rename_product,
     statsd_setting,
     archive_less_mature,
+    publish_action,
 ):
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -295,6 +298,7 @@ def cli(
         rewrite=rewrite,
         rename_product=rename_product,
         archive_less_mature=archive_less_mature,
+        publish_action=publish_action,
     )
 
     print(

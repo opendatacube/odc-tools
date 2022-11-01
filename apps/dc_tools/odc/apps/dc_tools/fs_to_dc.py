@@ -12,10 +12,8 @@ from odc.apps.dc_tools.utils import (
     allow_unsafe,
     archive_less_mature,
     index_update_dataset,
-    statsd_gauge_reporting,
-    statsd_setting,
-    transform_stac,
     update_if_exists,
+    publish_action,
 )
 
 logging.basicConfig(
@@ -41,6 +39,7 @@ def _find_files(
 @archive_less_mature
 @transform_stac
 @statsd_setting
+@publish_action
 @click.option(
     "--glob",
     default=None,
@@ -74,7 +73,9 @@ def cli(
                 else:
                     metadata = json.load(f)
                 # Do the STAC Transform if it's flagged
+                stac_doc = None
                 if stac:
+                    stac_doc = metadata
                     metadata = stac_transform(metadata)
                 index_update_dataset(
                     metadata,
@@ -84,15 +85,19 @@ def cli(
                     update_if_exists=update_if_exists,
                     allow_unsafe=allow_unsafe,
                     archive_less_mature=archive_less_mature,
+                    publish_action=publish_action,
+                    stac_doc=stac_doc,
                 )
                 added += 1
             except Exception as e:
-                logging.exception(f"Failed to add dataset {in_file} with error {e}")
+                logging.exception(
+                    f"Failed to add dataset {in_file} with error {e}")
                 failed += 1
 
     logging.info(f"Added {added} and failed {failed} datasets.")
     if statsd_setting:
-        statsd_gauge_reporting(added, ["app:fs_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(
+            added, ["app:fs_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(
             failed, ["app:fs_to_dc", "action:failed"], statsd_setting
         )

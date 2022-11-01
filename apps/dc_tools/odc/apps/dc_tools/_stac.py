@@ -4,6 +4,7 @@ Tools for STAC to EO3 translation
 import math
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+from unittest import skip
 from uuid import UUID
 
 import numpy
@@ -13,6 +14,10 @@ from urlpath import URL
 
 from ._docs import odc_uuid
 
+from eodatasets3.serialise import from_doc
+from eodatasets3.stac import to_stac_item
+from datacube import Dataset
+
 Document = Dict[str, Any]
 
 # This is an old hack, should be refactored out
@@ -20,7 +25,8 @@ DEA_LANDSAT_PRODUCTS = ["ga_ls8c_ard_3", "ga_ls7e_ard_3", "ga_ls8t_ard_3"]
 
 # This is hack for not changing the current behavior of DEAfrica sentinel-2
 # It is not ideal but to remain the impact minimum
-TO_BE_HARD_CODED_COLLECTION = ["s2_l2a", "sentinel_s2_l2a_cogs", "sentinel-s2-l2a-cogs"]
+TO_BE_HARD_CODED_COLLECTION = [
+    "s2_l2a", "sentinel_s2_l2a_cogs", "sentinel-s2-l2a-cogs"]
 
 # Mapping between EO3 field names and STAC properties object field names
 MAPPING_STAC_TO_EO3 = {
@@ -123,7 +129,8 @@ def _stac_product_lookup(
     if product_name is None:
         product_name = collection
         if product_name is None:
-            raise ValueError("Can't find product name from odc:product or collection.")
+            raise ValueError(
+                "Can't find product name from odc:product or collection.")
 
     # Product names can't have dashes in them
     product_name = product_name.replace("-", "_")
@@ -366,7 +373,8 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     geometry = Geometry(input_stac["geometry"], "epsg:4326")
     if native_crs != "epsg:4326":
         # Arbitrary precisions, but should be fine
-        pixel_size = get_in(["default", "transform", 0], grids, no_default=True)
+        pixel_size = get_in(["default", "transform", 0],
+                            grids, no_default=True)
         precision = 0
         if pixel_size < 0:
             precision = 6
@@ -391,7 +399,8 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
         stac_odc["properties"]["odc:region_code"] = region_code
 
     if geometry:
-        stac_odc["geometry"] = transform_geom_json_coordinates_to_list(geometry.json)
+        stac_odc["geometry"] = transform_geom_json_coordinates_to_list(
+            geometry.json)
 
     if lineage:
         stac_odc["lineage"] = lineage
@@ -403,3 +412,19 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 def transform_geom_json_coordinates_to_list(geom_json):
     geom_json["coordinates"] = numpy.array(geom_json["coordinates"]).tolist()
     return geom_json
+
+
+def ds_to_stac(ds: Dataset) -> dict:
+    """Get STAC document from dataset with eo3 metadata"""
+    if ds.is_eo3:
+        if not ds.uris:
+            raise ValueError("Can't find dataset location")
+        location = ds.uris[0]
+        stac = to_stac_item(
+            from_doc(ds.metadata_doc, skip_validation=True),
+            location,
+            explorer_base_url="https://explorer.dea.ga.gov.au",
+        )
+        return stac
+    else:
+        raise ValueError(f"Cannot convert to STAC for dataset with metadata of type {ds.metadata_type}")
