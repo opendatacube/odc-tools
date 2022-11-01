@@ -19,7 +19,7 @@ from odc.apps.dc_tools.utils import (
     archive_less_mature,
     bbox,
     index_update_dataset,
-    limit,
+    limit, publish_action,
     statsd_gauge_reporting,
     statsd_setting,
     update_if_exists,
@@ -109,7 +109,7 @@ def process_uri_tile(
     doc2ds: Doc2Dataset,
     update_if_exists: bool = True,
     archive_less_mature: bool = False,
-    publish_action: bool = False
+    publish_action: str = None,
 ) -> Tuple[pystac.Item, str]:
     product_name = f"dem_{product}"
     uri, tile = uri_tile
@@ -153,6 +153,7 @@ def cop_dem_to_dc(
     update: bool,
     n_workers: int = 100,
     archive_less_mature=None,
+    publish_action=None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
@@ -172,13 +173,9 @@ def cop_dem_to_dc(
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
             executor.submit(
-                process_uri_tile,
-                uri_tile,
-                product,
-                dc,
-                doc2ds,
-                update_if_exists=update,
-                archive_less_mature=archive_less_mature,
+                process_uri_tile, uri_tile, product, dc, doc2ds,
+                update_if_exists=update, archive_less_mature=archive_less_mature,
+                publish_action=publish_action,
             ): uri_tile[0]
             for uri_tile in uris_tiles
         }
@@ -208,6 +205,7 @@ def cop_dem_to_dc(
 @bbox
 @statsd_setting
 @archive_less_mature
+@publish_action
 @click.option(
     "--product",
     default="cop_30",

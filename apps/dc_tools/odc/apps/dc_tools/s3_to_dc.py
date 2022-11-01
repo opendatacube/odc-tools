@@ -60,7 +60,7 @@ def dump_to_odc(
     update_if_exists=False,
     allow_unsafe=False,
     archive_less_mature=None,
-    publish_action=False,
+    publish_action=None,
     **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)

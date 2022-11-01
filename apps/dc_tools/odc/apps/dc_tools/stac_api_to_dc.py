@@ -140,7 +140,7 @@ def stac_api_to_odc(
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
     archive_less_mature: bool = False,
-    publish_action: bool = False,
+    publish_action: Optional[str] = None,
 ) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)

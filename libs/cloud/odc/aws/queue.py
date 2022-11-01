@@ -4,8 +4,6 @@ from typing import Any, Iterable, Mapping, Optional
 
 import boto3
 
-SNS_TOPIC_NAME = "DEADataUpdateArchiveDev"
-
 
 def redrive_queue(
     queue_name: str,
@@ -187,14 +185,27 @@ def get_messages(
     return itertools.islice(messages, limit)
 
 
-def publish_to_topic(action, stac):
+def publish_to_topic(topic_name: str, action: str, stac: dict):
     """
-    Publish a message to an sns topic
+    Publish 'added' or 'archived' action to the provided sns topic
     """
-    sns = boto3.resource("sns")
-    sns_topic = sns.create_topic(Name=SNS_TOPIC_NAME)
+    sns = boto3.client("sns")
+    sns_topic = sns.create_topic(Name=topic_name)
 
     stac = json.dumps(stac)
+    message = {
+        "action": action,
+        "stac": stac,
+    }
     sns_topic.publish(
-        Message='{"action": {action}, "stac": {stac}}',
+        Message=json.dumps(message),
+        MessageAttributes={
+            "action": {
+                "DataType": "String",
+                "StringValue": "ARCHIVED {or} ADDED",
+            },
+            "stac": {
+                "DataType": "String",
+            },
+        },
     )

@@ -41,7 +41,7 @@ def dump_list_to_odc(
     update_if_exists: Optional[bool] = False,
     allow_unsafe: Optional[bool] = False,
     archive_less_mature: Optional[bool] = False,
-    publish_action: Optional[bool] = False,
+    publish_action: Optional[str] = None,
 ):
     ds_added = 0
     ds_failed = 0

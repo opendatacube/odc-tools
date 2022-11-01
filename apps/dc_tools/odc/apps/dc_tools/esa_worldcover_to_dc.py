@@ -15,13 +15,8 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
-    archive_less_mature,
-    bbox,
-    index_update_dataset,
-    limit,
-    statsd_gauge_reporting,
-    statsd_setting,
-    update_if_exists,
+    bbox, index_update_dataset, limit, update_if_exists, archive_less_mature,
+    statsd_gauge_reporting, statsd_setting, publish_action,
 )
 from rio_stac import create_stac_item
 
@@ -112,7 +107,7 @@ def process_uri_tile(
     doc2ds: Doc2Dataset,
     update_if_exists: bool = True,
     archive_less_mature: bool = False,
-    publish_action: bool = False,
+    publish_action: str = None,
 ) -> Tuple[pystac.Item, str]:
     product_name = "esa_worldcover"
     uri, tile = uri_tile
@@ -155,6 +150,7 @@ def esa_wc_to_dc(
     update: bool,
     n_workers: int = 100,
     archive_less_mature: bool = False,
+    publish_action: str = None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
@@ -173,12 +169,9 @@ def esa_wc_to_dc(
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
             executor.submit(
-                process_uri_tile,
-                uri_tile,
-                dc,
-                doc2ds,
-                update_if_exists=update,
-                archive_less_mature=archive_less_mature,
+                process_uri_tile, uri_tile, dc, doc2ds,
+                update_if_exists=update, archive_less_mature=archive_less_mature,
+                publish_action=publish_action,
             ): uri_tile[0]
             for uri_tile in uris_tiles
         }
@@ -211,6 +204,7 @@ def esa_wc_to_dc(
     help="If set, add the product too",
 )
 @archive_less_mature
+@publish_action
 @click.option(
     "--workers",
     default=20,
