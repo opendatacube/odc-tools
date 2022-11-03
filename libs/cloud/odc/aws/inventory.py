@@ -35,7 +35,7 @@ def retrieve_manifest_files(key: str, s3, schema, **kw):
     """
     bb = s3_fetch(key, s3=s3, **kw)
     gz = GzipFile(fileobj=BytesIO(bb), mode="r")
-    csv_rdr = csv.reader(l.decode("utf8") for l in gz)
+    csv_rdr = csv.reader(line.decode("utf8") for line in gz)
     for rec in csv_rdr:
         yield SimpleNamespace(**dict(zip(schema, rec)))
 
@@ -47,7 +47,7 @@ def list_inventory(
     suffix: str = "",
     contains: str = "",
     n_threads: int = None,
-    **kw
+    **kw,
 ):
     """
     Returns a generator of inventory records

@@ -1,5 +1,8 @@
 """ Notebook display helper methods (mapping related).
 """
+# pylint:disable=import-outside-toplevel
+
+import math
 
 
 def dss_to_geojson(dss, bbox=False, simplify=True, tolerance=0.001):
@@ -32,7 +35,11 @@ def gridspec_to_geojson(gs, xx, yy, styles):
         return dict(
             geometry=bbox.geographic_extent.__geo_interface__,
             type="Feature",
-            properties=dict(title="{:+d},{:+d}".format(*tidx), **styles),
+            properties=dict(
+                # pylint:disable=consider-using-f-string
+                title="{:+d},{:+d}".format(*tidx),
+                **styles,
+            ),
         )
 
     tiles = itertools.product(range(*xx), range(*yy))
@@ -48,8 +55,6 @@ def zoom_from_bbox(bbox):
 
     Bounding box is assumed to be in lat/lon.
     """
-    import math
-
     x = max(360 / (bbox.right - bbox.left), 180 / (bbox.top - bbox.bottom))
     return math.floor(math.log2(x))
 
@@ -59,10 +64,10 @@ def show_datasets(
     mode="leaflet",
     dst=None,
     layer_name="Datasets",
-    style={},
+    style=None,
     simplify=True,
     tolerance=0.001,  # ~100m at equator
-    **kw
+    **kw,
 ):
     """Display dataset footprints on a Leaflet map.
 
@@ -79,6 +84,8 @@ def show_datasets(
 
     **kw: Arguments to pass to leaflet.Map(..) constructor
     """
+    if style is None:
+        style = {}
     if mode not in ("leaflet", "geojson"):
         raise ValueError("Invalid value for mode, expected: leaflet|geojson")
 
@@ -108,8 +115,8 @@ def show_datasets(
             m = Map(center=center, zoom=zoom, **kw)
             m.layout.height = height
             m.layout.width = width
-            m.add_control(FullScreenControl())
-            m.add_control(LayersControl())
+            m.add(FullScreenControl())
+            m.add(LayersControl())
         else:
             m = dst
 
@@ -119,14 +126,15 @@ def show_datasets(
             hover_style={"color": "tomato"},
             name=layer_name,
         )
-        m.add_layer(gg)
+        m.add(gg)
         if dst is None:
             return m
         else:
             return gg
+    return None
 
 
-def mk_map_region_selector(map=None, height="600px", **kwargs):
+def mk_map_region_selector(m=None, height="600px", **kwargs):
     from types import SimpleNamespace
 
     from ipyleaflet import DrawControl, FullScreenControl, Map, WidgetControl
@@ -145,17 +153,14 @@ def mk_map_region_selector(map=None, height="600px", **kwargs):
 
     def render_bounds(bounds):
         (lat1, lon1), (lat2, lon2) = bounds
-        txt = "lat: [{:.{n}f}, {:.{n}f}]\nlon: [{:.{n}f}, {:.{n}f}]".format(
-            lat1, lat2, lon1, lon2, n=4
-        )
+        txt = f"lat: [{lat1:.{4}f}, {lat2:.{4}f}]\nlon: [{lon1:.{4}f}, {lon2:.{4}f}]"
         update_info(txt)
 
-    if map is None:
+    if m is None:
         m = Map(**kwargs) if len(kwargs) else Map(zoom=2)
         m.scroll_wheel_zoom = True
         m.layout.height = height
     else:
-        m = map
         render_bounds(m.bounds)
 
     widgets = [
@@ -163,7 +168,7 @@ def mk_map_region_selector(map=None, height="600px", **kwargs):
         WidgetControl(widget=html_info, position="bottomleft"),
     ]
     for w in widgets:
-        m.add_control(w)
+        m.add(w)
 
     draw = DrawControl()
 
@@ -180,15 +185,15 @@ def mk_map_region_selector(map=None, height="600px", **kwargs):
     draw.polygon = poly_opts
     draw.edit = True
     draw.remove = True
-    m.add_control(draw)
-    m.add_control(FullScreenControl())
+    m.add(draw)
+    m.add(FullScreenControl())
 
     def on_done(btn):
         state.done = True
         btn_done.disabled = True
-        m.remove_control(draw)
+        m.remove(draw)
         for w in widgets:
-            m.remove_control(w)
+            m.remove(w)
 
     def bounds_handler(event):
         bounds = event["new"]
@@ -213,7 +218,7 @@ def mk_map_region_selector(map=None, height="600px", **kwargs):
     return m, state
 
 
-def select_on_a_map(map=None, **kwargs):
+def select_on_a_map(m=None, **kwargs):
     """Display a map and block execution until user selects a region of interest.
 
     Returns selected region as datacube Geometry class.
@@ -233,9 +238,9 @@ def select_on_a_map(map=None, **kwargs):
 
     from ._ui import ui_poll
 
-    m, state = mk_map_region_selector(map=map, **kwargs)
-    if map is None:
-        display(m)
+    m_2, state = mk_map_region_selector(m=m, **kwargs)
+    if m is None:
+        display(m_2)
 
     def extract_geometry(state):
         from datacube.testutils.geom import epsg4326
