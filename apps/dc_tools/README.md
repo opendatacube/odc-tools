@@ -126,6 +126,12 @@ Options:
                                   include
 
   --absolute                      Use absolute paths when converting from stac
+
+  --archive-less-mature           Find less mature versions of the dataset and
+                                  archive them
+                                  
+  --publish-action TEXT           Publish indexing action to SNS topic
+
   --help                          Show this message and exit.
 ```
 
@@ -177,6 +183,11 @@ Options:
   --no-sign-request               Do not sign AWS S3 requests
   --request-payer                 Needed when accessing requester pays public
                                   buckets
+
+  --archive-less-mature           Find less mature versions of the dataset and
+                                  archive them
+
+  --publish-action TEXT           Publish indexing action to SNS topic
 
   --help                          Show this message and exit.
 ```

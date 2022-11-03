@@ -102,8 +102,6 @@ def test_s3_publishing_action_from_eo3(aws_credentials, aws_env):
             "--no-sign-request",
             "--update-if-exists",
             "--publish-action={}".format(topic_name),
-            # "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x06/y25/1999--P1Y/*.yaml",
-            # "ga_ls5t_nbart_gm_cyear_3",
             "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/01/07/*.yaml",
             "cemp_insar_alos_displacement",
         ],
