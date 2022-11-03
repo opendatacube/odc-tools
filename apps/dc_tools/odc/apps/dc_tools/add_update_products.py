@@ -6,7 +6,7 @@ import logging
 import sys
 from collections import Counter, namedtuple
 from csv import DictReader
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Generator, Tuple
 
 import click
 import datacube
@@ -14,6 +14,7 @@ import fsspec
 import yaml
 from datacube import Datacube
 from odc.apps.dc_tools.utils import (
+    update_if_exists_flag,
     statsd_gauge_reporting,
     statsd_setting,
     update_if_exists,
@@ -32,13 +33,13 @@ def _get_product(product_path: str) -> List[Dict[str, Any]]:
     """Returns yaml document"""
     try:
         with fsspec.open(product_path, mode="r") as f:
-            return [d for d in yaml.safe_load_all(f)]
-    except Exception as e:
-        logging.error(f"Failed to get document from {product_path} with exception: {e}")
+            return list(yaml.safe_load_all(f))
+    except Exception:  # pylint:disable=broad-except
+        logging.exception("Failed to get document from %s", product_path)
         return []
 
 
-def _parse_csv(csv_path: str) -> Dict[str, str]:
+def _parse_csv(csv_path: str) -> Generator[Product]:
     """Parses the CSV and returns a dict of name: yaml_file_path"""
 
     with fsspec.open(csv_path, mode="r") as f:
@@ -56,14 +57,16 @@ def _parse_csv(csv_path: str) -> Dict[str, str]:
             # Check we have the same number of names as content
             if len(names) != len(content):
                 logging.error(
-                    f"{len(names)} product names and {len(content)} documents found. This is different!"
+                    "%s product names and %s documents found. This is different!",
+                    len(names),
+                    len(content),
                 )
                 fail = True
 
             # Check we have the same names as are in the product definitions
             content_names = [d["name"] for d in content]
-            if not Counter(content_names) == Counter(names):
-                logging.error(f"{names} is not the same as {content_names}")
+            if Counter(content_names) != Counter(names):
+                logging.error("%s is not the same as %s", names, content_names)
                 fail = True
 
             if fail:
@@ -82,15 +85,15 @@ def _parse_csv(csv_path: str) -> Dict[str, str]:
 
 def add_update_products(
     dc: Datacube, csv_path: str, update_if_exists: Optional[bool] = False
-) -> List[int]:
+) -> Tuple[int, int, int]:
     # Parse csv file
-    new_products = [x for x in _parse_csv(csv_path)]
-    logging.info(f"Found {len(new_products)} products in the CSV {csv_path}")
+    new_products = list(_parse_csv(csv_path))
+    logging.info("Found %s products in the CSV %s", len(new_products), csv_path)
 
     # List existing products
     products = dc.list_products(with_pandas=False)
     existing_names = [product["name"] for product in products]
-    logging.info(f"Found {len(existing_names)} products in the Datacube")
+    logging.info("Found %s products in the Datacube", len(existing_names))
 
     added, updated, failed = 0, 0, 0
 
@@ -103,19 +106,17 @@ def add_update_products(
             if product.name not in existing_names:
                 dc.index.products.add_document(product.doc)
                 added += 1
-                logging.info(f"Added product {product.name}")
+                logging.info("Added product %s", product.name)
             # Update existing products, if required
             elif update_if_exists:
                 dc.index.products.update_document(
                     product.doc, allow_unsafe_updates=True
                 )
                 updated += 1
-                logging.info(f"Updated product {product.name}")
-        except Exception as e:
+                logging.info("Updated product %s", product.name)
+        except Exception:  # pylint:disable=broad-except
             failed += 1
-            logging.error(
-                f"Failed to add/update product {product.name} with exception: {e}"
-            )
+            logging.exception("Failed to add/update product %s", product.name)
 
     # Return results
     return added, updated, failed
@@ -123,13 +124,14 @@ def add_update_products(
 
 @click.command("dc-sync-products")
 @click.argument("csv-path", nargs=1)
-@update_if_exists
+@update_if_exists_flag
 @statsd_setting
 def cli(csv_path: str, update_if_exists: bool, statsd_setting: str):
     # Check we can connect to the Datacube
     dc = datacube.Datacube(app="add_update_products")
     logging.info(
-        f"Starting up: connected to Datacube, and update-if-exists is {update_if_exists}"
+        "Starting up: connected to Datacube, and update-if-exists is: %s",
+        update_if_exists,
     )
 
     # TODO: Add in some QA/QC checks

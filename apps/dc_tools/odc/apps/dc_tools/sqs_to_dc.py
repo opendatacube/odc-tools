@@ -32,8 +32,8 @@ from odc.apps.dc_tools.utils import (
     transform_stac,
     transform_stac_absolute,
     archive_less_mature,
-    update,
-    update_if_exists,
+    update_flag,
+    update_if_exists_flag,
     verify_lineage,
     publish_action,
 )
@@ -130,10 +130,11 @@ def handle_bucket_notification_message(
             # If you specific a list of record paths, and there's no
             # match in them for the key, then we skip this one forever
             if record_path is not None and not any(
-                [PurePath(key).match(p) for p in record_path]
+                PurePath(key).match(p) for p in record_path
             ):
                 logging.warning(
-                    f"Key: {key} not in specified list of record_paths, deleting message from the queue."
+                    "Key: %s not in specified list of record_paths, deleting message from the queue.",
+                    key,
                 )
                 # This will return Nones, which will flag the message to be ignored
                 return None, None
@@ -155,8 +156,8 @@ def handle_bucket_notification_message(
                     data = safe_load(obj["Body"].read())
             except Exception as e:
                 raise IndexingException(
-                    f"Exception thrown when trying to load s3 object: {e}"
-                )
+                    "Exception thrown when trying to load s3 object"
+                ) from e
     else:
         raise IndexingException(
             "Attempted to get metadata from record when no record key exists in message."
@@ -205,7 +206,7 @@ def queue_to_odc(
     archive_less_mature=None,
     publish_action=None,
     **kwargs,
-) -> Tuple[int, int]:
+) -> Tuple[int, int, int]:
 
     ds_success = 0
     ds_failed = 0
@@ -217,8 +218,8 @@ def queue_to_odc(
             region_codes = set(
                 pd.read_csv(region_code_list_uri, header=None).values.ravel()
             )
-        except FileNotFoundError as e:
-            logging.error(f"Could not find region_code file with error: {e}")
+        except FileNotFoundError:
+            logging.exception("Could not find region_code file")
         if len(region_codes) == 0:
             raise IndexingException(
                 f"Region code list is empty, please check the list at: {region_code_list_uri}"
@@ -264,7 +265,8 @@ def queue_to_odc(
                         metadata = None
                         uri = None
                         logging.warning(
-                            f"Region code {region_code} not in list of allowed region codes, ignoring this dataset."
+                            "Region code %s not in list of allowed region codes, ignoring this dataset.",
+                            region_code,
                         )
 
                 # Index the dataset
@@ -291,8 +293,8 @@ def queue_to_odc(
 
             # Success, so delete the message.
             message.delete()
-        except IndexingException as e:
-            logging.exception(f"Failed to handle message with exception: {e}")
+        except IndexingException:
+            logging.exception("Failed to handle SQS message")
             ds_failed += 1
 
     return ds_success, ds_failed, ds_skipped
@@ -304,8 +306,8 @@ def queue_to_odc(
 @verify_lineage
 @transform_stac
 @transform_stac_absolute
-@update
-@update_if_exists
+@update_flag
+@update_if_exists_flag
 @allow_unsafe
 @archive
 @limit

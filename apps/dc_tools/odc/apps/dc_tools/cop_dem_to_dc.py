@@ -20,6 +20,8 @@ from odc.apps.dc_tools.utils import (
     bbox,
     index_update_dataset,
     limit,
+    update_if_exists_flag,
+    archive_less_mature,
     publish_action,
     statsd_gauge_reporting,
     statsd_setting,
@@ -54,7 +56,7 @@ URI_TEMPLATES = {
 
 
 def add_cop_dem_product(dc: Datacube, product):
-    if product in PRODUCTS.keys():
+    if product in PRODUCTS:
         product_uri = PRODUCTS[product]
     else:
         raise ValueError(f"Unknown product {product}")
@@ -193,9 +195,9 @@ def cop_dem_to_dc(
             except SkippedException:
                 skipped += 1
             except rasterio.errors.RasterioIOError:
-                logging.info(f"Couldn't find file for {uri}")
-            except Exception as e:
-                logging.exception(f"Failed to handle uri {uri} with exception {e}")
+                logging.info("Couldn't read file %s", uri, exc_info=True)
+            except Exception:  # pylint:disable=broad-except
+                logging.exception("Failed to handle uri %s", uri)
                 failure += 1
     sys.stdout.write("\r")
 
@@ -204,7 +206,7 @@ def cop_dem_to_dc(
 
 @click.command("cop-dem-to-dc")
 @limit
-@update_if_exists
+@update_if_exists_flag
 @bbox
 @statsd_setting
 @archive_less_mature
@@ -240,9 +242,9 @@ def cli(
     """
     Index the Copernicus DEM automatically.
     """
-    if product not in PRODUCTS.keys():
+    if product not in PRODUCTS:
         raise ValueError(
-            f"Unknown product {product}, must be one of {' '.join(PRODUCTS.keys())}"
+            f"Unknown product {product}, must be one of {' '.join(PRODUCTS)}"
         )
 
     dc = Datacube()
