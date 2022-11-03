@@ -1,0 +1,412 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0",
+    "id": "57814bc4-6fdf-4fa1-84e5-865b364c4284",
+    "properties": {
+        "title": "ga_ls5t_nbart_gm_cyear_3_x30y14_1999-01-01_final",
+        "end_datetime": "1999-12-31T23:59:59.999999Z",
+        "instruments": [
+            "tm"
+        ],
+        "platform": "landsat-5",
+        "odc:region_code": "x30y14",
+        "gsd": 30.0,
+        "start_datetime": "1999-01-01T00:00:00Z",
+        "odc:file_format": "GeoTIFF",
+        "odc:product_family": "geomedian",
+        "odc:producer": "ga.gov.au",
+        "odc:product": "ga_ls5t_nbart_gm_cyear_3",
+        "odc:dataset_version": "3.0.0",
+        "created": "2021-10-20T01:08:21.263451Z",
+        "dea:dataset_maturity": "final",
+        "odc:collection_number": 3,
+        "odc:lineage": {
+            "ard": [
+                "61f46405-cfa5-444f-a258-49cc43f16d07"
+            ]
+        },
+        "proj:epsg": 3577,
+        "datetime": "1999-01-01T00:00:00Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    134.14767550145436,
+                    -36.87674895573794
+                ],
+                [
+                    134.16587883993822,
+                    -37.74533256210024
+                ],
+                [
+                    135.24842930174776,
+                    -37.72689903696419
+                ],
+                [
+                    135.22113401720506,
+                    -36.85852350778263
+                ],
+                [
+                    134.14767550145436,
+                    -36.87674895573794
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/1999--P1Y/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.stac-item.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "odc_yaml",
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/1999--P1Y/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.odc-metadata.yaml",
+            "type": "text/yaml",
+            "title": "ODC Dataset YAML"
+        },
+        {
+            "rel": "collection",
+            "href": "https://explorer.dea.ga.gov.au/stac/collections/ga_ls5t_nbart_gm_cyear_3"
+        },
+        {
+            "rel": "product_overview",
+            "href": "https://explorer.dea.ga.gov.au/product/ga_ls5t_nbart_gm_cyear_3",
+            "type": "text/html",
+            "title": "ODC Product Overview"
+        },
+        {
+            "rel": "alternative",
+            "href": "https://explorer.dea.ga.gov.au/dataset/57814bc4-6fdf-4fa1-84e5-865b364c4284",
+            "type": "text/html",
+            "title": "ODC Dataset Overview"
+        }
+    ],
+    "assets": {
+        "bcdev": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_bcdev.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "bcdev",
+            "eo:bands": [
+                {
+                    "name": "bcdev"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "blue": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_blue.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "blue",
+            "eo:bands": [
+                {
+                    "name": "blue"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "count": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_count.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "count",
+            "eo:bands": [
+                {
+                    "name": "count"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "edev": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_edev.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "edev",
+            "eo:bands": [
+                {
+                    "name": "edev"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "green": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_green.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "green",
+            "eo:bands": [
+                {
+                    "name": "green"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nir": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_nir.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nir",
+            "eo:bands": [
+                {
+                    "name": "nir"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "red": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_red.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "red",
+            "eo:bands": [
+                {
+                    "name": "red"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "sdev": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_sdev.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "sdev",
+            "eo:bands": [
+                {
+                    "name": "sdev"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "swir1": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_swir1.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "swir1",
+            "eo:bands": [
+                {
+                    "name": "swir1"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "swir2": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_swir2.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "swir2",
+            "eo:bands": [
+                {
+                    "name": "swir2"
+                }
+            ],
+            "proj:epsg": 3577,
+            "proj:shape": [
+                3200,
+                3200
+            ],
+            "proj:transform": [
+                30.0,
+                0.0,
+                192000.0,
+                0.0,
+                -30.0,
+                -4032000.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "thumbnail": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final_thumbnail.jpg",
+            "type": "image/jpeg",
+            "title": "Thumbnail image",
+            "roles": [
+                "thumbnail"
+            ]
+        },
+        "checksum:sha1": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.sha1",
+            "type": "text/plain",
+            "roles": [
+                "metadata"
+            ]
+        },
+        "metadata:processor": {
+            "href": "s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.proc-info.yaml",
+            "type": "text/yaml",
+            "roles": [
+                "metadata"
+            ]
+        }
+    },
+    "bbox": [
+        134.14767550145436,
+        -37.74533256210024,
+        135.24842930174776,
+        -36.85852350778263
+    ],
+    "stac_extensions": [
+        "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+    ],
+    "collection": "ga_ls5t_nbart_gm_cyear_3"
+}
