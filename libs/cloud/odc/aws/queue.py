@@ -52,8 +52,7 @@ def redrive_queue(
         messages_per_request=messages_per_request,
     )
     count_messages = 0
-    approx_n_messages = dead_queue.attributes.get(
-        "ApproximateNumberOfMessages")
+    approx_n_messages = dead_queue.attributes.get("ApproximateNumberOfMessages")
     try:
         count_messages = int(approx_n_messages)
     except TypeError:
@@ -197,7 +196,8 @@ def publish_to_topic(topic_name: str, action: str, stac: dict):
         "action": action,
         "stac": stac,
     }
-    sns_topic.publish(
+    sns.publish(
+        TopicArn=sns_topic.get("TopicArn"),
         Message=json.dumps(message),
         MessageAttributes={
             "action": {
