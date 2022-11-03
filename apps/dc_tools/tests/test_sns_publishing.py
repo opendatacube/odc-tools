@@ -59,15 +59,16 @@ def test_s3_publishing_action_from_stac(aws_credentials, aws_env):
         ],
     )
 
-    num_messages = sqs.get_queue_attributes(
-        QueueUrl=queue.get("QueueUrl"), AttributeNames=["ApproximateNumberOfMessages"]
-    )["Attributes"]["ApproximateNumberOfMessages"]
-
     assert result.exit_code == 0
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
-    assert int(num_messages) == 1
+    messages = sqs.receive_message(
+        QueueUrl=queue.get("QueueUrl"),
+    )["Messages"]
+    assert len(messages) == 1
+    message = json.loads(messages[0]["Body"])["Message"]
+    assert json.loads(message)["action"] == "ADDED"
 
 
 @mock_sns
@@ -107,15 +108,16 @@ def test_s3_publishing_action_from_eo3(aws_credentials, aws_env):
         ],
     )
 
-    num_messages = sqs.get_queue_attributes(
-        QueueUrl=queue.get("QueueUrl"), AttributeNames=["ApproximateNumberOfMessages"]
-    )["Attributes"]["ApproximateNumberOfMessages"]
-
     assert result.exit_code == 0
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
-    assert int(num_messages) == 1
+    messages = sqs.receive_message(
+        QueueUrl=queue.get("QueueUrl"),
+    )["Messages"]
+    assert len(messages) == 1
+    message = json.loads(messages[0]["Body"])["Message"]
+    assert json.loads(message)["action"] == "ADDED"
 
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
@@ -143,7 +145,8 @@ def sqs_message():
 
 @mock_sns
 @mock_sqs
-def test_sqs_archiving_publishing(aws_credentials, aws_env, sqs_message):
+def test_sqs_publishing(aws_credentials, aws_env, sqs_message):
+    "Test that actions are published with sqs_to_dc"
     sns = boto3.client("sns")
     sqs = boto3.client("sqs")
 
@@ -182,6 +185,65 @@ def test_sqs_archiving_publishing(aws_credentials, aws_env, sqs_message):
             "--no-sign-request",
             "--update-if-exists",
             "--stac",
+            "--publish-action={}".format(topic_name),
+        ],
+    )
+
+    messages = sqs.receive_message(
+        QueueUrl=queue.get("QueueUrl"),
+    )["Messages"]
+    assert result.exit_code == 0
+    assert len(messages) == 1
+    message = json.loads(messages[0]["Body"])["Message"]
+    assert json.loads(message)["action"] == "ADDED"
+
+
+@mock_sns
+@mock_sqs
+def test_sqs_publishing_archive(aws_credentials, aws_env, sqs_message):
+    """Test that archive action is published with archive flag"""
+    sns = boto3.client("sns")
+    sqs = boto3.client("sqs")
+
+    topic_name = "test-topic"
+    queue_name = "test-queue"
+    input_queue_name = "input-queue"
+
+    input_queue = sqs.create_queue(QueueName=input_queue_name)
+    sqs.purge_queue
+    sqs.send_message(
+        QueueUrl=input_queue.get("QueueUrl"),
+        MessageBody=json.dumps(sqs_message),
+    )
+
+    topic = sns.create_topic(Name=topic_name)
+    queue = sqs.create_queue(QueueName=queue_name)
+    attrs = sqs.get_queue_attributes(
+        QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
+    )
+    queue_arn = attrs["Attributes"]["QueueArn"]
+
+    sns.subscribe(
+        TopicArn=topic.get("TopicArn"),
+        Protocol="sqs",
+        Endpoint=queue_arn,
+    )
+
+    dc = Datacube()
+    assert dc.index.datasets.get("57814bc4-6fdf-4fa1-84e5-865b364c4284") is not None
+
+    runner = CliRunner()
+    result = runner.invoke(
+        sqs_cli,
+        [
+            input_queue_name,
+            "ga_ls5t_nbart_gm_cyear_3",
+            "--skip-lineage",
+            "--statsd-setting",
+            "localhost:8125",
+            "--no-sign-request",
+            "--update-if-exists",
+            "--stac",
             "--archive",
             "--publish-action={}".format(topic_name),
         ],
@@ -190,7 +252,6 @@ def test_sqs_archiving_publishing(aws_credentials, aws_env, sqs_message):
     messages = sqs.receive_message(
         QueueUrl=queue.get("QueueUrl"),
     )["Messages"]
-
     assert result.exit_code == 0
     assert len(messages) == 1
     message = json.loads(messages[0]["Body"])["Message"]
