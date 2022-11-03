@@ -18,7 +18,7 @@ from odc.apps.dc_tools.utils import (
     bbox,
     index_update_dataset,
     limit,
-    update_if_exists,
+    update_if_exists_flag,
     archive_less_mature,
     statsd_gauge_reporting,
     statsd_setting,
@@ -191,9 +191,9 @@ def esa_wc_to_dc(
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
             except rasterio.errors.RasterioIOError:
-                logging.info(f"Couldn't find file for {uri}")
-            except Exception as e:
-                logging.exception(f"Failed to handle uri {uri} with exception {e}")
+                logging.info("Couldn't read file %s", uri, exc_info=True)
+            except Exception:  # pylint:disable=broad-except
+                logging.exception("Failed to handle uri %s", uri)
                 failure += 1
     sys.stdout.write("\r")
 
@@ -202,7 +202,7 @@ def esa_wc_to_dc(
 
 @click.command("esa-wc-to-dc")
 @limit
-@update_if_exists
+@update_if_exists_flag
 @bbox
 @click.option(
     "--add-product",

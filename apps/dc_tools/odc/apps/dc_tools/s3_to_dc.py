@@ -27,8 +27,8 @@ from odc.apps.dc_tools.utils import (
     statsd_setting,
     transform_stac,
     transform_stac_absolute,
-    update,
-    update_if_exists,
+    update_flag,
+    update_if_exists_flag,
     verify_lineage,
     publish_action,
 )
@@ -47,8 +47,8 @@ def stream_docs(documents):
 
 
 # Log the internal errors parsing docs
-def doc_error(uri, doc, e):
-    logging.exception(f"Failed to parse doc {uri} with error {e}")
+def doc_error(uri, doc):
+    logging.exception("Failed to parse doc at %s", uri)
 
 
 def dump_to_odc(
@@ -62,7 +62,7 @@ def dump_to_odc(
     archive_less_mature=None,
     publish_action=None,
     **kwargs,
-) -> Tuple[int, int]:
+) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
     ds_added = 0
@@ -87,8 +87,8 @@ def dump_to_odc(
                 publish_action=publish_action,
             )
             ds_added += 1
-        except IndexingException as e:
-            logging.exception(f"Failed to index dataset {uri} with error {e}")
+        except IndexingException:
+            logging.exception("Failed to index dataset %s", uri)
             ds_failed += 1
         except SkippedException:
             ds_skipped += 1
@@ -104,8 +104,8 @@ def dump_to_odc(
 @verify_lineage
 @transform_stac
 @transform_stac_absolute
-@update
-@update_if_exists
+@update_flag
+@update_if_exists_flag
 @allow_unsafe
 @skip_check
 @no_sign_request
