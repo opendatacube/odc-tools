@@ -144,7 +144,7 @@ def read_pixels(
     xy: Optional[XY] = None,
     lonlat: Optional[LonLat] = None,
     band: int = 1,
-    **kwargs
+    **kwargs,
 ) -> List[PixelValue]:
     """Read a single pixel at the same location from a bunch of different files.
 

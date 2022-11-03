@@ -6,7 +6,6 @@ import logging
 import os
 import threading
 import time
-from tempfile import mkstemp
 from typing import IO, Any, Dict, Optional, Tuple, Union
 from urllib.parse import urlparse
 from urllib.request import urlopen
@@ -16,7 +15,6 @@ import botocore.session
 from botocore.credentials import Credentials, ReadOnlyCredentials
 from botocore.exceptions import ClientError
 from botocore.session import Session
-from odc.cloud._version import __version__
 
 from ._find import norm_predicate, s3_file_info
 
@@ -68,7 +66,7 @@ def s3_fmt_range(r: Optional[ByteRange]):
     if _in < 0 or _out < 0:
         raise ValueError("Slice has to be positive")
 
-    return "bytes={:d}-{:d}".format(_in, _out - 1)
+    return f"bytes={_in:d}-{_out - 1:d}"
 
 
 def ec2_metadata(timeout: float = 0.1) -> Optional[Dict[str, Any]]:
@@ -198,7 +196,7 @@ def _mk_s3_client(
     region_name: Optional[str] = None,
     session: Optional[Session] = None,
     use_ssl: bool = True,
-    **cfg
+    **cfg,
 ) -> botocore.client.BaseClient:
     """Construct s3 client with configured region_name.
 
@@ -252,7 +250,7 @@ def s3_client(
     aws_unsigned: Optional[bool] = None,
     use_ssl: bool = True,
     cache: Union[bool, str] = False,
-    **cfg
+    **cfg,
 ) -> botocore.client.BaseClient:
     """Construct s3 client with configured region_name.
 
@@ -281,7 +279,7 @@ def s3_client(
             region_name=region_name,
             session=session,
             use_ssl=use_ssl,
-            **cfg
+            **cfg,
         )
 
     _cache = thread_local_cache("__aws_s3_cache", {})
@@ -302,7 +300,7 @@ def s3_client(
             region_name=region_name,
             session=session,
             use_ssl=use_ssl,
-            **cfg
+            **cfg,
         )
         _cache[key] = s3
 
@@ -313,7 +311,7 @@ def s3_open(
     url: str,
     s3: MaybeS3 = None,
     range: Optional[ByteRange] = None,  # pylint: disable=redefined-builtin
-    **kwargs
+    **kwargs,
 ):
     """Open whole or part of S3 object
 
@@ -340,7 +338,7 @@ def s3_download(
     s3: MaybeS3 = None,
     range: Optional[ByteRange] = None,  # pylint: disable=redefined-builtin
     read_chunk_size: int = 10 * (1 << 20),  # 10Mb
-    **kwargs
+    **kwargs,
 ) -> str:
     """
     Download file from S3 to local storage
@@ -395,7 +393,7 @@ def s3_fetch(
     url: str,
     s3: MaybeS3 = None,
     range: Optional[ByteRange] = None,  # pylint: disable=redefined-builtin
-    **kwargs
+    **kwargs,
 ) -> bytes:
     """Read entire or part of object into memory and return as bytes
 
@@ -457,10 +455,10 @@ def s3_ls_dir(uri, s3=None, **kw):
         files = page.get("Contents", [])
 
         for p in sub_dirs:
-            yield "s3://{bucket}/{path}".format(bucket=bucket, path=p["Prefix"])
+            yield f"s3://{bucket}/{p['Prefix']}"
 
         for o in files:
-            yield "s3://{bucket}/{path}".format(bucket=bucket, path=o["Key"])
+            yield f"s3://{bucket}/{o['Key']}"
 
 
 def s3_find(url, pred=None, glob=None, s3=None, **kw):

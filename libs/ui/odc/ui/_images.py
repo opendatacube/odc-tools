@@ -1,8 +1,10 @@
 """ Notebook display helper methods.
 """
+from ipyleaflet import ImageOverlay
 from typing import Optional, Tuple, Union
 
 import numpy as np
+from base64 import encodebytes
 import xarray as xr
 from odc.algo import is_rgb, to_rgba
 
@@ -20,10 +22,10 @@ def image_shape(d):
 
     if h is None:
         raise ValueError(
-            "Can't determine shape from dimension names: {}".format(" ".join(dims))
+            f"Can't determine shape from dimension names: {' '.join(dims)}"
         )
 
-    return (h, w)
+    return h, w
 
 
 def image_aspect(d):
@@ -48,16 +50,11 @@ def replace_transparent_pixels(
 
 
 def mk_data_uri(data: bytes, mimetype: str = "image/png") -> str:
-    from base64 import encodebytes
 
-    return "data:{};base64,{}".format(mimetype, encodebytes(data).decode("ascii"))
+    return f"data:{mimetype};base64,{encodebytes(data).decode('ascii')}"
 
 
 def _to_png_data2(xx: np.ndarray, mode: str = "auto") -> memoryview:
-    from io import BytesIO
-
-    import png
-
     if mode in ("auto", None):
         k = (2, 0) if xx.ndim == 2 else (xx.ndim, xx.shape[2])
         mode = {
@@ -78,10 +75,6 @@ def _to_png_data2(xx: np.ndarray, mode: str = "auto") -> memoryview:
 
 
 def _compress_image(im: np.ndarray, driver="PNG", **opts) -> bytes:
-    import warnings
-
-    import rasterio
-
     if im.dtype != np.uint8:
         raise ValueError("Only support uint8 images on input")
 
@@ -92,7 +85,7 @@ def _compress_image(im: np.ndarray, driver="PNG", **opts) -> bytes:
         (h, w), nc = im.shape, 1
         bands = im.reshape(nc, h, w)
     else:
-        raise ValueError("Expect 2 or 3 dimensional array got: {}".format(im.ndim))
+        raise ValueError(f"Expect 2 or 3 dimensional array got: {im.ndim}")
 
     rio_opts = dict(width=w, height=h, count=nc, driver=driver, dtype="uint8", **opts)
 
@@ -116,9 +109,6 @@ def to_jpeg_data(im: np.ndarray, quality=95, transparent=None) -> bytes:
 
 
 def xr_bounds(x, crs=None) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-    from datacube.testutils.geom import epsg4326
-    from datacube.utils.geometry import box
-
     def get_range(a: np.ndarray) -> Tuple[float, float]:
         b = (a[1] - a[0]) * 0.5
         return a[0] - b, a[-1] + b
@@ -151,7 +141,7 @@ def mk_image_overlay(
     bands: Optional[Tuple[str, str, str]] = None,
     layer_name="Image",
     fmt="png",
-    **opts
+    **opts,
 ):
     """Create ipyleaflet.ImageLayer from raster data.
 
@@ -164,7 +154,6 @@ def mk_image_overlay(
     =======
     ipyleaflet.ImageOverlay or a list of them one per time slice
     """
-    from ipyleaflet import ImageOverlay
 
     comp, mime = dict(
         png=(to_png_data, "image/png"),
@@ -185,9 +174,9 @@ def mk_image_overlay(
                     xx.isel(time=t),
                     clamp=clamp,
                     bands=bands,
-                    layer_name="{}-{}".format(layer_name, t),
+                    layer_name="{layer_name}-{t}",
                     fmt=fmt,
-                    **opts
+                    **opts,
                 )
                 for t in range(nt)
             ]
