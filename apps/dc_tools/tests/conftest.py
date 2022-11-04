@@ -1,3 +1,5 @@
+import os
+
 import configparser
 import docker
 import json
@@ -11,6 +13,7 @@ from datacube import Datacube
 from datacube.drivers.postgres import _core as pgres_core
 from datacube.index import index_connect
 from datacube.utils import documents
+from odc.apps.dc_tools.add_update_products import add_update_products
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LANDSAT_STAC: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
@@ -87,6 +90,9 @@ def final_dsid():
     return "9f27a15e-3cdf-4e3f-a58e-dd624b2c3bef"
 
 
+GET_DB_FROM_ENV = "get-the-db-from-the-environment-variable"
+
+
 @pytest.fixture(scope="session")
 def postgresql_server():
     """
@@ -94,71 +100,81 @@ def postgresql_server():
     :return: dictionary configuration required to connect to the server
     """
 
-    client = docker.from_env()
-    container = client.containers.run(
-        "postgres:alpine",
-        auto_remove=True,
-        remove=True,
-        detach=True,
-        environment={
-            "POSTGRES_PASSWORD": "badpassword",
-            "POSTGRES_USER": "odc_tools_test",
-        },
-        ports={"5432/tcp": None},
-    )
-    try:
-        while not container.attrs["NetworkSettings"]["Ports"]:
-            time.sleep(1)
-            container.reload()
-        host_port = container.attrs["NetworkSettings"]["Ports"]["5432/tcp"][0][
-            "HostPort"
-        ]
-        # From the documentation for the postgres docker image. The value of POSTGRES_USER
-        # is used for both the user and the default database.
-        yield {
-            "db_hostname": "127.0.0.1",
-            "db_username": "odc_tools_test",
-            "db_port": host_port,
-            "db_database": "odc_tools_test",
-            "db_password": "badpassword",
-            "index_driver": "default",
-        }
-        # 'f"postgresql://odc_tools_test:badpassword@localhost:{host_port}/odc_tools_test",
-    finally:
-        container.remove(v=True, force=True)
+    # If we're running inside docker already, don't attempt to start a container!
+    # Hopefully we're using the `with-test-db` script and can use *that* database.
+    if Path("/.dockerenv").exists() and os.environ.get("DATACUBE_DB_URL"):
+        yield GET_DB_FROM_ENV
+
+    else:
+
+        client = docker.from_env()
+        container = client.containers.run(
+            "postgres:alpine",
+            auto_remove=True,
+            remove=True,
+            detach=True,
+            environment={
+                "POSTGRES_PASSWORD": "badpassword",
+                "POSTGRES_USER": "odc_tools_test",
+            },
+            ports={"5432/tcp": None},
+        )
+        try:
+            while not container.attrs["NetworkSettings"]["Ports"]:
+                time.sleep(1)
+                container.reload()
+            host_port = container.attrs["NetworkSettings"]["Ports"]["5432/tcp"][0][
+                "HostPort"
+            ]
+            # From the documentation for the postgres docker image. The value of POSTGRES_USER
+            # is used for both the user and the default database.
+            yield {
+                "db_hostname": "127.0.0.1",
+                "db_username": "odc_tools_test",
+                "db_port": host_port,
+                "db_database": "odc_tools_test",
+                "db_password": "badpassword",
+                "index_driver": "default",
+            }
+            # 'f"postgresql://odc_tools_test:badpassword@localhost:{host_port}/odc_tools_test",
+        finally:
+            container.remove(v=True, force=True)
 
 
 @pytest.fixture
 def odc_test_db(postgresql_server, tmp_path, monkeypatch):
-    temp_datacube_config_file = tmp_path / "test_datacube.conf"
+    if postgresql_server == GET_DB_FROM_ENV:
+        return os.environ["DATACUBE_DB_URL"]
+    else:
+        temp_datacube_config_file = tmp_path / "test_datacube.conf"
 
-    config = configparser.ConfigParser()
-    config["default"] = postgresql_server
-    with open(temp_datacube_config_file, "w", encoding="utf8") as fout:
-        config.write(fout)
+        config = configparser.ConfigParser()
+        config["default"] = postgresql_server
+        with open(temp_datacube_config_file, "w", encoding="utf8") as fout:
+            config.write(fout)
 
-    # This environment variable points to the configuration file, and is used by the odc-tools CLI apps
-    # as well as direct ODC API access, eg creating `Datacube()`
-    monkeypatch.setenv(
-        "DATACUBE_CONFIG_PATH",
-        str(temp_datacube_config_file.absolute()),
-    )
-    # This environment is used by the `datacube ...` CLI tools, which don't obey the same environment variables
-    # as the API and odc-tools apps.
-    # See https://github.com/opendatacube/datacube-core/issues/1258 for more
-    # pylint:disable=consider-using-f-string
-    postgres_url = "postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}".format(
-        **postgresql_server
-    )
-    monkeypatch.setenv("DATACUBE_DB_URL", postgres_url)
-    while True:
-        try:
-            with psycopg2.connect(postgres_url):
-                break
-        except psycopg2.OperationalError:
-            print("Waiting for PostgreSQL to become available")
-            time.sleep(1)
-    return postgres_url
+        # This environment variable points to the configuration file, and is used by the odc-tools CLI apps
+        # as well as direct ODC API access, eg creating `Datacube()`
+        monkeypatch.setenv(
+            "DATACUBE_CONFIG_PATH",
+            str(temp_datacube_config_file.absolute()),
+        )
+        # This environment is used by the `datacube ...` CLI tools, which don't obey the same environment variables
+        # as the API and odc-tools apps.
+        # See https://github.com/opendatacube/datacube-core/issues/1258 for more
+        # pylint:disable=consider-using-f-string
+        postgres_url = "postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}".format(
+            **postgresql_server
+        )
+        monkeypatch.setenv("DATACUBE_DB_URL", postgres_url)
+        while True:
+            try:
+                with psycopg2.connect(postgres_url):
+                    break
+            except psycopg2.OperationalError:
+                print("Waiting for PostgreSQL to become available")
+                time.sleep(1)
+        return postgres_url
 
 
 @pytest.fixture
@@ -196,6 +212,14 @@ def remove_postgres_dynamic_indexes():
         table.indexes.intersection_update(
             [i for i in table.indexes if not i.name.startswith("dix_")]
         )
+
+
+@pytest.fixture
+def odc_test_db_with_products(odc_db):
+    local_csv = str(Path(__file__).parent / "data/example_product_list.csv")
+    added, updated, failed = add_update_products(odc_db, local_csv)
+
+    assert failed == 0
 
 
 @pytest.fixture

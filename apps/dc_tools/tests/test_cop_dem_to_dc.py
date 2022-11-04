@@ -16,7 +16,7 @@ def bbox_africa():
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_get_dem_tile_uris(bbox, product):
+def test_get_dem_tile_uris(bbox, product, odc_db):
     uris = list(get_dem_tile_uris(bbox, product))
 
     if product == "cop_30":
@@ -41,7 +41,7 @@ def test_complex_bbox(bbox_africa):
 
 # Test the actual process
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_indexing_cli(bbox, product):
+def test_indexing_cli(bbox, product, odc_db):
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -61,7 +61,7 @@ def test_indexing_cli(bbox, product):
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_indexing_cli_repeat(bbox, product):
+def test_indexing_cli_repeat(bbox, product, odc_db):
     runner = CliRunner()
     result = runner.invoke(
         cli,

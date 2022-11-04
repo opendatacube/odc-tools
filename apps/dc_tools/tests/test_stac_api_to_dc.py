@@ -5,8 +5,7 @@ from odc.apps.dc_tools.stac_api_to_dc import cli
 from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_stac_to_dc_earthsearch():
+def test_stac_to_dc_earthsearch(odc_test_db_with_products):
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -23,8 +22,7 @@ def test_stac_to_dc_earthsearch():
     assert "Added 10 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_stac_to_dc_earthsearch_rerun():
+def test_stac_to_dc_earthsearch_rerun(odc_test_db_with_products):
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -42,8 +40,7 @@ def test_stac_to_dc_earthsearch_rerun():
 
 
 @pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
-@pytest.mark.depends(on=["add_products"])
-def test_stac_to_dc_usgs():
+def test_stac_to_dc_usgs(odc_test_db_with_products):
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -62,8 +59,7 @@ def test_stac_to_dc_usgs():
 @pytest.mark.xfail(
     reason="Failing with error 'ConformanceClasses.ITEM_SEARCH not supported'"
 )
-@pytest.mark.depends(on=["add_products"])
-def test_stac_to_dc_planetarycomputer():
+def test_stac_to_dc_planetarycomputer(odc_test_db_with_products):
     runner = CliRunner()
     result = runner.invoke(
         cli,
