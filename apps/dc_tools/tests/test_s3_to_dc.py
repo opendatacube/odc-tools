@@ -11,14 +11,6 @@ from odc.apps.dc_tools.add_update_products import (
 )
 
 
-@pytest.fixture
-def odc_test_db_with_products(odc_db):
-    local_csv = str(Path(__file__).parent / "data/example_product_list.csv")
-    added, updated, failed = add_update_products(odc_db, local_csv)
-
-    assert failed == 0
-
-
 def test_s3_to_dc_yaml(aws_env, odc_test_db_with_products):
     runner = CliRunner()
     result = runner.invoke(
