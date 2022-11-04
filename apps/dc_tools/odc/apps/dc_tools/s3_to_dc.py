@@ -33,6 +33,12 @@ from odc.apps.dc_tools.utils import (
     publish_action,
 )
 
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s: %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
+
 
 # Grab the URL from the resulting S3 item
 def stream_urls(urls):

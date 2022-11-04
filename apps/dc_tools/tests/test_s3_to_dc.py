@@ -1,20 +1,29 @@
 # Tests using the Click framework the s3-to-dc CLI tool
 # flake8: noqa
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 from odc.apps.dc_tools.s3_to_dc import cli as s3_to_dc
+from odc.apps.dc_tools.add_update_products import (
+    cli as add_update_products_cli,
+    add_update_products,
+)
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_yaml(aws_env):
+@pytest.fixture
+def odc_test_db_with_products(odc_db):
+    local_csv = str(Path(__file__).parent / "data/example_product_list.csv")
+    added, updated, failed = add_update_products(odc_db, local_csv)
+
+    assert failed == 0
+
+
+def test_s3_to_dc_yaml(aws_env, odc_test_db_with_products):
     runner = CliRunner()
-    # This will fail if requester pays is enabled
     result = runner.invoke(
         s3_to_dc,
         [
-            "--statsd-setting",
-            "localhost:8125",
             "--no-sign-request",
             "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/**/*.yaml",
             "cemp_insar_alos_displacement",
@@ -27,41 +36,46 @@ def test_s3_to_dc_yaml(aws_env):
     )
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_yaml_rerun(aws_env):
+def test_s3_to_dc_skips_already_indexed_datasets(aws_env, odc_test_db_with_products):
     runner = CliRunner()
     # This will fail if requester pays is enabled
-    result = runner.invoke(
-        s3_to_dc,
-        [
-            "--statsd-setting",
-            "localhost:8125",
-            "--no-sign-request",
-            "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/**/*.yaml",
-            "cemp_insar_alos_displacement",
-        ],
-    )
-    assert result.exit_code == 0
+    results = [
+        runner.invoke(
+            s3_to_dc,
+            [
+                "--no-sign-request",
+                "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/**/*.yaml",
+                "cemp_insar_alos_displacement",
+            ],
+        )
+        for _ in range(1, 3)
+    ]
+
+    # The first run should succeed and index all 25 datasets
+    assert results[0].exit_code == 0
     assert (
-        result.output
+        results[0].output
+        == "Added 25 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
+
+    # The second run should succeed by SKIPPING all 25 datasets
+    assert results[1].exit_code == 0
+    assert (
+        results[1].output
         == "Added 0 datasets, skipped 25 datasets and failed 0 datasets.\n"
     )
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_stac(aws_env):
-    runner = CliRunner()
-    # This will fail if requester pays is enabled
-    result = runner.invoke(
+def test_s3_to_dc_stac(aws_env, odc_test_db_with_products):
+    result = CliRunner().invoke(
         s3_to_dc,
         [
-            "--statsd-setting",
-            "localhost:8125",
             "--no-sign-request",
             "--stac",
-            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2A_42TUM_20220102_0_L2A/*_L2A.json",
+            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2B_42TUM_20220107_0_L2A/*_L2A.json",
             "s2_l2a",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
     assert (
@@ -69,19 +83,14 @@ def test_s3_to_dc_stac(aws_env):
     )
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_stac_update_if_exist(aws_env):
-    runner = CliRunner()
-    # This will fail if requester pays is enabled
-    result = runner.invoke(
+def test_s3_to_dc_stac_update_if_exist(aws_env, odc_test_db_with_products):
+    result = CliRunner().invoke(
         s3_to_dc,
         [
-            "--statsd-setting",
-            "localhost:8125",
             "--no-sign-request",
             "--stac",
             "--update-if-exists",
-            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2A_42TUM_20220102_0_L2A/*_L2A.json",
+            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2B_42TUM_20220107_0_L2A/*_L2A.json",
             "s2_l2a",
         ],
     )
@@ -91,20 +100,16 @@ def test_s3_to_dc_stac_update_if_exist(aws_env):
     )
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
+def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env, odc_test_db_with_products):
     runner = CliRunner()
-    # This will fail if requester pays is enabled
     result = runner.invoke(
         s3_to_dc,
         [
-            "--statsd-setting",
-            "localhost:8125",
             "--no-sign-request",
             "--stac",
             "--update-if-exists",
             "--allow-unsafe",
-            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2A_42TUM_20220102_0_L2A/*_L2A.json",
+            "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2B_42TUM_20220107_0_L2A/*_L2A.json",
             "s2_l2a",
         ],
     )
@@ -114,10 +119,8 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(aws_env):
     )
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
+def test_s3_to_dc_fails_to_index_non_dataset_yaml(aws_env, odc_test_db_with_products):
     runner = CliRunner()
-    # This will fail if requester pays is enabled
     result = runner.invoke(
         s3_to_dc,
         [
@@ -127,6 +130,7 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
             "s3://dea-public-data/derivative/ga_ls5t_nbart_gm_cyear_3/3-0-0/x08/y23/1994--P1Y/*.proc-info.yaml",
             "ga_ls5t_nbart_gm_cyear_3",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 1
     assert (
@@ -134,10 +138,10 @@ def test_s3_to_dc_single_glob_proc_info_yaml(aws_env):
     )
 
 
-@pytest.mark.depends(on=["add_products"])
-def test_s3_to_dc_index_proc_info_yaml(aws_env):
+def test_s3_to_dc_partially_succeeds_when_given_invalid_and_valid_dataset_yamls(
+    aws_env, odc_test_db_with_products
+):
     runner = CliRunner()
-    # This will fail if requester pays is enabled
     result = runner.invoke(
         s3_to_dc,
         [
