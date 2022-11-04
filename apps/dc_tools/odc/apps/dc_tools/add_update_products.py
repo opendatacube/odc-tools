@@ -39,7 +39,7 @@ def _get_product(product_path: str) -> List[Dict[str, Any]]:
         return []
 
 
-def _parse_csv(csv_path: str) -> Generator[Product]:
+def _parse_csv(csv_path: str) -> Generator[Product, None, None]:
     """Parses the CSV and returns a dict of name: yaml_file_path"""
 
     with fsspec.open(csv_path, mode="r") as f:

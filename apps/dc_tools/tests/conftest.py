@@ -1,9 +1,15 @@
+import configparser
+import docker
 import json
+import psycopg2
+import pytest
+import time
+import yaml
 from pathlib import Path
 
-import pytest
-import yaml
 from datacube import Datacube
+from datacube.drivers.postgres import _core as pgres_core
+from datacube.index import index_connect
 from datacube.utils import documents
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
@@ -24,20 +30,20 @@ def aws_env(monkeypatch):
 
 @pytest.fixture
 def usgs_landsat_stac():
-    with TEST_DATA_FOLDER.joinpath(USGS_LANDSAT_STAC).open("r") as f:
+    with TEST_DATA_FOLDER.joinpath(USGS_LANDSAT_STAC).open("r", encoding="utf8") as f:
         return json.load(f)
 
 
 @pytest.fixture
 def landsat_stac():
-    with TEST_DATA_FOLDER.joinpath(LANDSAT_STAC).open("r") as f:
+    with TEST_DATA_FOLDER.joinpath(LANDSAT_STAC).open("r", encoding="utf8") as f:
         metadata = json.load(f)
     return metadata
 
 
 @pytest.fixture
 def lidar_stac():
-    with TEST_DATA_FOLDER.joinpath(LIDAR_STAC).open("r") as f:
+    with TEST_DATA_FOLDER.joinpath(LIDAR_STAC).open("r", encoding="utf8") as f:
         metadata = json.load(f)
     return metadata
 
@@ -52,21 +58,21 @@ def landsat_odc():
 
 @pytest.fixture
 def sentinel_stac():
-    with TEST_DATA_FOLDER.joinpath(SENTINEL_STAC).open("r") as f:
+    with TEST_DATA_FOLDER.joinpath(SENTINEL_STAC).open("r", encoding="utf8") as f:
         metadata = json.load(f)
     return metadata
 
 
 @pytest.fixture
 def sentinel_odc():
-    with TEST_DATA_FOLDER.joinpath(SENTINEL_ODC).open("r") as f:
+    with TEST_DATA_FOLDER.joinpath(SENTINEL_ODC).open("r", encoding="utf8") as f:
         metadata = json.load(f)
     return metadata
 
 
 @pytest.fixture
 def maturity_product_doc():
-    with TEST_DATA_FOLDER.joinpath(MATURITY_PRODUCT).open("r") as f:
+    with TEST_DATA_FOLDER.joinpath(MATURITY_PRODUCT).open("r", encoding="utf8") as f:
         doc = yaml.safe_load(f)
     return doc
 
@@ -81,12 +87,115 @@ def final_dsid():
     return "9f27a15e-3cdf-4e3f-a58e-dd624b2c3bef"
 
 
-@pytest.fixture
-def odc_db():
+@pytest.fixture(scope="session")
+def postgresql_server():
+    """
+    Provide a temporary PostgreSQL server for the test session using Docker.
+    :return: dictionary configuration required to connect to the server
+    """
+
+    client = docker.from_env()
+    container = client.containers.run(
+        "postgres:alpine",
+        auto_remove=True,
+        remove=True,
+        detach=True,
+        environment={
+            "POSTGRES_PASSWORD": "badpassword",
+            "POSTGRES_USER": "odc_tools_test",
+        },
+        ports={"5432/tcp": None},
+    )
     try:
-        return Datacube()
-    except Exception:
-        return None
+        while not container.attrs["NetworkSettings"]["Ports"]:
+            time.sleep(1)
+            container.reload()
+        host_port = container.attrs["NetworkSettings"]["Ports"]["5432/tcp"][0][
+            "HostPort"
+        ]
+        # From the documentation for the postgres docker image. The value of POSTGRES_USER
+        # is used for both the user and the default database.
+        yield {
+            "db_hostname": "127.0.0.1",
+            "db_username": "odc_tools_test",
+            "db_port": host_port,
+            "db_database": "odc_tools_test",
+            "db_password": "badpassword",
+            "index_driver": "default",
+        }
+        # 'f"postgresql://odc_tools_test:badpassword@localhost:{host_port}/odc_tools_test",
+    finally:
+        container.remove(v=True, force=True)
+
+
+@pytest.fixture
+def odc_test_db(postgresql_server, tmp_path, monkeypatch):
+    temp_datacube_config_file = tmp_path / "test_datacube.conf"
+
+    config = configparser.ConfigParser()
+    config["default"] = postgresql_server
+    with open(temp_datacube_config_file, "w", encoding="utf8") as fout:
+        config.write(fout)
+
+    # This environment variable points to the configuration file, and is used by the odc-tools CLI apps
+    # as well as direct ODC API access, eg creating `Datacube()`
+    monkeypatch.setenv(
+        "DATACUBE_CONFIG_PATH",
+        str(temp_datacube_config_file.absolute()),
+    )
+    # This environment is used by the `datacube ...` CLI tools, which don't obey the same environment variables
+    # as the API and odc-tools apps.
+    # See https://github.com/opendatacube/datacube-core/issues/1258 for more
+    # pylint:disable=consider-using-f-string
+    postgres_url = "postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}".format(
+        **postgresql_server
+    )
+    monkeypatch.setenv("DATACUBE_DB_URL", postgres_url)
+    while True:
+        try:
+            with psycopg2.connect(postgres_url):
+                break
+        except psycopg2.OperationalError:
+            print("Waiting for PostgreSQL to become available")
+            time.sleep(1)
+    return postgres_url
+
+
+@pytest.fixture
+def odc_db(odc_test_db):
+    """
+    Provide a temporary PostgreSQL server initialised by ODC, usable as
+    the default ODC DB by setting environment variables.
+    :param odc_test_db:
+    :return: Datacube instance
+    """
+
+    index = index_connect(validate_connection=False)
+    index.init_db()
+
+    dc = Datacube(index=index)
+
+    yield dc
+
+    dc.close()
+    pgres_core.drop_db(index._db._engine)  # pylint:disable=protected-access
+    # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
+    # and attempts to recreate them. WTF TODO FIX
+    remove_postgres_dynamic_indexes()
+    # with psycopg2.connect(odc_test_db) as conn:
+    #     with conn.cursor() as cur:
+    #         cur.execute("DROP SCHEMA IF EXISTS agdc CASCADE;")
+
+
+def remove_postgres_dynamic_indexes():
+    """
+    Clear any dynamically created postgresql indexes from the schema.
+    """
+    # Our normal indexes start with "ix_", dynamic indexes with "dix_"
+    for table in pgres_core.METADATA.tables.values():
+        table.indexes.intersection_update(
+            [i for i in table.indexes if not i.name.startswith("dix_")]
+        )
 
 
 @pytest.fixture
