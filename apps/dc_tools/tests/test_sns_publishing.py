@@ -7,7 +7,6 @@ from datacube import Datacube
 from click.testing import CliRunner
 from odc.apps.dc_tools.s3_to_dc import cli as s3_cli
 from odc.apps.dc_tools.sqs_to_dc import cli as sqs_cli
-from odc.apps.dc_tools._stac import ds_to_stac
 from datacube import Datacube
 from pathlib import Path
 
@@ -53,7 +52,7 @@ def test_s3_publishing_action_from_stac(aws_credentials, aws_env):
             "--no-sign-request",
             "--stac",
             "--update-if-exists",
-            "--publish-action={}".format(topic_name),
+            f"--publish-action={topic_name}",
             "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2A_42TUM_20220102_0_L2A/*.json",
             "s2_l2a",
         ],
@@ -67,8 +66,9 @@ def test_s3_publishing_action_from_stac(aws_credentials, aws_env):
         QueueUrl=queue.get("QueueUrl"),
     )["Messages"]
     assert len(messages) == 1
-    message = json.loads(messages[0]["Body"])["Message"]
-    assert json.loads(message)["action"] == "ADDED"
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
+    assert message_attrs["action"].get("Value") == "ADDED"
+    assert message_attrs["product"] == "s2_l2a"
 
 
 @mock_sns
@@ -102,7 +102,7 @@ def test_s3_publishing_action_from_eo3(aws_credentials, aws_env):
             "localhost:8125",
             "--no-sign-request",
             "--update-if-exists",
-            "--publish-action={}".format(topic_name),
+            f"--publish-action={topic_name}",
             "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/01/07/*.yaml",
             "cemp_insar_alos_displacement",
         ],
@@ -116,8 +116,8 @@ def test_s3_publishing_action_from_eo3(aws_credentials, aws_env):
         QueueUrl=queue.get("QueueUrl"),
     )["Messages"]
     assert len(messages) == 1
-    message = json.loads(messages[0]["Body"])["Message"]
-    assert json.loads(message)["action"] == "ADDED"
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
+    assert message_attrs["action"].get("Value") == "ADDED"
 
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
@@ -185,7 +185,7 @@ def test_sqs_publishing(aws_credentials, aws_env, sqs_message):
             "--no-sign-request",
             "--update-if-exists",
             "--stac",
-            "--publish-action={}".format(topic_name),
+            f"--publish-action={topic_name}",
         ],
     )
 
@@ -194,8 +194,10 @@ def test_sqs_publishing(aws_credentials, aws_env, sqs_message):
     )["Messages"]
     assert result.exit_code == 0
     assert len(messages) == 1
-    message = json.loads(messages[0]["Body"])["Message"]
-    assert json.loads(message)["action"] == "ADDED"
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
+    assert message_attrs["action"].get("Value") == "ADDED"
+    assert message_attrs["product"].get("Value") == "ga_ls5t_nbart_gm_cyear_3"
+    assert message_attrs["maturity"].get("Value") == "final"
 
 
 @mock_sns
@@ -245,7 +247,7 @@ def test_sqs_publishing_archive(aws_credentials, aws_env, sqs_message):
             "--update-if-exists",
             "--stac",
             "--archive",
-            "--publish-action={}".format(topic_name),
+            f"--publish-action={topic_name}",
         ],
     )
 
@@ -254,5 +256,5 @@ def test_sqs_publishing_archive(aws_credentials, aws_env, sqs_message):
     )["Messages"]
     assert result.exit_code == 0
     assert len(messages) == 1
-    message = json.loads(messages[0]["Body"])["Message"]
-    assert json.loads(message)["action"] == "ARCHIVED"
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
+    assert message_attrs["action"].get("Value") == "ARCHIVED"
