@@ -71,7 +71,7 @@ def test_redrive_to_queue_cli(aws_env):
     resource = boto3.resource("sqs")
 
     dead_queue = resource.create_queue(QueueName=DEAD_QUEUE_NAME)
-    alive_queue = resource.create_queue(
+    resource.create_queue(
         QueueName=ALIVE_QUEUE_NAME,
         Attributes={
             "RedrivePolicy": json.dumps(

@@ -27,6 +27,11 @@ MATURITY_PRODUCT: str = "ga_ls5t_gm_product.yaml"
 
 
 @pytest.fixture
+def test_data_dir():
+    return str(TEST_DATA_FOLDER)
+
+
+@pytest.fixture
 def aws_env(monkeypatch):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
 
