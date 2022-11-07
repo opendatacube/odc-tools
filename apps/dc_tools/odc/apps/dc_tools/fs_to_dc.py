@@ -18,21 +18,17 @@ from odc.apps.dc_tools.utils import (
     statsd_gauge_reporting,
     transform_stac,
 )
+from odc.apps.dc_tools._stac import stac_transform
+import logging
+
+
+import yaml
 
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s: %(levelname)s: %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S",
 )
-
-
-def _find_files(
-    path: str, glob: Optional[str] = None, stac: Optional[bool] = False
-) -> Generator[Path, None, None]:
-    if glob is None:
-        glob = "**/*.json" if stac else "**/*.yaml"
-
-    return Path(path).glob(glob)
 
 
 @click.command("fs-to-dc")
@@ -65,7 +61,7 @@ def cli(
     if glob is None:
         glob = "**/*.json" if stac else "**/*.yaml"
 
-    files_to_process = _find_files(input_directory, glob, stac=stac)
+    files_to_process = Path(input_directory).glob(glob)
 
     added, failed = 0, 0
 
