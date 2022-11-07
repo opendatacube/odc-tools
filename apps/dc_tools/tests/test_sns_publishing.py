@@ -35,9 +35,9 @@ def test_s3_publishing_action_from_stac(aws_credentials, aws_env):
         QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
     )
     queue_arn = attrs["Attributes"]["QueueArn"]
-
+    sns_arn = topic.get("TopicArn")
     sns.subscribe(
-        TopicArn=topic.get("TopicArn"),
+        TopicArn=sns_arn,
         Protocol="sqs",
         Endpoint=queue_arn,
     )
@@ -52,7 +52,7 @@ def test_s3_publishing_action_from_stac(aws_credentials, aws_env):
             "--no-sign-request",
             "--stac",
             "--update-if-exists",
-            f"--publish-action={topic_name}",
+            f"--publish-action={sns_arn}",
             "s3://sentinel-cogs/sentinel-s2-l2a-cogs/42/T/UM/2022/1/S2A_42TUM_20220102_0_L2A/*.json",
             "s2_l2a",
         ],
@@ -87,9 +87,9 @@ def test_s3_publishing_action_from_eo3(aws_credentials, aws_env):
         QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
     )
     queue_arn = attrs["Attributes"]["QueueArn"]
-
+    sns_arn = topic.get("TopicArn")
     sns.subscribe(
-        TopicArn=topic.get("TopicArn"),
+        TopicArn=sns_arn,
         Protocol="sqs",
         Endpoint=queue_arn,
     )
@@ -102,7 +102,7 @@ def test_s3_publishing_action_from_eo3(aws_credentials, aws_env):
             "localhost:8125",
             "--no-sign-request",
             "--update-if-exists",
-            f"--publish-action={topic_name}",
+            f"--publish-action={sns_arn}",
             "s3://dea-public-data/cemp_insar/insar/displacement/alos/2010/01/07/*.yaml",
             "cemp_insar_alos_displacement",
         ],
@@ -166,9 +166,9 @@ def test_sqs_publishing(aws_credentials, aws_env, sqs_message):
         QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
     )
     queue_arn = attrs["Attributes"]["QueueArn"]
-
+    sns_arn = topic.get("TopicArn")
     sns.subscribe(
-        TopicArn=topic.get("TopicArn"),
+        TopicArn=sns_arn,
         Protocol="sqs",
         Endpoint=queue_arn,
     )
@@ -185,7 +185,7 @@ def test_sqs_publishing(aws_credentials, aws_env, sqs_message):
             "--no-sign-request",
             "--update-if-exists",
             "--stac",
-            f"--publish-action={topic_name}",
+            f"--publish-action={sns_arn}",
         ],
     )
 
@@ -224,9 +224,10 @@ def test_sqs_publishing_archive(aws_credentials, aws_env, sqs_message):
         QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
     )
     queue_arn = attrs["Attributes"]["QueueArn"]
+    sns_arn = topic.get("TopicArn")
 
     sns.subscribe(
-        TopicArn=topic.get("TopicArn"),
+        TopicArn=sns_arn,
         Protocol="sqs",
         Endpoint=queue_arn,
     )
@@ -247,7 +248,7 @@ def test_sqs_publishing_archive(aws_credentials, aws_env, sqs_message):
             "--update-if-exists",
             "--stac",
             "--archive",
-            f"--publish-action={topic_name}",
+            f"--publish-action={sns_arn}",
         ],
     )
 
