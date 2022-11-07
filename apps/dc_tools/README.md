@@ -130,7 +130,7 @@ Options:
   --archive-less-mature           Find less mature versions of the dataset and
                                   archive them
                                   
-  --publish-action TEXT           Publish indexing action to SNS topic
+  --publish-action SNS ARN        Publish indexing action to SNS topic
 
   --help                          Show this message and exit.
 ```

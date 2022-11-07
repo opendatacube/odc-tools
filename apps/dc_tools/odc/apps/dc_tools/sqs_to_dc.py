@@ -170,7 +170,7 @@ def do_archiving(metadata, dc: Datacube, publish_action):
         dc.index.datasets.archive([dataset_id])
         if publish_action:
             publish_to_topic(
-                topic_name=publish_action,
+                arn=publish_action,
                 action="ARCHIVED",
                 stac=ds_to_stac(dc.index.datasets.get(dataset_id))
             )

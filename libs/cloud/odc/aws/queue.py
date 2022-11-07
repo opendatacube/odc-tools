@@ -3,6 +3,7 @@ import json
 from typing import Any, Iterable, Mapping, Optional
 
 import boto3
+from toolz import dicttoolz
 
 
 def redrive_queue(
@@ -184,28 +185,36 @@ def get_messages(
     return itertools.islice(messages, limit)
 
 
-def publish_to_topic(topic_name: str, action: str, stac: dict):
+def capture_attributes(action: str, stac: dict):
+    """Determine SNS message attributes"""
+    product = dicttoolz.get_in(["properties", "odc:product"], stac)
+    date_time = dicttoolz.get_in(["properties", "datetime"], stac)
+    maturity = dicttoolz.get_in(["properties", "dea:dataset_maturity"], stac)
+
+    if not product:
+        product = stac.get("collection")
+
+    return {
+        "action": {"DataType": "String", "StringValue": action},
+        "product": {"DataType": "String", "StringValue": product},
+        "datetime": {"DataType": "String", "StringValue": date_time},
+        **(
+            {"maturity": {"DataType": "String", "StringValue": maturity}}
+            if maturity
+            else {}
+        ),
+    }
+
+
+def publish_to_topic(arn: str, action: str, stac: dict):
     """
     Publish 'added' or 'archived' action to the provided sns topic
     """
     sns = boto3.client("sns")
-    sns_topic = sns.create_topic(Name=topic_name)
+    attrs = capture_attributes(action, stac)
 
-    stac = json.dumps(stac)
-    message = {
-        "action": action,
-        "stac": stac,
-    }
     sns.publish(
-        TopicArn=sns_topic.get("TopicArn"),
-        Message=json.dumps(message),
-        MessageAttributes={
-            "action": {
-                "DataType": "String",
-                "StringValue": "ARCHIVED {or} ADDED",
-            },
-            "stac": {
-                "DataType": "String",
-            },
-        },
+        TopicArn=arn,
+        Message=json.dumps(stac),
+        MessageAttributes=attrs,
     )

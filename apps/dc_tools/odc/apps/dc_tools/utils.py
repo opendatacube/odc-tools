@@ -135,9 +135,7 @@ publish_action = click.option(
     type=str,
     default=None,
     nargs=1,
-    help=(
-        "Name of SNS topic to publish indexing/archiving actions to."
-    )
+    help=("SNS topic arn to publish indexing/archiving actions to."),
 )
 
 archive = click.option(
@@ -207,7 +205,7 @@ def index_update_dataset(
            * If an iterable of valid search field names is provided, it is used as the "grouping" fields for
              identifying dataset maturity matches.
              (i.e. `archive_less_mature=True` is the same as `archive_less_mature=['region_code', 'time'])
-    :param publish_action: SNS topic to publish action to.
+    :param publish_action: SNS topic arn to publish action to.
     :param stac_doc: STAC document for publication to SNS topic.
     :return: Returns nothing.  Raises an exception if anything goes wrong.
     """
@@ -230,8 +228,7 @@ def index_update_dataset(
             # if set explicitly to True, default to [region_code, time]
             archive_less_mature = ["region_code", "time"]
         try:
-            dupe_query = {k: getattr(ds.metadata, k)
-                          for k in archive_less_mature}
+            dupe_query = {k: getattr(ds.metadata, k) for k in archive_less_mature}
         except AttributeError as e:
             raise IndexingException(
                 f"Cannot extract matching value from dataset for maturity check: {e}\n The URI was {uri}"
@@ -302,16 +299,14 @@ def index_update_dataset(
         logging.info("Archived less mature dataset: %s", arch_id)
     if publish_action:
         for arch_stac in archive_stacs:
-            publish_to_topic(topic_name=publish_action,
-                             action="ARCHIVED", stac=arch_stac)
+            publish_to_topic(arn=publish_action, action="ARCHIVED", stac=arch_stac)
 
     if added:
         logging.info("New Dataset Added: %s", ds.id)
         if publish_action:
             # if STAC was not provided, generate from dataset
             stac_doc = stac_doc if stac_doc else ds_to_stac(ds)
-            publish_to_topic(topic_name=publish_action,
-                             action="ADDED", stac=stac_doc)
+            publish_to_topic(arn=publish_action, action="ADDED", stac=stac_doc)
 
     if updated:
         logging.info("Existing Dataset Updated: %s", ds.id)
