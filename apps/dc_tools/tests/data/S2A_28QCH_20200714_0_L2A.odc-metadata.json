@@ -73,7 +73,7 @@
         }
     },
     "product": {
-        "name": "sentinel_2_l2a"
+        "name": "s2_l2a"
     },
     "label": "S2A_MSIL2A_20200714T115221_N0214_R123_T28QCH_20200714T191310",
     "properties": {
