@@ -16,13 +16,13 @@ from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
     SkippedException,
-    archive_less_mature,
-    bbox,
+    archive_less_mature,bbox,
     index_update_dataset,
-    limit, publish_action,
+
+    limit,
+    publish_action,
     statsd_gauge_reporting,
-    statsd_setting,
-    update_if_exists,
+    statsd_setting,update_if_exists,
 )
 from rio_stac import create_stac_item
 
@@ -73,8 +73,7 @@ def get_dem_tile_uris(bounding_box, product):
     else:
         bounding_box = bounding_box.split(",")
         if len(bounding_box) != 4:
-            raise ValueError(
-                "bounding_box must be in the format: minx,miny,maxx,maxy")
+            raise ValueError("bounding_box must be in the format: minx,miny,maxx,maxy")
         bounding_box = [float(x) for x in bounding_box]
 
     # Get the uris
@@ -167,14 +166,18 @@ def cop_dem_to_dc(
     failure = 0
     skipped = 0
 
-    sys.stdout.write(
-        f"Starting Cop DEM indexing with {n_workers} workers...\n")
+    sys.stdout.write(f"Starting Cop DEM indexing with {n_workers} workers...\n")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
             executor.submit(
-                process_uri_tile, uri_tile, product, dc, doc2ds,
-                update_if_exists=update, archive_less_mature=archive_less_mature,
+                process_uri_tile,
+                uri_tile,
+                product,
+                dc,
+                doc2ds,
+                update_if_exists=update,
+                archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
             ): uri_tile[0]
             for uri_tile in uris_tiles
@@ -191,8 +194,7 @@ def cop_dem_to_dc(
             except rasterio.errors.RasterioIOError:
                 logging.info(f"Couldn't find file for {uri}")
             except Exception as e:
-                logging.exception(
-                    f"Failed to handle uri {uri} with exception {e}")
+                logging.exception(f"Failed to handle uri {uri} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 
@@ -232,6 +234,7 @@ def cli(
     add_product,
     workers,
     archive_less_mature,
+    publish_action,
 ):
     """
     Index the Copernicus DEM automatically.
@@ -256,6 +259,7 @@ def cli(
         update_if_exists,
         n_workers=workers,
         archive_less_mature=archive_less_mature,
+        publish_action=publish_action,
     )
 
     print(
@@ -264,8 +268,7 @@ def cli(
 
     if statsd_setting:
         statsd_gauge_reporting(
-            added, ["app:cop_dem_to_dc", "action:added"], statsd_setting
-        )
+            added, ["app:cop_dem_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(
             failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting
         )

@@ -15,8 +15,14 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
-    bbox, index_update_dataset, limit, update_if_exists, archive_less_mature,
-    statsd_gauge_reporting, statsd_setting, publish_action,
+    bbox,
+    index_update_dataset,
+    limit,
+    update_if_exists,
+    archive_less_mature,
+    statsd_gauge_reporting,
+    statsd_setting,
+    publish_action,
 )
 from rio_stac import create_stac_item
 
@@ -74,8 +80,7 @@ def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
     else:
         bounding_box = bounding_box.split(",")
         if len(bounding_box) != 4:
-            raise ValueError(
-                "bounding_box must be in the format: minx,miny,maxx,maxy")
+            raise ValueError("bounding_box must be in the format: minx,miny,maxx,maxy")
         bounding_box = [float(x) for x in bounding_box]
 
     # The tiles are 3 x 3 degree, starting at 0,3...
@@ -163,14 +168,17 @@ def esa_wc_to_dc(
     success = 0
     failure = 0
 
-    sys.stdout.write(
-        f"Starting ESA Worldcover indexing with {n_workers} workers...\n")
+    sys.stdout.write(f"Starting ESA Worldcover indexing with {n_workers} workers...\n")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
             executor.submit(
-                process_uri_tile, uri_tile, dc, doc2ds,
-                update_if_exists=update, archive_less_mature=archive_less_mature,
+                process_uri_tile,
+                uri_tile,
+                dc,
+                doc2ds,
+                update_if_exists=update,
+                archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
             ): uri_tile[0]
             for uri_tile in uris_tiles
@@ -185,8 +193,7 @@ def esa_wc_to_dc(
             except rasterio.errors.RasterioIOError:
                 logging.info(f"Couldn't find file for {uri}")
             except Exception as e:
-                logging.exception(
-                    f"Failed to handle uri {uri} with exception {e}")
+                logging.exception(f"Failed to handle uri {uri} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 
@@ -220,6 +227,7 @@ def cli(
     archive_less_mature,
     workers,
     statsd_setting,
+    publish_action,
 ):
     """
     Index the ESA WorldCover product automatically.
@@ -239,6 +247,7 @@ def cli(
         update_if_exists,
         n_workers=workers,
         archive_less_mature=archive_less_mature,
+        publish_action=publish_action,
     )
 
     print(f"Added {added} Datasets, failed {failed} Datasets")

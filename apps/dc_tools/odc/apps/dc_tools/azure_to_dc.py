@@ -25,8 +25,7 @@ from odc.azure import download_blob, find_blobs
 
 def stream_blob_urls(account_url, container_name, credential, blobs: List[str]):
     for blob in blobs:
-        doc, uri, _ = download_blob(
-            account_url, container_name, credential, blob)
+        doc, uri, _ = download_blob(account_url, container_name, credential, blob)
         yield (json.loads(doc), uri)
 
 
@@ -105,6 +104,7 @@ def cli(
     stac: bool,
     statsd_setting: str,
     archive_less_mature: bool,
+    publish_action: str,
     account_url: str,
     container_name: str,
     credential: str,
@@ -114,8 +114,7 @@ def cli(
     # Set up the datacube first, to ensure we have a connection
     dc = Datacube()
     print(f"Opening AZ Container {container_name} on {account_url}")
-    print(
-        f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
+    print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
     yaml_urls = find_blobs(
         container_name, credential, prefix, suffix, account_url=account_url
     )
