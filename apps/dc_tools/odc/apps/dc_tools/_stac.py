@@ -25,7 +25,11 @@ DEA_LANDSAT_PRODUCTS = ["ga_ls8c_ard_3", "ga_ls7e_ard_3", "ga_ls8t_ard_3"]
 # This is hack for not changing the current behavior of DEAfrica sentinel-2
 # It is not ideal but to remain the impact minimum
 TO_BE_HARD_CODED_COLLECTION = [
-    "s2_l2a", "sentinel_s2_l2a_cogs", "sentinel-s2-l2a-cogs"]
+    "s2_l2a",
+    "sentinel_s2_l2a_cogs",
+    "sentinel-s2-l2a-cogs",
+    "sentinel-2-l2a",
+]
 
 # Mapping between EO3 field names and STAC properties object field names
 MAPPING_STAC_TO_EO3 = {
@@ -128,8 +132,7 @@ def _stac_product_lookup(
     if product_name is None:
         product_name = collection
         if product_name is None:
-            raise ValueError(
-                "Can't find product name from odc:product or collection.")
+            raise ValueError("Can't find product name from odc:product or collection.")
 
     # Product names can't have dashes in them
     product_name = product_name.replace("-", "_")
@@ -372,8 +375,7 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     geometry = Geometry(input_stac["geometry"], "epsg:4326")
     if native_crs != "epsg:4326":
         # Arbitrary precisions, but should be fine
-        pixel_size = get_in(["default", "transform", 0],
-                            grids, no_default=True)
+        pixel_size = get_in(["default", "transform", 0], grids, no_default=True)
         precision = 0
         if pixel_size < 0:
             precision = 6
@@ -398,8 +400,7 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
         stac_odc["properties"]["odc:region_code"] = region_code
 
     if geometry:
-        stac_odc["geometry"] = transform_geom_json_coordinates_to_list(
-            geometry.json)
+        stac_odc["geometry"] = transform_geom_json_coordinates_to_list(geometry.json)
 
     if lineage:
         stac_odc["lineage"] = lineage
@@ -427,4 +428,5 @@ def ds_to_stac(ds: Dataset) -> dict:
         return stac
     else:
         raise ValueError(
-            f"Cannot convert to STAC for dataset with metadata of type {ds.metadata_type}")
+            f"Cannot convert to STAC for dataset with metadata of type {ds.metadata_type}"
+        )
