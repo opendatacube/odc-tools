@@ -280,6 +280,8 @@ pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start # if this step fails, check log 
 
 createdb datacube
 datacube system init
+# add any new metadata types
+datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
 
 # run test
 echo "Running Tests"
