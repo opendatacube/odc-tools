@@ -16,9 +16,9 @@ from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
     SkippedException,
-    archive_less_mature,bbox,
+    archive_less_mature,
+    bbox,
     index_update_dataset,
-
     limit,
     publish_action,
     statsd_gauge_reporting,
@@ -268,7 +268,8 @@ def cli(
 
     if statsd_setting:
         statsd_gauge_reporting(
-            added, ["app:cop_dem_to_dc", "action:added"], statsd_setting)
+            added, ["app:cop_dem_to_dc", "action:added"], statsd_setting
+        )
         statsd_gauge_reporting(
             failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting
         )
