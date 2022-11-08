@@ -74,19 +74,27 @@ def dump_to_odc(
     )
 
     for uri, metadata in uris_docs:
+        found_docs = True
         try:
-            index_update_dataset(metadata, uri, dc, doc2ds,
-                                 update=update,
-                                 update_if_exists=update_if_exists,
-                                 allow_unsafe=allow_unsafe,
-                                 archive_less_mature=archive_less_mature,
-                                 publish_action=publish_action,)
+            index_update_dataset(
+                metadata,
+                uri,
+                dc,
+                doc2ds,
+                update=update,
+                update_if_exists=update_if_exists,
+                allow_unsafe=allow_unsafe,
+                archive_less_mature=archive_less_mature,
+                publish_action=publish_action,
+            )
             ds_added += 1
         except IndexingException as e:
             logging.exception(f"Failed to index dataset {uri} with error {e}")
             ds_failed += 1
         except SkippedException:
             ds_skipped += 1
+    if not found_docs:
+        raise IndexingException("Doc stream was empty")
 
     return ds_added, ds_failed, ds_skipped
 
@@ -158,8 +166,7 @@ def cli(
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     document_stream = stream_urls(
-        s3_find_glob(
-        uri, skip_check=skip_check, s3=fetcher, **opts)
+        s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
     )
 
     added, failed, skipped = dump_to_odc(
@@ -181,8 +188,7 @@ def cli(
         f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets."
     )
     if statsd_setting:
-        statsd_gauge_reporting(
-            added, ["app:s3_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:s3_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(
             skipped, ["app:s3_to_dc", "action:skipped"], statsd_setting
         )

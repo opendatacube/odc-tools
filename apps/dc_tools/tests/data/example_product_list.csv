@@ -1,5 +1,5 @@
 product,definition
-s2_l2a,https://raw.githubusercontent.com/digitalearthafrica/config/master/products/esa_s2_l2a.odc-product.yaml
+s2_l2a,https://gist.githubusercontent.com/Ariana-B/90caca4bf5275da19b7c2936385a0f54/raw/f09dc109b51d83da5e07192d64122c32fa18a7ca/esa_s2_l2a.odc-product.yaml
 cemp_insar_alos_displacement,https://raw.githubusercontent.com/GeoscienceAustralia/digitalearthau/885e3d3a00bcc9c9fe3ed43e82201d7121898aed/digitalearthau/config/products/cemp_insar_alos_displacement.yaml
 ls5_c2l2_sr;ls7_c2l2_sr;ls8_c2l2_sr,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/4b4e67e7fac9b15beb57fc87f3e0556c23872adb/products/lsX_c2l2_sr.odc-product.yaml
 nasadem,https://raw.githubusercontent.com/opendatacube/datacube-dataset-config/main/products/nasadem.odc-product.yaml
