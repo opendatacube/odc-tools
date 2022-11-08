@@ -106,3 +106,40 @@ def odc_db_for_maturity_tests(odc_db, maturity_product_doc, nrt_dsid, final_dsid
         odc_db.index.datasets.archive(for_deletion)
         odc_db.index.datasets.purge(for_deletion)
     return odc_db
+
+
+@pytest.fixture
+def ls5t_dsid():
+    return "57814bc4-6fdf-4fa1-84e5-865b364c4284"
+
+
+@pytest.fixture
+def s2am_dsid():
+    return "e2baf679-c20a-479f-86c5-ffd98c65ff87"
+
+
+@pytest.fixture
+def odc_db_for_sns(odc_db, ls5t_dsid, s2am_dsid):
+    # remove s2am and ls5t datasets that will be added
+    if odc_db is None:
+        return None
+    has_ls5t, has_s2am = odc_db.index.datasets.bulk_has([ls5t_dsid, s2am_dsid])
+    for_deletion = []
+    if has_ls5t:
+        for_deletion.append(ls5t_dsid)
+    if has_s2am:
+        for_deletion.append(s2am_dsid)
+    if for_deletion:
+        odc_db.index.datasets.archive(for_deletion)
+        odc_db.index.datasets.purge(for_deletion)
+    return odc_db
+
+
+@pytest.fixture
+def odc_db_for_archive(odc_db, ls5t_dsid):
+    # ls5t dataset must be present for it to be archived
+    if odc_db is None:
+        return None
+    if not odc_db.index.datasets.get(ls5t_dsid):
+        odc_db.index.datasets.add(ls5t_dsid)
+    return odc_db
