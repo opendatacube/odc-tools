@@ -9,14 +9,14 @@ from typing import Tuple
 import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-
-
 from odc.aio import S3Fetcher, s3_find_glob
+from odc.apps.dc_tools._docs import parse_doc_stream
+from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
 from odc.apps.dc_tools.utils import (
     IndexingException,
     SkippedException,
-    archive_less_mature,
     allow_unsafe,
+    archive_less_mature,
     fail_on_missing_lineage,
     index_update_dataset,
     no_sign_request,
@@ -31,8 +31,6 @@ from odc.apps.dc_tools.utils import (
     update_if_exists,
     verify_lineage,
 )
-from odc.apps.dc_tools._docs import parse_doc_stream
-from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
 
 
 # Grab the URL from the resulting S3 item
