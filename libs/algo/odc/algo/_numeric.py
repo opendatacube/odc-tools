@@ -2,9 +2,10 @@
 Misc numeric tooling
 """
 from typing import Optional, Tuple
+
 import numpy as np
 
-from ._types import NumpyIndex1, NumpyIndex2, NumpyIndex
+from ._types import NumpyIndex, NumpyIndex1, NumpyIndex2
 
 
 def half_up(n: int) -> int:

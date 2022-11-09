@@ -2,6 +2,7 @@
 Query Linux cgroup fs for various info
 """
 from typing import Optional
+
 from .text import read_int
 
 

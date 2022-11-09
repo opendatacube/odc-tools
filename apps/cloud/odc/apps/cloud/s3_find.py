@@ -57,7 +57,7 @@ def cli(uri, skip_check, no_sign_request=None, request_payer=False):
     except ValueError as ve:
         click.echo(str(ve), err=True)
         sys.exit(1)
-    except Exception as e: #pylint:disable=broad-except
+    except Exception as e:  # pylint:disable=broad-except
         click.echo(str(e), err=True)
         sys.exit(1)
 

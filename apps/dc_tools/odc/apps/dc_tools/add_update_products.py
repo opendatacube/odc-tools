@@ -6,7 +6,7 @@ import logging
 import sys
 from collections import Counter, namedtuple
 from csv import DictReader
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import click
 import datacube
@@ -14,11 +14,10 @@ import fsspec
 import yaml
 from datacube import Datacube
 from odc.apps.dc_tools.utils import (
-    update_if_exists,
     statsd_gauge_reporting,
     statsd_setting,
+    update_if_exists,
 )
-from typing import Any, Dict, List
 
 Product = namedtuple("Product", ["name", "doc"])
 

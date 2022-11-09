@@ -1,11 +1,11 @@
-from botocore.session import get_session
-from botocore.auth import S3SigV4Auth
-from botocore.awsrequest import AWSRequest
+import logging
 from urllib.request import Request
 
-from . import auto_find_region, s3_url_parse
-import logging
+from botocore.auth import S3SigV4Auth
+from botocore.awsrequest import AWSRequest
+from botocore.session import get_session
 
+from . import auto_find_region, s3_url_parse
 
 log = logging.getLogger(__name__)
 

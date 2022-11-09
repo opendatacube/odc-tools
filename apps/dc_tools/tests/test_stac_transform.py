@@ -2,8 +2,8 @@
 Test for stac_transform
 """
 
-from odc.apps.dc_tools._stac import stac_transform
 from datacube.utils.changes import get_doc_changes
+from odc.apps.dc_tools._stac import stac_transform
 
 
 def test_landsat_stac_transform(landsat_stac, landsat_odc):

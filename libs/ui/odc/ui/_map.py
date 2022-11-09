@@ -91,7 +91,7 @@ def show_datasets(
 
         return GeoJSON(polygons)
     if mode == "leaflet":
-        from ipyleaflet import Map, GeoJSON, FullScreenControl, LayersControl
+        from ipyleaflet import FullScreenControl, GeoJSON, LayersControl, Map
 
         if dst is None:
             center = kw.pop("center", None)
@@ -127,9 +127,10 @@ def show_datasets(
 
 
 def mk_map_region_selector(map=None, height="600px", **kwargs):
-    from ipyleaflet import Map, WidgetControl, FullScreenControl, DrawControl
-    from ipywidgets.widgets import Layout, Button, HTML
     from types import SimpleNamespace
+
+    from ipyleaflet import DrawControl, FullScreenControl, Map, WidgetControl
+    from ipywidgets.widgets import HTML, Button, Layout
 
     state = SimpleNamespace(selection=None, bounds=None, done=False)
 
@@ -229,6 +230,7 @@ def select_on_a_map(map=None, **kwargs):
       ...
     """
     from IPython.display import display
+
     from ._ui import ui_poll
 
     m, state = mk_map_region_selector(map=map, **kwargs)
@@ -236,8 +238,8 @@ def select_on_a_map(map=None, **kwargs):
         display(m)
 
     def extract_geometry(state):
-        from datacube.utils.geometry import Geometry
         from datacube.testutils.geom import epsg4326
+        from datacube.utils.geometry import Geometry
 
         return Geometry(state.selection, epsg4326)
 

@@ -2,30 +2,26 @@
 Test for SQS to DC tool
 """
 import json
+import os
 from functools import partial
+from pathlib import Path
 from pprint import pformat
 
-import pytest
-
 import boto3
-from moto import mock_sqs
-
-from pathlib import Path
-
-from datacube.utils import documents
-from deepdiff import DeepDiff
-from odc.apps.dc_tools._stac import stac_transform
-from odc.apps.dc_tools.sqs_to_dc import (
-    handle_json_message,
-    handle_bucket_notification_message,
-    extract_metadata_from_message,
-)
-from odc.apps.dc_tools.utils import index_update_dataset
-
+import pytest
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.utils import documents
+from deepdiff import DeepDiff
+from moto import mock_sqs
+from odc.apps.dc_tools._stac import stac_transform
+from odc.apps.dc_tools.sqs_to_dc import (
+    extract_metadata_from_message,
+    handle_bucket_notification_message,
+    handle_json_message,
+)
+from odc.apps.dc_tools.utils import index_update_dataset
 from odc.aws.queue import get_messages
-import os
 
 record_message = {
     "Records": [

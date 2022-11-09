@@ -1,15 +1,15 @@
-import xarray as xr
 import dask
 import dask.array as da
 import numpy as np
+import xarray as xr
 from odc.algo._memsink import (
     Cache,
     CachedArray,
+    Token,
     _da_from_mem,
     da_mem_sink,
     da_yxbt_sink,
     da_yxt_sink,
-    Token,
     yxt_sink,
 )
 

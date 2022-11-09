@@ -1,6 +1,6 @@
 """ Tools for interacting with route53
 """
-from . import mk_boto_session, _fetch_text, ec2_tags
+from . import _fetch_text, ec2_tags, mk_boto_session
 
 
 def public_ip():

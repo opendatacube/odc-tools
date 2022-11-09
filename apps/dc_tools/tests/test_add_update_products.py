@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import pytest
-from datacube import Datacube
 from click.testing import CliRunner
+from datacube import Datacube
 from odc.apps.dc_tools.add_update_products import _get_product, _parse_csv, cli
-
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LOCAL_EXAMPLE: str = "example_product_list.csv"

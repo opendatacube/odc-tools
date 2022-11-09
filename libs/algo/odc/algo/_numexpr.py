@@ -1,11 +1,13 @@
-from typing import Dict, Optional, Any
+import functools
+from typing import Any, Dict, Optional
+
 import dask
 import dask.array as da
+import numexpr as ne
 import numpy as np
 import xarray as xr
-import numexpr as ne
-import functools
-from ._dask import randomize, flatten_kv, unflatten_kv
+
+from ._dask import flatten_kv, randomize, unflatten_kv
 
 
 def apply_numexpr_np(

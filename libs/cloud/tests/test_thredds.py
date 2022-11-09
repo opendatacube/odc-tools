@@ -1,7 +1,7 @@
 """Test thredds downloader code
 """
 import pytest
-from odc.thredds import thredds_find_glob, download_yamls
+from odc.thredds import download_yamls, thredds_find_glob
 
 
 # It's too slow to fail, disabling this for now

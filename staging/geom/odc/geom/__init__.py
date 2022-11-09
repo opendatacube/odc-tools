@@ -1,19 +1,20 @@
 """ Various Geometry Helpers
 
 """
-from ._version import __version__
-
-from typing import Union, Tuple, Optional
-from affine import Affine
 import math
+from typing import Optional, Tuple, Union
+
+from affine import Affine
 from datacube.utils.geometry import (
+    CRS,
+    GeoBox,
+    SomeCRS,
     decompose_rws,
     split_translation,
-    GeoBox,
-    CRS,
-    SomeCRS,
 )
 from datacube.utils.geometry._base import _norm_crs_or_error
+
+from ._version import __version__
 
 F4 = Tuple[float, float, float, float]
 F6 = Tuple[float, float, float, float, float, float]

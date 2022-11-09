@@ -1,7 +1,8 @@
 import tarfile
+
 import click
-from odc.io.tar import tar_mode, add_txt_file
-from odc.thredds import thredds_find_glob, download_yamls
+from odc.io.tar import add_txt_file, tar_mode
+from odc.thredds import download_yamls, thredds_find_glob
 
 
 @click.command("thredds-to-tar")

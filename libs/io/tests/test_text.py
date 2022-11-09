@@ -1,5 +1,5 @@
 import pytest
-from odc.io.text import parse_mtl, parse_yaml, split_and_check, parse_slice
+from odc.io.text import parse_mtl, parse_slice, parse_yaml, split_and_check
 
 
 def test_mtl():

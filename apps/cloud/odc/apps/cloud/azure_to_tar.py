@@ -1,9 +1,9 @@
 import tarfile
-import click
-from odc.azure import find_blobs, download_yamls
-
-from odc.io.tar import tar_mode, add_txt_file
 from urllib.parse import urlparse
+
+import click
+from odc.azure import download_yamls, find_blobs
+from odc.io.tar import add_txt_file, tar_mode
 
 
 @click.command("azure-to-tar")

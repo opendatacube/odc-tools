@@ -1,15 +1,16 @@
-from typing import Any, Dict, Optional, Tuple, Union, Hashable
-import numpy as np
-import xarray as xr
+import uuid
+from typing import Any, Dict, Hashable, Optional, Tuple, Union
+
 import dask
 import dask.array as da
-from dask.delayed import Delayed
+import numpy as np
+import xarray as xr
 from dask.base import tokenize
+from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from distributed import Client
-import uuid
-from ._dask import unpack_chunks, _roi_from_chunks
 
+from ._dask import _roi_from_chunks, unpack_chunks
 
 ShapeLike = Union[int, Tuple[int, ...]]
 DtypeLike = Union[str, np.dtype]

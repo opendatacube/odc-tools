@@ -1,13 +1,15 @@
 """ Helper methods for Geometric Median computation.
 """
+import functools
 from typing import Optional, Tuple, Union
-import numpy as np
-import xarray as xr
+
 import dask
 import dask.array as da
-import functools
+import numpy as np
+import xarray as xr
+
 from ._dask import randomize, reshape_yxbt
-from ._masking import to_float_np, from_float_np
+from ._masking import from_float_np, to_float_np
 from ._memsink import yxbt_sink
 
 

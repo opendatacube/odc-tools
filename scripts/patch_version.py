@@ -1,6 +1,7 @@
 import re
-from packaging import version
 import sys
+
+from packaging import version
 
 version_rgx = re.compile("^\s*__version__\s*=\s*['\"]([^'\"]*)['\"]")
 

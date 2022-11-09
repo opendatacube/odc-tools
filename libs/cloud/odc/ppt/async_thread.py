@@ -6,7 +6,6 @@ import threading
 
 from . import EOS_MARKER
 
-
 log = logging.getLogger(__name__)
 
 

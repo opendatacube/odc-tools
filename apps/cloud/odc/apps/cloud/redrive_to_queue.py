@@ -1,6 +1,7 @@
-import click
-import sys
 import logging
+import sys
+
+import click
 from odc.aws.queue import redrive_queue
 
 

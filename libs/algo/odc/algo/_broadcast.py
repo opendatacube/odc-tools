@@ -2,9 +2,10 @@
 
    - pool_broadcast
 """
-from typing import List, Dict, Any
 from random import randint
-from dask.distributed import Queue, Client
+from typing import Any, Dict, List
+
+from dask.distributed import Client, Queue
 
 
 def _bcast_action(

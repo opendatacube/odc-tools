@@ -1,12 +1,13 @@
 """Thredds crawling and YAML fetching utilities
 """
-from ..cloud._version import __version__
-from thredds_crawler.crawl import Crawl
-import requests
-from urllib.parse import urlparse
 from multiprocessing.dummy import Pool as ThreadPool
+from typing import List, Optional, Tuple
+from urllib.parse import urlparse
 
-from typing import List, Tuple, Optional
+import requests
+from thredds_crawler.crawl import Crawl
+
+from ..cloud._version import __version__
 
 
 def thredds_find_glob(

@@ -9,11 +9,11 @@ from pathlib import PurePath
 from typing import Tuple
 
 import boto3
-from botocore import UNSIGNED
-from botocore.config import Config
 import click
 import pandas as pd
 import requests
+from botocore import UNSIGNED
+from botocore.config import Config
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
@@ -22,24 +22,25 @@ from odc.apps.dc_tools.utils import (
     SkippedException,
     allow_unsafe,
     archive,
+    archive_less_mature,
     fail_on_missing_lineage,
     index_update_dataset,
     limit,
     no_sign_request,
     skip_lineage,
-    statsd_setting,
     statsd_gauge_reporting,
+    statsd_setting,
     transform_stac,
     transform_stac_absolute,
-    archive_less_mature,
     update,
     update_if_exists,
     verify_lineage,
 )
 from odc.aws.queue import get_messages
-from ._stac import stac_transform, stac_transform_absolute
 from toolz import dicttoolz
 from yaml import safe_load
+
+from ._stac import stac_transform, stac_transform_absolute
 
 # Added log handler
 logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])

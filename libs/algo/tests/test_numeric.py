@@ -1,11 +1,11 @@
-import pytest
 import numpy as np
+import pytest
 from odc.algo._numeric import (
     half_up,
     np_slice_to_idx,
+    roi_shrink2,
     roundup16,
     shape_shrink2,
-    roi_shrink2,
 )
 
 

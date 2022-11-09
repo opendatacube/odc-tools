@@ -1,5 +1,6 @@
+from typing import Optional, Tuple, Union
+
 import numpy as np
-from typing import Union, Optional, Tuple
 
 NumpyIndex1 = Union[int, slice]
 NumpyIndex2 = Tuple[NumpyIndex1, NumpyIndex1]

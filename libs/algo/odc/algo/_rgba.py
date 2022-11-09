@@ -1,10 +1,12 @@
 """ Helpers for dealing with RGB(A) images.
 """
-import numpy as np
-import dask.array as da
-import xarray as xr
+from typing import List, Optional, Tuple, Union
+
 import dask
-from typing import Tuple, Optional, List, Union
+import dask.array as da
+import numpy as np
+import xarray as xr
+
 from ._dask import randomize
 
 

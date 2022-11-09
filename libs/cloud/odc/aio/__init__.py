@@ -1,4 +1,5 @@
 from odc.cloud._version import __version__
+
 from ._impl import (
     S3Fetcher,
     auto_find_region,
