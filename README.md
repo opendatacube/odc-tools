@@ -273,15 +273,7 @@ conda activate odc-tests-py38
 ./scripts/dev-install.sh --no-deps
 
 # setup database for testing
-export DATACUBE_DB_URL=postgresql:///datacube
-pgdata=$(pwd)/.dbdata
-initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
-pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start # if this step fails, check log in ${pgdata}/pg.log
-
-createdb datacube
-datacube system init
-# add any new metadata types
-datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
+./scripts/setup-test-db.sh
 
 # run test
 echo "Running Tests"
