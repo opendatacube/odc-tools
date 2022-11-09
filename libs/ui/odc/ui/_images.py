@@ -1,9 +1,10 @@
 """ Notebook display helper methods.
 """
+from typing import Optional, Tuple, Union
+
 import numpy as np
 import xarray as xr
-from typing import Tuple, Optional, Union
-from odc.algo import to_rgba, is_rgb
+from odc.algo import is_rgb, to_rgba
 
 
 def image_shape(d):
@@ -54,6 +55,7 @@ def mk_data_uri(data: bytes, mimetype: str = "image/png") -> str:
 
 def _to_png_data2(xx: np.ndarray, mode: str = "auto") -> memoryview:
     from io import BytesIO
+
     import png
 
     if mode in ("auto", None):
@@ -76,8 +78,9 @@ def _to_png_data2(xx: np.ndarray, mode: str = "auto") -> memoryview:
 
 
 def _compress_image(im: np.ndarray, driver="PNG", **opts) -> bytes:
-    import rasterio
     import warnings
+
+    import rasterio
 
     if im.dtype != np.uint8:
         raise ValueError("Only support uint8 images on input")
@@ -113,8 +116,8 @@ def to_jpeg_data(im: np.ndarray, quality=95, transparent=None) -> bytes:
 
 
 def xr_bounds(x, crs=None) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-    from datacube.utils.geometry import box
     from datacube.testutils.geom import epsg4326
+    from datacube.utils.geometry import box
 
     def get_range(a: np.ndarray) -> Tuple[float, float]:
         b = (a[1] - a[0]) * 0.5

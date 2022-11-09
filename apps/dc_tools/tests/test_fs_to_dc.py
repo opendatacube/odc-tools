@@ -1,9 +1,9 @@
+from pathlib import Path
+
 import pytest
 from click.testing import CliRunner
-from odc.apps.dc_tools.fs_to_dc import cli, _find_files
 from datacube import Datacube
-
-from pathlib import Path
+from odc.apps.dc_tools.fs_to_dc import _find_files, cli
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 

@@ -1,7 +1,6 @@
-from sys import stdin
-
-from typing import Tuple, Union, Dict, Any, Iterator, List, Optional
 from pathlib import Path
+from sys import stdin
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 PathLike = Union[str, Path]
 RawDoc = Union[str, bytes]

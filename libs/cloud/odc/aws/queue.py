@@ -1,6 +1,7 @@
-import boto3
 import itertools
-from typing import Mapping, Any, Iterable, Optional
+from typing import Any, Iterable, Mapping, Optional
+
+import boto3
 
 
 def redrive_queue(

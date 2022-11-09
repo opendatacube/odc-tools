@@ -1,6 +1,6 @@
-from types import SimpleNamespace
 from fnmatch import fnmatch
 from itertools import takewhile
+from types import SimpleNamespace
 
 
 def s3_file_info(f, bucket):

@@ -1,6 +1,7 @@
 import re
-from fnmatch import fnmatch
 import sys
+from fnmatch import fnmatch
+
 import click
 from odc.aws import s3_client
 from odc.aws.inventory import list_inventory

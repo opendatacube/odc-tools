@@ -1,5 +1,5 @@
-from odc.algo.io import choose_transform_path
 import pytest
+from odc.algo.io import choose_transform_path
 
 
 @pytest.mark.parametrize("transform_code", [None, "EPSG:9688", "EPSG:1150"])

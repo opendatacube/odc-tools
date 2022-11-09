@@ -1,11 +1,11 @@
 """Helper methods for accessing single pixel from a rasterio file object.
 
 """
-import rasterio
-import rasterio.warp
-import rasterio.crs
+from typing import Iterable, List, Optional, Tuple, Union
 
-from typing import Union, Iterable, Optional, List, Tuple
+import rasterio
+import rasterio.crs
+import rasterio.warp
 
 RowCol = Tuple[int, int]
 XY = Tuple[float, float]

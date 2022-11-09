@@ -1,13 +1,13 @@
-import click
-import tarfile
 import logging
 import signal
 import sys
+import tarfile
 from sys import stderr, stdout
 
+import click
 from odc.aio import S3Fetcher
 from odc.io import read_stdin_lines
-from odc.io.tar import tar_mode, add_txt_file
+from odc.io.tar import add_txt_file, tar_mode
 from odc.io.timer import RateEstimator
 
 

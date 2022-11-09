@@ -1,17 +1,16 @@
-import numpy as np
-import xarray as xr
 import dask
 import dask.array as da
+import numpy as np
 import pytest
-
+import xarray as xr
 from odc.algo._masking import (
-    _gap_fill_np,
-    gap_fill,
-    fmask_to_bool,
-    enum_to_bool,
-    _get_enum_values,
     _enum_to_mask_numexpr,
     _fuse_mean_np,
+    _gap_fill_np,
+    _get_enum_values,
+    enum_to_bool,
+    fmask_to_bool,
+    gap_fill,
     mask_cleanup_np,
 )
 

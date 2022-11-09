@@ -9,14 +9,14 @@ The config file contains the grid mappings to band names:
       default: ['3', '4', '5']
       swir: ['1', '2']
 """
-from pathlib import Path
-import yaml
-import click
 import logging
+from pathlib import Path
 
-from datacube.testutils.io import native_geobox
-from datacube.storage import BandInfo
+import click
+import yaml
 from datacube import Datacube
+from datacube.storage import BandInfo
+from datacube.testutils.io import native_geobox
 
 _LOG = logging.getLogger(__name__)
 

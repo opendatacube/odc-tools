@@ -1,11 +1,13 @@
-from typing import List, Sequence
-import dask.array as da
-import xarray as xr
-import numpy as np
-from ._masking import keep_good_np
-from dask.base import tokenize
-import dask
 from functools import partial
+from typing import List, Sequence
+
+import dask
+import dask.array as da
+import numpy as np
+import xarray as xr
+from dask.base import tokenize
+
+from ._masking import keep_good_np
 
 
 def np_percentile(xx, percentile, nodata):

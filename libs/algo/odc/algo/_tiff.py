@@ -1,25 +1,25 @@
 import threading
 import warnings
-from dask.delayed import Delayed
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
+from uuid import uuid4
+
 import dask
 import dask.array as da
-from dask.base import tokenize
-from pathlib import Path
-from dataclasses import dataclass
-from typing import Optional, Union, Tuple, Any, Dict
-import xarray as xr
 import numpy as np
-from affine import Affine
 import rasterio
-from uuid import uuid4
-from rasterio.windows import Window
+import xarray as xr
+from affine import Affine
+from dask.base import tokenize
+from dask.delayed import Delayed
 from rasterio import MemoryFile
 from rasterio.shutil import copy as rio_copy
+from rasterio.windows import Window
 
+from ._numeric import half_up, np_slice_to_idx, roi_shrink2, roundup16
 from ._types import NodataType, NumpyIndex
-from ._numeric import roundup16, half_up, roi_shrink2, np_slice_to_idx
 from ._warp import _shrink2
-
 
 _UNSET = ":unset:-427d8b3f1944"
 
@@ -500,7 +500,7 @@ def save_cog(
     if dst == ":mem:":
         extract = True
     elif dst.startswith("s3:"):
-        from odc.aws import mk_boto_session, get_creds_with_retry
+        from odc.aws import get_creds_with_retry, mk_boto_session
 
         if creds is None:
             _creds = get_creds_with_retry(mk_boto_session())

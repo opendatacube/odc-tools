@@ -1,9 +1,6 @@
 import pytest
-
 from click.testing import CliRunner
-
-from odc.apps.dc_tools.cop_dem_to_dc import get_dem_tile_uris, cli
-
+from odc.apps.dc_tools.cop_dem_to_dc import cli, get_dem_tile_uris
 
 PRODUCTS = ["cop_30", "cop_90"]
 

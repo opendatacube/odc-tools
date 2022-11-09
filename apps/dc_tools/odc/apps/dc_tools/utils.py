@@ -1,16 +1,13 @@
-import os
 import logging
-import click
-import pkg_resources
-
+import os
 from typing import Iterable, Optional, Union
 
+import click
+import pkg_resources
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
-
-from datadog import statsd, initialize
-
+from datadog import initialize, statsd
 
 ESRI_LANDCOVER_BASE_URI = (
     "https://ai4edataeuwest.blob.core.windows.net/io-lulc/"

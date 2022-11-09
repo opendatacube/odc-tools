@@ -1,7 +1,8 @@
 import os
-import tarfile
-import click
 import shutil
+import tarfile
+
+import click
 from google.cloud import storage
 
 

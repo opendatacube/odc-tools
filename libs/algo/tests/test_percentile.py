@@ -1,8 +1,8 @@
-from odc.algo._percentile import np_percentile, xr_quantile_bands, xr_quantile
+import dask.array as da
 import numpy as np
 import pytest
-import dask.array as da
 import xarray as xr
+from odc.algo._percentile import np_percentile, xr_quantile, xr_quantile_bands
 
 
 def test_np_percentile():

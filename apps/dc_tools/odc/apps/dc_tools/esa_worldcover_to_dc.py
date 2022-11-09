@@ -15,13 +15,13 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
+    archive_less_mature,
     bbox,
     index_update_dataset,
     limit,
-    update_if_exists,
-    archive_less_mature,
     statsd_gauge_reporting,
     statsd_setting,
+    update_if_exists,
 )
 from rio_stac import create_stac_item
 

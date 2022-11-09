@@ -1,9 +1,9 @@
-import tarfile
 import datetime
 import io
+import itertools
+import tarfile
 import time
 from pathlib import Path
-import itertools
 
 
 def tar_mode(gzip=None, xz=None, is_pipe=None):

@@ -1,26 +1,27 @@
 """
 Dask aware reproject implementation
 """
-from typing import Tuple, Optional, Union, Dict, Any
+from typing import Any, Dict, Optional, Tuple, Union
+
+import dask.array as da
+import dask.utils as du
 import numpy as np
 import xarray as xr
 from affine import Affine
 from dask import is_dask_collection
-import dask.utils as du
-import dask.array as da
 from dask.highlevelgraph import HighLevelGraph
-from ._dask import randomize, crop_2d_dense, unpack_chunks, empty_maker
+from datacube.utils import spatial_dims
 from datacube.utils.geometry import (
     GeoBox,
-    rio_reproject,
     compute_reproject_roi,
+    rio_reproject,
     warp_affine,
 )
 from datacube.utils.geometry.gbox import GeoboxTiles
-from datacube.utils import spatial_dims
 
-from ._types import NodataType
+from ._dask import crop_2d_dense, empty_maker, randomize, unpack_chunks
 from ._numeric import shape_shrink2
+from ._types import NodataType
 
 
 def _reproject_block_impl(

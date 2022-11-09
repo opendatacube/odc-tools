@@ -7,8 +7,9 @@ def mk_cbk_ui(width="100%"):
 
     :param width: Width of the UI, for example: '80%' '200px' '30em'
     """
-    from ipywidgets import VBox, HBox, Label, Layout, IntProgress
     from timeit import default_timer as t_now
+
+    from ipywidgets import HBox, IntProgress, Label, Layout, VBox
 
     pbar = IntProgress(min=0, max=100, value=0, layout=Layout(width="100%"))
     lbl_right = Label("")

@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
 import numpy
-
 from datacube.utils.geometry import Geometry
 from toolz import get_in
 from urlpath import URL

@@ -1,24 +1,22 @@
 import json
+import logging
 from pathlib import Path
+from typing import Generator, Optional
 
 import click
 import datacube
+import yaml
 from datacube.index.hl import Doc2Dataset
+from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
-    index_update_dataset,
-    update_if_exists,
-    archive_less_mature,
     allow_unsafe,
-    transform_stac,
+    archive_less_mature,
+    index_update_dataset,
     statsd_gauge_reporting,
     statsd_setting,
+    transform_stac,
+    update_if_exists,
 )
-from odc.apps.dc_tools._stac import stac_transform
-from typing import Generator, Optional
-import logging
-
-
-import yaml
 
 logging.basicConfig(
     level=logging.WARNING,

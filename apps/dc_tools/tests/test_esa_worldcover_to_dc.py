@@ -1,8 +1,6 @@
 import pytest
-
 from click.testing import CliRunner
-
-from odc.apps.dc_tools.esa_worldcover_to_dc import get_tile_uris, cli, _unpack_bbox
+from odc.apps.dc_tools.esa_worldcover_to_dc import _unpack_bbox, cli, get_tile_uris
 
 
 @pytest.fixture

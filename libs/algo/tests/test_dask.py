@@ -1,9 +1,9 @@
-import pytest
-import numpy as np
 import dask.array as da
+import numpy as np
+import pytest
+import toolz
 from dask import delayed
 from dask.distributed import Client
-import toolz
 from odc.algo._dask import (
     _rechunk_2x2,
     _stack_2d_np,

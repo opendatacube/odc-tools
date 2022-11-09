@@ -6,10 +6,11 @@ import sys
 import click
 import datacube
 from datacube.utils.changes import allow_any
-from ._docs import from_yaml_doc_stream
-from ._stac import stac_transform
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
+
+from ._docs import from_yaml_doc_stream
+from ._stac import stac_transform
 
 
 def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
