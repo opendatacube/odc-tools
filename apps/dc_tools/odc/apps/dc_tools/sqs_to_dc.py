@@ -17,19 +17,31 @@ from botocore.config import Config
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from odc.apps.dc_tools.utils import (IndexingException, SkippedException, allow_unsafe, archive,
-                                     fail_on_missing_lineage,
-                                     index_update_dataset, limit, no_sign_request,
-                                     skip_lineage,
-                                     statsd_setting, statsd_gauge_reporting,
-                                     transform_stac, transform_stac_absolute,
-                                     archive_less_mature,
-                                     update, update_if_exists, verify_lineage, publish_action)
+from odc.apps.dc_tools.utils import (
+    IndexingException,
+    SkippedException,
+    allow_unsafe,
+    archive,
+    fail_on_missing_lineage,
+    index_update_dataset,
+    limit,
+    no_sign_request,
+    skip_lineage,
+    statsd_setting,
+    statsd_gauge_reporting,
+    transform_stac,
+    transform_stac_absolute,
+    archive_less_mature,
+    update,
+    update_if_exists,
+    verify_lineage,
+    publish_action,
+)
 from odc.aws.queue import get_messages, publish_to_topic
 from toolz import dicttoolz
 from yaml import safe_load
 
-from ._stac import stac_transform, stac_transform_absolute
+from ._stac import stac_transform, stac_transform_absolute, ds_to_stac
 
 # Added log handler
 logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
@@ -60,8 +72,7 @@ def handle_json_message(metadata, transform, odc_metadata_link):
             odc_yaml_uri = get_uri(metadata, rel_val)
         else:
             # if odc_metadata_link is provided, it will look for value with dict path provided
-            odc_yaml_uri = dicttoolz.get_in(
-                odc_metadata_link.split("/"), metadata)
+            odc_yaml_uri = dicttoolz.get_in(odc_metadata_link.split("/"), metadata)
 
         # if odc_yaml_uri exist, it will load the metadata content from that URL
         if odc_yaml_uri:
@@ -132,8 +143,7 @@ def handle_bucket_notification_message(
             try:
                 uri = f"s3://{bucket_name}/{key}"
                 if no_sign_request:
-                    s3 = boto3.client("s3", config=Config(
-                        signature_version=UNSIGNED))
+                    s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
                     data = s3.get_object(Bucket=bucket_name, Key=key)
                     contents = data["Body"].read()
                     data = safe_load(contents.decode("utf-8"))
@@ -172,11 +182,10 @@ def do_archiving(metadata, dc: Datacube, publish_action):
             publish_to_topic(
                 arn=publish_action,
                 action="ARCHIVED",
-                stac=ds_to_stac(dc.index.datasets.get(dataset_id))
+                stac=ds_to_stac(dc.index.datasets.get(dataset_id)),
             )
     else:
-        raise IndexingException(
-            "Failed to get an ID from the message, can't archive.")
+        raise IndexingException("Failed to get an ID from the message, can't archive.")
 
 
 def queue_to_odc(
@@ -277,8 +286,7 @@ def queue_to_odc(
                     except SkippedException:
                         ds_skipped += 1
                 else:
-                    logging.warning(
-                        "Found None for metadata and uri, skipping")
+                    logging.warning("Found None for metadata and uri, skipping")
                     ds_skipped += 1
 
             # Success, so delete the message.

@@ -16,9 +16,8 @@ def test_stac_to_dc_earthsearch():
             "--limit=10",
             "--collections=sentinel-s2-l2a-cogs",
             "--datetime=2020-08-01/2020-08-31",
-            "--statsd-setting",
-            "localhost:8125",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
     assert "Added 10 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
@@ -35,9 +34,8 @@ def test_stac_to_dc_earthsearch_rerun():
             "--limit=10",
             "--collections=sentinel-s2-l2a-cogs",
             "--datetime=2020-08-01/2020-08-31",
-            "--statsd-setting",
-            "localhost:8125",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
     assert "Added 0 Datasets, failed 0 Datasets, skipped 10 Datasets" in result.output
@@ -55,9 +53,8 @@ def test_stac_to_dc_usgs():
             "--limit=10",
             "--collections=landsat-c2l2-sr",
             "--datetime=2020-08-01/2020-08-31",
-            "--statsd-setting",
-            "localhost:8125",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
 

@@ -14,6 +14,9 @@ from odc.apps.dc_tools.utils import (
     index_update_dataset,
     update_if_exists,
     publish_action,
+    statsd_setting,
+    statsd_gauge_reporting,
+    transform_stac,
 )
 
 logging.basicConfig(
@@ -91,14 +94,12 @@ def cli(
                 )
                 added += 1
             except Exception as e:
-                logging.exception(
-                    f"Failed to add dataset {in_file} with error {e}")
+                logging.exception(f"Failed to add dataset {in_file} with error {e}")
                 failed += 1
 
     logging.info(f"Added {added} and failed {failed} datasets.")
     if statsd_setting:
-        statsd_gauge_reporting(
-            added, ["app:fs_to_dc", "action:added"], statsd_setting)
+        statsd_gauge_reporting(added, ["app:fs_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(
             failed, ["app:fs_to_dc", "action:failed"], statsd_setting
         )
