@@ -13,11 +13,18 @@ import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
-from odc.apps.dc_tools.utils import (SkippedException, allow_unsafe,
-                                     archive_less_mature, bbox,
-                                     index_update_dataset, limit,
-                                     statsd_gauge_reporting, statsd_setting,
-                                     update_if_exists, publish_action,)
+from odc.apps.dc_tools.utils import (
+    SkippedException,
+    allow_unsafe,
+    archive_less_mature,
+    bbox,
+    index_update_dataset,
+    limit,
+    statsd_gauge_reporting,
+    statsd_setting,
+    update_if_exists,
+    publish_action,
+)
 from pystac.item import Item
 from pystac_client import Client
 
@@ -187,8 +194,7 @@ def stac_api_to_odc(
             except SkippedException:
                 skipped += 1
             except Exception as e:
-                logging.exception(
-                    f"Failed to handle item {item} with exception {e}")
+                logging.exception(f"Failed to handle item {item} with exception {e}")
                 failure += 1
     sys.stdout.write("\r")
 
