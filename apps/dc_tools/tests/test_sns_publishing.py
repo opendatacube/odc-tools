@@ -2,7 +2,7 @@ import os
 import json
 import pytest
 import boto3
-from moto import mock_sns, mock_sqs
+from moto import mock_sns, mock_sqs, mock_sts
 from datacube import Datacube
 from click.testing import CliRunner
 from odc.apps.dc_tools.s3_to_dc import cli as s3_cli
@@ -21,29 +21,33 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
-@mock_sns
-@mock_sqs
-def test_s3_publishing_action_from_stac(
-    aws_credentials, aws_env, odc_db_for_sns, s2am_dsid
-):
-    # set up sns topic and the sqs queue that is subscribed to it
-    sns = boto3.client("sns")
-    sqs = boto3.client("sqs")
-    topic_name = "test-topic"
-    queue_name = "test-queue"
+@pytest.fixture()
+def sns_setup(aws_credentials, aws_env):
+    """Set up SNS topic and SQS queue subscribed to it"""
+    with mock_sqs(), mock_sns():
+        sns = boto3.client("sns")
+        topic = sns.create_topic(Name="test-topic")
+        sns_arn = topic.get("TopicArn")
 
-    topic = sns.create_topic(Name=topic_name)
-    queue = sqs.create_queue(QueueName=queue_name)
-    attrs = sqs.get_queue_attributes(
-        QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
-    )
-    queue_arn = attrs["Attributes"]["QueueArn"]
-    sns_arn = topic.get("TopicArn")
-    sns.subscribe(
-        TopicArn=sns_arn,
-        Protocol="sqs",
-        Endpoint=queue_arn,
-    )
+        sqs = boto3.client("sqs")
+        queue_name = "test-queue"
+        queue = sqs.create_queue(QueueName=queue_name)
+        attrs = sqs.get_queue_attributes(
+            QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
+        )
+        queue_arn = attrs["Attributes"]["QueueArn"]
+
+        sns.subscribe(
+            TopicArn=sns_arn,
+            Protocol="sqs",
+            Endpoint=queue_arn,
+        )
+
+        yield sns_arn, sqs, queue.get("QueueUrl")
+
+
+def test_s3_publishing_action_from_stac(aws_env, odc_db_for_sns, s2am_dsid, sns_setup):
+    sns_arn, sqs, queue_url = sns_setup
 
     dc = odc_db_for_sns
     assert dc.index.datasets.get(s2am_dsid) is None
@@ -69,7 +73,7 @@ def test_s3_publishing_action_from_stac(
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
     messages = sqs.receive_message(
-        QueueUrl=queue.get("QueueUrl"),
+        QueueUrl=queue_url,
     )["Messages"]
     assert len(messages) == 1
     message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
@@ -77,29 +81,11 @@ def test_s3_publishing_action_from_stac(
     assert message_attrs["product"].get("Value") == "ga_s2am_ard_3"
 
 
-@mock_sns
-@mock_sqs
 def test_s3_publishing_action_from_eo3(
-    aws_credentials, aws_env, odc_db_for_sns, s2am_dsid
+    aws_credentials, aws_env, odc_db_for_sns, s2am_dsid, sns_setup
 ):
     """Same as above but requiring stac to eo3 conversion"""
-    sns = boto3.client("sns")
-    sqs = boto3.client("sqs")
-    topic_name = "test-topic"
-    queue_name = "test-queue"
-
-    topic = sns.create_topic(Name=topic_name)
-    queue = sqs.create_queue(QueueName=queue_name)
-    attrs = sqs.get_queue_attributes(
-        QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
-    )
-    queue_arn = attrs["Attributes"]["QueueArn"]
-    sns_arn = topic.get("TopicArn")
-    sns.subscribe(
-        TopicArn=sns_arn,
-        Protocol="sqs",
-        Endpoint=queue_arn,
-    )
+    sns_arn, sqs, queue_url = sns_setup
 
     dc = odc_db_for_sns
     assert dc.index.datasets.get(s2am_dsid) is None
@@ -125,7 +111,7 @@ def test_s3_publishing_action_from_eo3(
     )
 
     messages = sqs.receive_message(
-        QueueUrl=queue.get("QueueUrl"),
+        QueueUrl=queue_url,
     )["Messages"]
     assert len(messages) == 1
     message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
@@ -155,34 +141,17 @@ def sqs_message():
     return message
 
 
-@mock_sns
-@mock_sqs
-def test_sqs_publishing(aws_credentials, aws_env, sqs_message, odc_db_for_sns):
+def test_sqs_publishing(
+    aws_credentials, aws_env, sqs_message, odc_db_for_sns, sns_setup
+):
     "Test that actions are published with sqs_to_dc"
-    sns = boto3.client("sns")
-    sqs = boto3.client("sqs")
-
-    topic_name = "test-topic"
-    queue_name = "test-queue"
+    sns_arn, sqs, queue_url = sns_setup
     input_queue_name = "input-queue"
 
     input_queue = sqs.create_queue(QueueName=input_queue_name)
     sqs.send_message(
         QueueUrl=input_queue.get("QueueUrl"),
         MessageBody=json.dumps(sqs_message),
-    )
-
-    topic = sns.create_topic(Name=topic_name)
-    queue = sqs.create_queue(QueueName=queue_name)
-    attrs = sqs.get_queue_attributes(
-        QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
-    )
-    queue_arn = attrs["Attributes"]["QueueArn"]
-    sns_arn = topic.get("TopicArn")
-    sns.subscribe(
-        TopicArn=sns_arn,
-        Protocol="sqs",
-        Endpoint=queue_arn,
     )
 
     runner = CliRunner()
@@ -204,7 +173,7 @@ def test_sqs_publishing(aws_credentials, aws_env, sqs_message, odc_db_for_sns):
     assert result.exit_code == 0
 
     messages = sqs.receive_message(
-        QueueUrl=queue.get("QueueUrl"),
+        QueueUrl=queue_url,
     )["Messages"]
     assert len(messages) == 1
     message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
@@ -213,34 +182,17 @@ def test_sqs_publishing(aws_credentials, aws_env, sqs_message, odc_db_for_sns):
     assert message_attrs["maturity"].get("Value") == "final"
 
 
-@mock_sns
-@mock_sqs
 def test_sqs_publishing_archive(
-    aws_credentials, aws_env, sqs_message, odc_db_for_archive, ls5t_dsid
+    aws_credentials, aws_env, sqs_message, odc_db_for_archive, ls5t_dsid, sns_setup
 ):
     """Test that archive action is published with archive flag"""
-    sns = boto3.client("sns")
-    sqs = boto3.client("sqs")
+    sns_arn, sqs, queue_url = sns_setup
 
     input_queue_name = "input-queue"
     input_queue = sqs.create_queue(QueueName=input_queue_name)
     sqs.send_message(
         QueueUrl=input_queue.get("QueueUrl"),
         MessageBody=json.dumps(sqs_message),
-    )
-
-    topic = sns.create_topic(Name="test_topic")
-    queue = sqs.create_queue(QueueName="test-queue")
-    attrs = sqs.get_queue_attributes(
-        QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
-    )
-    queue_arn = attrs["Attributes"]["QueueArn"]
-    sns_arn = topic.get("TopicArn")
-
-    sns.subscribe(
-        TopicArn=sns_arn,
-        Protocol="sqs",
-        Endpoint=queue_arn,
     )
 
     dc = odc_db_for_archive
@@ -264,35 +216,24 @@ def test_sqs_publishing_archive(
     )
 
     assert result.exit_code == 0
-    
+
     messages = sqs.receive_message(
-        QueueUrl=queue.get("QueueUrl"),
+        QueueUrl=queue_url,
     )["Messages"]
     assert len(messages) == 1
     message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ARCHIVED"
 
 
-@mock_sqs
-@mock_sns
 def test_with_archive_less_mature(
-    aws_credentials, aws_env, odc_db_for_maturity_tests, nrt_dsid, final_dsid
+    aws_credentials,
+    aws_env,
+    odc_db_for_maturity_tests,
+    nrt_dsid,
+    final_dsid,
+    sns_setup,
 ):
-    sns = boto3.client("sns")
-    sqs = boto3.client("sqs")
-
-    topic = sns.create_topic(Name="test-topic")
-    queue = sqs.create_queue(QueueName="test-queue")
-    attrs = sqs.get_queue_attributes(
-        QueueUrl=queue.get("QueueUrl"), AttributeNames=["All"]
-    )
-    queue_arn = attrs["Attributes"]["QueueArn"]
-    sns_arn = topic.get("TopicArn")
-    sns.subscribe(
-        TopicArn=sns_arn,
-        Protocol="sqs",
-        Endpoint=queue_arn,
-    )
+    sns_arn, sqs, queue_url = sns_setup
 
     dc = odc_db_for_maturity_tests
     assert dc.index.datasets.get(nrt_dsid) is None
@@ -314,7 +255,7 @@ def test_with_archive_less_mature(
     assert dc.index.datasets.get(nrt_dsid) is not None
 
     messages = sqs.receive_message(
-        QueueUrl=queue.get("QueueUrl"),
+        QueueUrl=queue_url,
     )["Messages"]
     assert len(messages) == 1
     message = json.loads(messages[0]["Body"])
@@ -340,7 +281,7 @@ def test_with_archive_less_mature(
     assert dc.index.datasets.get(final_dsid) is not None
 
     messages = sqs.receive_message(
-        QueueUrl=queue.get("QueueUrl"),
+        QueueUrl=queue_url,
         MaxNumberOfMessages=10,
     )["Messages"]
     assert len(messages) == 2

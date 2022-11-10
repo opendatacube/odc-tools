@@ -423,7 +423,6 @@ def ds_to_stac(ds: Dataset) -> dict:
         stac = to_stac_item(
             from_doc(ds.metadata_doc, skip_validation=True),
             location,
-            explorer_base_url="https://explorer.dea.ga.gov.au",
         )
         return stac
     else:
