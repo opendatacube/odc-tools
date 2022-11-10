@@ -22,7 +22,8 @@ from odc.apps.dc_tools.utils import (
     limit,
     publish_action,
     statsd_gauge_reporting,
-    statsd_setting,update_if_exists,
+    statsd_setting,
+    update_if_exists,
 )
 from rio_stac import create_stac_item
 

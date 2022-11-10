@@ -69,8 +69,7 @@ def dump_to_odc(
     ds_failed = 0
     ds_skipped = 0
     uris_docs = parse_doc_stream(
-        stream_docs(
-        document_stream), on_error=doc_error, transform=transform
+        stream_docs(document_stream), on_error=doc_error, transform=transform
     )
 
     for uri, metadata in uris_docs:
