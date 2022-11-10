@@ -30,6 +30,7 @@ datadog
 deepdiff
 deepdiff
 docker
+eodatasets3
 fsspec
 google-cloud-storage
 hdstats>=0.1.7.post5

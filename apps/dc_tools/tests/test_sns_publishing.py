@@ -2,13 +2,11 @@ import os
 import json
 import pytest
 import boto3
-from moto import mock_sns, mock_sqs, mock_sts
-from datacube import Datacube
+from moto import mock_sns, mock_sqs
 from click.testing import CliRunner
 from odc.apps.dc_tools.s3_to_dc import cli as s3_cli
 from odc.apps.dc_tools.sqs_to_dc import cli as sqs_cli
 from odc.apps.dc_tools.fs_to_dc import cli as fs_cli
-from datacube import Datacube
 from pathlib import Path
 
 
@@ -94,8 +92,6 @@ def test_s3_publishing_action_from_eo3(
     result = runner.invoke(
         s3_cli,
         [
-            "--statsd-setting",
-            "localhost:8125",
             "--no-sign-request",
             "--update-if-exists",
             "--skip-lineage",
@@ -103,6 +99,7 @@ def test_s3_publishing_action_from_eo3(
             "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/*odc-metadata.yaml",
             "ga_s2am_ard_3",
         ],
+        catch_exceptions=False,
     )
 
     assert result.exit_code == 0
@@ -161,13 +158,12 @@ def test_sqs_publishing(
             input_queue_name,
             "ga_ls5t_nbart_gm_cyear_3",
             "--skip-lineage",
-            "--statsd-setting",
-            "localhost:8125",
             "--no-sign-request",
             "--update-if-exists",
             "--stac",
             f"--publish-action={sns_arn}",
         ],
+        catch_exceptions=False,
     )
 
     assert result.exit_code == 0
@@ -205,14 +201,13 @@ def test_sqs_publishing_archive(
             input_queue_name,
             "ga_ls5t_nbart_gm_cyear_3",
             "--skip-lineage",
-            "--statsd-setting",
-            "localhost:8125",
             "--no-sign-request",
             "--update-if-exists",
             "--stac",
             "--archive",
             f"--publish-action={sns_arn}",
         ],
+        catch_exceptions=False,
     )
 
     assert result.exit_code == 0
@@ -244,11 +239,10 @@ def test_with_archive_less_mature(
         [
             str(TEST_DATA_FOLDER),
             "--glob=**/maturity-nrt.odc-metadata.yaml",
-            "--statsd-setting",
-            "localhost:8125",
             "--archive-less-mature",
             f"--publish-action={sns_arn}",
         ],
+        catch_exceptions=False,
     )
 
     assert nrt_result.exit_code == 0
@@ -270,11 +264,10 @@ def test_with_archive_less_mature(
         [
             str(TEST_DATA_FOLDER),
             "--glob=**/maturity-final.odc-metadata.yaml",
-            "--statsd-setting",
-            "localhost:8125",
             "--archive-less-mature",
             f"--publish-action={sns_arn}",
         ],
+        catch_exceptions=False,
     )
 
     assert final_result.exit_code == 0
