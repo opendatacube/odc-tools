@@ -17,7 +17,6 @@ from odc.apps.dc_tools.utils import (
     update_if_exists_flag,
     statsd_gauge_reporting,
     statsd_setting,
-    update_if_exists,
 )
 
 Product = namedtuple("Product", ["name", "doc"])

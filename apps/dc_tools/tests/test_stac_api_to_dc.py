@@ -5,6 +5,7 @@ from odc.apps.dc_tools.stac_api_to_dc import cli
 from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
 
 
+@pytest.mark.xfail(reason="Earth Search API has changed and now this is failing too")
 def test_stac_to_dc_earthsearch(odc_test_db_with_products):
     runner = CliRunner()
     result = runner.invoke(

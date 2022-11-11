@@ -1,3 +1,4 @@
+import boto3
 import os
 
 import configparser
@@ -7,6 +8,8 @@ import psycopg2
 import pytest
 import time
 import yaml
+from moto import mock_s3
+from moto.server import ThreadedMotoServer
 from pathlib import Path
 
 from datacube import Datacube
@@ -34,6 +37,47 @@ def test_data_dir():
 @pytest.fixture
 def aws_env(monkeypatch):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
+
+
+@pytest.fixture
+def mocked_aws_s3_env():
+    """
+    Run a Fake Local S3 Service on http://localhost:5000 and redirect odc.aio to use it via an env variable.
+    """
+
+    server = ThreadedMotoServer()
+    server.start()
+    # run tests
+    os.environ["AWS_S3_ENDPOINT"] = "http://localhost:5000"
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    yield boto3.resource("s3", endpoint_url="http://localhost:5000")
+    del os.environ["AWS_S3_ENDPOINT"]
+    server.stop()
+
+
+@pytest.fixture
+def mocked_s3_datasets(mocked_aws_s3_env):
+    with mock_s3():
+        bucket = mocked_aws_s3_env.Bucket("odc-tools-test")
+        bucket.create(
+            ACL="public-read",
+        )
+        bucket.upload_file(
+            Filename=str(TEST_DATA_FOLDER / "S2B_31QGB_20200831_0_L2A.json"),
+            Key="sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/S2B_31QGB_20200831_0_L2A.json",
+        )
+        test_datasets = list((TEST_DATA_FOLDER / "cemp_insar").glob("**/*.yaml"))
+        test_datasets.extend((TEST_DATA_FOLDER / "derivative").glob("**/*.yaml"))
+        for fname in test_datasets:
+            bucket.upload_file(
+                Filename=str(fname.absolute()),
+                Key=str(fname.relative_to(TEST_DATA_FOLDER)),
+            )
+        yield bucket
 
 
 @pytest.fixture
