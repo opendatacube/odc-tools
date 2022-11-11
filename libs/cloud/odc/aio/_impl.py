@@ -141,9 +141,9 @@ async def s3_head_object(url, s3, **kw):
     try:
         rr = await s3.head_object(Bucket=bucket, Key=key, **kw)
     except (ClientError, BotoCoreError) as e:
-        return (None, e)
+        return None, e
 
-    return (unpack(url, rr), None)
+    return unpack(url, rr), None
 
 
 async def s3_dir(url, s3, pred=None, glob=None, **kw):

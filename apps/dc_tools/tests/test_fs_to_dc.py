@@ -1,16 +1,9 @@
 from click.testing import CliRunner
-from odc.apps.dc_tools.fs_to_dc import cli, _find_files
+from odc.apps.dc_tools.fs_to_dc import cli as fs_to_dc_cli
 
 from pathlib import Path
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
-
-
-def test_find_glob(test_data_dir):
-    # Find anything
-    files = [x for x in _find_files(test_data_dir, glob="**/*.*")]
-
-    assert len(files) >= 6
 
 
 def test_fs_to_fc_yaml(test_data_dir, odc_test_db_with_products):
@@ -22,6 +15,7 @@ def test_fs_to_fc_yaml(test_data_dir, odc_test_db_with_products):
             "--stac",
             "--glob=**/NASADEM_HGT_s56w072.stac-item.json",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
 

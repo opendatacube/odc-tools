@@ -25,7 +25,8 @@ disable=duplicate-code,
     too-many-statements,
     raise-missing-from,
     too-many-locals,
-    too-many-arguments
+    too-many-arguments,
+    consider-using-f-string
 
 [BASIC]
 

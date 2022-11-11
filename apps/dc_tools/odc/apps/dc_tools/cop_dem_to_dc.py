@@ -21,11 +21,9 @@ from odc.apps.dc_tools.utils import (
     index_update_dataset,
     limit,
     update_if_exists_flag,
-    archive_less_mature,
     publish_action,
     statsd_gauge_reporting,
     statsd_setting,
-    update_if_exists,
 )
 from rio_stac import create_stac_item
 

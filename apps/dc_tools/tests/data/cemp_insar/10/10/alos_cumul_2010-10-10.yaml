@@ -1,0 +1,30 @@
+# Dataset
+$schema: https://schemas.opendatacube.org/dataset
+id: 1f45d5f3-6d23-4e74-87ac-e9072e73050e
+label: cemp_insar_alos_displacement_2010-10-10
+product:
+  name: cemp_insar_alos_displacement
+crs: epsg:32756
+geometry:
+  type: Polygon
+  coordinates: [[[275175.0, 6251175.0], [275125.0, 6184575.0], [294625.0, 6184475.0], [329025.0727801267, 6184525.00005297], [329124.99995848397, 6223374.935567064], [329074.99991705426, 6251125.09107453], [275175.0, 6251175.0]]]
+grids:
+  default:
+    shape: [1731, 1703]
+    transform: [50.00000000000001, 0.0, 254475.0, 0.0, -50.00000000000001, 6260125.0, 0.0, 0.0, 1.0]
+properties:
+  datetime: 2010-10-10 01:01:01Z
+  odc:file_format: GeoTIFF
+  odc:processing_datetime: 2019-12-19 20:52:14.025084Z
+  odc:product_family: cemp_insar_alos_displacement
+measurements:
+  ew:
+    path: alos_cumul_east_2010-10-10.tif
+  ewstd:
+    path: alos_cumulstd_east_2010-10-10.tif
+  ud:
+    path: alos_cumul_up_2010-10-10.tif
+  upstd:
+    path: alos_cumulstd_up_2010-10-10.tif
+accessories: {}
+lineage: {}

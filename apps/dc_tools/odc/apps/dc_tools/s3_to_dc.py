@@ -40,20 +40,8 @@ logging.basicConfig(
 )
 
 
-# Grab the URL from the resulting S3 item
-def stream_urls(urls):
-    for url in urls:
-        yield url.url
-
-
-# Parse documents as they stream through from S3
-def stream_docs(documents):
-    for document in documents:
-        yield (document.url, document.data)
-
-
-# Log the internal errors parsing docs
 def doc_error(uri, doc):
+    """Log the internal errors parsing docs"""
     logging.exception("Failed to parse doc at %s", uri)
 
 
@@ -75,7 +63,9 @@ def dump_to_odc(
     ds_failed = 0
     ds_skipped = 0
     uris_docs = parse_doc_stream(
-        stream_docs(document_stream), on_error=doc_error, transform=transform
+        ((doc.url, doc.data) for doc in document_stream),
+        on_error=doc_error,
+        transform=transform,
     )
 
     for uri, metadata in uris_docs:
@@ -170,8 +160,9 @@ def cli(
 
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-    document_stream = stream_urls(
-        s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
+    # Grab the URL from the resulting S3 item
+    document_stream = (
+        url.url for url in s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
     )
 
     added, failed, skipped = dump_to_odc(
