@@ -53,11 +53,6 @@
         "sentinel:datatake_start_datetime": "2016-12-14T09:25:14Z",
         "sentinel:product_name": "S2A_MSIL1C_20161214T024322_N0204_R003_T49JFM_20161214T024317",
         "sentinel:sentinel_tile_id": "S2A_OPER_MSI_L1C_TL_MTI__20161214T092514_A007722_T49JFM_N02.04",
-        "odc:lineage": {
-            "level1": [
-                "87082d0e-90f1-555b-9a09-e01adde8a8b6"
-            ]
-        },
         "proj:epsg": 32749,
         "proj:shape": [
             5490,
