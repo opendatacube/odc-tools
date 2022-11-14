@@ -20,11 +20,6 @@
         "created": "2021-10-20T01:08:21.263451Z",
         "dea:dataset_maturity": "final",
         "odc:collection_number": 3,
-        "odc:lineage": {
-            "ard": [
-                "61f46405-cfa5-444f-a258-49cc43f16d07"
-            ]
-        },
         "proj:epsg": 3577,
         "datetime": "1999-01-01T00:00:00Z"
     },
