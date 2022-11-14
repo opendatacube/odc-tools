@@ -44,8 +44,6 @@ pyproj
 pystac>=1.0.0
 pystac-client>=0.2.0
 pytest
-pytest-depends
-pytest-depends
 pyyaml
 rasterio>=1.3.2
 requests

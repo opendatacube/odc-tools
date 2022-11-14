@@ -117,12 +117,7 @@ dependencies:
   - moto
   - deepdiff
 
-  # for pytest-depends
-  - future_fstrings
-  - networkx
-  - colorama
-
-  - pip=20
+  - pip>=20
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
