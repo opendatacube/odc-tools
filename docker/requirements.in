@@ -28,7 +28,6 @@ datacube[dev]>1.8.7
 datadog
 # things needed for tests that might not be referenced in setup.py
 deepdiff
-deepdiff
 docker
 eodatasets3
 fsspec
@@ -38,8 +37,6 @@ ipyleaflet
 ipywidgets
 jinja2
 jupyter_ui_poll
-mock
-moto[server]
 numexpr
 numpy>=1.23.0
 pip-tools
@@ -59,3 +56,10 @@ toolz
 tqdm
 urlpath
 xarray==2022.3.0
+
+
+# Moto and Flask
+# Not using moto[server] because that causes json-schema conflicts
+moto>=4
+flask
+flask-cors

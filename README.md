@@ -115,7 +115,6 @@ dependencies:
   - pytest-cov
   - pytest-timeout
   - moto
-  - mock
   - deepdiff
 
   # for pytest-depends

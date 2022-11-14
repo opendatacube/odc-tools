@@ -25,7 +25,7 @@ bash:
     -v $(WK):/wk \
     $(DKR_IMG) bash
 
-constraints.txt: requirements.txt
+constraints.txt: requirements.in
 	@if [ -e /.dockerenv ]; then \
       pip-compile -v \
          --no-annotate \
