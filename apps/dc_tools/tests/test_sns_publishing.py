@@ -193,7 +193,7 @@ def test_sqs_publishing(
 def test_sqs_publishing_archive(
     aws_credentials, aws_env, sqs_message, odc_db_for_archive, ls5t_dsid, sns_setup
 ):
-    """Test that archive action is published with archive flag"""
+    """Test that an ARCHIVE SNS message is published when the --archive flag is used."""
     sns_arn, sqs, queue_url = sns_setup
 
     input_queue_name = "input-queue"
