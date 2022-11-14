@@ -39,7 +39,7 @@ ipywidgets
 jinja2
 jupyter_ui_poll
 mock
-moto
+moto[server]
 numexpr
 numpy>=1.23.0
 pip-tools
