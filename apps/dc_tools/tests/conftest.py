@@ -8,6 +8,7 @@ import psycopg2
 import pytest
 import time
 import yaml
+from click.testing import CliRunner
 from moto import mock_s3
 from moto.server import ThreadedMotoServer
 from pathlib import Path
@@ -15,6 +16,7 @@ from pathlib import Path
 from datacube import Datacube
 from datacube.drivers.postgres import _core as pgres_core
 from datacube.index import index_connect
+from datacube.model import MetadataType
 from datacube.utils import documents
 from odc.apps.dc_tools.add_update_products import add_update_products
 
@@ -42,7 +44,8 @@ def aws_env(monkeypatch):
 @pytest.fixture
 def mocked_aws_s3_env():
     """
-    Run a Fake Local S3 Service on http://localhost:5000 and redirect odc.aio to use it via an env variable.
+    Run a Fake Local S3 Service on http://localhost:5000 and redirect odc.aio
+    to use it via an env variable.
     """
 
     server = ThreadedMotoServer()
@@ -68,7 +71,32 @@ def mocked_s3_datasets(mocked_aws_s3_env):
         )
         bucket.upload_file(
             Filename=str(TEST_DATA_FOLDER / "S2B_31QGB_20200831_0_L2A.json"),
-            Key="sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/S2B_31QGB_20200831_0_L2A.json",
+            Key="sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/"
+            "S2B_31QGB_20200831_0_L2A.json",
+        )
+        bucket.upload_file(
+            Filename=str(
+                TEST_DATA_FOLDER
+                / "ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.stac-item.json"
+            ),
+            Key="baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/"
+            "ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.stac-item.json",
+        )
+        bucket.upload_file(
+            Filename=str(
+                TEST_DATA_FOLDER
+                / "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.stac-item.json"
+            ),
+            Key="baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/"
+            "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.stac-item.json",
+        )
+        bucket.upload_file(
+            Filename=str(
+                TEST_DATA_FOLDER
+                / "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.odc-metadata.yaml"
+            ),
+            Key="baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/"
+            "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.odc-metadata.yaml",
         )
         test_datasets = list((TEST_DATA_FOLDER / "cemp_insar").glob("**/*.yaml"))
         test_datasets.extend((TEST_DATA_FOLDER / "derivative").glob("**/*.yaml"))
@@ -265,10 +293,16 @@ def remove_postgres_dynamic_indexes():
 
 @pytest.fixture
 def odc_test_db_with_products(odc_db):
+    with open(
+        TEST_DATA_FOLDER / "eo3_sentinel_ard.odc-type.yaml", encoding="utf8"
+    ) as f:
+        meta_doc = yaml.safe_load(f)
+    odc_db.index.metadata_types.add(MetadataType(meta_doc))
     local_csv = str(Path(__file__).parent / "data/example_product_list.csv")
     added, updated, failed = add_update_products(odc_db, local_csv)
 
     assert failed == 0
+    yield odc_db
 
 
 @pytest.fixture
@@ -301,27 +335,19 @@ def s2am_dsid():
 
 
 @pytest.fixture
-def odc_db_for_sns(odc_db, ls5t_dsid, s2am_dsid):
-    # remove s2am and ls5t datasets that will be added
-    if odc_db is None:
-        return None
-    has_ls5t, has_s2am = odc_db.index.datasets.bulk_has([ls5t_dsid, s2am_dsid])
-    for_deletion = []
-    if has_ls5t:
-        for_deletion.append(ls5t_dsid)
-    if has_s2am:
-        for_deletion.append(s2am_dsid)
-    if for_deletion:
-        odc_db.index.datasets.archive(for_deletion)
-        odc_db.index.datasets.purge(for_deletion)
-    return odc_db
+def odc_db_for_archive(odc_test_db_with_products: Datacube):
+    """Create a temporary test database with some pre-indexed datasets."""
+    # pylint:disable=import-outside-toplevel
+    from odc.apps.dc_tools.fs_to_dc import cli as fs_to_dc_cli
 
+    for filename in (
+        "ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.stac-item.json",
+        "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.stac-item.json",
+    ):
+        result = CliRunner().invoke(
+            fs_to_dc_cli, "--glob", filename, str(TEST_DATA_FOLDER)
+        )
+        print(result.output)
+        assert result.exit_code == 0
 
-@pytest.fixture
-def odc_db_for_archive(odc_db, ls5t_dsid):
-    # ls5t dataset must be present for it to be archived
-    if odc_db is None:
-        return None
-    if not odc_db.index.datasets.get(ls5t_dsid):
-        odc_db.index.datasets.add(ls5t_dsid)
-    return odc_db
+    return odc_test_db_with_products

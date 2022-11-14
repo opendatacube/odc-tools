@@ -1,0 +1,86 @@
+---
+# Dataset
+$schema: https://schemas.opendatacube.org/dataset
+id: 6c22734e-66b7-4746-b28c-1f10792f4b2a
+
+label: ga_ls5t_nbart_gm_cyear_3_x08y23_1994-01-01_final
+product:
+  name: ga_ls5t_nbart_gm_cyear_3
+  href: https://collections.dea.ga.gov.au/product/ga_ls5t_nbart_gm_cyear_3
+
+crs: epsg:3577
+geometry:
+  type: Polygon
+  coordinates: [[[-1920000.0, -3168000.0], [-1920000.0, -3264000.0], [-1824000.0,
+        -3264000.0], [-1824000.0, -3168000.0], [-1920000.0, -3168000.0]]]
+grids:
+  default:
+    shape: [3200, 3200]
+    transform: [30.0, 0.0, -1920000.0, 0.0, -30.0, -3168000.0, 0.0, 0.0, 1.0]
+
+properties:
+  datetime: 1994-01-01 00:00:00Z
+  dea:dataset_maturity: final
+  dtr:end_datetime: 1994-12-31 23:59:59.999999Z
+  dtr:start_datetime: 1994-01-01 00:00:00Z
+  eo:gsd: 30.0  # Ground sample distance (m)
+  eo:instrument: TM
+  eo:platform: landsat-5
+  odc:collection_number: 3
+  odc:dataset_version: 3.0.0
+  odc:file_format: GeoTIFF
+  odc:processing_datetime: 2021-10-20 00:18:28.907451Z
+  odc:producer: ga.gov.au
+  odc:product: ga_ls5t_nbart_gm_cyear_3
+  odc:product_family: geomedian
+  odc:region_code: x08y23
+
+measurements:
+  bcdev:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_bcdev.tif
+  blue:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_blue.tif
+  count:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_count.tif
+  edev:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_edev.tif
+  green:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_green.tif
+  nir:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_nir.tif
+  red:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_red.tif
+  sdev:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_sdev.tif
+  swir1:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_swir1.tif
+  swir2:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_swir2.tif
+
+accessories:
+  thumbnail:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final_thumbnail.jpg
+  checksum:sha1:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final.sha1
+  metadata:processor:
+    path: ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final.proc-info.yaml
+
+lineage:
+  ard:
+  - 00dcb2c3-e718-4d15-920a-62bd40c4150c
+  - 186503c3-4132-44d7-b4c8-ff848203bc44
+  - 52e3ef55-b236-47fc-911b-806f7ac6d3ca
+  - b59d3fce-36e6-4719-bc16-bb8cd1c05257
+  - af9cdb2a-3244-4680-95f3-026c88e463a7
+  - cad759df-351a-4a17-bb0c-a2dda2285faa
+  - dcce8c66-4bda-4849-a002-43b44903881a
+  - 1d080a31-5e94-4b09-9f05-5d2e42b7279e
+  - e1f73ffb-6fc7-47f8-829b-a99a6e04dd74
+  - 84a7b17d-56f9-49cc-a239-51aca2495c99
+  - 0eea7649-fdf2-4b45-8f47-d18d5bbbb5cb
+  - 786af085-90b0-4ca1-8540-35af431b860d
+  - 681ec1df-3e4a-4a8a-ba71-fa576c034ba0
+  - 7b0585dd-9aec-4be5-8f70-3375738ed9b8
+  - 6c27bdd4-c02e-4e92-9d77-4921049d9b51
+  - 71667715-2eec-4abd-823c-bf29d661b295
+...

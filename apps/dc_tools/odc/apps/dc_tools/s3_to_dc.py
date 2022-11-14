@@ -68,6 +68,7 @@ def dump_to_odc(
         transform=transform,
     )
 
+    found_docs = False
     for uri, metadata in uris_docs:
         found_docs = True
         try:
