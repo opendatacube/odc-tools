@@ -1,7 +1,7 @@
 """These should probably be in datacube library."""
 import json
 import sys
-from typing import Sequence
+from typing import Sequence, Union
 from uuid import UUID, uuid5
 
 from datacube.index.hl import Doc2Dataset
@@ -14,7 +14,7 @@ ODC_NS = UUID("6f34c6f4-13d6-43c0-8e4e-42b6c13203af")
 def odc_uuid(
     algorithm: str,
     algorithm_version: str,
-    sources: Sequence[UUID],
+    sources: Sequence[Union[UUID, str]],
     deployment_id: str = "",
     **other_tags,
 ) -> UUID:
