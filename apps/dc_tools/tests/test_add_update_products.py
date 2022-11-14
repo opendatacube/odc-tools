@@ -16,13 +16,13 @@ PRODUCT_EXAMPLE: str = (
 def test_parse_local_csv(local_csv):
     local_contents = [x for x in _parse_csv(local_csv)]
 
-    assert len(local_contents) == 11
+    assert len(local_contents) == 12
     assert local_contents[0].name == "s2_l2a"
 
 
 def test_parse_remote_csv(remote_csv):
     remote_contents = [x for x in _parse_csv(remote_csv)]
-    assert len(remote_contents) == 11
+    assert len(remote_contents) == 12
     assert remote_contents[0].name == "s2_l2a"
 
 
@@ -42,6 +42,7 @@ def test_add_products(local_csv, odc_db):
             "--update-if-exists",
         ],
     )
+    print(f"CLI Output: {result.output}")
     assert result.exit_code == 0
 
 

@@ -79,7 +79,7 @@ def mocked_s3_datasets(mocked_aws_s3_env):
                 TEST_DATA_FOLDER
                 / "ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.stac-item.json"
             ),
-            Key="baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/"
+            Key="ga_ls5t_nbart_gm_cyear_3/3-0-0/x30/y14/"
             "ga_ls5t_nbart_gm_cyear_3_x30y14_1999--P1Y_final.stac-item.json",
         )
         bucket.upload_file(
@@ -268,6 +268,12 @@ def odc_db(odc_test_db):
 
     dc = Datacube(index=index)
 
+    with open(
+        TEST_DATA_FOLDER / "eo3_sentinel_ard.odc-type.yaml", encoding="utf8"
+    ) as f:
+        meta_doc = yaml.safe_load(f)
+    dc.index.metadata_types.add(MetadataType(meta_doc))
+
     yield dc
 
     dc.close()
@@ -292,12 +298,8 @@ def remove_postgres_dynamic_indexes():
 
 
 @pytest.fixture
-def odc_test_db_with_products(odc_db):
-    with open(
-        TEST_DATA_FOLDER / "eo3_sentinel_ard.odc-type.yaml", encoding="utf8"
-    ) as f:
-        meta_doc = yaml.safe_load(f)
-    odc_db.index.metadata_types.add(MetadataType(meta_doc))
+def odc_test_db_with_products(odc_db: Datacube):
+
     local_csv = str(Path(__file__).parent / "data/example_product_list.csv")
     added, updated, failed = add_update_products(odc_db, local_csv)
 
@@ -345,7 +347,7 @@ def odc_db_for_archive(odc_test_db_with_products: Datacube):
         "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.stac-item.json",
     ):
         result = CliRunner().invoke(
-            fs_to_dc_cli, "--glob", filename, str(TEST_DATA_FOLDER)
+            fs_to_dc_cli, ["--stac", "--glob", filename, str(TEST_DATA_FOLDER)]
         )
         print(result.output)
         assert result.exit_code == 0
