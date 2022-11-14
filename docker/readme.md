@@ -6,7 +6,7 @@
 
 ## Files
 
-- `requirements.txt`
+- `requirements.in`
    - Test dependencies
    - Libs with constraints
    - Libs with extra feature flags
@@ -20,7 +20,7 @@
 
 ## Updating constraints.txt
 
-We use `pip-tools` to generate `constraints.txt` from `requirements.txt` file. To get newer versions of libs run this:
+We use `pip-tools` to generate `constraints.txt` from `requirements.in` file. To get newer versions of libs run this:
 
 ```
 cd docker
@@ -44,6 +44,6 @@ If all is fine check in new version of `constraints.txt`.
 - `aibotocore` depends on one specific version of `botocore, boto3`
 - `pip` has no chance of finding correct set without constraints
 
-This is why in `requirements.txt` we specify `aiobotocore[boto3,awscli]==1.3.3`,
+This is why in `requirements.in` we specify `aiobotocore[boto3,awscli]==1.3.3`,
 as this limits the search space for `pip-tools` to just a specific version of
 `aiobotocore` and a compatible set of boto libs.
