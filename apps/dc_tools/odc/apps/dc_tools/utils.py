@@ -131,7 +131,7 @@ publish_action = click.option(
     type=str,
     default=None,
     nargs=1,
-    help=("SNS topic arn to publish indexing/archiving actions to."),
+    help="SNS topic arn to publish indexing/archiving actions to.",
 )
 
 archive = click.option(

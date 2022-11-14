@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-from datacube import Datacube
 from odc.apps.dc_tools.add_update_products import _get_product, _parse_csv
 from odc.apps.dc_tools.add_update_products import cli as add_update_products_cli
 

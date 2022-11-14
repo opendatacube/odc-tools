@@ -1,0 +1,954 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0",
+    "id": "e2baf679-c20a-479f-86c5-ffd98c65ff87",
+    "properties": {
+        "title": "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final",
+        "dea:dataset_maturity": "final",
+        "dea:product_maturity": "stable",
+        "eo:cloud_cover": 34.89270440376774,
+        "constellation": "sentinel-2",
+        "gsd": 10.0,
+        "instruments": [
+            "msi"
+        ],
+        "platform": "sentinel-2a",
+        "view:sun_azimuth": 88.8360159279874,
+        "view:sun_elevation": 22.7618696301883,
+        "fmask:clear": 6.785199783676895,
+        "fmask:cloud": 34.89270440376774,
+        "fmask:cloud_shadow": 0.6203861301057395,
+        "fmask:snow": 0.3872880315592848,
+        "fmask:water": 57.314421650890345,
+        "gqa:abs_iterative_mean_x": 84.6,
+        "gqa:abs_iterative_mean_xy": 85.54,
+        "gqa:abs_iterative_mean_y": 12.61,
+        "gqa:abs_x": 81.87,
+        "gqa:abs_xy": 83.11,
+        "gqa:abs_y": 14.31,
+        "gqa:cep90": 86.52,
+        "gqa:iterative_mean_x": -84.6,
+        "gqa:iterative_mean_xy": 85.54,
+        "gqa:iterative_mean_y": -12.61,
+        "gqa:iterative_stddev_x": 2.06,
+        "gqa:iterative_stddev_xy": 3.07,
+        "gqa:iterative_stddev_y": 2.28,
+        "gqa:mean_x": -81.87,
+        "gqa:mean_xy": 83.11,
+        "gqa:mean_y": -14.31,
+        "gqa:stddev_x": 4.95,
+        "gqa:stddev_xy": 5.99,
+        "gqa:stddev_y": 3.36,
+        "odc:dataset_version": "3.2.1",
+        "odc:file_format": "GeoTIFF",
+        "created": "2022-08-29T12:31:16.877709Z",
+        "odc:producer": "ga.gov.au",
+        "odc:product_family": "ard",
+        "odc:region_code": "49JFM",
+        "s2cloudless:clear": 99.86291020932246,
+        "s2cloudless:cloud": 0.1370897906775359,
+        "sat:orbit_state": "descending",
+        "sat:relative_orbit": 3,
+        "sentinel:datastrip_id": "S2A_OPER_MSI_L1C_DS_MTI__20161214T092514_S20161214T024317_N02.04",
+        "sentinel:datatake_start_datetime": "2016-12-14T09:25:14Z",
+        "sentinel:product_name": "S2A_MSIL1C_20161214T024322_N0204_R003_T49JFM_20161214T024317",
+        "sentinel:sentinel_tile_id": "S2A_OPER_MSI_L1C_TL_MTI__20161214T092514_A007722_T49JFM_N02.04",
+        "odc:lineage": {
+            "level1": [
+                "87082d0e-90f1-555b-9a09-e01adde8a8b6"
+            ]
+        },
+        "proj:epsg": 32749,
+        "proj:shape": [
+            5490,
+            5490
+        ],
+        "proj:transform": [
+            20.0,
+            0.0,
+            600000.0,
+            0.0,
+            -20.0,
+            7200040.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "datetime": "2016-12-14T02:43:17.461000Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    111.99348355123331,
+                    -25.312844367538936
+                ],
+                [
+                    113.08390680931743,
+                    -25.30146236818689
+                ],
+                [
+                    113.10131180735891,
+                    -26.29230460111213
+                ],
+                [
+                    112.00178695386008,
+                    -26.30419816791511
+                ],
+                [
+                    111.99348355123331,
+                    -25.312844367538936
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "self",
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.stac-item.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "odc_yaml",
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.odc-metadata.yaml",
+            "type": "text/yaml",
+            "title": "ODC Dataset YAML"
+        },
+        {
+            "rel": "collection",
+            "href": "https://explorer-aws.dea.ga.gov.au/stac/collections/ga_s2am_ard_3"
+        },
+        {
+            "rel": "product_overview",
+            "href": "https://explorer-aws.dea.ga.gov.au/product/ga_s2am_ard_3",
+            "type": "text/html",
+            "title": "ODC Product Overview"
+        },
+        {
+            "rel": "alternative",
+            "href": "https://explorer-aws.dea.ga.gov.au/dataset/e2baf679-c20a-479f-86c5-ffd98c65ff87",
+            "type": "text/html",
+            "title": "ODC Dataset Overview"
+        }
+    ],
+    "assets": {
+        "nbart_blue": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band02.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_blue",
+            "eo:bands": [
+                {
+                    "name": "nbart_blue"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                10980,
+                10980
+            ],
+            "proj:transform": [
+                10.0,
+                0.0,
+                600000.0,
+                0.0,
+                -10.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_coastal_aerosol": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band01.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_coastal_aerosol",
+            "eo:bands": [
+                {
+                    "name": "nbart_coastal_aerosol"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                1830,
+                1830
+            ],
+            "proj:transform": [
+                60.0,
+                0.0,
+                600000.0,
+                0.0,
+                -60.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_green": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band03.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_green",
+            "eo:bands": [
+                {
+                    "name": "nbart_green"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                10980,
+                10980
+            ],
+            "proj:transform": [
+                10.0,
+                0.0,
+                600000.0,
+                0.0,
+                -10.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_nir_1": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band08.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_nir_1",
+            "eo:bands": [
+                {
+                    "name": "nbart_nir_1"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                10980,
+                10980
+            ],
+            "proj:transform": [
+                10.0,
+                0.0,
+                600000.0,
+                0.0,
+                -10.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_nir_2": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band08a.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_nir_2",
+            "eo:bands": [
+                {
+                    "name": "nbart_nir_2"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_red": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band04.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_red",
+            "eo:bands": [
+                {
+                    "name": "nbart_red"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                10980,
+                10980
+            ],
+            "proj:transform": [
+                10.0,
+                0.0,
+                600000.0,
+                0.0,
+                -10.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_red_edge_1": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band05.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_red_edge_1",
+            "eo:bands": [
+                {
+                    "name": "nbart_red_edge_1"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_red_edge_2": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band06.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_red_edge_2",
+            "eo:bands": [
+                {
+                    "name": "nbart_red_edge_2"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_red_edge_3": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band07.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_red_edge_3",
+            "eo:bands": [
+                {
+                    "name": "nbart_red_edge_3"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_swir_2": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band11.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_swir_2",
+            "eo:bands": [
+                {
+                    "name": "nbart_swir_2"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "nbart_swir_3": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_band12.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "nbart_swir_3",
+            "eo:bands": [
+                {
+                    "name": "nbart_swir_3"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_azimuthal_exiting": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_azimuthal-exiting.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_azimuthal_exiting",
+            "eo:bands": [
+                {
+                    "name": "oa_azimuthal_exiting"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_azimuthal_incident": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_azimuthal-incident.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_azimuthal_incident",
+            "eo:bands": [
+                {
+                    "name": "oa_azimuthal_incident"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_combined_terrain_shadow": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_combined-terrain-shadow.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_combined_terrain_shadow",
+            "eo:bands": [
+                {
+                    "name": "oa_combined_terrain_shadow"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_exiting_angle": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_exiting-angle.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_exiting_angle",
+            "eo:bands": [
+                {
+                    "name": "oa_exiting_angle"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_fmask": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_fmask.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_fmask",
+            "eo:bands": [
+                {
+                    "name": "oa_fmask"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_incident_angle": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_incident-angle.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_incident_angle",
+            "eo:bands": [
+                {
+                    "name": "oa_incident_angle"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_nbart_contiguity": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_nbart-contiguity.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_nbart_contiguity",
+            "eo:bands": [
+                {
+                    "name": "oa_nbart_contiguity"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                10980,
+                10980
+            ],
+            "proj:transform": [
+                10.0,
+                0.0,
+                600000.0,
+                0.0,
+                -10.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_relative_azimuth": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_relative-azimuth.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_relative_azimuth",
+            "eo:bands": [
+                {
+                    "name": "oa_relative_azimuth"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_relative_slope": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_relative-slope.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_relative_slope",
+            "eo:bands": [
+                {
+                    "name": "oa_relative_slope"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_s2cloudless_mask": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_s2cloudless-mask.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_s2cloudless_mask",
+            "eo:bands": [
+                {
+                    "name": "oa_s2cloudless_mask"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                1830,
+                1830
+            ],
+            "proj:transform": [
+                60.0,
+                0.0,
+                600000.0,
+                0.0,
+                -60.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_s2cloudless_prob": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_s2cloudless-prob.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_s2cloudless_prob",
+            "eo:bands": [
+                {
+                    "name": "oa_s2cloudless_prob"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                1830,
+                1830
+            ],
+            "proj:transform": [
+                60.0,
+                0.0,
+                600000.0,
+                0.0,
+                -60.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_satellite_azimuth": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_satellite-azimuth.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_satellite_azimuth",
+            "eo:bands": [
+                {
+                    "name": "oa_satellite_azimuth"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_satellite_view": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_satellite-view.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_satellite_view",
+            "eo:bands": [
+                {
+                    "name": "oa_satellite_view"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_solar_azimuth": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_solar-azimuth.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_solar_azimuth",
+            "eo:bands": [
+                {
+                    "name": "oa_solar_azimuth"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_solar_zenith": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_solar-zenith.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_solar_zenith",
+            "eo:bands": [
+                {
+                    "name": "oa_solar_zenith"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "oa_time_delta": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_oa_3-2-1_49JFM_2016-12-14_final_time-delta.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "oa_time_delta",
+            "eo:bands": [
+                {
+                    "name": "oa_time_delta"
+                }
+            ],
+            "proj:epsg": 32749,
+            "proj:shape": [
+                5490,
+                5490
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                600000.0,
+                0.0,
+                -20.0,
+                7200040.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "roles": [
+                "data"
+            ]
+        },
+        "thumbnail:nbart": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_nbart_3-2-1_49JFM_2016-12-14_final_thumbnail.jpg",
+            "type": "image/jpeg",
+            "title": "Thumbnail image",
+            "roles": [
+                "thumbnail"
+            ]
+        },
+        "metadata:processor": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.proc-info.yaml",
+            "type": "text/yaml",
+            "roles": [
+                "metadata"
+            ]
+        },
+        "checksum:sha1": {
+            "href": "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.sha1",
+            "type": "text/plain",
+            "roles": [
+                "metadata"
+            ]
+        }
+    },
+    "bbox": [
+        111.99348355123331,
+        -26.30419816791511,
+        113.10131180735891,
+        -25.30146236818689
+    ],
+    "stac_extensions": [
+        "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/view/v1.0.0/schema.json"
+    ],
+    "collection": "ga_s2am_ard_3"
+}
