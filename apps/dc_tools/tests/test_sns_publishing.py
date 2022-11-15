@@ -236,14 +236,14 @@ def test_sqs_publishing_archive(
 def test_with_archive_less_mature(
     aws_credentials,
     aws_env,
-    odc_db_for_maturity_tests,
+    odc_db,
     nrt_dsid,
     final_dsid,
     sns_setup,
 ):
     sns_arn, sqs, queue_url = sns_setup
 
-    dc = odc_db_for_maturity_tests
+    dc = odc_db
     assert dc.index.datasets.get(nrt_dsid) is None
 
     runner = CliRunner()

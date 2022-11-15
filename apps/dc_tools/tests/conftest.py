@@ -153,13 +153,6 @@ def sentinel_odc():
 
 
 @pytest.fixture
-def maturity_product_doc():
-    with TEST_DATA_FOLDER.joinpath(MATURITY_PRODUCT).open("r", encoding="utf8") as f:
-        doc = yaml.safe_load(f)
-    return doc
-
-
-@pytest.fixture
 def nrt_dsid():
     return "2e9f4623-c51c-5233-869a-bb690f8c2cac"
 
@@ -274,7 +267,10 @@ def odc_db(odc_test_db):
         TEST_DATA_FOLDER / "eo3_sentinel_ard.odc-type.yaml", encoding="utf8"
     ) as f:
         meta_doc = yaml.safe_load(f)
-    dc.index.metadata_types.add(MetadataType(meta_doc))
+        dc.index.metadata_types.add(MetadataType(meta_doc))
+    with open(TEST_DATA_FOLDER / MATURITY_PRODUCT, encoding="utf8") as f:
+        doc = yaml.safe_load(f)
+        dc.index.products.add_document(doc)
 
     yield dc
 
@@ -307,25 +303,6 @@ def odc_test_db_with_products(odc_db: Datacube):
 
     assert failed == 0
     yield odc_db
-
-
-@pytest.fixture
-def odc_db_for_maturity_tests(odc_db, maturity_product_doc, nrt_dsid, final_dsid):
-    if odc_db is None:
-        return None
-    # Ensure product present
-    odc_db.index.products.add_document(maturity_product_doc)
-    have_nrt, have_final = odc_db.index.datasets.bulk_has([nrt_dsid, final_dsid])
-    # Ensure datasets absent
-    for_deletion = []
-    if have_nrt:
-        for_deletion.append(nrt_dsid)
-    if have_final:
-        for_deletion.append(final_dsid)
-    if for_deletion:
-        odc_db.index.datasets.archive(for_deletion)
-        odc_db.index.datasets.purge(for_deletion)
-    return odc_db
 
 
 @pytest.fixture
