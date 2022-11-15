@@ -66,7 +66,7 @@ def parse_query(url_query):
         elif "**" not in qq_set:
             depth = len(qq)
         else:
-            raise ValueError("Bad query: {url_query}")
+            raise ValueError(f"Bad query: {url_query}")
 
     base = "/".join(base)
     base = base.rstrip("/") + "/"
