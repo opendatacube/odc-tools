@@ -20,10 +20,8 @@ def test_fs_to_fc_yaml(test_data_dir, odc_test_db_with_products):
     assert result.exit_code == 0
 
 
-def test_archive_less_mature(
-    odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid
-):
-    dc = odc_db_for_maturity_tests
+def test_archive_less_mature(odc_db, test_data_dir, nrt_dsid, final_dsid):
+    dc = odc_db
     runner = CliRunner()
 
     # Index NRT dataset
@@ -53,10 +51,8 @@ def test_archive_less_mature(
     assert dc.index.datasets.get(nrt_dsid).archived_time is not None
 
 
-def test_keep_more_mature(
-    odc_db_for_maturity_tests, test_data_dir, nrt_dsid, final_dsid
-):
-    dc = odc_db_for_maturity_tests
+def test_keep_more_mature(odc_db, test_data_dir, nrt_dsid, final_dsid):
+    dc = odc_db
     runner = CliRunner()
 
     # Index Final dataset
