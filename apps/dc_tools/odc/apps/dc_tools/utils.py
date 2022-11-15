@@ -213,7 +213,7 @@ def index_update_dataset(
     except ValueError as e:
         raise IndexingException(
             f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
-        )
+        ) from e
     if ds is None:
         raise IndexingException(
             f"Failed to create dataset with error {err}\n The URI was {uri}"
@@ -269,7 +269,7 @@ def index_update_dataset(
                     updates = {tuple(): changes.allow_any}
                 # Do the updating
                 try:
-                    dc.index.datasets.update_flag(ds, updates_allowed=updates)
+                    dc.index.datasets.update(ds, updates_allowed=updates)
                     updated = True
                 except ValueError as e:
                     raise IndexingException(
