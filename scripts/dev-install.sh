@@ -1,4 +1,6 @@
 #!/bin/bash
+# Perform a development (or editable) install of all the libraries and apps contained
+# within the odc-tools repository.
 
 set -eu
 

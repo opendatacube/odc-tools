@@ -45,13 +45,8 @@ dependencies:
   - pytest-cov
   - pytest-timeout
   - moto
-  - mock
   - deepdiff
 
-  # for pytest-depends
-  - future_fstrings
-  - networkx
-  - colorama
 
   # for docs
   - sphinx
@@ -70,6 +65,3 @@ dependencies:
 
       # odc.ui
       - jupyter-ui-poll>=0.2.0a
-
-      # tests
-      - pytest-depends

@@ -27,28 +27,22 @@ from odc.apps.dc_tools.utils import (
     statsd_setting,
     transform_stac,
     transform_stac_absolute,
-    update,
-    update_if_exists,
+    update_flag,
+    update_if_exists_flag,
     verify_lineage,
     publish_action,
 )
 
-
-# Grab the URL from the resulting S3 item
-def stream_urls(urls):
-    for url in urls:
-        yield url.url
-
-
-# Parse documents as they stream through from S3
-def stream_docs(documents):
-    for document in documents:
-        yield (document.url, document.data)
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s: %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
 
 
-# Log the internal errors parsing docs
-def doc_error(uri, doc, e):
-    logging.exception(f"Failed to parse doc {uri} with error {e}")
+def doc_error(uri, doc):
+    """Log the internal errors parsing docs"""
+    logging.exception("Failed to parse doc at %s", uri)
 
 
 def dump_to_odc(
@@ -62,16 +56,19 @@ def dump_to_odc(
     archive_less_mature=None,
     publish_action=None,
     **kwargs,
-) -> Tuple[int, int]:
+) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
     ds_added = 0
     ds_failed = 0
     ds_skipped = 0
     uris_docs = parse_doc_stream(
-        stream_docs(document_stream), on_error=doc_error, transform=transform
+        ((doc.url, doc.data) for doc in document_stream),
+        on_error=doc_error,
+        transform=transform,
     )
 
+    found_docs = False
     for uri, metadata in uris_docs:
         found_docs = True
         try:
@@ -87,8 +84,8 @@ def dump_to_odc(
                 publish_action=publish_action,
             )
             ds_added += 1
-        except IndexingException as e:
-            logging.exception(f"Failed to index dataset {uri} with error {e}")
+        except IndexingException:
+            logging.exception("Failed to index dataset %s", uri)
             ds_failed += 1
         except SkippedException:
             ds_skipped += 1
@@ -104,8 +101,8 @@ def dump_to_odc(
 @verify_lineage
 @transform_stac
 @transform_stac_absolute
-@update
-@update_if_exists
+@update_flag
+@update_if_exists_flag
 @allow_unsafe
 @skip_check
 @no_sign_request
@@ -164,8 +161,9 @@ def cli(
 
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-    document_stream = stream_urls(
-        s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
+    # Grab the URL from the resulting S3 item
+    document_stream = (
+        url.url for url in s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
     )
 
     added, failed, skipped = dump_to_odc(

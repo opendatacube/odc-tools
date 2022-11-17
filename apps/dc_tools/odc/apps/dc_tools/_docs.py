@@ -1,7 +1,7 @@
 """These should probably be in datacube library."""
 import json
 import sys
-from typing import Sequence
+from typing import Sequence, Union
 from uuid import UUID, uuid5
 
 from datacube.index.hl import Doc2Dataset
@@ -14,7 +14,7 @@ ODC_NS = UUID("6f34c6f4-13d6-43c0-8e4e-42b6c13203af")
 def odc_uuid(
     algorithm: str,
     algorithm_version: str,
-    sources: Sequence[UUID],
+    sources: Sequence[Union[UUID, str]],
     deployment_id: str = "",
     **other_tags,
 ) -> UUID:
@@ -80,7 +80,7 @@ def parse_doc_stream(doc_stream, on_error=None, transform=None):
 
 
     :param doc_stream: sequence of (uri, doc: bytes|string)
-    :param on_error: Callback uri, doc, exception -> None
+    :param on_error: Callback uri, doc -> None
     :param transform: dict -> dict if supplied also apply further transform on parsed document
 
     On output doc is replaced with python dict parsed from yaml, or with None
@@ -95,9 +95,9 @@ def parse_doc_stream(doc_stream, on_error=None, transform=None):
 
             if transform is not None:
                 metadata = transform(metadata)
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             if on_error is not None:
-                on_error(uri, doc, e)
+                on_error(uri, doc)
             metadata = None
 
         yield uri, metadata
@@ -110,14 +110,14 @@ def from_yaml_doc_stream(doc_stream, index, logger=None, transform=None, **kwarg
     Stream[(path, bytes|str)] -> Stream[(Dataset, None)|(None, error_message)]
 
     :param doc_stream: sequence of (uri, doc: byges|string)
-    :param on_error: Callback uri, doc, exception -> None
+    :param on_error: Callback uri, doc -> None
     :param logger:  Logger object for printing errors or None
     :param transform: dict -> dict if supplied also apply further transform on parsed document
     :param kwargs: passed on to from_metadata_stream
 
     """
 
-    def on_parse_error(uri, doc, err):
+    def on_parse_error(uri, doc):
         # pylint: disable=unused-argument
         if logger is not None:
             logger.error(f"Failed to parse: {uri}")

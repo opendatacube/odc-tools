@@ -1,6 +1,8 @@
 import pytest
 from click.testing import CliRunner
-from odc.apps.dc_tools.cop_dem_to_dc import cli, get_dem_tile_uris
+
+from odc.apps.dc_tools.cop_dem_to_dc import get_dem_tile_uris, cli as cop_dem_to_dc_cli
+
 
 PRODUCTS = ["cop_30", "cop_90"]
 
@@ -16,7 +18,7 @@ def bbox_africa():
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_get_dem_tile_uris(bbox, product):
+def test_get_dem_tile_uris(bbox, product, odc_db):
     uris = list(get_dem_tile_uris(bbox, product))
 
     if product == "cop_30":
@@ -41,14 +43,12 @@ def test_complex_bbox(bbox_africa):
 
 # Test the actual process
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_indexing_cli(bbox, product):
+def test_indexing_cli(bbox, product, odc_db):
     runner = CliRunner()
     result = runner.invoke(
-        cli,
+        cop_dem_to_dc_cli,
         [
             "--add-product",
-            "--statsd-setting",
-            "localhost:8125",
             "--bbox",
             bbox,
             "--product",
@@ -59,16 +59,11 @@ def test_indexing_cli(bbox, product):
     assert f"Product definition added for {product}" in result.output
     assert "Added 4 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
 
-
-@pytest.mark.parametrize("product", PRODUCTS)
-def test_indexing_cli_repeat(bbox, product):
-    runner = CliRunner()
+    # Running a second time should skip the datasets
     result = runner.invoke(
-        cli,
+        cop_dem_to_dc_cli,
         [
             "--add-product",
-            "--statsd-setting",
-            "localhost:8125",
             "--bbox",
             bbox,
             "--product",

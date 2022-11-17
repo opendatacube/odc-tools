@@ -1,0 +1,94 @@
+---
+input-products:
+- ga_ls5t_ard_3
+odc-stats-config:
+  name: ga_ls5t_nbart_gm_cyear_3
+  version: 3.0.0
+  short_name: ga_ls5t_nbart_gm_cyear_3
+  location: s3://dea-public-data-dev/ga_ls5t_nbart_gm_cyear_3/3-0-0
+  properties:
+    odc:file_format: GeoTIFF
+    odc:product_family: geomedian
+    odc:producer: ga.gov.au
+  measurements:
+  - red
+  - green
+  - blue
+  - nir
+  - swir1
+  - swir2
+  - sdev
+  - edev
+  - bcdev
+  - count
+  href: https://collections.dea.ga.gov.au/product/ga_ls5t_nbart_gm_cyear_3
+  region_code_format: x{x:02d}y{y:02d}
+  cfg:
+  naming_conventions_values: dea_c3
+  explorer_path: https://explorer.dea.ga.gov.au/
+  inherit_skip_properties:
+  - eo:cloud_cover
+  - fmask:clear
+  - fmask:snow
+  - fmask:cloud
+  - fmask:water
+  - fmask:cloud_shadow
+  - eo:sun_elevation
+  - eo:sun_azimuth
+  - gqa:iterative_stddev_x
+  - gqa:iterative_stddev_y
+  - gqa:iterative_stddev_xy
+  - gqa:stddev_xy
+  - gqa:stddev_x
+  - gqa:stddev_y
+  - gqa:mean_xy
+  - gqa:mean_x
+  - gqa:mean_y
+  - gqa:abs_xy
+  - gqa:abs_x
+  - gqa:abs_y
+  - gqa:abs_iterative_mean_y
+  - gqa:abs_iterative_mean_x
+  - gqa:abs_iterative_mean_xy
+  - gqa:iterative_mean_xy
+  - gqa:iterative_mean_x
+  - gqa:iterative_mean_y
+  - gqa:cep90
+  - landsat:landsat_product_id
+  - landsat:landsat_scene_id
+  - landsat:collection_category
+  - landsat:collection_number
+  - landsat:wrs_path
+  - landsat:wrs_row
+  preview_image_ows_style:
+    name: simple_rgb
+    title: Simple RGB
+    abstract: Simple true-colour image, using the red, green and blue bands
+    components:
+      red:
+        red: 1
+      green:
+        green: 1
+      blue:
+        blue: 1
+    scale_range:
+    - 0
+    - 3000
+  classifier: ard
+  maturity: final
+  collection_number: 3
+  nodata:
+software_versions:
+- name: eodatasets3
+  url: https://github.com/GeoscienceAustralia/eo-datasets
+  version: 0.22.2
+- name: odc-stats
+  url: https://github.com/opendatacube/odc-tools
+  version: 1.0.2-dev3083
+- name: gm_ls_annual
+  url: https://github.com/opendatacube/odc-tools
+  version: 3.0.0
+- name: datacube-ows
+  url: https://github.com/opendatacube/datacube-ows
+  version: 1.8.20
+...

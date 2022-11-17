@@ -16,8 +16,8 @@ from odc.apps.dc_tools.utils import (
     statsd_gauge_reporting,
     statsd_setting,
     transform_stac,
-    update,
-    update_if_exists,
+    update_flag,
+    update_if_exists_flag,
     publish_action,
 )
 from odc.azure import download_blob, find_blobs
@@ -67,17 +67,16 @@ def dump_list_to_odc(
                 stac_doc=stac_doc,
             )
             ds_added += 1
-        except Exception as e:
-            logging.error(f"Failed to add {uri}")
-            logging.exception(e)
+        except Exception:  # pylint:disable=broad-except
+            logging.exception("Failed to add %s", uri)
             ds_failed += 1
 
     return ds_added, ds_failed
 
 
 @click.command("azure-to-dc")
-@update
-@update_if_exists
+@update_flag
+@update_if_exists_flag
 @allow_unsafe
 @transform_stac
 @statsd_setting

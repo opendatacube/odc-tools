@@ -115,15 +115,9 @@ dependencies:
   - pytest-cov
   - pytest-timeout
   - moto
-  - mock
   - deepdiff
 
-  # for pytest-depends
-  - future_fstrings
-  - networkx
-  - colorama
-
-  - pip=20
+  - pip>=20
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler

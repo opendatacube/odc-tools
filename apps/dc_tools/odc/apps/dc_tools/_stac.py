@@ -120,12 +120,21 @@ def _stac_product_lookup(
             )
             product_name = "s2_l2a"
             if region_code is None:
-                # Let this throw an exception if there's something missing
-                region_code = (
-                    f"{str(properties['proj:epsg'])[-2:]}"
-                    f"{properties['sentinel:latitude_band']}"
-                    f"{properties['sentinel:grid_square']}"
-                )
+                # Let's try two options, and throw an exception if we still don't get it
+                try:
+                    # The 'mgrs' prefix (and STAC extension) started with STAC v1.0.0
+                    region_code = (
+                        f"{str(properties['proj:epsg'])[-2:]}"
+                        f"{properties['mgrs:latitude_band']}"
+                        f"{properties['mgrs:grid_square']}"
+                    )
+                except KeyError:
+                    region_code = (
+                        f"{str(properties['proj:epsg'])[-2:]}"
+                        f"{properties['sentinel:latitude_band']}"
+                        f"{properties['sentinel:grid_square']}"
+                    )
+
             default_grid = "g10m"
 
     # If we still don't have a product name, use collection

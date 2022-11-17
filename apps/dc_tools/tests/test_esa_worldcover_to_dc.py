@@ -52,9 +52,7 @@ def test_complex_bbox(bbox_africa):
 
 
 # Test the actual process
-@pytest.mark.depends(on="have_db")
-@pytest.mark.depends(on=["add_products"])
-def test_indexing_cli(bbox):
+def test_indexing_cli(bbox, odc_test_db_with_products):
     runner = CliRunner()
     result = runner.invoke(
         cli,

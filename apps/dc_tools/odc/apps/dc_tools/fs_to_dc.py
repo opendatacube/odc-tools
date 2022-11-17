@@ -12,12 +12,17 @@ from odc.apps.dc_tools.utils import (
     allow_unsafe,
     archive_less_mature,
     index_update_dataset,
-    update_if_exists,
+    update_if_exists_flag,
     publish_action,
     statsd_setting,
     statsd_gauge_reporting,
     transform_stac,
 )
+from odc.apps.dc_tools._stac import stac_transform
+import logging
+
+
+import yaml
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -26,18 +31,9 @@ logging.basicConfig(
 )
 
 
-def _find_files(
-    path: str, glob: Optional[str] = None, stac: Optional[bool] = False
-) -> Generator[Path, None, None]:
-    if glob is None:
-        glob = "**/*.json" if stac else "**/*.yaml"
-
-    return Path(path).glob(glob)
-
-
 @click.command("fs-to-dc")
 @click.argument("input_directory", type=str, nargs=1)
-@update_if_exists
+@update_if_exists_flag
 @allow_unsafe
 @archive_less_mature
 @transform_stac
@@ -65,14 +61,14 @@ def cli(
     if glob is None:
         glob = "**/*.json" if stac else "**/*.yaml"
 
-    files_to_process = _find_files(input_directory, glob, stac=stac)
+    files_to_process = Path(input_directory).glob(glob)
 
     added, failed = 0, 0
 
     for in_file in files_to_process:
         with in_file.open() as f:
             try:
-                if in_file.suffix == ".yml" or in_file.suffix == ".yaml":
+                if in_file.suffix in (".yml", ".yaml"):
                     metadata = yaml.safe_load(f)
                 else:
                     metadata = json.load(f)
@@ -93,11 +89,11 @@ def cli(
                     stac_doc=stac_doc,
                 )
                 added += 1
-            except Exception as e:
-                logging.exception(f"Failed to add dataset {in_file} with error {e}")
+            except Exception:  # pylint: disable=broad-except
+                logging.exception("Failed to add dataset %s", in_file)
                 failed += 1
 
-    logging.info(f"Added {added} and failed {failed} datasets.")
+    logging.info("Added %s and failed %s datasets.", added, failed)
     if statsd_setting:
         statsd_gauge_reporting(added, ["app:fs_to_dc", "action:added"], statsd_setting)
         statsd_gauge_reporting(

@@ -70,7 +70,7 @@ sqs_message = {
 }
 
 
-TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
+TEST_DATA_FOLDER: Path = Path(__file__).parent / "data"
 LANDSAT_C3_SQS_MESSAGE: str = (
     "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.sqs.json"
 )
@@ -93,9 +93,8 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
-@pytest.mark.depends(on=["add_products"])
 @mock_sqs
-def test_extract_metadata_from_message(aws_credentials):
+def test_extract_metadata_from_message(aws_credentials, odc_test_db_with_products):
     TEST_QUEUE_NAME = "a_test_queue"
     sqs_resource = boto3.resource("sqs")
 
@@ -169,7 +168,7 @@ def test_odc_metadata_link(ga_ls8c_ard_3_message):
         ga_ls8c_ard_3_message, None, "STAC-LINKS-REL:odc_yaml"
     )
     assert (
-        uri == "http://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
+        uri == "https://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
         "baseline/ga_ls8c_ard_3/088/080/2020/05/25/"
         "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml"
     )
@@ -178,12 +177,12 @@ def test_odc_metadata_link(ga_ls8c_ard_3_message):
 def test_stac_link(ga_ls8c_ard_3_message):
     metadata, uri = handle_json_message(ga_ls8c_ard_3_message, stac_transform, None)
     assert (
-        uri != "http://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
+        uri != "https://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
         "baseline/ga_ls8c_ard_3/088/080/2020/05/25/"
         "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml"
     )
     assert (
-        uri == "http://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
+        uri == "https://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
         "baseline/ga_ls8c_ard_3/088/080/2020/05/25/"
         "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
     )

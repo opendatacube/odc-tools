@@ -19,7 +19,14 @@ disable=duplicate-code,
     ungrouped-imports,
     len-as-condition,
     no-else-return,
-    import-error
+    import-error,
+    redefined-outer-name, # Remove in future. DRA 2022-11-03
+    too-many-branches,
+    too-many-statements,
+    raise-missing-from,
+    too-many-locals,
+    too-many-arguments,
+    consider-using-f-string
 
 [BASIC]
 

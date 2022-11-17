@@ -26,15 +26,11 @@ class IndexingException(Exception):
     Exception to raise for error during SQS to DC indexing/archiving
     """
 
-    pass
-
 
 class SkippedException(Exception):
     """
     Exception to raise for error if dataset exists  and not updating
     """
-
-    pass
 
 
 # A whole bunch of generic Click options
@@ -76,14 +72,14 @@ transform_stac_absolute = click.option(
     help="Use absolute paths from the STAC document.",
 )
 
-update = click.option(
+update_flag = click.option(
     "--update",
     is_flag=True,
     default=False,
     help="If set, update instead of add datasets.",
 )
 
-update_if_exists = click.option(
+update_if_exists_flag = click.option(
     "--update-if-exists",
     is_flag=True,
     default=False,
@@ -135,7 +131,7 @@ publish_action = click.option(
     type=str,
     default=None,
     nargs=1,
-    help=("SNS topic arn to publish indexing/archiving actions to."),
+    help="SNS topic arn to publish indexing/archiving actions to.",
 )
 
 archive = click.option(
@@ -171,8 +167,8 @@ def get_esri_list():
     stream = pkg_resources.resource_stream(__name__, "esri-lc-tiles-list.txt")
     with stream as f:
         for tile in f.readlines():
-            id = tile.decode().rstrip("\n")
-            yield ESRI_LANDCOVER_BASE_URI.format(id=id)
+            tile_id = tile.decode().rstrip("\n")
+            yield ESRI_LANDCOVER_BASE_URI.format(id=tile_id)
 
 
 def index_update_dataset(
@@ -217,7 +213,7 @@ def index_update_dataset(
     except ValueError as e:
         raise IndexingException(
             f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
-        )
+        ) from e
     if ds is None:
         raise IndexingException(
             f"Failed to create dataset with error {err}\n The URI was {uri}"
@@ -312,7 +308,9 @@ def index_update_dataset(
         logging.info("Existing Dataset Updated: %s", ds.id)
 
 
-def statsd_gauge_reporting(value, tags=[], statsd_setting="localhost:8125"):
+def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125"):
+    if tags is None:
+        tags = []
     host = statsd_setting.split(":")[0]
     port = statsd_setting.split(":")[1]
     options = {"statsd_host": host, "statsd_port": port}

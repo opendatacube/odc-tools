@@ -44,10 +44,12 @@ def sns_setup(aws_credentials, aws_env):
         yield sns_arn, sqs, queue.get("QueueUrl")
 
 
-def test_s3_publishing_action_from_stac(aws_env, odc_db_for_sns, s2am_dsid, sns_setup):
+def test_s3_publishing_action_from_stac(
+    mocked_s3_datasets, odc_test_db_with_products, s2am_dsid, sns_setup
+):
     sns_arn, sqs, queue_url = sns_setup
 
-    dc = odc_db_for_sns
+    dc = odc_test_db_with_products
     assert dc.index.datasets.get(s2am_dsid) is None
 
     runner = CliRunner()
@@ -60,12 +62,13 @@ def test_s3_publishing_action_from_stac(aws_env, odc_db_for_sns, s2am_dsid, sns_
             "--skip-lineage",
             "--update-if-exists",
             f"--publish-action={sns_arn}",
-            "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/*stac-item.json",
+            "s3://odc-tools-test/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/*stac-item.json",
             "ga_s2am_ard_3",
         ],
         catch_exceptions=False,
     )
 
+    print(f"s3-to-dc exit_code: {result.exit_code}, output:{result.output}")
     assert result.exit_code == 0
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
@@ -80,12 +83,12 @@ def test_s3_publishing_action_from_stac(aws_env, odc_db_for_sns, s2am_dsid, sns_
 
 
 def test_s3_publishing_action_from_eo3(
-    aws_credentials, aws_env, odc_db_for_sns, s2am_dsid, sns_setup
+    mocked_s3_datasets, odc_test_db_with_products, s2am_dsid, sns_setup
 ):
     """Same as above but requiring stac to eo3 conversion"""
     sns_arn, sqs, queue_url = sns_setup
 
-    dc = odc_db_for_sns
+    dc = odc_test_db_with_products
     assert dc.index.datasets.get(s2am_dsid) is None
 
     runner = CliRunner()
@@ -96,12 +99,13 @@ def test_s3_publishing_action_from_eo3(
             "--update-if-exists",
             "--skip-lineage",
             f"--publish-action={sns_arn}",
-            "s3://dea-public-data/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/*odc-metadata.yaml",
+            "s3://odc-tools-test/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/*odc-metadata.yaml",
             "ga_s2am_ard_3",
         ],
         catch_exceptions=False,
     )
 
+    print(f"s3-to-dc exit_code: {result.exit_code}, output:{result.output}")
     assert result.exit_code == 0
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
@@ -131,17 +135,24 @@ def sqs_message():
         "Message": json.dumps(body),
         "Timestamp": "2020-08-21T08:28:45.921Z",
         "SignatureVersion": "1",
-        "Signature": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "SigningCertURL": "https://sns.ap-southeast-2.amazonaws.com/SimpleNotificationService-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.pem",
-        "UnsubscribeURL": "https://sns.ap-southeast-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:ap-southeast-2:xxxxxxxxxxxxxxx:test-topic:xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxx",
+        "Signature": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "SigningCertURL": "https://sns.ap-southeast-2.amazonaws.com/SimpleNotifi"
+        "cationService-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ".pem",
+        "UnsubscribeURL": "https://sns.ap-southeast-2.amazonaws.com/?Action=Unsu"
+        "bscribe&SubscriptionArn=arn:aws:sns:ap-southeast-2:xx"
+        "xxxxxxxxxxxxx:test-topic:xxxxxxx-xxxx-xxxx-xxxx-xxxxx"
+        "xxxxxxxxx",
     }
     return message
 
 
 def test_sqs_publishing(
-    aws_credentials, aws_env, sqs_message, odc_db_for_sns, sns_setup
+    aws_credentials, aws_env, sqs_message, odc_test_db_with_products, sns_setup
 ):
-    "Test that actions are published with sqs_to_dc"
+    """Test that actions are published with sqs_to_dc"""
     sns_arn, sqs, queue_url = sns_setup
     input_queue_name = "input-queue"
 
@@ -165,6 +176,7 @@ def test_sqs_publishing(
         ],
         catch_exceptions=False,
     )
+    print(f"sqs-to-dc exit_code: {result.exit_code}, output:{result.output}")
 
     assert result.exit_code == 0
 
@@ -181,7 +193,7 @@ def test_sqs_publishing(
 def test_sqs_publishing_archive(
     aws_credentials, aws_env, sqs_message, odc_db_for_archive, ls5t_dsid, sns_setup
 ):
-    """Test that archive action is published with archive flag"""
+    """Test that an ARCHIVE SNS message is published when the --archive flag is used."""
     sns_arn, sqs, queue_url = sns_setup
 
     input_queue_name = "input-queue"
@@ -209,6 +221,7 @@ def test_sqs_publishing_archive(
         ],
         catch_exceptions=False,
     )
+    print(f"sqs-to-dc exit_code: {result.exit_code}, output:{result.output}")
 
     assert result.exit_code == 0
 
@@ -223,14 +236,14 @@ def test_sqs_publishing_archive(
 def test_with_archive_less_mature(
     aws_credentials,
     aws_env,
-    odc_db_for_maturity_tests,
+    odc_db,
     nrt_dsid,
     final_dsid,
     sns_setup,
 ):
     sns_arn, sqs, queue_url = sns_setup
 
-    dc = odc_db_for_maturity_tests
+    dc = odc_db
     assert dc.index.datasets.get(nrt_dsid) is None
 
     runner = CliRunner()
@@ -244,6 +257,7 @@ def test_with_archive_less_mature(
         ],
         catch_exceptions=False,
     )
+    print(f"fs-to-dc exit_code: {nrt_result.exit_code}, " "output:{nrt_result.output}")
 
     assert nrt_result.exit_code == 0
     assert dc.index.datasets.get(nrt_dsid) is not None
@@ -268,6 +282,9 @@ def test_with_archive_less_mature(
             f"--publish-action={sns_arn}",
         ],
         catch_exceptions=False,
+    )
+    print(
+        f"fs-to-dc exit_code: {final_result.exit_code}, " "output:{final_result.output}"
     )
 
     assert final_result.exit_code == 0

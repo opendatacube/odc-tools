@@ -2,7 +2,7 @@
 ARG V_PG=14
 ARG V_PGIS=14-postgis-3
 
-FROM osgeo/gdal:ubuntu-small-latest
+FROM osgeo/gdal:ubuntu-small-3.5.3
 ENV LC_ALL=C.UTF-8
 ENV PATH="/env/bin:${PATH}"
 
@@ -43,12 +43,12 @@ RUN groupadd --gid 1000 odc \
   && chown -R odc:odc /home/odc/ \
   && true
 
-COPY constraints.txt requirements.txt /conf/
+COPY constraints.txt requirements.in /conf/
 
 RUN python3 -m pip install -U pip cython
 
 RUN python3 -m pip install \
-       -r /conf/requirements.txt \
+       -r /conf/requirements.in \
        -c /conf/constraints.txt
 
 

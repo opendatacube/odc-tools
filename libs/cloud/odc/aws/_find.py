@@ -3,8 +3,10 @@ from itertools import takewhile
 from types import SimpleNamespace
 
 
+# TODO: Document these SimpleNamespace objects that are returned!
+# Probably by turning them into dataclasses
 def s3_file_info(f, bucket):
-    url = "s3://{}/{}".format(bucket, f.get("Key"))
+    url = f"s3://{bucket}/{f.get('Key')}"
     return SimpleNamespace(
         url=url,
         size=f.get("Size"),
@@ -64,7 +66,7 @@ def parse_query(url_query):
         elif "**" not in qq_set:
             depth = len(qq)
         else:
-            raise ValueError("Bad query: %s" % url_query)
+            raise ValueError(f"Bad query: {url_query}")
 
     base = "/".join(base)
     base = base.rstrip("/") + "/"

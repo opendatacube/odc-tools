@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-from datacube import Datacube
-from odc.apps.dc_tools.add_update_products import _get_product, _parse_csv, cli
+from odc.apps.dc_tools.add_update_products import _get_product, _parse_csv
+from odc.apps.dc_tools.add_update_products import cli as add_update_products_cli
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LOCAL_EXAMPLE: str = "example_product_list.csv"
@@ -13,24 +13,16 @@ PRODUCT_EXAMPLE: str = (
 )
 
 
-def have_db():
-    try:
-        Datacube()
-    except Exception:
-        return False
-    return True
-
-
 def test_parse_local_csv(local_csv):
     local_contents = [x for x in _parse_csv(local_csv)]
 
-    assert len(local_contents) == 11
+    assert len(local_contents) == 12
     assert local_contents[0].name == "s2_l2a"
 
 
 def test_parse_remote_csv(remote_csv):
     remote_contents = [x for x in _parse_csv(remote_csv)]
-    assert len(remote_contents) == 11
+    assert len(remote_contents) == 12
     assert remote_contents[0].name == "s2_l2a"
 
 
@@ -40,26 +32,17 @@ def test_load_product_def(remote_product):
     assert products[0]["name"] == "s2_l2a"
 
 
-@pytest.mark.skipif(have_db() is False, reason="No database")
-@pytest.mark.depends(name="have_db")
-def test_havedb():
-    assert have_db()
-
-
-@pytest.mark.depends(on="have_db")
-@pytest.mark.depends(name="add_products")
-def test_add_products(local_csv):
+def test_add_products(local_csv, odc_db):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
-        cli,
+        add_update_products_cli,
         [
             local_csv,
             "--update-if-exists",
-            "--statsd-setting",
-            "localhost:8125",
         ],
     )
+    print(f"CLI Output: {result.output}")
     assert result.exit_code == 0
 
 
