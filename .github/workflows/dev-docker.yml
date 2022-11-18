@@ -10,6 +10,7 @@ on:
     # Everything should be merged through PRs anyway.
     branches:
       - develop
+      - pypi/publish
     paths:
       - 'docker/**'
 
