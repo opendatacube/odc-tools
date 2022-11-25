@@ -36,7 +36,7 @@ PRODUCT = (
 # URIs need north/south, which is N00 and east/west, which is E000
 URI_TEMPLATE = (
     "https://esa-worldcover.s3.eu-central-1.amazonaws.com/"
-    "v100/2020/map/ESA_WorldCover_10m_2020_v100_{ns}{ew}_Map.tif"
+    "{algo}/{year}/map/ESA_WorldCover_10m_{year}_{algo}_{ns}{ew}_Map.tif"
 )
 
 
@@ -148,6 +148,13 @@ def process_uri_tile(
     return True
 
 
+def select_map_version(version: str):
+    if version == "2021":
+        URI_TEMPLATE.format(year="2021", algo="v200")
+        return
+    URI_TEMPLATE.format(year="2020", algo="v100")
+
+
 def esa_wc_to_dc(
     dc: Datacube,
     bounding_box,
@@ -156,8 +163,12 @@ def esa_wc_to_dc(
     n_workers: int = 100,
     archive_less_mature: bool = False,
     publish_action: str = None,
+    **kwargs
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
+
+    # Select map version
+    select_map_version(kwargs.get("version"))
 
     # Get a generator of (uris)
     uris_tiles = list(get_tile_uris(bounding_box))
