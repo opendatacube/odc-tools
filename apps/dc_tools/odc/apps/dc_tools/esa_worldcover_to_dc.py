@@ -162,7 +162,7 @@ def esa_wc_to_dc(
     n_workers: int = 100,
     archive_less_mature: bool = False,
     publish_action: str = None,
-    **kwargs
+    **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
