@@ -70,7 +70,7 @@ def add_odc_product(dc: Datacube):
     print("Product definition added")
 
 
-def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
+def get_tile_uris(bounding_box: str, v: dict[str, str]) -> Tuple[str, str]:
     # Validate the bounding_box
     if bounding_box is None:
         logging.warning(
@@ -101,7 +101,7 @@ def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
             else:
                 y_str = f"N{y:02d}"
             yield (
-                URI_TEMPLATE.format(ns=y_str, ew=x_str),
+                URI_TEMPLATE.format(ns=y_str, ew=x_str, algo=v["algo"], year=v["year"]),
                 f"{x_str}_{y_str}",
             )
 
@@ -149,10 +149,9 @@ def process_uri_tile(
 
 
 def select_map_version(version: str):
-    if version == "2021":
-        URI_TEMPLATE.format(year="2021", algo="v200")
-        return
-    URI_TEMPLATE.format(year="2020", algo="v100")
+    if str(version) == "2021":
+        return dict(year="2021", algo="v200")
+    return dict(year="2020", algo="v100")
 
 
 def esa_wc_to_dc(
@@ -163,15 +162,15 @@ def esa_wc_to_dc(
     n_workers: int = 100,
     archive_less_mature: bool = False,
     publish_action: str = None,
-    **kwargs,
+    **kwargs
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
     # Select map version
-    select_map_version(kwargs.get("version"))
+    v = select_map_version(kwargs.get("version"))
 
     # Get a generator of (uris)
-    uris_tiles = list(get_tile_uris(bounding_box))
+    uris_tiles = list(get_tile_uris(bounding_box, v))
     if limit:
         uris_tiles = uris_tiles[0:limit]
 
