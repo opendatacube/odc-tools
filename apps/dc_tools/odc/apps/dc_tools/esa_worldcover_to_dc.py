@@ -103,7 +103,9 @@ def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
             else:
                 y_str = f"N{y:02d}"
             yield (
-                URI_TEMPLATE.format(ns=y_str, ew=x_str, algo=version["algo"], year=version["year"]),
+                URI_TEMPLATE.format(
+                    ns=y_str, ew=x_str, algo=version["algo"], year=version["year"]
+                ),
                 f"{x_str}_{y_str}",
             )
 
@@ -164,7 +166,7 @@ def esa_wc_to_dc(
     n_workers: int = 100,
     archive_less_mature: bool = False,
     publish_action: str = None,
-    **kwargs
+    **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
