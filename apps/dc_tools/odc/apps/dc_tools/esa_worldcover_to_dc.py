@@ -39,7 +39,7 @@ URI_TEMPLATE = (
     "{algo}/{year}/map/ESA_WorldCover_10m_{year}_{algo}_{ns}{ew}_Map.tif"
 )
 
-version = dict(algo="v100", year="2020")
+map_version = dict(algo="v100", year="2020")
 
 
 def _unpack_bbox(bounding_box: str) -> Tuple[int, int, int, int]:
@@ -104,7 +104,10 @@ def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
                 y_str = f"N{y:02d}"
             yield (
                 URI_TEMPLATE.format(
-                    ns=y_str, ew=x_str, algo=version["algo"], year=version["year"]
+                    ns=y_str,
+                    ew=x_str,
+                    algo=map_version["algo"],
+                    year=map_version["year"],
                 ),
                 f"{x_str}_{y_str}",
             )
@@ -154,8 +157,8 @@ def process_uri_tile(
 
 def select_map_version(version: str):
     if str(version) == "2021":
-        version["year"] = "2021"
-        version["algo"] = "v200"
+        map_version["year"] = "2021"
+        map_version["algo"] = "v200"
 
 
 def esa_wc_to_dc(
@@ -166,12 +169,8 @@ def esa_wc_to_dc(
     n_workers: int = 100,
     archive_less_mature: bool = False,
     publish_action: str = None,
-    **kwargs,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
-
-    # Select map version
-    select_map_version(kwargs.get("version"))
 
     # Get a generator of (uris)
     uris_tiles = list(get_tile_uris(bounding_box))
@@ -233,6 +232,12 @@ def esa_wc_to_dc(
     help="Number of threads to use to process, default 20",
 )
 @statsd_setting
+@click.option(
+    "--version",
+    default=None,
+    type=str,
+    help="Select version of world cover map, default 2020",
+)
 def cli(
     limit,
     update_if_exists,
@@ -242,10 +247,14 @@ def cli(
     workers,
     statsd_setting,
     publish_action,
+    version,
 ):
     """
     Index the ESA WorldCover product automatically.
     """
+
+    # Select map version
+    select_map_version(version)
 
     dc = Datacube()
 
