@@ -234,7 +234,7 @@ def esa_wc_to_dc(
 @statsd_setting
 @click.option(
     "--version",
-    default=None,
+    default="2020",
     type=str,
     help="Select version of world cover map, default 2020",
 )
