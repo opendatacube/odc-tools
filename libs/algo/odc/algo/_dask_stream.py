@@ -2,14 +2,13 @@
 
    - dask_compute_stream
 """
+import dask.bag
 import queue
 import threading
-from random import randint
-from typing import Any, Iterable
-
-import dask.bag
 import toolz
 from dask.distributed import Client
+from random import randint
+from typing import Any, Iterable
 
 
 def _randomize(prefix):

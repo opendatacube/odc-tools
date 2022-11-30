@@ -1,6 +1,7 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import csv
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from gzip import GzipFile
 from io import BytesIO
 from types import SimpleNamespace

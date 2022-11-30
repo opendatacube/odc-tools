@@ -1,15 +1,13 @@
 """Crawl Thredds for prefixes and fetch YAML's for indexing
 and dump them into a Datacube instance
 """
+import click
 import logging
-import sys
+from odc.thredds import download_yamls, thredds_find_glob
 from typing import List, Tuple
 
-import click
 from datacube import Datacube
 from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
-from odc.thredds import download_yamls, thredds_find_glob
-
 from ._docs import from_yaml_doc_stream
 
 
@@ -41,7 +39,7 @@ def dump_list_to_odc(
             try:
                 dc.index.datasets.add(ds)
                 ds_added += 1
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logging.error(e)
                 ds_failed += 1
 

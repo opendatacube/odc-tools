@@ -1,11 +1,12 @@
 """Crawl Thredds for prefixes and fetch YAML's for indexing
 and dump them into a Datacube instance
 """
+import click
 import json
 import logging
+from odc.azure import download_blob, find_blobs
 from typing import List, Optional
 
-import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._stac import stac_transform
@@ -20,7 +21,6 @@ from odc.apps.dc_tools.utils import (
     update_if_exists_flag,
     publish_action,
 )
-from odc.azure import download_blob, find_blobs
 
 
 def stream_blob_urls(account_url, container_name, credential, blobs: List[str]):

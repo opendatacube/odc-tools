@@ -1,11 +1,10 @@
-from functools import partial
-from typing import List, Sequence
-
 import dask
 import dask.array as da
 import numpy as np
 import xarray as xr
 from dask.base import tokenize
+from functools import partial
+from typing import Sequence
 
 from ._masking import keep_good_np
 
@@ -44,7 +43,7 @@ def xr_quantile_bands(
 ) -> xr.Dataset:
 
     """
-    Calculates the percentiles of the input data along the time dimension.
+    Calculates the quantiles of the input data along the time dimension.
 
     This approach is approximately 700x faster than the `numpy` and `xarray` nanpercentile functions.
 
@@ -52,10 +51,11 @@ def xr_quantile_bands(
         float or integer with `nodata` values to indicate gaps in data.
         `nodata` must be the largest or smallest values in the dataset or NaN.
 
-    :param percentiles: A sequence of quantiles in the [0.0, 1.0] range
+    :param quantiles: A sequence of quantiles in the [0.0, 1.0] range
 
     :param nodata: The `nodata` value
     """
+    # pylint: disable=undefined-loop-variable
 
     data_vars = {}
     for band, xx in src.data_vars.items():
@@ -136,6 +136,9 @@ def xr_quantile(
         else:
             data_vars[band] = (out_dims, np.stack(data, axis=0))
 
-    coords = dict((dim, src.coords[dim]) for dim in xx.dims[1:])
+    # pylint: disable=undefined-loop-variable
+    coords = dict(
+        (dim, src.coords[dim]) for dim in xx.dims[1:]
+    )  # pylint: disable=undefined-loop-variable
     coords["quantile"] = np.array(quantiles)
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=src.attrs)

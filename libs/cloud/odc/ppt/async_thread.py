@@ -9,7 +9,7 @@ from . import EOS_MARKER
 log = logging.getLogger(__name__)
 
 
-class AsyncThread(object):
+class AsyncThread:
     @staticmethod
     def _worker(loop):
         asyncio.set_event_loop(loop)

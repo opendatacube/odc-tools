@@ -1,16 +1,17 @@
 """ Helper methods for Geometric Median computation.
 """
-import functools
-from typing import Optional, Tuple, Union
-
 import dask
 import dask.array as da
+import functools
 import numpy as np
 import xarray as xr
+from typing import Optional, Tuple, Union
 
 from ._dask import randomize, reshape_yxbt
 from ._masking import from_float_np, to_float_np
 from ._memsink import yxbt_sink
+
+# pylint: disable=import-outside-toplevel
 
 
 def reshape_for_geomedian(ds, axis="time"):
@@ -89,7 +90,7 @@ def xr_geomedian(ds, axis="time", where=None, **kw):
 
         if where.shape != xx_data.shape[:2]:
             raise ValueError("Shape for `where` parameter doesn't match")
-        set_nan = ~where
+        set_nan = ~where  # pylint: disable=invalid-unary-operand-type
     else:
         set_nan = None
 
@@ -98,7 +99,7 @@ def xr_geomedian(ds, axis="time", where=None, **kw):
             xx_data = xx_data.rechunk(xx_data.chunksize[:2] + (-1, -1))
 
         data = da.map_blocks(
-            lambda x: nangeomedian_pcm(x, **kw),
+            lambda x: nangeomedian_pcm(x, **kw),  # pylint: disable=unnecessary-lambda
             xx_data,
             name=randomize("geomedian"),
             dtype=xx_data.dtype,

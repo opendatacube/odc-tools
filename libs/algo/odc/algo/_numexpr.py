@@ -1,11 +1,10 @@
-import functools
-from typing import Any, Dict, Optional
-
 import dask
 import dask.array as da
+import functools
 import numexpr as ne
 import numpy as np
 import xarray as xr
+from typing import Any, Dict, Optional
 
 from ._dask import flatten_kv, randomize, unflatten_kv
 

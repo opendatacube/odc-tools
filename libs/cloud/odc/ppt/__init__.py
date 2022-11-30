@@ -1,8 +1,11 @@
 """ Parallel Processing Tools
 """
+import concurrent.futures as fut
 from threading import BoundedSemaphore
 
 EOS_MARKER = object()
+
+# pylint: disable=consider-using-with
 
 
 def qmap(proc, q, eos_marker=None):
@@ -15,11 +18,11 @@ def qmap(proc, q, eos_marker=None):
         if item is eos_marker:
             q.task_done()
             break
-        else:
-            try:
-                yield proc(item)
-            finally:
-                q.task_done()
+
+        try:
+            yield proc(item)
+        finally:
+            q.task_done()
 
 
 def q2q_map(proc, q_in, q_out, eos_marker=None):
@@ -33,9 +36,9 @@ def q2q_map(proc, q_in, q_out, eos_marker=None):
             q_out.put(item, block=True)
             q_in.task_done()
             break
-        else:
-            q_out.put(proc(item))
-            q_in.task_done()
+
+        q_out.put(proc(item))
+        q_in.task_done()
 
 
 def future_results(it, max_active):
@@ -55,14 +58,13 @@ def future_results(it, max_active):
     concurrent.futures.as_completed, but with upper bound on the number of
     active futures rather than a timeout.
     """
-    import concurrent.futures as fut
 
     def result(f):
         err = f.exception()
         if err is not None:
-            return (None, err)
+            return None, err
         else:
-            return (f.result(), None)
+            return f.result(), None
 
     def fill(src, n, dst):
         while n > 0:

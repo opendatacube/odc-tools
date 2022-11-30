@@ -1,9 +1,10 @@
 """Interactive dc viewer"""
+import ipyleaflet as L
+from ipywidgets import widgets as w
+from pandas import Period
 from types import SimpleNamespace
 
 from datacube.api.query import Query
-from pandas import Period
-
 from ._map import show_datasets
 
 
@@ -74,9 +75,6 @@ class DcViewer:
     def _build_ui(
         self, product_names, time, zoom=None, center=None, height=None, width=None
     ):
-        import ipyleaflet as L
-        from ipywidgets import widgets as w
-
         pp = {"zoom": zoom or 1}
 
         if center is not None:
@@ -128,9 +126,9 @@ class DcViewer:
                 flex="0 1 auto",
                 width="6em",
             ),
-            style=dict(
+            style={
                 # button_color='green'
-            ),
+            },
         )
 
         ctrls = w.HBox(

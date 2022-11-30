@@ -1,14 +1,14 @@
+import boto3
 import json
 import os
-from types import SimpleNamespace
-
-import boto3
 import pytest
 from click.testing import CliRunner
 from moto import mock_sqs
-from odc.apps.cloud import redrive_to_queue
 from odc.aws._find import parse_query
 from odc.aws.queue import get_queue, get_queues, redrive_queue
+from types import SimpleNamespace
+
+from odc.apps.cloud import redrive_to_queue
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
 DEAD_QUEUE_NAME = "mock-dead-queue"

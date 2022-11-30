@@ -1,13 +1,11 @@
 """Thredds crawling and YAML fetching utilities
 """
 from multiprocessing.dummy import Pool as ThreadPool
-from typing import List, Optional, Tuple
-from urllib.parse import urlparse
 
 import requests
 from thredds_crawler.crawl import Crawl
-
-from ..cloud._version import __version__
+from typing import List, Optional, Tuple
+from urllib.parse import urlparse
 
 
 def thredds_find_glob(
@@ -70,8 +68,8 @@ def _download(url: str) -> Tuple[Optional[bytes], str, Optional[str]]:
     try:
         resp = requests.get(url)
         if resp.status_code == 200:
-            return (resp.content, target_filename, None)
+            return resp.content, target_filename, None
         else:
-            return (None, target_filename, "Yaml not found")
-    except Exception as e:
-        return (None, target_filename, "Thredds Failed")
+            return None, target_filename, "Yaml not found"
+    except Exception:  # pylint: disable=broad-except
+        return None, target_filename, "Thredds Failed"

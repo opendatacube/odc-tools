@@ -1,26 +1,26 @@
-import threading
-import warnings
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
-from uuid import uuid4
-
 import dask
 import dask.array as da
 import numpy as np
 import rasterio
+import threading
+import warnings
 import xarray as xr
 from affine import Affine
 from dask.base import tokenize
 from dask.delayed import Delayed
+from dataclasses import dataclass
+from pathlib import Path
 from rasterio import MemoryFile
 from rasterio.shutil import copy as rio_copy
 from rasterio.windows import Window
+from typing import Any, Dict, Optional, Tuple, Union
+from uuid import uuid4
 
 from ._numeric import half_up, np_slice_to_idx, roi_shrink2, roundup16
 from ._types import NodataType, NumpyIndex
 from ._warp import _shrink2
 
+# pylint: disable=import-outside-toplevel,invalid-name
 _UNSET = ":unset:-427d8b3f1944"
 
 
@@ -455,7 +455,8 @@ def save_cog(
     :param blocksize: Block size of the final COG (512 pixels)
     :param ovr_blocksize: Block size of the overview images (default same as main image)
     :param bigtiff: True|False|"auto" Default is to use bigtiff for inputs greater than 4Gb uncompressed
-    :param temp_folder: By default first pass images are written to RAM, with this option they can be written to disk instead
+    :param temp_folder: By default first pass images are written to RAM, with this option they
+                        can be written to disk instead
     :param overview_resampling: Resampling to use for overview generation: nearest|average|bilinear|...
 
     :param rio_opts_first_pass: Change defaults for first pass compression

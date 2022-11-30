@@ -1,6 +1,5 @@
-import tarfile
-
 import click
+import tarfile
 from odc.io.tar import add_txt_file, tar_mode
 from odc.thredds import download_yamls, thredds_find_glob
 

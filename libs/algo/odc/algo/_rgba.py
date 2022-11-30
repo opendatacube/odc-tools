@@ -1,11 +1,10 @@
 """ Helpers for dealing with RGB(A) images.
 """
-from typing import List, Optional, Tuple, Union
-
 import dask
 import dask.array as da
 import numpy as np
 import xarray as xr
+from typing import List, Optional, Tuple, Union
 
 from ._dask import randomize
 
@@ -27,17 +26,18 @@ def guess_rgb_names(bands: List[str]) -> Tuple[str, str, str]:
         n = len(candidates)
         if n == 0:
             raise ValueError('Found no candidate for color "{}"'.format(c))
-        elif n > 1:
+
+        if n > 1:
             raise ValueError('Found too many candidates for color "{}"'.format(c))
 
         out.append(candidates[0])
-    r, g, b = out
-    return (r, g, b)
+    r, g, b = out  # pylint:disable=unbalanced-tuple-unpacking
+    return r, g, b
 
 
 def auto_guess_clamp(ds: xr.Dataset):
     # TODO: deal with nodata > 0 case
-    return (0, max(x.data.max() for x in ds.data_vars.values()))
+    return 0, max(x.data.max() for x in ds.data_vars.values())
 
 
 def to_u8(x: np.ndarray, x_min: float, x_max: float) -> np.ndarray:
@@ -96,8 +96,8 @@ def to_rgba(
     if clamp is None:
         if is_dask:
             raise ValueError("Must specify clamp for dask inputs")
-        else:
-            clamp = auto_guess_clamp(ds[list(bands)])
+
+        clamp = auto_guess_clamp(ds[list(bands)])
     elif not isinstance(clamp, tuple):
         clamp = (0, clamp)
 
@@ -124,7 +124,7 @@ def to_rgba(
     else:
         data = to_rgba_np(r, g, b, nodata, clamp)
 
-    coords = {name: coord for name, coord in red_band.coords.items()}
+    coords = dict(red_band.coords.items())
     coords.update(band=["r", "g", "b", "a"])
 
     attrs = {}

@@ -1,7 +1,5 @@
-import tarfile
-from urllib.parse import urlparse
-
 import click
+import tarfile
 from odc.azure import download_yamls, find_blobs
 from odc.io.tar import add_txt_file, tar_mode
 
@@ -30,7 +28,7 @@ def cli(
 
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
-    yaml_urls = find_blobs(account_url, container_name, credential, prefix, suffix)
+    yaml_urls = find_blobs(container_name, credential, prefix, suffix, account_url)
 
     print(f"Found {len(yaml_urls)} datasets")
     yamls = download_yamls(account_url, container_name, credential, yaml_urls, workers)

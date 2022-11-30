@@ -1,7 +1,7 @@
 from click.testing import CliRunner
-from odc.apps.dc_tools.fs_to_dc import cli as fs_to_dc_cli
-
 from pathlib import Path
+
+from odc.apps.dc_tools.fs_to_dc import cli as fs_to_dc_cli
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 

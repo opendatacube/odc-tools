@@ -1,5 +1,9 @@
 """ Notebook display helper methods.
 """
+from IPython.display import display
+from ipywidgets import HBox, IntProgress, Label, Layout, VBox
+from jupyter_ui_poll import run_ui_poll_loop
+from timeit import default_timer as t_now
 
 
 def mk_cbk_ui(width="100%"):
@@ -7,9 +11,6 @@ def mk_cbk_ui(width="100%"):
 
     :param width: Width of the UI, for example: '80%' '200px' '30em'
     """
-    from timeit import default_timer as t_now
-
-    from ipywidgets import HBox, IntProgress, Label, Layout, VBox
 
     pbar = IntProgress(min=0, max=100, value=0, layout=Layout(width="100%"))
     lbl_right = Label("")
@@ -41,8 +42,6 @@ def with_ui_cbk(width="100%", **kwargs):
 
     :param width: Width of the UI, for example: '80%' '200px' '30em'
     """
-    from IPython.display import display
-
     ui, cbk = mk_cbk_ui(width=width, **kwargs)
     display(ui)
     return cbk
@@ -53,6 +52,5 @@ def simple_progress_cbk(n, total):
 
 
 def ui_poll(f, sleep=0.02, n=1):
-    from jupyter_ui_poll import run_ui_poll_loop
 
     return run_ui_poll_loop(f, sleep, n=n)

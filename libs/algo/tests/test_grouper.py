@@ -1,7 +1,8 @@
 import pytest
+from odc.algo._grouper import group_by_nothing, key2num, mid_longitude, solar_offset
+
 from datacube.testutils import mk_sample_dataset
 from datacube.utils import geometry as geom
-from odc.algo._grouper import group_by_nothing, key2num, mid_longitude, solar_offset
 
 
 @pytest.mark.parametrize("lon,lat", [(0, 10), (100, -10), (-120, 30)])

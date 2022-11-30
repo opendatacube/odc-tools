@@ -1,9 +1,8 @@
+import boto3
 import itertools
 import json
-from typing import Any, Iterable, Mapping, Optional
-
-import boto3
 from toolz import dicttoolz
+from typing import Any, Iterable, Mapping, Optional
 
 
 def redrive_queue(

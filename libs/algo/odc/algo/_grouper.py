@@ -1,10 +1,10 @@
 """Methods for grouping Datasets spatialy and otherwise."""
-from datetime import timedelta
-from typing import Any, Dict, Hashable, Iterable, Iterator, List, Optional
-
 import numpy as np
 import pandas as pd
 import xarray as xr
+from datetime import timedelta
+from typing import Any, Dict, Hashable, Iterable, Iterator, List, Optional
+
 from datacube.model import Dataset
 from datacube.utils.dates import normalise_dt
 from datacube.utils.geometry import Geometry

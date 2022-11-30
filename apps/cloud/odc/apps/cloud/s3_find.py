@@ -1,6 +1,5 @@
-import sys
-
 import click
+import sys
 from odc.aio import S3Fetcher, s3_find_glob
 
 

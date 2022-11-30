@@ -3,7 +3,6 @@ from click.testing import CliRunner
 
 from odc.apps.dc_tools.cop_dem_to_dc import get_dem_tile_uris, cli as cop_dem_to_dc_cli
 
-
 PRODUCTS = ["cop_30", "cop_90"]
 
 
