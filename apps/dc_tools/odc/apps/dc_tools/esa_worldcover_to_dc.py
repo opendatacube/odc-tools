@@ -30,7 +30,7 @@ from ._stac import stac_transform
 
 PRODUCT = (
     "https://raw.githubusercontent.com/opendatacube/"
-    "datacube-dataset-config/master/products/esa_worldcover.odc-product.yaml"
+    "datacube-dataset-config/master/products/esa_worldcover_{year}.odc-product.yaml"
 )
 
 # URIs need north/south, which is N00 and east/west, which is E000
@@ -67,7 +67,7 @@ def _unpack_bbox(bounding_box: str) -> Tuple[int, int, int, int]:
 
 
 def add_odc_product(dc: Datacube):
-    for _, doc in read_documents(PRODUCT):
+    for _, doc in read_documents(PRODUCT.format(year=map_version["year"])):
         dc.index.products.add_document(doc)
     print("Product definition added")
 
@@ -82,7 +82,8 @@ def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
     else:
         bounding_box = bounding_box.split(",")
         if len(bounding_box) != 4:
-            raise ValueError("bounding_box must be in the format: minx,miny,maxx,maxy")
+            raise ValueError(
+                "bounding_box must be in the format: minx,miny,maxx,maxy")
         bounding_box = [float(x) for x in bounding_box]
 
     # The tiles are 3 x 3 degree, starting at 0,3...
@@ -121,13 +122,13 @@ def process_uri_tile(
     archive_less_mature: bool = False,
     publish_action: str = None,
 ) -> Tuple[pystac.Item, str]:
-    product_name = "esa_worldcover"
+    product_name = "esa_worldcover_" + map_version["year"]
     uri, tile = uri_tile
     properties = {
         "odc:product": product_name,
         "odc:region_code": tile,
-        "start_datetime": "2020-01-01",
-        "end_datetime": "2020-12-31",
+        "start_datetime": map_version["year"] + "-01-01",
+        "end_datetime": map_version["year"] + "-12-31",
     }
 
     with rasterio.Env(aws_unsigned=True, GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR"):
@@ -181,7 +182,8 @@ def esa_wc_to_dc(
     success = 0
     failure = 0
 
-    sys.stdout.write(f"Starting ESA Worldcover indexing with {n_workers} workers...\n")
+    sys.stdout.write(
+        f"Starting ESA Worldcover indexing with {n_workers} workers...\n")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
@@ -280,7 +282,8 @@ def cli(
             added, ["app:esa_worldcover_to_dc", "action:added"], statsd_setting
         )
         statsd_gauge_reporting(
-            failed, ["app:esa_worldcover_to_dc", "action:failed"], statsd_setting
+            failed, ["app:esa_worldcover_to_dc",
+                     "action:failed"], statsd_setting
         )
 
     if failed > 0:
