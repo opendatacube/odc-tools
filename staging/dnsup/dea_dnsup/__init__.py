@@ -7,3 +7,6 @@ from ._version import __version__
 
 def cli():
     sys.exit(dns_cli(sys.argv[1:]))
+
+
+__all__ = ["cli", "__version__"]

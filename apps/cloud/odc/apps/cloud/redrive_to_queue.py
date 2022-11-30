@@ -1,7 +1,6 @@
+import click
 import logging
 import sys
-
-import click
 from odc.aws.queue import redrive_queue
 
 
@@ -46,10 +45,10 @@ def cli(queue, to_queue, limit, dryrun):
         return
 
     if not dryrun:
-        _log.info(f"Completed sending {count} messages to the queue")
+        _log.info("Completed sending %s messages to the queue", count)
     else:
         _log.warning(
-            f"DRYRUN enabled, would have pushed approx {count} messages to the queue"
+            "DRYRUN enabled, would have pushed approx %s messages to the queue", count
         )
 
 

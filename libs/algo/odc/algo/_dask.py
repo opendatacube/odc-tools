@@ -2,22 +2,21 @@
 Generic dask helpers
 """
 
-import functools
-from bisect import bisect_left, bisect_right
-from datetime import datetime
-from random import randint
-from typing import Any, Dict, Hashable, Iterator, List, Optional, Tuple, Union, cast
-
 import dask
 import dask.array as da
+import functools
 import numpy as np
 import toolz
 import xarray as xr
+from bisect import bisect_left, bisect_right
 from dask import is_dask_collection
-from dask.distributed import TimeoutError
+import dask.distributed
 from dask.distributed import wait as dask_wait
 from dask.highlevelgraph import HighLevelGraph
+from datetime import datetime
+from random import randint
 from toolz import partition_all
+from typing import Any, Dict, Hashable, Iterator, List, Optional, Tuple, Union, cast
 
 from ._tools import ROI, roi_shape, slice_in_out
 
@@ -563,7 +562,7 @@ def reshape_yxbt(
     dsk = HighLevelGraph.from_collections(name, dsk, dependencies=deps)
     data = da.Array(dsk, name, chunks=chunks, dtype=dtype, shape=shape)
 
-    coords: Dict[Hashable, Any] = {k: c for k, c in xx.coords.items()}
+    coords: Dict[Hashable, Any] = dict(xx.coords.items())
     coords["band"] = list(xx.data_vars)
 
     return xr.DataArray(data=data, dims=dims, coords=coords, name=name0, attrs=attrs)
@@ -588,7 +587,7 @@ def unflatten_kv(xx):
     """
     Reverse operation of `flatten_kv`
     """
-    return {k: v for k, v in toolz.partition_all(2, xx)}
+    return dict(toolz.partition_all(2, xx))
 
 
 def wait_for_future(
@@ -608,8 +607,8 @@ def wait_for_future(
         try:
             dask_wait(future, timeout=poll_timeout, return_when="FIRST_COMPLETED")
             return
-        except TimeoutError:
+        except dask.distributed.TimeoutError:
             pass
         t_now = datetime.utcnow()
 
-        yield ((t_now - t0).total_seconds(), t_now)
+        yield (t_now - t0).total_seconds(), t_now

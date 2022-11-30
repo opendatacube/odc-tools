@@ -9,11 +9,11 @@ The config file contains the grid mappings to band names:
       default: ['3', '4', '5']
       swir: ['1', '2']
 """
+import click
 import logging
+import yaml
 from pathlib import Path
 
-import click
-import yaml
 from datacube import Datacube
 from datacube.storage import BandInfo
 from datacube.testutils.io import native_geobox
@@ -40,7 +40,7 @@ def cli(ctx, datacube_config):
     "--config", required=True, help="The configuration file for transformation"
 )
 @click.option(
-    "--output-dir", required=True, help="New metadata yaml file is written to this dir"
+    "--output-dir", required=True, help="New metadata YAML file is written to this dir"
 )
 @click.option("--limit", help="maximum number of datasets to process")
 @click.pass_obj
@@ -49,8 +49,8 @@ def transform(index, product, config, output_dir, limit):
     # Get the product
     dataset_type = index.products.get_by_name(product)
 
-    with open(config, "r") as config_file:
-        cfg = yaml.load(config_file) or dict()
+    with open(config, "r", encoding="utf8") as config_file:
+        cfg = yaml.load(config_file) or {}
 
     # Is this a ingested product?
     if dataset_type.grid_spec is not None:
@@ -75,7 +75,7 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
         if not dataset.uris:
-            _LOG.warn("Empty uris or No uris (skippins): %s", dataset_id)
+            _LOG.warning("Empty uris or No uris (skippins): %s", dataset_id)
             continue
 
         if not grids_done:
@@ -84,7 +84,7 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
 
             # got to try to compute grids until shape is not default [1, 1]
             grids_done = all(
-                [[1, 1] != grid["shape"] for _, grid in grids["grids"].items()]
+                [1, 1] != grid["shape"] for _, grid in grids["grids"].items()
             )
 
         dataset_sections = (grids,) + _variable_sections_of_metadata(dataset, config)
@@ -104,7 +104,7 @@ def transform_indexed_datasets(index, product, config, output_dir, limit):
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
         if not dataset.uris:
-            _LOG.warn("Empty or No uris (skipping): %s", dataset_id)
+            _LOG.warning("Empty or No uris (skipping): %s", dataset_id)
             continue
 
         grids = get_grids(dataset, config.get("grids"))
@@ -130,7 +130,7 @@ def _variable_sections_of_metadata(dataset, config):
     new_dataset = {
         "id": str(dataset.id),
         "crs": "EPSG:" + str(dataset.crs.epsg),
-        "location": [uri for uri in dataset.uris],
+        "location": list(dataset.uris),
         "file_format": dataset.metadata_doc.get("format", ""),
     }
 
@@ -148,11 +148,11 @@ def _make_and_write_dataset(out_file_name, *args):
     Assemble the metadata sections and write out.
     """
 
-    dataset = dict()
+    dataset = {}
     for arg in args:
         dataset.update(arg)
 
-    with open(out_file_name, "w") as out_file:
+    with open(out_file_name, "w", encoding="utf8") as out_file:
         yaml.dump(dataset, out_file, default_flow_style=False)
 
 
@@ -172,7 +172,7 @@ def get_geometry(dataset):
 
     valid_data = dataset._gs.get("valid_data")
 
-    return {"geometry": valid_data} if valid_data else dict()
+    return {"geometry": valid_data} if valid_data else {}
 
 
 def get_grids(dataset, band_grids=None):
@@ -201,7 +201,7 @@ def get_grids(dataset, band_grids=None):
 
         return {"grids": {"default": {"shape": list(shape), "transform": list(trans)}}}
     else:
-        grids = dict()
+        grids = {}
         for grid_name in band_grids:
 
             shape, trans = get_shape_and_transform(dataset, band_grids[grid_name])
@@ -233,13 +233,15 @@ def get_shape_and_transform(dataset, measurements):
     for m in measurements:
         try:
             geo = native_geobox(dataset, [m])
-        except Exception:
-            _LOG.warn("Failed to compute shape and transform %s", m)
+        except Exception:  # pylint: disable=broad-except
+            _LOG.warning("Failed to compute shape and transform %s", m)
             continue
         return geo.shape, geo.transform
 
     # All the bands failed use default shape [1,1]
-    _LOG.warn("All measurements failed to compute shape and transform %s", measurements)
+    _LOG.warning(
+        "All measurements failed to compute shape and transform %s", measurements
+    )
     return [1, 1], dataset.transform
 
 
@@ -263,14 +265,14 @@ def get_measurements(dataset, band_grids=None):
     grids_map = (
         {m: grid for grid in band_grids for m in band_grids[grid] if grid != "default"}
         if band_grids
-        else dict()
+        else {}
     )
 
-    measurements = dict()
+    measurements = {}
     for m in dataset.measurements:
 
         if m not in dataset.type.measurements:
-            _LOG.warn("Measurement not in product definition (skipping): %s", m)
+            _LOG.warning("Measurement not in product definition (skipping): %s", m)
             continue
 
         band_info = BandInfo(dataset, m)
@@ -300,11 +302,12 @@ def get_properties(dataset, property_offsets=None):
       }
     }
     """
-    props = dict()
-    props["datetime"] = dataset.center_time
-    props["odc:processing_datetime"] = dataset.indexed_time
-
-    return {"properties": props}
+    return {
+        "properties": {
+            "datetime": dataset.center_time,
+            "odc:processing_datetime": dataset.indexed_time,
+        }
+    }
 
 
 def get_lineage(dataset):
@@ -319,7 +322,7 @@ def get_lineage(dataset):
       }
     }
     """
-    lineage = dict()
+    lineage = {}
     for classifier in dataset.sources:
         lineage[classifier] = str(dataset.sources[classifier].id)
     return {"lineage": lineage}

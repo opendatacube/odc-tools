@@ -1,8 +1,7 @@
+import click
 import re
 import sys
 from fnmatch import fnmatch
-
-import click
 from odc.aws import s3_client
 from odc.aws.inventory import list_inventory
 
@@ -35,7 +34,7 @@ def build_predicate(glob=None, regex=None, prefix=None):
     elif len(preds) == 1:
         return preds[0]
     elif len(preds) == 2:
-        p1, p2 = preds
+        p1, p2 = preds  # pylint:disable=unbalanced-tuple-unpacking
         return lambda e: p1(e) and p2(e)
     else:
         raise ValueError("regex and glob are mutually exclusive")

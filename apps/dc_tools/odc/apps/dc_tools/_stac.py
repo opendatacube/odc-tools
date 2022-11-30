@@ -2,20 +2,18 @@
 Tools for STAC to EO3 translation
 """
 import math
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
-from uuid import UUID
-
 import numpy
-from datacube.utils.geometry import Geometry
-from toolz import get_in
-from urlpath import URL
-
-from ._docs import odc_uuid
-
 from eodatasets3.serialise import from_doc
 from eodatasets3.stac import to_stac_item
+from pathlib import Path
+from toolz import get_in
+from typing import Any, Dict, Optional, Tuple
+from urlpath import URL
+from uuid import UUID
+
 from datacube.model import Dataset
+from datacube.utils.geometry import Geometry
+from ._docs import odc_uuid
 
 Document = Dict[str, Any]
 

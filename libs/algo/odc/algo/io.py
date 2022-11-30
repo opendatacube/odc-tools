@@ -1,6 +1,8 @@
 """Native load and masking."""
 
 import json
+import xarray as xr
+from pyproj import aoi, transformer
 from typing import (
     Callable,
     Dict,
@@ -13,13 +15,10 @@ from typing import (
     cast,
 )
 
-import xarray as xr
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.testutils.io import native_geobox
 from datacube.utils.geometry import GeoBox, gbox
-from pyproj import aoi, transformer
-
 from ._grouper import group_by_nothing, solar_offset
 from ._masking import _max_fuser, _nodata_fuser, _or_fuser, enum_to_bool, mask_cleanup
 from ._warp import xr_reproject

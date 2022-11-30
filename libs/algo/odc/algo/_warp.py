@@ -1,8 +1,6 @@
 """
 Dask aware reproject implementation
 """
-from typing import Any, Dict, Optional, Tuple, Union
-
 import dask.array as da
 import dask.utils as du
 import numpy as np
@@ -10,6 +8,8 @@ import xarray as xr
 from affine import Affine
 from dask import is_dask_collection
 from dask.highlevelgraph import HighLevelGraph
+from typing import Any, Dict, Optional, Tuple, Union
+
 from datacube.utils import spatial_dims
 from datacube.utils.geometry import (
     GeoBox,
@@ -18,7 +18,6 @@ from datacube.utils.geometry import (
     warp_affine,
 )
 from datacube.utils.geometry.gbox import GeoboxTiles
-
 from ._dask import crop_2d_dense, empty_maker, randomize, unpack_chunks
 from ._numeric import shape_shrink2
 from ._types import NodataType

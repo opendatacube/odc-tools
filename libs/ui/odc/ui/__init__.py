@@ -1,22 +1,9 @@
 """ Notebook display helper methods.
 """
 
-from ._version import __version__
-from ._ui import (
-    ui_poll,
-    with_ui_cbk,
-    simple_progress_cbk,
+from ._dc_explore import (
+    DcViewer,
 )
-
-from ._map import (
-    dss_to_geojson,
-    gridspec_to_geojson,
-    zoom_from_bbox,
-    show_datasets,
-    mk_map_region_selector,
-    select_on_a_map,
-)
-
 from ._images import (
     to_rgba,
     image_shape,
@@ -26,11 +13,20 @@ from ._images import (
     to_jpeg_data,
     mk_image_overlay,
 )
-
-from ._dc_explore import (
-    DcViewer,
+from ._map import (
+    dss_to_geojson,
+    gridspec_to_geojson,
+    zoom_from_bbox,
+    show_datasets,
+    mk_map_region_selector,
+    select_on_a_map,
 )
-
+from ._ui import (
+    ui_poll,
+    with_ui_cbk,
+    simple_progress_cbk,
+)
+from ._version import __version__
 
 __all__ = (
     "ui_poll",

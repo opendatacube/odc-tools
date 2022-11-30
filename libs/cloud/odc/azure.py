@@ -1,8 +1,8 @@
-from functools import partial
 from multiprocessing.dummy import Pool as ThreadPool
-from typing import List, Optional, Tuple
 
 from azure.storage.blob import BlobClient, ContainerClient
+from functools import partial
+from typing import List, Optional, Tuple
 
 
 def find_blobs(

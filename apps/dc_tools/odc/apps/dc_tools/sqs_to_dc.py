@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """Index datasets found from an SQS queue into Postgres
 """
-import json
-import logging
-import sys
-import uuid
-from pathlib import PurePath
-from typing import Tuple
-
 import boto3
 import click
+import json
+import logging
 import pandas as pd
 import requests
+import sys
+import uuid
 from botocore import UNSIGNED
 from botocore.config import Config
+from odc.aws.queue import get_messages, publish_to_topic
+from pathlib import PurePath
+from toolz import dicttoolz
+from typing import Tuple
+from yaml import safe_load
+
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
@@ -37,10 +40,6 @@ from odc.apps.dc_tools.utils import (
     verify_lineage,
     publish_action,
 )
-from odc.aws.queue import get_messages, publish_to_topic
-from toolz import dicttoolz
-from yaml import safe_load
-
 from ._stac import stac_transform, stac_transform_absolute, ds_to_stac
 
 # Added log handler

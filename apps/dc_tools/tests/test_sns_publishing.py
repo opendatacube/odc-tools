@@ -1,13 +1,14 @@
-import os
-import json
-import pytest
 import boto3
-from moto import mock_sns, mock_sqs
+import json
+import os
+import pytest
 from click.testing import CliRunner
+from moto import mock_sns, mock_sqs
+from pathlib import Path
+
+from odc.apps.dc_tools.fs_to_dc import cli as fs_cli
 from odc.apps.dc_tools.s3_to_dc import cli as s3_cli
 from odc.apps.dc_tools.sqs_to_dc import cli as sqs_cli
-from odc.apps.dc_tools.fs_to_dc import cli as fs_cli
-from pathlib import Path
 
 
 @pytest.fixture

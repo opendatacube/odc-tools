@@ -1,14 +1,9 @@
 # Tests using the Click framework the s3-to-dc CLI tool
 # flake8: noqa
-from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
+
 from odc.apps.dc_tools.s3_to_dc import cli as s3_to_dc
-from odc.apps.dc_tools.add_update_products import (
-    cli as add_update_products_cli,
-    add_update_products,
-)
 
 
 def test_s3_to_dc_skips_already_indexed_datasets(

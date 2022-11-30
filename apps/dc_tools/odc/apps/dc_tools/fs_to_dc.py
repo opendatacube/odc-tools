@@ -1,11 +1,10 @@
+import click
 import json
 import logging
-from pathlib import Path
-from typing import Generator, Optional
-
-import click
-import datacube
 import yaml
+from pathlib import Path
+
+import datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
@@ -18,11 +17,6 @@ from odc.apps.dc_tools.utils import (
     statsd_gauge_reporting,
     transform_stac,
 )
-from odc.apps.dc_tools._stac import stac_transform
-import logging
-
-
-import yaml
 
 logging.basicConfig(
     level=logging.WARNING,

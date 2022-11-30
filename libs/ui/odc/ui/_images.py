@@ -1,12 +1,16 @@
 """ Notebook display helper methods.
 """
+import numpy as np
+import rasterio
+import warnings
+import xarray as xr
+from base64 import encodebytes
 from ipyleaflet import ImageOverlay
+from odc.algo import is_rgb, to_rgba
 from typing import Optional, Tuple, Union
 
-import numpy as np
-from base64 import encodebytes
-import xarray as xr
-from odc.algo import is_rgb, to_rgba
+from datacube.utils.geometry import box
+from datacube.testutils.geom import epsg4326
 
 
 def image_shape(d):
@@ -50,28 +54,7 @@ def replace_transparent_pixels(
 
 
 def mk_data_uri(data: bytes, mimetype: str = "image/png") -> str:
-
     return f"data:{mimetype};base64,{encodebytes(data).decode('ascii')}"
-
-
-def _to_png_data2(xx: np.ndarray, mode: str = "auto") -> memoryview:
-    if mode in ("auto", None):
-        k = (2, 0) if xx.ndim == 2 else (xx.ndim, xx.shape[2])
-        mode = {
-            (2, 0): "L",
-            (2, 1): "L",
-            (3, 1): "L",
-            (3, 2): "LA",
-            (3, 3): "RGB",
-            (3, 4): "RGBA",
-        }.get(k, "")
-
-        if mode == "":
-            raise ValueError("Can't figure out mode automatically")
-
-    bb = BytesIO()
-    png.from_array(xx, mode).save(bb)
-    return bb.getbuffer()
 
 
 def _compress_image(im: np.ndarray, driver="PNG", **opts) -> bytes:
@@ -132,7 +115,7 @@ def xr_bounds(x, crs=None) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     (t, b), (l, r) = (get_range(x.coords[dim].values) for dim in crs.dimensions)
 
     l, b, r, t = box(l, b, r, t, crs).to_crs(epsg4326).boundingbox
-    return ((t, r), (b, l))
+    return (t, r), (b, l)
 
 
 def mk_image_overlay(

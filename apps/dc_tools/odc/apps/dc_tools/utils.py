@@ -1,16 +1,14 @@
+import click
 import logging
 import os
+import pkg_resources
+from datadog import statsd, initialize
+from odc.aws.queue import publish_to_topic
 from typing import Iterable, Optional, Union
 
-import click
-import pkg_resources
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
-
-from datadog import statsd, initialize
-
-from odc.aws.queue import publish_to_topic
 from ._stac import ds_to_stac
 
 ESRI_LANDCOVER_BASE_URI = (

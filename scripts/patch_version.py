@@ -3,7 +3,7 @@ import sys
 
 from packaging import version
 
-version_rgx = re.compile("^\s*__version__\s*=\s*['\"]([^'\"]*)['\"]")
+version_rgx = re.compile(r"^\s*__version__\s*=\s*['\"]([^'\"]*)['\"]")
 
 
 def match_version(line):
@@ -30,9 +30,9 @@ def patch_version_lines(lines, build_number):
 
 
 def patch_file(fname, build_number):
-    with open(fname, "rt") as src:
+    with open(fname, "rt", encoding="utf8") as src:
         lines = list(patch_version_lines(src, build_number))
-    with open(fname, "wt") as dst:
+    with open(fname, "wt", encoding="utf8") as dst:
         dst.writelines(lines)
 
 

@@ -1,8 +1,7 @@
+import click
 import os
 import shutil
 import tarfile
-
-import click
 from google.cloud import storage
 
 
@@ -51,27 +50,28 @@ def cli(bucket, prefix, suffix, outfile):
 
     # Download Files to tar with an updating counter
     file_num = 1
-    tar = tarfile.open(outfile, "w:gz")
-    for yaml in files:
+    with tarfile.open(outfile, "w:gz") as tar:
+        for yaml in files:
 
-        count = str(file_num)
-        filename = "{bucket}/{filepath}".format(bucket=bucket, filepath=yaml.name)
+            count = str(file_num)
+            filename = "{bucket}/{filepath}".format(bucket=bucket, filepath=yaml.name)
 
-        # ensure dir exists
-        if not os.path.exists(os.path.dirname("./" + filename)):
-            os.makedirs(os.path.dirname("./" + filename))
-        # download to tar
-        yaml.download_to_filename(filename=filename, client=client)
-        tar.add(filename)
-        os.remove("./" + filename)
+            # ensure dir exists
+            if not os.path.exists(os.path.dirname("./" + filename)):
+                os.makedirs(os.path.dirname("./" + filename))
+            # download to tar
+            yaml.download_to_filename(filename=filename, client=client)
+            tar.add(filename)
+            os.remove("./" + filename)
 
-        # counter
-        print(
-            "{count}/{file_count} Downloaded".format(count=count, file_count=file_count)
-        )
-        file_num += 1
+            # counter
+            print(
+                "{count}/{file_count} Downloaded".format(
+                    count=count, file_count=file_count
+                )
+            )
+            file_num += 1
 
-    tar.close()
     # Deletes the directory recursively
     shutil.rmtree("./" + bucket)
 

@@ -1,19 +1,20 @@
 """
 Test for SQS to DC tool
 """
+import boto3
 import json
 import os
+import pytest
+from deepdiff import DeepDiff
 from functools import partial
+from moto import mock_sqs
+from odc.aws.queue import get_messages
 from pathlib import Path
 from pprint import pformat
 
-import boto3
-import pytest
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import documents
-from deepdiff import DeepDiff
-from moto import mock_sqs
 from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.sqs_to_dc import (
     extract_metadata_from_message,
@@ -21,7 +22,6 @@ from odc.apps.dc_tools.sqs_to_dc import (
     handle_json_message,
 )
 from odc.apps.dc_tools.utils import index_update_dataset
-from odc.aws.queue import get_messages
 
 record_message = {
     "Records": [
@@ -64,9 +64,13 @@ sqs_message = {
     "Message": json.dumps(record_message),
     "Timestamp": "2020-08-21T08:28:45.921Z",
     "SignatureVersion": "1",
-    "Signature": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "SigningCertURL": "https://sns.ap-southeast-2.amazonaws.com/SimpleNotificationService-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.pem",
-    "UnsubscribeURL": "https://sns.ap-southeast-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:ap-southeast-2:xxxxxxxxxxxxxxx:DEANewData:xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxx",
+    "Signature": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "SigningCertURL": "https://sns.ap-southeast-2.amazonaws.com/SimpleNotificationService-"
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.pem",
+    "UnsubscribeURL": "https://sns.ap-southeast-2.amazonaws.com/?Action=Unsubscribe"
+    "&SubscriptionArn=arn:aws:sns:ap-southeast-2:xxxxxxxxxxxxxxx:DEANewData:"
+    "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxx",
 }
 
 

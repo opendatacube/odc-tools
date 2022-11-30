@@ -1,14 +1,11 @@
 import asyncio
+import botocore
 import logging
 import os
-from fnmatch import fnmatch
-from types import SimpleNamespace
-from typing import Any, Iterator, Optional
-
-import botocore
 from aiobotocore.config import AioConfig
 from aiobotocore.session import get_session
 from botocore.exceptions import BotoCoreError, ClientError
+from fnmatch import fnmatch
 from odc.aws import (
     _aws_unsigned_check_env,
     auto_find_region,
@@ -20,6 +17,8 @@ from odc.aws import (
 from odc.aws._find import parse_query
 from odc.ppt import EOS_MARKER, future_results
 from odc.ppt.async_thread import AsyncThread
+from types import SimpleNamespace
+from typing import Any, Iterator, Optional
 
 
 async def _s3_fetch_object(url, s3, _range=None, **kw):

@@ -1,11 +1,10 @@
 """
 Misc numeric tooling
 """
+import numpy as np
 from typing import Optional, Tuple
 
-import numpy as np
-
-from ._types import NumpyIndex, NumpyIndex1, NumpyIndex2
+from ._types import NumpyIndex, NumpyIndex1
 
 
 def half_up(n: int) -> int:
@@ -62,6 +61,7 @@ def roi_shrink2(idx: NumpyIndex, axis: int = 0) -> NumpyIndex:
             return slice(
                 maybe_half(idx.start), maybe_half(idx.stop), maybe_half(idx.step)
             )
+        raise ValueError("idx must be int or slice")
 
     return (
         idx[:axis] + tuple(_shrink2(i) for i in idx[axis : axis + 2]) + idx[axis + 2 :]

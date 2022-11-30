@@ -2,16 +2,17 @@
 systematically maintain a CSV of products and synchronise it with
 a database"""
 
+from collections import Counter, namedtuple
+
+import click
+import fsspec
 import logging
 import sys
-from collections import Counter, namedtuple
+import yaml
 from csv import DictReader
 from typing import Any, Dict, List, Optional, Generator, Tuple
 
-import click
 import datacube
-import fsspec
-import yaml
 from datacube import Datacube
 from odc.apps.dc_tools.utils import (
     update_if_exists_flag,

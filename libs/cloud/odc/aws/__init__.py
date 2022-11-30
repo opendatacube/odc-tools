@@ -1,20 +1,19 @@
 """
 Helper methods for working with AWS
 """
+import botocore
+import botocore.session
 import json
 import logging
 import os
 import threading
 import time
-from typing import IO, Any, Dict, Optional, Tuple, Union
-from urllib.parse import urlparse
-from urllib.request import urlopen
-
-import botocore
-import botocore.session
 from botocore.credentials import Credentials, ReadOnlyCredentials
 from botocore.exceptions import ClientError
 from botocore.session import Session
+from typing import IO, Any, Dict, Optional, Tuple, Union
+from urllib.parse import urlparse
+from urllib.request import urlopen
 
 from ._find import norm_predicate, s3_file_info
 

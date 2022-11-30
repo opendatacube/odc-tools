@@ -1,9 +1,8 @@
 import boto3
-import os
-
 import configparser
 import docker
 import json
+import os
 import psycopg2
 import pytest
 import time
@@ -214,7 +213,9 @@ def postgresql_server():
 
 
 @pytest.fixture
-def odc_test_db(postgresql_server, tmp_path, monkeypatch):
+def odc_test_db(
+    postgresql_server, tmp_path, monkeypatch
+):  # pytest: disable=inconsistent-return-statements
     if postgresql_server == GET_DB_FROM_ENV:
         return os.environ["DATACUBE_DB_URL"]
     else:

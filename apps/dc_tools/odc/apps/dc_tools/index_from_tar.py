@@ -1,14 +1,13 @@
 """ Index datasets from tar arachive
 """
 
-import sys
-
 import click
-import datacube
-from datacube.utils.changes import allow_any
+import sys
 from odc.io.tar import tar_doc_stream, tar_mode
 from odc.io.timer import RateEstimator
 
+import datacube
+from datacube.utils.changes import allow_any
 from ._docs import from_yaml_doc_stream
 from ._stac import stac_transform
 
@@ -164,7 +163,7 @@ def cli(
                     else:
                         index.datasets.add(ds, with_lineage=auto_add_lineage)
 
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     n_failed += 1
                     report_error(str(e))
             else:

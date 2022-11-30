@@ -55,7 +55,8 @@ jobs:
 
     - name: Patch Package Versions
       run: |
-        find . -name _version.py | xargs python ./scripts/patch_version.py ${GITHUB_RUN_NUMBER:-0}
+        grep -R --files-with-matches --include '*.py' '__version__ =' \
+        | xargs python ./scripts/patch_version.py ${GITHUB_RUN_NUMBER:-0}
 
     - name: Build Dev Packages
       run: |

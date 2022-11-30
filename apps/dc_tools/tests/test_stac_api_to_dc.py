@@ -1,6 +1,7 @@
 # Tests using the Click framework the stac_api-to-dc CLI tool
 import pytest
 from click.testing import CliRunner
+
 from odc.apps.dc_tools.stac_api_to_dc import cli
 from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
 

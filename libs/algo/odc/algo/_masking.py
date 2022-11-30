@@ -4,15 +4,14 @@ Mostly masking related.
 Also converting between float[with nans] and int[with nodata].
 """
 
-from functools import partial
-from typing import Any, Dict, Iterable, Optional, Tuple, Union
-
 import dask
 import dask.array as da
 import numexpr as ne
 import numpy as np
 import xarray as xr
 from dask.highlevelgraph import HighLevelGraph
+from functools import partial
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 from ._dask import _get_chunks_asarray, randomize
 
