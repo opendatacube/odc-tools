@@ -82,8 +82,7 @@ def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
     else:
         bounding_box = bounding_box.split(",")
         if len(bounding_box) != 4:
-            raise ValueError(
-                "bounding_box must be in the format: minx,miny,maxx,maxy")
+            raise ValueError("bounding_box must be in the format: minx,miny,maxx,maxy")
         bounding_box = [float(x) for x in bounding_box]
 
     # The tiles are 3 x 3 degree, starting at 0,3...
@@ -182,8 +181,7 @@ def esa_wc_to_dc(
     success = 0
     failure = 0
 
-    sys.stdout.write(
-        f"Starting ESA Worldcover indexing with {n_workers} workers...\n")
+    sys.stdout.write(f"Starting ESA Worldcover indexing with {n_workers} workers...\n")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_uri = {
@@ -282,8 +280,7 @@ def cli(
             added, ["app:esa_worldcover_to_dc", "action:added"], statsd_setting
         )
         statsd_gauge_reporting(
-            failed, ["app:esa_worldcover_to_dc",
-                     "action:failed"], statsd_setting
+            failed, ["app:esa_worldcover_to_dc", "action:failed"], statsd_setting
         )
 
     if failed > 0:
