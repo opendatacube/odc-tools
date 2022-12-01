@@ -106,4 +106,5 @@ __all__ = (
     "pool_broadcast",
     "dask_compute_stream",
     "seq_to_bags",
+    "__version__",
 )

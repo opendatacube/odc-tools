@@ -24,9 +24,12 @@ def test_thredds_crawl():
 def test_download_yaml():
     """Test pass/fail arms of YAML download from Thredds"""
     test_urls = [
-        "http://dapds00.nci.org.au/thredds/fileServer/if87/2018-11-29/S2A_OPER_MSI_ARD_TL_EPAE_20181129T012952_A017945_T56LLM_N02.07/ARD-METADATA.yaml",
-        "http://dapds00.nci.org.au/thredds/fileServer/if87/2028-11-29/S2A_OPER_MSI_ARD_TL_EPAE_20281129T012952_A017945_T56LLM_N02.07/ARD-METADATA.yaml",
-        "http://downtime00.nci.org.au/thredds/fileServer/if87/2018-11-29/S2A_OPER_MSI_ARD_TL_EPAE_20181129T012952_A017945_T56LLM_N02.07/ARD-METADATA.yaml",
+        "http://dapds00.nci.org.au/thredds/fileServer/if87/2018-11-29/S2A_OPER_"
+        "MSI_ARD_TL_EPAE_20181129T012952_A017945_T56LLM_N02.07/ARD-METADATA.yaml",
+        "http://dapds00.nci.org.au/thredds/fileServer/if87/2028-11-29/S2A_OPER_MSI_"
+        "ARD_TL_EPAE_20281129T012952_A017945_T56LLM_N02.07/ARD-METADATA.yaml",
+        "http://downtime00.nci.org.au/thredds/fileServer/if87/2018-11-29/S2A_OPER_"
+        "MSI_ARD_TL_EPAE_20181129T012952_A017945_T56LLM_N02.07/ARD-METADATA.yaml",
     ]
     results = download_yamls(test_urls)
     assert results

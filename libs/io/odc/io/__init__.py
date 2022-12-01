@@ -13,4 +13,5 @@ __all__ = (
     "parse_mtl",
     "tar_doc_stream",
     "RateEstimator",
+    "__version__",
 )
