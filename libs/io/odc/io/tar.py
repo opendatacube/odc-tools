@@ -1,5 +1,5 @@
 import datetime
-import io
+from io import BytesIO
 import itertools
 import tarfile
 import time
@@ -82,4 +82,4 @@ def add_txt_file(tar, fname, content, mode=0o644, last_modified=None):
     info.size = len(content)
     info.mtime = last_modified
     info.mode = mode
-    tar.addfile(tarinfo=info, fileobj=io.BytesIO(content))
+    tar.addfile(tarinfo=info, fileobj=BytesIO(content))
