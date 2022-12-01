@@ -15,8 +15,7 @@ from odc.aws import (
     s3_url_parse,
 )
 from odc.aws._find import parse_query
-from odc.ppt import EOS_MARKER, future_results
-from odc.ppt.async_thread import AsyncThread
+from odc.ppt import EOS_MARKER, future_results, AsyncThread
 from types import SimpleNamespace
 from typing import Any, Iterator, Optional
 
