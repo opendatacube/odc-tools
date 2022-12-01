@@ -27,7 +27,13 @@ disable=duplicate-code,
     raise-missing-from,
     too-many-locals,
     too-many-arguments,
-    consider-using-f-string
+    consider-using-f-string,
+    # OMG, weird cyclic import errors.
+    # It's a combination of https://packaging.python.org/en/latest/guides/packaging-namespace-packages/#native-namespace-packages
+    # and `odc.io`, whereby you can't put an __init__.py in `libs/io/odc/`, so
+    # pylint thinks the `io` directory is actually the python built in `io` package
+    # and it's really confusing
+    cyclic-import
 
 [BASIC]
 
