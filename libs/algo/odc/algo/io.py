@@ -2,6 +2,7 @@
 
 import json
 import xarray as xr
+import pandas as pd
 from pyproj import aoi, transformer
 from typing import (
     Callable,
@@ -133,6 +134,13 @@ def _load_with_native_transform_1(
     if groupby is not None:
         if fuser is None:
             fuser = _nodata_fuser  # type: ignore
+
+        for dim in xx.dims:
+            if isinstance(xx.get_index(dim), pd.MultiIndex):
+                xx = xx.reset_index(dim)
+
+        if groupby not in xx.indexes.keys():
+            xx = xx.set_xindex(groupby)
         xx = xx.groupby(groupby).map(fuser)
 
     _chunks = None
@@ -239,6 +247,11 @@ def load_with_native_transform(
     else:
         xx = xr.concat(_xx, sources.dims[0])  # type: ignore
         if groupby != "idx":
+            for dim in xx.dims:
+                if isinstance(xx.get_index(dim), pd.MultiIndex):
+                    xx = xx.reset_index(dim)
+            if groupby not in xx.indexes.keys():
+                xx = xx.set_xindex(groupby)
             xx = xx.groupby(groupby).map(fuser)
 
     # TODO: probably want to replace spec MultiIndex with just `time` component
