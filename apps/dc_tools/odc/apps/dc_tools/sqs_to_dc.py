@@ -64,7 +64,7 @@ def extract_metadata_from_message(message):
 def extract_action_from_message(message):
     attributes = message.message_attributes
     if attributes:
-        return dicttoolz.get_in(['action', 'StringValue'], attributes)
+        return dicttoolz.get_in(["action", "StringValue"], attributes)
     return None
 
 

@@ -250,12 +250,7 @@ def test_sqs_publishing_archive_attribute(
     sqs.send_message(
         QueueUrl=input_queue.get("QueueUrl"),
         MessageBody=json.dumps(sqs_message),
-        MessageAttributes={
-            'action': {
-                'DataType': 'String',
-                'StringValue': 'ARCHIVED'
-            }
-        }
+        MessageAttributes={"action": {"DataType": "String", "StringValue": "ARCHIVED"}},
     )
 
     dc = odc_db_for_archive
@@ -355,9 +350,13 @@ def test_with_archive_less_mature(
     assert len(messages) == 2
 
     nrt_message = messages[0]
-    assert nrt_message.get("MessageAttributes")["action"].get("StringValue") == "ARCHIVED"
+    assert (
+        nrt_message.get("MessageAttributes")["action"].get("StringValue") == "ARCHIVED"
+    )
     assert json.loads(nrt_message["Body"]).get("id") == nrt_dsid
 
     final_message = messages[1]
-    assert final_message.get("MessageAttributes")["action"].get("StringValue") == "ADDED"
+    assert (
+        final_message.get("MessageAttributes")["action"].get("StringValue") == "ADDED"
+    )
     assert json.loads(final_message["Body"]).get("id") == final_dsid
