@@ -213,7 +213,6 @@ def queue_to_odc(
     publish_action=None,
     **kwargs,
 ) -> Tuple[int, int, int]:
-
     ds_success = 0
     ds_failed = 0
     ds_skipped = 0

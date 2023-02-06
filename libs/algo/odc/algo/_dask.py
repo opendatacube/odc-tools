@@ -476,7 +476,7 @@ def _reshape_yxbt_impl(blocks, crop_yx=None, dtype=None):
     ny, nx = b.shape
 
     dst = np.empty((ny, nx, nb, nt), dtype=dtype)
-    for (it, ib) in np.ndindex((nt, nb)):
+    for it, ib in np.ndindex((nt, nb)):
         b = squeeze_to_yx(blocks[ib][it])
         if crop_yx is not None:
             b = b[crop_yx]

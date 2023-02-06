@@ -10,7 +10,6 @@ from ._masking import keep_good_np
 
 
 def np_percentile(xx, percentile, nodata):
-
     if np.isnan(nodata):
         high = True
         mask = ~np.isnan(xx)
@@ -41,7 +40,6 @@ def xr_quantile_bands(
     quantiles: Sequence,
     nodata,
 ) -> xr.Dataset:
-
     """
     Calculates the quantiles of the input data along the time dimension.
 
@@ -59,7 +57,6 @@ def xr_quantile_bands(
 
     data_vars = {}
     for band, xx in src.data_vars.items():
-
         xx_data = xx.data
 
         if dask.is_dask_collection(xx_data):
@@ -90,7 +87,6 @@ def xr_quantile(
     quantiles: Sequence,
     nodata,
 ) -> xr.Dataset:
-
     """
     Calculates the percentiles of the input data along the time dimension.
 
@@ -107,7 +103,6 @@ def xr_quantile(
 
     data_vars = {}
     for band, xx in src.data_vars.items():
-
         xx_data = xx.data
         out_dims = ("quantile",) + xx.dims[1:]
 

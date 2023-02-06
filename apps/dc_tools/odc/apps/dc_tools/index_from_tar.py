@@ -118,7 +118,6 @@ def cli(
     protocol,
     stac,
 ):
-
     # Ensure :// is present in prefix
     prefix = protocol.rstrip("://") + "://"
     if prefix.startswith("file"):

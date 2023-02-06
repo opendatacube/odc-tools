@@ -25,7 +25,6 @@ def cli(
     workers: int,
     outfile: str,
 ):
-
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
     yaml_urls = find_blobs(container_name, credential, prefix, suffix, account_url)
