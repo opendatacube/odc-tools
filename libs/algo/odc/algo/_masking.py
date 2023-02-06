@@ -689,23 +689,40 @@ def _fuse_with_custom_op(x: xr.DataArray, op, name="fuse") -> xr.DataArray:
 
     Expects data in _,y,x order. Works on Dask inputs too.
     """
-    if dask.is_dask_collection(x.data):
-        data = _da_fuse_with_custom_op(x.data, op, name=name)
+    if x.shape[0] > 1:
+        if dask.is_dask_collection(x.data):
+            data = _da_fuse_with_custom_op(x.data, op, name=name)
+        else:
+            slices = [x.data[i : i + 1] for i in range(x.shape[0])]
+            data = op(*slices)
     else:
-        slices = [x.data[i : i + 1] for i in range(x.shape[0])]
-        data = op(*slices)
+        data = x.data
 
     coords = dict(x.coords.items())
-    coords[x.dims[0]] = x.coords[x.dims[0]][0:1]
+    for key, val in dict(x.coords[x.dims[0]][0:1].coords).items():
+        coords[key] = val
 
-    return xr.DataArray(data, attrs=x.attrs, dims=x.dims, coords=coords, name=x.name)
+    res = xr.DataArray(data, attrs=x.attrs, dims=x.dims, coords=coords, name=x.name)
+
+    # must only set index on coords when
+    # a) it is defined on a dim
+    # b) it is not named after dim and
+    # c) it is not "indexed"
+
+    indexes = [
+        ind
+        for ind, val in coords.items()
+        if len(val.dims) > 0 and ind not in x.dims and ind not in res.indexes
+    ]
+    if indexes == []:
+        return res
+    else:
+        return res.set_xindex(indexes)
 
 
 def _xr_fuse(xx, op, name):
     if isinstance(xx, xr.Dataset):
         return xx.map(partial(_xr_fuse, op=op, name=name))
-    if xx.shape[0] <= 1:
-        return xx
 
     return _fuse_with_custom_op(xx, op, name=name)
 
