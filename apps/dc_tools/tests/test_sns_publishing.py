@@ -40,6 +40,9 @@ def sns_setup(aws_credentials, aws_env):
             TopicArn=sns_arn,
             Protocol="sqs",
             Endpoint=queue_arn,
+            Attributes={
+                "RawMessageDelivery": "true",
+            },
         )
 
         yield sns_arn, sqs, queue.get("QueueUrl")
@@ -76,11 +79,12 @@ def test_s3_publishing_action_from_stac(
     )
     messages = sqs.receive_message(
         QueueUrl=queue_url,
+        MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
-    assert message_attrs["action"].get("Value") == "ADDED"
-    assert message_attrs["product"].get("Value") == "ga_s2am_ard_3"
+    message_attrs = messages[0].get("MessageAttributes")
+    assert message_attrs["action"].get("StringValue") == "ADDED"
+    assert message_attrs["product"].get("StringValue") == "ga_s2am_ard_3"
 
 
 def test_s3_publishing_action_from_eo3(
@@ -114,10 +118,11 @@ def test_s3_publishing_action_from_eo3(
 
     messages = sqs.receive_message(
         QueueUrl=queue_url,
+        MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
-    assert message_attrs["action"].get("Value") == "ADDED"
+    message_attrs = messages[0].get("MessageAttributes")
+    assert message_attrs["action"].get("StringValue") == "ADDED"
 
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
@@ -181,12 +186,13 @@ def test_sqs_publishing(
 
     messages = sqs.receive_message(
         QueueUrl=queue_url,
+        MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
-    assert message_attrs["action"].get("Value") == "ADDED"
-    assert message_attrs["product"].get("Value") == "ga_ls5t_nbart_gm_cyear_3"
-    assert message_attrs["maturity"].get("Value") == "final"
+    message_attrs = messages[0].get("MessageAttributes")
+    assert message_attrs["action"].get("StringValue") == "ADDED"
+    assert message_attrs["product"].get("StringValue") == "ga_ls5t_nbart_gm_cyear_3"
+    assert message_attrs["maturity"].get("StringValue") == "final"
 
 
 def test_sqs_publishing_archive_flag(
@@ -226,10 +232,11 @@ def test_sqs_publishing_archive_flag(
 
     messages = sqs.receive_message(
         QueueUrl=queue_url,
+        MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
-    assert message_attrs["action"].get("Value") == "ARCHIVED"
+    message_attrs = messages[0].get("MessageAttributes")
+    assert message_attrs["action"].get("StringValue") == "ARCHIVED"
 
 
 def test_sqs_publishing_archive_attribute(
@@ -274,10 +281,11 @@ def test_sqs_publishing_archive_attribute(
     assert result.exit_code == 0
     messages = sqs.receive_message(
         QueueUrl=queue_url,
+        MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
-    assert message_attrs["action"].get("Value") == "ARCHIVED"
+    message_attrs = messages[0].get("MessageAttributes")
+    assert message_attrs["action"].get("StringValue") == "ARCHIVED"
     assert dc.index.datasets.get(ls5t_dsid).is_archived is True
 
 
@@ -312,12 +320,13 @@ def test_with_archive_less_mature(
 
     messages = sqs.receive_message(
         QueueUrl=queue_url,
+        MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 1
-    message = json.loads(messages[0]["Body"])
+    message = messages[0]
     message_attrs = message.get("MessageAttributes")
-    assert message_attrs["action"].get("Value") == "ADDED"
-    assert json.loads(message["Message"]).get("id") == nrt_dsid
+    assert message_attrs["action"].get("StringValue") == "ADDED"
+    assert json.loads(message["Body"]).get("id") == nrt_dsid
 
     assert dc.index.datasets.get(final_dsid) is None
 
@@ -341,13 +350,14 @@ def test_with_archive_less_mature(
     messages = sqs.receive_message(
         QueueUrl=queue_url,
         MaxNumberOfMessages=10,
+        MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 2
 
-    nrt_message = json.loads(messages[0]["Body"])
-    assert nrt_message.get("MessageAttributes")["action"].get("Value") == "ARCHIVED"
-    assert json.loads(nrt_message["Message"]).get("id") == nrt_dsid
+    nrt_message = messages[0]
+    assert nrt_message.get("MessageAttributes")["action"].get("StringValue") == "ARCHIVED"
+    assert json.loads(nrt_message["Body"]).get("id") == nrt_dsid
 
-    final_message = json.loads(messages[1]["Body"])
-    assert final_message.get("MessageAttributes")["action"].get("Value") == "ADDED"
-    assert json.loads(final_message["Message"]).get("id") == final_dsid
+    final_message = messages[1]
+    assert final_message.get("MessageAttributes")["action"].get("StringValue") == "ADDED"
+    assert json.loads(final_message["Body"]).get("id") == final_dsid
