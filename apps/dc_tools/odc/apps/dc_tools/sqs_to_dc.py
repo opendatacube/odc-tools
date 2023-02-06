@@ -61,6 +61,13 @@ def extract_metadata_from_message(message):
         raise IndexingException("Failed to load metadata from the SQS message")
 
 
+def extract_action_from_message(message):
+    attributes = message.message_attributes
+    if attributes:
+        return dicttoolz.get_in(['action', 'StringValue'], attributes)
+    return None
+
+
 def handle_json_message(metadata, transform, odc_metadata_link):
     odc_yaml_uri = None
     uri = None
@@ -103,7 +110,7 @@ def handle_bucket_notification_message(
     Args:
         message (Message resource)
         metadata (dict): [description]
-        record_path (tuple): [PATH for selectingthe s3 key path from the JSON message document]
+        record_path (tuple): [PATH for selecting the s3 key path from the JSON message document]
 
     Raises:
         IndexingException: [Catch s3 ]
@@ -234,7 +241,8 @@ def queue_to_odc(
             # Extract metadata from message
             metadata = extract_metadata_from_message(message)
             stac_doc = None
-            if archive:
+            action = extract_action_from_message(message)
+            if archive or action == "ARCHIVED":
                 # Archive metadata
                 do_archiving(metadata, dc, publish_action)
             else:
@@ -330,7 +338,7 @@ def queue_to_odc(
 @click.option(
     "--region-code-list-uri",
     default=None,
-    help="A path to a list (one item per line, in txt or gzip format) of valide region_codes to include",
+    help="A path to a list (one item per line, in txt or gzip format) of valid region_codes to include",
 )
 @archive_less_mature
 @publish_action

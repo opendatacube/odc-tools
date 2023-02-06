@@ -132,7 +132,6 @@ def sqs_message():
         "Type": "Notification",
         "MessageId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxxxx",
         "TopicArn": "arn:aws:sns:ap-southeast-2:xxxxxxxxxxxxxxxxx:test-topic",
-        "Subject": "Amazon S3 Notification",
         "Message": json.dumps(body),
         "Timestamp": "2020-08-21T08:28:45.921Z",
         "SignatureVersion": "1",
@@ -142,10 +141,9 @@ def sqs_message():
         "SigningCertURL": "https://sns.ap-southeast-2.amazonaws.com/SimpleNotifi"
         "cationService-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         ".pem",
-        "UnsubscribeURL": "https://sns.ap-southeast-2.amazonaws.com/?Action=Unsu"
-        "bscribe&SubscriptionArn=arn:aws:sns:ap-southeast-2:xx"
-        "xxxxxxxxxxxxx:test-topic:xxxxxxx-xxxx-xxxx-xxxx-xxxxx"
-        "xxxxxxxxx",
+        "UnsubscribeURL": "https://sns.ap-southeast-2.amazonaws.com/?Action=Unsubscribe"
+        "&SubscriptionArn=arn:aws:sns:ap-southeast-2:xxxxxxxxxxxxxxx"
+        ":test-topic:xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxx",
     }
     return message
 
@@ -191,7 +189,7 @@ def test_sqs_publishing(
     assert message_attrs["maturity"].get("Value") == "final"
 
 
-def test_sqs_publishing_archive(
+def test_sqs_publishing_archive_flag(
     aws_credentials, aws_env, sqs_message, odc_db_for_archive, ls5t_dsid, sns_setup
 ):
     """Test that an ARCHIVE SNS message is published when the --archive flag is used."""
@@ -232,6 +230,55 @@ def test_sqs_publishing_archive(
     assert len(messages) == 1
     message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ARCHIVED"
+
+
+def test_sqs_publishing_archive_attribute(
+    aws_credentials, aws_env, sqs_message, odc_db_for_archive, ls5t_dsid, sns_setup
+):
+    """Test that archiving occurs when ARCHIVED is in the message attributes"""
+    sns_arn, sqs, queue_url = sns_setup
+
+    input_queue_name = "input-queue"
+    input_queue = sqs.create_queue(QueueName=input_queue_name)
+    sqs.send_message(
+        QueueUrl=input_queue.get("QueueUrl"),
+        MessageBody=json.dumps(sqs_message),
+        MessageAttributes={
+            'action': {
+                'DataType': 'String',
+                'StringValue': 'ARCHIVED'
+            }
+        }
+    )
+
+    dc = odc_db_for_archive
+    ds = dc.index.datasets.get(ls5t_dsid)
+    assert ds is not None
+    assert ds.is_archived is False
+
+    runner = CliRunner()
+    result = runner.invoke(
+        sqs_cli,
+        [
+            input_queue_name,
+            "ga_ls5t_nbart_gm_cyear_3",
+            "--skip-lineage",
+            "--no-sign-request",
+            "--update-if-exists",
+            "--stac",
+            f"--publish-action={sns_arn}",
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    messages = sqs.receive_message(
+        QueueUrl=queue_url,
+    )["Messages"]
+    assert len(messages) == 1
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
+    assert message_attrs["action"].get("Value") == "ARCHIVED"
+    assert dc.index.datasets.get(ls5t_dsid).is_archived is True
 
 
 def test_with_archive_less_mature(
