@@ -48,7 +48,6 @@ def cli(
     archive_less_mature,
     publish_action,
 ):
-
     dc = datacube.Datacube()
     doc2ds = Doc2Dataset(dc.index)
 

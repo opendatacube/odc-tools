@@ -221,7 +221,6 @@ async def s3_dir_dir(url, depth, dst_q, s3, pred=None, **kw):
     pp = s3.get_paginator("list_objects_v2")
 
     async def step(bucket, prefix, depth, work_q, dst_q):
-
         async for o in pp.paginate(Bucket=bucket, Prefix=prefix, Delimiter="/", **kw):
             for d in o.get("CommonPrefixes", []):
                 d = d.get("Prefix")
@@ -314,7 +313,6 @@ class S3Fetcher:
         addressing_style="path",
         aws_unsigned=None,
     ):
-
         self._closed = True
         if region_name is None:
             region_name = auto_find_region()

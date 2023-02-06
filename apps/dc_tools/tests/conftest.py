@@ -177,7 +177,6 @@ def postgresql_server():
         yield GET_DB_FROM_ENV
 
     else:
-
         client = docker.from_env()
         container = client.containers.run(
             "postgres:alpine",
@@ -298,7 +297,6 @@ def remove_postgres_dynamic_indexes():
 
 @pytest.fixture
 def odc_test_db_with_products(odc_db: Datacube):
-
     local_csv = str(Path(__file__).parent / "data/example_product_list.csv")
     added, updated, failed = add_update_products(odc_db, local_csv)
 

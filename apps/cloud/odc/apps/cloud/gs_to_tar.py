@@ -52,7 +52,6 @@ def cli(bucket, prefix, suffix, outfile):
     file_num = 1
     with tarfile.open(outfile, "w:gz") as tar:
         for yaml in files:
-
             count = str(file_num)
             filename = "{bucket}/{filepath}".format(bucket=bucket, filepath=yaml.name)
 

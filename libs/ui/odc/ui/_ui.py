@@ -52,5 +52,4 @@ def simple_progress_cbk(n, total):
 
 
 def ui_poll(f, sleep=0.02, n=1):
-
     return run_ui_poll_loop(f, sleep, n=n)

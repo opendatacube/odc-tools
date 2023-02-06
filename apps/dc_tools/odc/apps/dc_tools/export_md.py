@@ -45,7 +45,6 @@ def cli(ctx, datacube_config):
 @click.option("--limit", help="maximum number of datasets to process")
 @click.pass_obj
 def transform(index, product, config, output_dir, limit):
-
     # Get the product
     dataset_type = index.products.get_by_name(product)
 
@@ -71,7 +70,6 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
 
     grids_done = False
     for dataset_id in dataset_ids:
-
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
         if not dataset.uris:
@@ -100,7 +98,6 @@ def transform_indexed_datasets(index, product, config, output_dir, limit):
     for dataset_id in index.datasets.search_returning(
         limit=limit, field_names=("id",), product=product
     ):
-
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
         if not dataset.uris:
@@ -203,13 +200,11 @@ def get_grids(dataset, band_grids=None):
     else:
         grids = {}
         for grid_name in band_grids:
-
             shape, trans = get_shape_and_transform(dataset, band_grids[grid_name])
 
             grids[grid_name] = {"shape": list(shape), "transform": list(trans)}
 
         if not band_grids.get("default"):
-
             specified_bands = set()
             for grid in band_grids:
                 specified_bands.update(band_grids[grid])
@@ -270,7 +265,6 @@ def get_measurements(dataset, band_grids=None):
 
     measurements = {}
     for m in dataset.measurements:
-
         if m not in dataset.type.measurements:
             _LOG.warning("Measurement not in product definition (skipping): %s", m)
             continue
