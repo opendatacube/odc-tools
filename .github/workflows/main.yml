@@ -84,8 +84,9 @@ jobs:
         channels: conda-forge,defaults
         channel-priority: true
         activate-environment: ""
-        mamba-version: "*"
+          # mamba-version: "*"
         use-mamba: true
+        miniforge-variant: Mambaforge
 
     - name: Dump Conda Environment Info
       shell: bash -l {0}
