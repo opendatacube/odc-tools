@@ -65,7 +65,9 @@ def sns_setup(aws_credentials, aws_env):
             Endpoint=output_queue_arn,
         )
 
-        yield sns, input_topic_arn, output_topic_arn, sqs, input_queue_name, output_queue.get("QueueUrl")
+        yield sns, input_topic_arn, output_topic_arn, sqs, input_queue_name, output_queue.get(
+            "QueueUrl"
+        )
 
 
 def test_s3_publishing_action_from_stac(
@@ -101,7 +103,7 @@ def test_s3_publishing_action_from_stac(
         QueueUrl=output_queue_url,
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]['Body']).get("MessageAttributes")
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ADDED"
     assert message_attrs["product"].get("Value") == "ga_s2am_ard_3"
 
@@ -139,7 +141,7 @@ def test_s3_publishing_action_from_eo3(
         QueueUrl=output_queue_url,
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]['Body']).get("MessageAttributes")
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ADDED"
 
 
@@ -157,18 +159,29 @@ def test_sqs_publishing(
     aws_credentials, aws_env, stac_doc, odc_test_db_with_products, sns_setup
 ):
     """Test that actions are published with sqs_to_dc"""
-    _, input_topic_arn, output_topic_arn, sqs, input_queue_name, output_queue_url = sns_setup
+    (
+        _,
+        input_topic_arn,
+        output_topic_arn,
+        sqs,
+        input_queue_name,
+        output_queue_url,
+    ) = sns_setup
 
     input_queue = sqs.create_queue(QueueName=input_queue_name)
     sqs.send_message(
         QueueUrl=input_queue.get("QueueUrl"),
-        MessageBody=json.dumps({
-            "Type": "Notification",
-            "MessageId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxxxx",
-            "TopicArn": input_topic_arn,
-            "Message": stac_doc,
-            "MessageAttributes": {"action": {"DataType": "String", "StringValue": "ARCHIVED"}},
-        }),
+        MessageBody=json.dumps(
+            {
+                "Type": "Notification",
+                "MessageId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxxxx",
+                "TopicArn": input_topic_arn,
+                "Message": stac_doc,
+                "MessageAttributes": {
+                    "action": {"DataType": "String", "StringValue": "ARCHIVED"}
+                },
+            }
+        ),
     )
 
     runner = CliRunner()
@@ -193,7 +206,7 @@ def test_sqs_publishing(
         QueueUrl=output_queue_url,
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]['Body']).get("MessageAttributes")
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ADDED"
     assert message_attrs["product"].get("Value") == "ga_ls5t_nbart_gm_cyear_3"
     assert message_attrs["maturity"].get("Value") == "final"
@@ -203,7 +216,14 @@ def test_sqs_publishing_archive_flag(
     aws_credentials, aws_env, stac_doc, odc_db_for_archive, ls5t_dsid, sns_setup
 ):
     """Test that an ARCHIVE SNS message is published when the --archive flag is used."""
-    sns, input_topic_arn, output_topic_arn, sqs, input_queue_name, output_queue_url = sns_setup
+    (
+        sns,
+        input_topic_arn,
+        output_topic_arn,
+        sqs,
+        input_queue_name,
+        output_queue_url,
+    ) = sns_setup
 
     sns.publish(
         TopicArn=input_topic_arn,
@@ -237,7 +257,7 @@ def test_sqs_publishing_archive_flag(
         QueueUrl=output_queue_url,
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]['Body']).get("MessageAttributes")
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ARCHIVED"
     assert dc.index.datasets.get(ls5t_dsid).is_archived is True
 
@@ -246,7 +266,14 @@ def test_sqs_publishing_archive_attribute(
     aws_credentials, aws_env, stac_doc, odc_db_for_archive, ls5t_dsid, sns_setup
 ):
     """Test that archiving occurs when ARCHIVED is in the message attributes"""
-    sns, input_topic_arn, output_topic_arn, sqs, input_queue_name, output_queue_url = sns_setup
+    (
+        sns,
+        input_topic_arn,
+        output_topic_arn,
+        sqs,
+        input_queue_name,
+        output_queue_url,
+    ) = sns_setup
 
     sns.publish(
         TopicArn=input_topic_arn,
@@ -280,7 +307,7 @@ def test_sqs_publishing_archive_attribute(
         MessageAttributeNames=["All"],
     )["Messages"]
     assert len(messages) == 1
-    message_attrs = json.loads(messages[0]['Body']).get("MessageAttributes")
+    message_attrs = json.loads(messages[0]["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ARCHIVED"
     assert dc.index.datasets.get(ls5t_dsid).is_archived is True
 
@@ -319,7 +346,7 @@ def test_with_archive_less_mature(
     )["Messages"]
     assert len(messages) == 1
     message = messages[0]
-    message_attrs = json.loads(message['Body']).get("MessageAttributes")
+    message_attrs = json.loads(message["Body"]).get("MessageAttributes")
     assert message_attrs["action"].get("Value") == "ADDED"
     body = json.loads(message["Body"])
     assert json.loads(body["Message"]).get("id") == nrt_dsid
@@ -350,18 +377,14 @@ def test_with_archive_less_mature(
     assert len(messages) == 2
 
     nrt_message = messages[0]
-    nrt_attrs = json.loads(nrt_message['Body']).get("MessageAttributes")
-    assert (
-        nrt_attrs["action"].get("Value") == "ARCHIVED"
-    )
+    nrt_attrs = json.loads(nrt_message["Body"]).get("MessageAttributes")
+    assert nrt_attrs["action"].get("Value") == "ARCHIVED"
 
     nrt_body = json.loads(nrt_message["Body"])
     assert json.loads(nrt_body["Message"]).get("id") == nrt_dsid
 
     final_message = messages[1]
-    final_attrs = json.loads(final_message['Body']).get("MessageAttributes")
-    assert (
-        final_attrs["action"].get("Value") == "ADDED"
-    )
+    final_attrs = json.loads(final_message["Body"]).get("MessageAttributes")
+    assert final_attrs["action"].get("Value") == "ADDED"
     final_body = json.loads(final_message["Body"])
     assert json.loads(final_body["Message"]).get("id") == final_dsid
