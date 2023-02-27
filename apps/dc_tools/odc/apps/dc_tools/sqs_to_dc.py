@@ -62,10 +62,14 @@ def extract_metadata_from_message(message):
 
 
 def extract_action_from_message(message):
-    attributes = message.message_attributes
-    if attributes:
-        return dicttoolz.get_in(["action", "StringValue"], attributes)
-    return None
+    # Handle non-raw message delivery or SNS-subscribed SQS message with
+    # message attributes attached to body
+    try:
+        body = json.loads(message.body)
+        message_attributes = body["MessageAttributes"]
+        return dicttoolz.get_in(["action", "Value"], message_attributes)
+    except (KeyError, json.JSONDecodeError):
+        return None
 
 
 def handle_json_message(metadata, transform, odc_metadata_link):
