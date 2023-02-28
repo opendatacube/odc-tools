@@ -1,6 +1,5 @@
 import click
 import logging
-import os
 import pkg_resources
 from datadog import statsd, initialize
 from odc.aws.queue import publish_to_topic
@@ -314,6 +313,4 @@ def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125"):
     options = {"statsd_host": host, "statsd_port": port}
     initialize(**options)
 
-    if os.environ.get("HOSTNAME"):
-        tags.append(f"pod:{os.getenv('HOSTNAME')}")
     statsd.gauge("datacube_index", value, tags=tags)
