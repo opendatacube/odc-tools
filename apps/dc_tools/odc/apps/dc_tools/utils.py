@@ -1,6 +1,5 @@
 import click
 import logging
-import os
 import pkg_resources
 from datadog import statsd, initialize
 from odc.aws.queue import publish_to_topic
