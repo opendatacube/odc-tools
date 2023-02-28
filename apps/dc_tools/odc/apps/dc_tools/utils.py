@@ -30,6 +30,15 @@ class SkippedException(Exception):
     """
 
 
+class HostPort(click.ParamType):
+    name = "Host and Port"
+
+    def convert(self, value, param, ctx):
+        if ":" not in value:
+            self.fail("Server host and port must separated by `:`")
+        return value
+
+
 # A whole bunch of generic Click options
 skip_lineage = click.option(
     "--skip-lineage",
@@ -152,11 +161,13 @@ bbox = click.option(
     help="Comma separated list of bounding box coords, lon-min, lat-min, lon-max, lat-max",
 )
 
-statsd_setting = click.option(
+statsd_server = click.option(
+    "--statsd-server",
     "--statsd-setting",
+    type=HostPort,
     is_flag=False,
     default=None,
-    help="statsd exporter hostname and port, i.e. prometheus-statsd-exporter:9125",
+    help="Export success/fail/archive metrics to a StatsD server. host:port, e.g. prometheus-statsd-exporter:9125",
 )
 
 
@@ -305,11 +316,11 @@ def index_update_dataset(
         logging.info("Existing Dataset Updated: %s", ds.id)
 
 
-def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125"):
+def report_statsd_gauge(value, tags=None, statsd_host="localhost:8125"):
     if tags is None:
         tags = []
-    host = statsd_setting.split(":")[0]
-    port = statsd_setting.split(":")[1]
+    host = statsd_host.split(":")[0]
+    port = statsd_host.split(":")[1]
     options = {"statsd_host": host, "statsd_port": port}
     initialize(**options)
 

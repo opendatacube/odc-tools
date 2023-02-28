@@ -13,8 +13,8 @@ from odc.apps.dc_tools.utils import (
     index_update_dataset,
     update_if_exists_flag,
     publish_action,
-    statsd_setting,
-    statsd_gauge_reporting,
+    statsd_server,
+    report_statsd_gauge,
     transform_stac,
 )
 
@@ -31,7 +31,7 @@ logging.basicConfig(
 @allow_unsafe
 @archive_less_mature
 @transform_stac
-@statsd_setting
+@statsd_server
 @publish_action
 @click.option(
     "--glob",
@@ -43,7 +43,7 @@ def cli(
     update_if_exists,
     allow_unsafe,
     stac,
-    statsd_setting,
+    statsd_server,
     glob,
     archive_less_mature,
     publish_action,
@@ -87,11 +87,9 @@ def cli(
                 failed += 1
 
     logging.info("Added %s and failed %s datasets.", added, failed)
-    if statsd_setting:
-        statsd_gauge_reporting(added, ["app:fs_to_dc", "action:added"], statsd_setting)
-        statsd_gauge_reporting(
-            failed, ["app:fs_to_dc", "action:failed"], statsd_setting
-        )
+    if statsd_server:
+        report_statsd_gauge(added, ["app:fs_to_dc", "action:added"], statsd_server)
+        report_statsd_gauge(failed, ["app:fs_to_dc", "action:failed"], statsd_server)
 
 
 if __name__ == "__main__":

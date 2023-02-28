@@ -16,8 +16,8 @@ import datacube
 from datacube import Datacube
 from odc.apps.dc_tools.utils import (
     update_if_exists_flag,
-    statsd_gauge_reporting,
-    statsd_setting,
+    report_statsd_gauge,
+    statsd_server,
 )
 
 Product = namedtuple("Product", ["name", "doc"])
@@ -125,8 +125,8 @@ def add_update_products(
 @click.command("dc-sync-products")
 @click.argument("csv-path", nargs=1)
 @update_if_exists_flag
-@statsd_setting
-def cli(csv_path: str, update_if_exists: bool, statsd_setting: str):
+@statsd_server
+def cli(csv_path: str, update_if_exists: bool, statsd_server: str):
     # Check we can connect to the Datacube
     dc = datacube.Datacube(app="add_update_products")
     logging.info(
@@ -138,15 +138,15 @@ def cli(csv_path: str, update_if_exists: bool, statsd_setting: str):
     added, updated, failed = add_update_products(dc, csv_path, update_if_exists)
 
     print(f"Added: {added}, Updated: {updated} and Failed: {failed}")
-    if statsd_setting:
-        statsd_gauge_reporting(
-            added, ["app: add_update_products", "action:added"], statsd_setting
+    if statsd_server:
+        report_statsd_gauge(
+            added, ["app: add_update_products", "action:added"], statsd_server
         )
-        statsd_gauge_reporting(
-            failed, ["app: add_update_products", "action:failed"], statsd_setting
+        report_statsd_gauge(
+            failed, ["app: add_update_products", "action:failed"], statsd_server
         )
-        statsd_gauge_reporting(
-            failed, ["app: add_update_products", "action:updated"], statsd_setting
+        report_statsd_gauge(
+            failed, ["app: add_update_products", "action:updated"], statsd_server
         )
 
     # If nothing failed then this exists with success code 0
