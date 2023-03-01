@@ -262,5 +262,5 @@ class DcViewer:
         self._update_info_count()
         self._maybe_show(clear=True)
 
-    def _ipython_display_(self):
-        return self._gui.ui._ipython_display_()
+    def _repr_mimebundle_(self, **kwargs):
+        return self._gui.ui._repr_mimebundle_(**kwargs)

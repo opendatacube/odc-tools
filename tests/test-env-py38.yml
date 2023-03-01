@@ -21,7 +21,7 @@ dependencies:
   - toolz
 
   # odc.ui
-  - ipywidgets
+  - ipywidgets>=8.0
   - ipyleaflet
   - tqdm
 
