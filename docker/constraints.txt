@@ -46,7 +46,7 @@ coverage==6.3.1
 cryptography==36.0.1
 dask==2022.2.0
 dask-image==2021.12.0
-datacube==1.8.8
+datacube==1.8.9
 datadog==0.44.0
 debugpy==1.5.1
 decorator==5.1.1
