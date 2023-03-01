@@ -9,7 +9,21 @@ from odc.apps.dc_tools._stac import stac_transform
 
 def test_esri_lulc_stac_transform(esri_lulc_stac):
     transformed_stac_doc = stac_transform(esri_lulc_stac)
-    assert True
+    expected_geometry_coordinates = [
+        [
+            pytest.approx(coords, 1)
+            for coords in [
+                [1087485.0, -313215.0],
+                [904635.0, -356445.0],
+                [860745.0, -172485.0],
+                [1043085.0, -128325.0],
+                [1087485.0, -313215.0],
+            ]
+        ]
+    ]
+    assert (
+        transformed_stac_doc["geometry"]["coordinates"] == expected_geometry_coordinates
+    )
 
 
 def test_landsat_stac_transform(landsat_stac, landsat_odc):
