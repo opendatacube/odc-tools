@@ -113,6 +113,7 @@ def get_tile_uris(bounding_box: str) -> Tuple[str, str]:
             )
 
 
+# pylint: disable=too-many-positional-arguments
 def process_uri_tile(
     uri_tile: Tuple[str, str, str],
     dc: Datacube,
@@ -161,6 +162,7 @@ def select_map_version(version: str):
         map_version["algo"] = "v200"
 
 
+# pylint: disable=too-many-positional-arguments
 def esa_wc_to_dc(
     dc: Datacube,
     bounding_box,
@@ -205,6 +207,7 @@ def esa_wc_to_dc(
                     sys.stdout.write(f"\rAdded {success} datasets...")
             except rasterio.errors.RasterioIOError:
                 logging.info("Couldn't read file %s", uri, exc_info=True)
+                failure += 1
             except Exception:  # pylint:disable=broad-except
                 logging.exception("Failed to handle uri %s", uri)
                 failure += 1
@@ -240,7 +243,7 @@ def esa_wc_to_dc(
     type=str,
     help="Select version of world cover map, default 2020",
 )
-def cli(
+def cli(  # pylint: disable=too-many-positional-arguments
     cfg_env,
     limit,
     update_if_exists,
