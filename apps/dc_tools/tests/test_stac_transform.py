@@ -7,6 +7,11 @@ from datacube.utils.changes import get_doc_changes
 from odc.apps.dc_tools._stac import stac_transform
 
 
+def test_esri_lulc_stac_transform(esri_lulc_stac):
+    transformed_stac_doc = stac_transform(esri_lulc_stac)
+    assert True
+
+
 def test_landsat_stac_transform(landsat_stac, landsat_odc):
     transformed_stac_doc = stac_transform(landsat_stac)
     assert len(get_doc_changes(transformed_stac_doc, landsat_odc)) == 5
