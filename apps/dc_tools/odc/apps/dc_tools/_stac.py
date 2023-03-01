@@ -390,7 +390,7 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
         geometry = _geographic_to_projected(geometry, native_crs, precision)
 
     # todo: check multipolygon and flatten
-    if geometry.geom_type == "MultiPolygon":
+    if geometry.type == "MultiPolygon":
         geometry = geometry.convex_hull
 
     stac_odc = {
