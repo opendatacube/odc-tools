@@ -389,6 +389,15 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 
         geometry = _geographic_to_projected(geometry, native_crs, precision)
 
+    # Get rid of multi-polygons
+    geom_type = None
+    try:
+        geom_type = geometry.geom_type
+    except AttributeError:
+        geom_type = geometry.type
+    if geom_type is not None and geom_type == "MultiPolygon":
+        geometry = geometry.convex_hull
+
     stac_odc = {
         "$schema": "https://schemas.opendatacube.org/dataset",
         "id": deterministic_uuid,
@@ -407,7 +416,7 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
         stac_odc["properties"]["odc:region_code"] = region_code
 
     if geometry:
-        stac_odc["geometry"] = transform_geom_json_coordinates_to_list(geometry.json)
+        stac_odc["geometry"] = geometry.json
 
     if lineage:
         stac_odc["lineage"] = lineage
