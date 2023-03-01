@@ -28,6 +28,7 @@ SENTINEL_ODC: str = "S2A_28QCH_20200714_0_L2A.odc-metadata.json"
 USGS_LANDSAT_STAC: str = "LC08_L2SR_081119_20200101_20200823_02_T2.json"
 LIDAR_STAC: str = "lidar_dem.json"
 MATURITY_PRODUCT: str = "ga_ls5t_gm_product.yaml"
+ESRI_LULC_STAC: str = "29V-2021.stac-item.json"
 
 
 @pytest.fixture
@@ -105,6 +106,12 @@ def mocked_s3_datasets(mocked_aws_s3_env):
                 Key=str(fname.relative_to(TEST_DATA_FOLDER)),
             )
         yield bucket
+
+
+@pytest.fixture
+def esri_lulc_stac():
+    with TEST_DATA_FOLDER.joinpath(ESRI_LULC_STAC).open("r", encoding="utf8") as f:
+        return json.load(f)
 
 
 @pytest.fixture
