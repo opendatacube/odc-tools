@@ -194,7 +194,7 @@ def index_update_dataset(
            * If None (the default) or False or an empty iterable, ignore dataset maturity.
            * If True, enforce dataset maturity by looking for existing datasets with same product, region_code and time
              values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
-             If a match of the same or greater maturity is found an IndexException is raised.
+             If a match of the same or greater maturity is found a SkippedException is raised.
            * If an iterable of valid search field names is provided, it is used as the "grouping" fields for
              identifying dataset maturity matches.
              (i.e. `archive_less_mature=True` is the same as `archive_less_mature=['region_code', 'time'])
@@ -244,10 +244,9 @@ def index_update_dataset(
                 if dupe.metadata.dataset_maturity <= ds.metadata.dataset_maturity:
                     # Duplicate is as mature, or more mature than ds
                     # E.g. "final" < "nrt"
-                    raise IndexingException(
-                        f"Matching dataset of maturity {dupe.metadata.dataset_maturity} already exists"
-                        "with id: {dupe.id}\n"
-                        f"Cannot load dataset of maturity {ds.metadata.dataset_maturity} URI {uri} "
+                    raise SkippedException(
+                        f"A more mature version of dataset {metadata.get('id')} already exists "
+                        f"with id: {dupe.id} and maturity: {ds.metadata.dataset_maturity}\n"
                     )
                 archive_ids.append(dupe.id)
                 if publish_action:
