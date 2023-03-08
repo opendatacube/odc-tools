@@ -218,9 +218,9 @@ def _get_stac_bands(
         image_types = ["jp2", "geotiff"]
         # If something's not in image_types, make it an accessory
         # include thumbnails in accessories
-        if (not any(t in asset.get("type", []) for t in image_types)
-            or "thumbnail" in asset.get("roles", [])
-        ):
+        if not any(
+            t in asset.get("type", []) for t in image_types
+        ) or "thumbnail" in asset.get("roles", []):
             accessories[asset_name] = {"path": _get_path(asset)}
             continue
 
