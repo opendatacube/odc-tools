@@ -215,11 +215,12 @@ def _get_stac_bands(
         return str(path)
 
     for asset_name, asset in assets.items():
-        # If something's not a geotiff, make it an accessory
+        image_types = ["jp2", "geotiff"]
+        # If something's not in image_types, make it an accessory
         # include thumbnails in accessories
-        if "geotiff" not in asset.get("type", []) or "thumbnail" in asset.get(
-            "roles", []
-        ):
+        if not any(
+            t in asset.get("type", []) for t in image_types
+        ) or "thumbnail" in asset.get("roles", []):
             accessories[asset_name] = {"path": _get_path(asset)}
             continue
 
