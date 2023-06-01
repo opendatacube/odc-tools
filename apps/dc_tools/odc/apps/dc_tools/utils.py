@@ -231,28 +231,13 @@ def index_update_dataset(
 
     with dc.index.transaction():
         # Process in a transaction
-        archive_ids = []
         archive_stacs = []
         added = False
         updated = False
-        if archive_less_mature:
-            dupes = dc.index.datasets.search(product=ds.type.name, **dupe_query)
+        if archive_less_mature and publish_action:
+            dupes = dc.index.datasets.find_less_mature(ds)
             for dupe in dupes:
-                if dupe.id == ds.id:
-                    # Same dataset, for update.  Ignore
-                    continue
-                if dupe.metadata.dataset_maturity <= ds.metadata.dataset_maturity:
-                    # Duplicate is as mature, or more mature than ds
-                    # E.g. "final" < "nrt"
-                    raise SkippedException(
-                        f"A more mature version of dataset {metadata.get('id')} already exists "
-                        f"with id: {dupe.id} and maturity: {ds.metadata.dataset_maturity}\n"
-                    )
-                archive_ids.append(dupe.id)
-                if publish_action:
-                    archive_stacs.append(ds_to_stac(dupe))
-            if archive_ids:
-                dc.index.datasets.archive(archive_ids)
+                archive_stacs.append(ds_to_stac(dupe))
 
         # Now do something with the dataset
         # Note that any of the exceptions raised below will rollback any archiving performed above.
@@ -265,7 +250,7 @@ def index_update_dataset(
                     updates = {tuple(): changes.allow_any}
                 # Do the updating
                 try:
-                    dc.index.datasets.update(ds, updates_allowed=updates)
+                    dc.index.datasets.update(ds, updates_allowed=updates, archive_less_mature=archive_less_mature)
                     updated = True
                 except ValueError as e:
                     raise IndexingException(
@@ -283,12 +268,9 @@ def index_update_dataset(
                     "Can't update dataset because it doesn't exist."
                 )
             # Everything is working as expected, add the dataset
-            dc.index.datasets.add(ds)
+            dc.index.datasets.add(ds, archive_less_mature=archive_less_mature)
             added = True
 
-    # Transaction committed : Log actions
-    for arch_id in archive_ids:
-        logging.info("Archived less mature dataset: %s", arch_id)
     if publish_action:
         for arch_stac in archive_stacs:
             publish_to_topic(arn=publish_action, action="ARCHIVED", stac=arch_stac)
