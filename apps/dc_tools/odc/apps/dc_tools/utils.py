@@ -250,7 +250,11 @@ def index_update_dataset(
                     updates = {tuple(): changes.allow_any}
                 # Do the updating
                 try:
-                    dc.index.datasets.update(ds, updates_allowed=updates, archive_less_mature=archive_less_mature)
+                    dc.index.datasets.update(
+                        ds,
+                        updates_allowed=updates,
+                        archive_less_mature=archive_less_mature,
+                    )
                     updated = True
                 except ValueError as e:
                     raise IndexingException(
