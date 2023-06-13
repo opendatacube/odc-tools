@@ -10,7 +10,7 @@ dependencies:
   - python=3.8
 
   # Datacube
-  - datacube<=1.8.9
+  - datacube>=1.8.13
   - sqlalchemy<2.0.0
 
   # odc.algo
