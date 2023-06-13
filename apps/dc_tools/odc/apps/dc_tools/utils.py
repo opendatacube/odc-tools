@@ -216,19 +216,6 @@ def index_update_dataset(
             f"Failed to create dataset with error {err}\n The URI was {uri}"
         )
 
-    if archive_less_mature:
-        if archive_less_mature is True:
-            # if set explicitly to True, default to [region_code, time]
-            archive_less_mature = ["region_code", "time"]
-        try:
-            dupe_query = {k: getattr(ds.metadata, k) for k in archive_less_mature}
-        except AttributeError as e:
-            raise IndexingException(
-                f"Cannot extract matching value from dataset for maturity check: {e}\n The URI was {uri}"
-            )
-    else:
-        dupe_query = {}
-
     with dc.index.transaction():
         # Process in a transaction
         archive_stacs = []
