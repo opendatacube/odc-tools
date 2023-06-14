@@ -228,31 +228,6 @@ dc-index-from-tar --protocol gs --env mangroves --ignore-lineage metadata.tar.gz
 Local Development
 =================
 
-Docker
-------
-
-Requires docker, procedure was only tested on Linux hosts.
-
-```bash
-docker pull opendatacube/odc-test-runner:latest
-
-cd odc-tools
-make -C docker run-test
-```
-
-Above will run tests and generate test coverage report in `htmlcov/index.html`.
-
-Other option is to run `make -C docker bash`, this will drop you into a shell in
-`/code` folder that contains your current checkout of `odc-tools`. You can then
-use `with-test-db start` command to launch and setup test database for running
-integration tests that require datacube database to work. From here on you can
-run specific tests you are developing with `py.test ./path/to/test_file.py`. Any
-changes you make to code outside of the docker environment are available without
-any further action from you for testing.
-
-conda/mamba
-------
-
 The following steps is used in github workflow `main.yml`
 
 ```bash
