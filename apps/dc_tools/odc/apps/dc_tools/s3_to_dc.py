@@ -90,7 +90,7 @@ def dump_to_odc(
         except SkippedException:
             ds_skipped += 1
     if not found_docs:
-        raise IndexingException("Doc stream was empty")
+        raise click.Abort("Doc stream was empty")
 
     return ds_added, ds_failed, ds_skipped
 
