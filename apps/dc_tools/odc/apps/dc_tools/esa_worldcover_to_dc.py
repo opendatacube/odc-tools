@@ -21,8 +21,8 @@ from odc.apps.dc_tools.utils import (
     limit,
     update_if_exists_flag,
     archive_less_mature,
-    statsd_gauge_reporting,
-    statsd_setting,
+    report_statsd_gauge,
+    statsd_server,
     publish_action,
 )
 from ._stac import stac_transform
@@ -230,7 +230,7 @@ def esa_wc_to_dc(
     type=int,
     help="Number of threads to use to process, default 20",
 )
-@statsd_setting
+@statsd_server
 @click.option(
     "--version",
     default="2020",
@@ -244,7 +244,7 @@ def cli(
     add_product,
     archive_less_mature,
     workers,
-    statsd_setting,
+    statsd_server,
     publish_action,
     version,
 ):
@@ -274,12 +274,12 @@ def cli(
 
     print(f"Added {added} Datasets, failed {failed} Datasets")
 
-    if statsd_setting:
-        statsd_gauge_reporting(
-            added, ["app:esa_worldcover_to_dc", "action:added"], statsd_setting
+    if statsd_server:
+        report_statsd_gauge(
+            added, ["app:esa_worldcover_to_dc", "action:added"], statsd_server
         )
-        statsd_gauge_reporting(
-            failed, ["app:esa_worldcover_to_dc", "action:failed"], statsd_setting
+        report_statsd_gauge(
+            failed, ["app:esa_worldcover_to_dc", "action:failed"], statsd_server
         )
 
     if failed > 0:

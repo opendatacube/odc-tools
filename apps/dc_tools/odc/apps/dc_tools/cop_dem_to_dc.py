@@ -23,8 +23,8 @@ from odc.apps.dc_tools.utils import (
     limit,
     update_if_exists_flag,
     publish_action,
-    statsd_gauge_reporting,
-    statsd_setting,
+    report_statsd_gauge,
+    statsd_server,
 )
 from ._stac import stac_transform
 
@@ -205,7 +205,7 @@ def cop_dem_to_dc(
 @limit
 @update_if_exists_flag
 @bbox
-@statsd_setting
+@statsd_server
 @archive_less_mature
 @publish_action
 @click.option(
@@ -229,7 +229,7 @@ def cli(
     limit,
     update_if_exists,
     bbox,
-    statsd_setting,
+    statsd_server,
     product,
     add_product,
     workers,
@@ -266,15 +266,13 @@ def cli(
         f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets"
     )
 
-    if statsd_setting:
-        statsd_gauge_reporting(
-            added, ["app:cop_dem_to_dc", "action:added"], statsd_setting
+    if statsd_server:
+        report_statsd_gauge(added, ["app:cop_dem_to_dc", "action:added"], statsd_server)
+        report_statsd_gauge(
+            failed, ["app:cop_dem_to_dc", "action:failed"], statsd_server
         )
-        statsd_gauge_reporting(
-            failed, ["app:cop_dem_to_dc", "action:failed"], statsd_setting
-        )
-        statsd_gauge_reporting(
-            skipped, ["app:cop_dem_to_dc", "action:skipped"], statsd_setting
+        report_statsd_gauge(
+            skipped, ["app:cop_dem_to_dc", "action:skipped"], statsd_server
         )
 
     if failed > 0:

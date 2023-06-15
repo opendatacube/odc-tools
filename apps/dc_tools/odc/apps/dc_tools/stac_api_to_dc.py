@@ -22,8 +22,8 @@ from odc.apps.dc_tools.utils import (
     bbox,
     index_update_dataset,
     limit,
-    statsd_gauge_reporting,
-    statsd_setting,
+    report_statsd_gauge,
+    statsd_server,
     update_if_exists_flag,
     publish_action,
 )
@@ -254,7 +254,7 @@ def stac_api_to_odc(
 )
 @archive_less_mature
 @publish_action
-@statsd_setting
+@statsd_server
 def cli(
     limit,
     update_if_exists,
@@ -266,7 +266,7 @@ def cli(
     options,
     rewrite_assets,
     rename_product,
-    statsd_setting,
+    statsd_server,
     archive_less_mature,
     publish_action,
 ):
@@ -314,15 +314,15 @@ def cli(
     print(
         f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets"
     )
-    if statsd_setting:
-        statsd_gauge_reporting(
-            added, ["app:stac_api_to_dc", "action:added"], statsd_setting
+    if statsd_server:
+        report_statsd_gauge(
+            added, ["app:stac_api_to_dc", "action:added"], statsd_server
         )
-        statsd_gauge_reporting(
-            failed, ["app:stac_api_to_dc", "action:failed"], statsd_setting
+        report_statsd_gauge(
+            failed, ["app:stac_api_to_dc", "action:failed"], statsd_server
         )
-        statsd_gauge_reporting(
-            skipped, ["app:stac_api_to_dc", "action:skipped"], statsd_setting
+        report_statsd_gauge(
+            skipped, ["app:stac_api_to_dc", "action:skipped"], statsd_server
         )
 
     if failed > 0:

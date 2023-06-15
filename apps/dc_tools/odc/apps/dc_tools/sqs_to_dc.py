@@ -30,8 +30,8 @@ from odc.apps.dc_tools.utils import (
     limit,
     no_sign_request,
     skip_lineage,
-    statsd_setting,
-    statsd_gauge_reporting,
+    statsd_server,
+    report_statsd_gauge,
     transform_stac,
     transform_stac_absolute,
     archive_less_mature,
@@ -322,7 +322,7 @@ def queue_to_odc(
 @archive
 @limit
 @no_sign_request
-@statsd_setting
+@statsd_server
 @click.option(
     "--odc-metadata-link",
     default=None,
@@ -358,7 +358,7 @@ def cli(
     allow_unsafe,
     archive,
     limit,
-    statsd_setting,
+    statsd_server,
     no_sign_request,
     odc_metadata_link,
     record_path,
@@ -408,32 +408,28 @@ def cli(
     result_msg = ""
     if update:
         result_msg += f"Updated {success} Dataset(s), "
-        if statsd_setting:
-            statsd_gauge_reporting(
-                success, ["app:sqs_to_dc", "action:update"], statsd_setting
+        if statsd_server:
+            report_statsd_gauge(
+                success, ["app:sqs_to_dc", "action:update"], statsd_server
             )
     elif archive:
         result_msg += f"Archived {success} Dataset(s), "
-        if statsd_setting:
-            statsd_gauge_reporting(
-                success, ["app:sqs_to_dc", "action:archived"], statsd_setting
+        if statsd_server:
+            report_statsd_gauge(
+                success, ["app:sqs_to_dc", "action:archived"], statsd_server
             )
     else:
         result_msg += f"Added {success} Dataset(s), "
-        if statsd_setting:
-            statsd_gauge_reporting(
-                success, ["app:sqs_to_dc", "action:added"], statsd_setting
+        if statsd_server:
+            report_statsd_gauge(
+                success, ["app:sqs_to_dc", "action:added"], statsd_server
             )
     result_msg += f"Failed {failed} Dataset(s), Skipped {skipped} Dataset(s)"
     print(result_msg)
 
-    if statsd_setting:
-        statsd_gauge_reporting(
-            failed, ["app:sqs_to_dc", "action:failed"], statsd_setting
-        )
-        statsd_gauge_reporting(
-            skipped, ["app:sqs_to_dc", "action:skipped"], statsd_setting
-        )
+    if statsd_server:
+        report_statsd_gauge(failed, ["app:sqs_to_dc", "action:failed"], statsd_server)
+        report_statsd_gauge(skipped, ["app:sqs_to_dc", "action:skipped"], statsd_server)
 
     if failed > 0:
         sys.exit(failed)

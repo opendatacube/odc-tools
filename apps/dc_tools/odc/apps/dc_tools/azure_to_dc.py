@@ -14,8 +14,8 @@ from odc.apps.dc_tools.utils import (
     allow_unsafe,
     archive_less_mature,
     index_update_dataset,
-    statsd_gauge_reporting,
-    statsd_setting,
+    report_statsd_gauge,
+    statsd_server,
     transform_stac,
     update_flag,
     update_if_exists_flag,
@@ -79,7 +79,7 @@ def dump_list_to_odc(
 @update_if_exists_flag
 @allow_unsafe
 @transform_stac
-@statsd_setting
+@statsd_server
 @archive_less_mature
 @publish_action
 @click.option(
@@ -101,7 +101,7 @@ def cli(
     update_if_exists: bool,
     allow_unsafe: bool,
     stac: bool,
-    statsd_setting: str,
+    statsd_server: str,
     archive_less_mature: bool,
     publish_action: str,
     account_url: str,
@@ -134,13 +134,9 @@ def cli(
     )
 
     print(f"Added {added} Datasets, Failed to add {failed} Datasets")
-    if statsd_setting:
-        statsd_gauge_reporting(
-            added, ["app:azure_to_dc", "action:added"], statsd_setting
-        )
-        statsd_gauge_reporting(
-            failed, ["app:azure_to_dc", "action:failed"], statsd_setting
-        )
+    if statsd_server:
+        report_statsd_gauge(added, ["app:azure_to_dc", "action:added"], statsd_server)
+        report_statsd_gauge(failed, ["app:azure_to_dc", "action:failed"], statsd_server)
 
 
 if __name__ == "__main__":

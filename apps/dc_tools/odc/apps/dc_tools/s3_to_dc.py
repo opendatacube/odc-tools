@@ -23,8 +23,8 @@ from odc.apps.dc_tools.utils import (
     request_payer,
     skip_check,
     skip_lineage,
-    statsd_gauge_reporting,
-    statsd_setting,
+    report_statsd_gauge,
+    statsd_server,
     transform_stac,
     transform_stac_absolute,
     update_flag,
@@ -106,7 +106,7 @@ def dump_to_odc(
 @allow_unsafe
 @skip_check
 @no_sign_request
-@statsd_setting
+@statsd_server
 @request_payer
 @archive_less_mature
 @publish_action
@@ -123,7 +123,7 @@ def cli(
     allow_unsafe,
     skip_check,
     no_sign_request,
-    statsd_setting,
+    statsd_server,
     request_payer,
     archive_less_mature,
     publish_action,
@@ -184,14 +184,10 @@ def cli(
     print(
         f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets."
     )
-    if statsd_setting:
-        statsd_gauge_reporting(added, ["app:s3_to_dc", "action:added"], statsd_setting)
-        statsd_gauge_reporting(
-            skipped, ["app:s3_to_dc", "action:skipped"], statsd_setting
-        )
-        statsd_gauge_reporting(
-            failed, ["app:s3_to_dc", "action:failed"], statsd_setting
-        )
+    if statsd_server:
+        report_statsd_gauge(added, ["app:s3_to_dc", "action:added"], statsd_server)
+        report_statsd_gauge(skipped, ["app:s3_to_dc", "action:skipped"], statsd_server)
+        report_statsd_gauge(failed, ["app:s3_to_dc", "action:failed"], statsd_server)
 
     if failed > 0:
         sys.exit(failed)
