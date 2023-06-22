@@ -270,7 +270,12 @@ def _geographic_to_projected(geometry, crs, precision=10):
     if geom.is_valid:
         return geom.transform(round_coords)
     else:
-        return None
+        # Attempt to fix it if it's not valid
+        print(
+            "Caution, invalid geometry, attempting to fix. This may result in invalid data."
+        )
+        geom = geom.convex_hull
+        return geom.transform(round_coords)
 
 
 def stac_transform_absolute(input_stac):
