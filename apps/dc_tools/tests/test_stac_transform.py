@@ -7,7 +7,7 @@ from odc.apps.dc_tools._stac import stac_transform, _geographic_to_projected
 
 
 def test_geographic_to_projected(geometry_with_a_twist):
-    transformed = _geographic_to_projected(geometry_with_a_twist, "EPSG:900913")
+    transformed = _geographic_to_projected(geometry_with_a_twist, "EPSG:3832")
 
     assert transformed is not None
 
@@ -15,11 +15,11 @@ def test_geographic_to_projected(geometry_with_a_twist):
         "type": "Polygon",
         "coordinates": (
             (
-                (-20027996.181356553, -1680401.0306884265),
-                (20034964.592237074, -1731788.8882795917),
-                (-19879088.250739392, -1906633.287019358),
-                (-20035623.926449094, -1870777.708859445),
-                (-20027996.181356553, -1680401.0306884265),
+                (3498004.815848052, -1894234.3033218135),
+                (3341469.1401383593, -1858599.0018098454),
+                (3337040.973246038, -1720470.5990706773),
+                (3349096.8852309, -1669403.410330984),
+                (3498004.815848052, -1894234.3033218135),
             ),
         ),
     }
