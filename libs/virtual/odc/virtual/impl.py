@@ -26,10 +26,9 @@ from datacube.api.query import Query, query_group_by
 from datacube.model import Measurement, DatasetType
 from datacube.model.utils import xr_apply, xr_iter, SafeDumper
 from datacube.testutils.io import native_geobox
-from odc.geo.xr import xr_reproject
-from datacube.utils.geometry import (
-    GeoBox,
-    geobox_union_conservative,
+from odc.geo.xr import xr_reproject, xr_coords
+from odc.geo.geobox import GeoBox, geobox_union_conservative
+from odc.geo.overlap import (
     compute_reproject_roi,
 )
 from datacube.api.core import per_band_load_data_settings
@@ -302,6 +301,7 @@ class VirtualProduct(Mapping):
         """
         :param settings: validated and reference-resolved recipe
         """
+        print(f"****init virtual product {settings}****")
         self._settings = settings
 
     def output_measurements(
@@ -418,7 +418,7 @@ class Product(VirtualProduct):
                 datasets=selected,
                 grid_spec=datasets.product_definitions[self._product].grid_spec,
                 geopolygon=geopolygon,
-                **select_keys(merged, self._GEOBOX_KEYS)
+                **select_keys(merged, self._GEOBOX_KEYS),
             )
             load_natively = False
 
@@ -490,7 +490,6 @@ class Product(VirtualProduct):
                     ),
                 )
 
-                self._assert(reproject_roi.is_st, "native load is not axis-aligned")
                 self._assert(
                     numpy.isclose(reproject_roi.scale, 1.0),
                     "native load should not require scaling",
@@ -553,7 +552,7 @@ class Transform(VirtualProduct):
         return dict(
             transform=qualified_name(self["transform"]),
             input=self._input._reconstruct(),
-            **reject_keys(self, ["input", "transform"])
+            **reject_keys(self, ["input", "transform"]),
         )
 
     def output_measurements(
@@ -621,7 +620,7 @@ class Aggregate(VirtualProduct):
             aggregate=qualified_name(self["aggregate"]),
             group_by=qualified_name(self["group_by"]),
             input=self._input._reconstruct(),
-            **reject_keys(self, ["input", "aggregate", "group_by"])
+            **reject_keys(self, ["input", "aggregate", "group_by"]),
         )
 
     def output_measurements(
@@ -761,7 +760,7 @@ class Collate(VirtualProduct):
                 VirtualDatasetBag(
                     dataset_bag, datasets.geopolygon, datasets.product_definitions
                 ),
-                **group_settings
+                **group_settings,
             )
 
             def tag(_, value):
@@ -905,7 +904,7 @@ class Juxtapose(VirtualProduct):
                 VirtualDatasetBag(
                     dataset_bag, datasets.geopolygon, datasets.product_definitions
                 ),
-                **group_settings
+                **group_settings,
             )
             for product, dataset_bag in zip(self._children, datasets.bag["juxtapose"])
         ]
@@ -1022,8 +1021,6 @@ class Reproject(VirtualProduct):
         """Convert grouped datasets to `xarray.Dataset`."""
         from collections import OrderedDict  # pylint: disable=C0415
 
-        spatial_ref = "spatial_ref"
-
         geobox = grouped.geobox
 
         measurements = self.output_measurements(grouped.product_definitions)
@@ -1058,7 +1055,7 @@ class Reproject(VirtualProduct):
                     dask_chunks={
                         key: 1 for key in dask_chunks if key not in geobox.dims
                     },
-                    **reject_keys(load_settings, ["dask_chunks"])
+                    **reject_keys(load_settings, ["dask_chunks"]),
                 )
                 for box in boxes
             ]
@@ -1066,7 +1063,7 @@ class Reproject(VirtualProduct):
         result = xarray.Dataset()
         result.coords["time"] = grouped.box.coords["time"]
 
-        coords = OrderedDict(**geobox.xr_coords(with_crs=spatial_ref))
+        coords = OrderedDict(**xr_coords(geobox))
         result.coords.update(coords)
 
         for measurement in measurements:
@@ -1101,10 +1098,12 @@ def virtual_product_kind(recipe):
         raise VirtualProductException(
             "virtual product kind not specified in recipe: {}".format(recipe)
         )
+    print(f"recipe {candidates}")
     return candidates[0]
 
 
 def from_validated_recipe(recipe):
+    print(f"lookup {recipe}")
     lookup = dict(
         product=Product,
         transform=Transform,

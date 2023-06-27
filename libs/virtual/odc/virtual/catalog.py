@@ -51,6 +51,7 @@ class Catalog(Mapping):
         Returns `None` if not found.
         """
         if name in self._names("products"):
+            print(f"get catalog {self.contents['products'][name]['recipe']}")
             return self.name_resolver.construct(
                 **self.contents["products"][name]["recipe"]
             )

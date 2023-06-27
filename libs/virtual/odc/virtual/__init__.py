@@ -71,6 +71,7 @@ class NameResolver:
         kind = virtual_product_kind(recipe)
 
         if kind == "product":
+            print(f"construct leaves product {recipe}")
             func_keys = ["fuse_func", "dataset_predicate"]
             return from_validated_recipe(
                 {
@@ -94,7 +95,7 @@ class NameResolver:
                 dict(
                     transform=lookup(cls_name, "transform"),
                     input=self.construct(**input_product),
-                    **reject_keys(recipe, ["transform", "input"])
+                    **reject_keys(recipe, ["transform", "input"]),
                 )
             )
 
@@ -107,7 +108,7 @@ class NameResolver:
             return from_validated_recipe(
                 dict(
                     collate=[self.construct(**child) for child in recipe["collate"]],
-                    **reject_keys(recipe, ["collate"])
+                    **reject_keys(recipe, ["collate"]),
                 )
             )
 
@@ -122,7 +123,7 @@ class NameResolver:
                     juxtapose=[
                         self.construct(**child) for child in recipe["juxtapose"]
                     ],
-                    **reject_keys(recipe, ["juxtapose"])
+                    **reject_keys(recipe, ["juxtapose"]),
                 )
             )
 
@@ -143,11 +144,12 @@ class NameResolver:
                     aggregate=lookup(cls_name, "aggregate"),
                     group_by=lookup(group_by, "aggregate/group_by", kind="group_by"),
                     input=self.construct(**input_product),
-                    **reject_keys(recipe, ["aggregate", "input", "group_by"])
+                    **reject_keys(recipe, ["aggregate", "input", "group_by"]),
                 )
             )
 
         if kind == "reproject":
+            print(f"construct {recipe}")
             input_product = cast(Mapping, get("input"))
             output_crs = recipe["reproject"].get("output_crs")
             resolution = recipe["reproject"].get("resolution")
@@ -168,7 +170,7 @@ class NameResolver:
                 dict(
                     reproject=recipe["reproject"],
                     input=self.construct(**input_product),
-                    **reject_keys(recipe, ["reproject", "input"])
+                    **reject_keys(recipe, ["reproject", "input"]),
                 )
             )
 
