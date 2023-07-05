@@ -66,7 +66,7 @@ def to_rgba_np(
     elif nodata is not None:
         valid = r != nodata
     else:
-        valid = np.ones(r.shape, dtype=np.bool)
+        valid = np.ones(r.shape, dtype=bool)
 
     rgba[..., 3] = valid.astype("uint8") * (0xFF)
     for idx, band in enumerate([r, g, b]):
