@@ -154,7 +154,7 @@ def s3_dir_dir(url, depth, dst_q, s3, pred=None, **kw):
     """
     if not url.endswith("/"):
         url = url + "/"
-    
+
     if depth == 0:
         dst_q.put(url)
         return
@@ -284,6 +284,7 @@ class S3Fetcher:
           .error = str| botocore.Exception class
 
         """
+
         def generate_requests(urls, s3, **kw):
             for url in urls:
                 if isinstance(url, tuple):
