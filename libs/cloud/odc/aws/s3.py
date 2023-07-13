@@ -94,7 +94,7 @@ def s3_head_object(url, s3, **kw):
 
 
 def s3_dir(url, s3, pred=None, glob=None, **kw):
-    """List all objects under certain path without descending into sub directories.
+    """List all objects in an s3 "directory" without descending into sub directories.
 
     pred: predicate for file objects file_info -> True|False
     glob: glob pattern for files only
@@ -112,12 +112,15 @@ def s3_dir(url, s3, pred=None, glob=None, **kw):
         prefix = prefix + "/"
 
     pp = s3.get_paginator("list_objects_v2")
+
     _files = []
+
     for o in pp.paginate(Bucket=bucket, Prefix=prefix, **kw):
         for f in o.get("Contents", []):
             f = s3_file_info(f, bucket)
             if pred is None or pred(f):
                 _files.append(f)
+
     return _files
 
 
@@ -208,8 +211,8 @@ class S3Fetcher:
             s3=dict(addressing_style=addressing_style),
         )
 
-        session = get_session()
-        s3 = session.create_client(
+        self._session = get_session()
+        self._s3 = self._session.create_client(
             "s3",
             region_name=region_name,
             config=s3_cfg,
@@ -217,8 +220,6 @@ class S3Fetcher:
         )
 
         self._closed = False
-        self._session = session
-        self._s3 = s3
 
     def close(self):
         if not self._closed:
@@ -284,7 +285,6 @@ class S3Fetcher:
           .error = str| botocore.Exception class
 
         """
-
         def generate_requests(urls, s3, **kw):
             for url in urls:
                 if isinstance(url, tuple):
