@@ -285,6 +285,7 @@ class S3Fetcher:
           .error = str| botocore.Exception class
 
         """
+
         def generate_requests(urls, s3, **kw):
             for url in urls:
                 if isinstance(url, tuple):
