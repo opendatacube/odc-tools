@@ -1,7 +1,7 @@
 import click
 import logging
 import sys
-from odc.aws.queue import redrive_queue
+from odc.aws.sqs import redrive_queue
 
 
 @click.command("redrive-to-queue")

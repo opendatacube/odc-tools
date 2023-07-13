@@ -12,11 +12,10 @@
 # other top level dependencies of odc. libraries/apps
 affine
 
-# need to constrain this one for pip-sake
-# Fixing this allows pip resolution without constraints.txt
-aiobotocore[boto3,awscli]>2.1
 aiohttp
+awscli
 azure-storage-blob
+boto3
 bottleneck>=1.3.5
 click
 
@@ -24,7 +23,7 @@ click
 dask[complete]
 dask_image
 
-datacube[dev]>=1.8.13
+datacube[dev]>=1.8.13,!=1.8.14
 datadog
 # things needed for tests that might not be referenced in setup.py
 deepdiff

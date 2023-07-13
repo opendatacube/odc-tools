@@ -10,7 +10,7 @@ dependencies:
   - python=3.8
 
   # Datacube
-  - datacube>=1.8.13
+  - datacube>=1.8.13,!=1.8.14
   - sqlalchemy<2.0.0
 
   # odc.algo
@@ -30,14 +30,14 @@ dependencies:
   - pystac-client>=0.4.0
   - azure-storage-blob
   - fsspec
+  - aiohttp
   - lxml # needed for thredds-crawler
   - urlpath
   - datadog
   - eodatasets3
+  - importlib_resources>=6.0
 
-  # odc.{aws,aio}: aiobotocore/boto3
-  #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.4.2
+  # odc.aws: boto3
   - boto3
 
   # For tests

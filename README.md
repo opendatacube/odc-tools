@@ -22,9 +22,8 @@ Full list of libraries, and install instructions:
 - `odc.stac` STAC to ODC conversion tools (Moved to [odc-stac](https://github.com/opendatacube/odc-stac))
 - `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset` (moved to [odc-dscache](https://github.com/opendatacube/odc-dscache))
 - `odc.io` common IO utilities, used by apps mainly
-- `odc-cloud[ASYNC,AZURE,THREDDS]` cloud crawling support package
+- `odc-cloud[AZURE,THREDDS]` cloud crawling support package
   - `odc.aws` AWS/S3 utilities, used by apps mainly
-  - `odc.aio` faster concurrent fetching from S3 with async, used by apps `odc-cloud[ASYNC]`
   - `odc.{thredds,azure}` internal libs for cloud IO `odc-cloud[THREDDS,AZURE]`
 
 Pre-release of these libraries is on PyPI now, so can be installed with `pip`
@@ -38,7 +37,7 @@ pip install --extra-index-url="https://packages.dea.ga.gov.au" \
   odc-stats \
   odc-algo \
   odc-io \
-  odc-cloud[ASYNC] \
+  odc-cloud \
   odc-dscache
 ```
 
@@ -87,9 +86,7 @@ dependencies:
   - fsspec
   - lxml  # needed for thredds-crawler
 
-  # odc.{aio,aws}: aiobotocore/boto3
-  #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.3.3
+  # odc.aws: boto3
   - boto3
 
   # eodatasets3 (used by odc-stats)
@@ -150,23 +147,6 @@ CLI Tools
 Installation
 ------------
 
-Cloud tools depend on `aiobotocore` package which has a dependency on a specific
-version of `botocore`. Another package we use, `boto3`, also depends on a
-specific version of `botocore`. As a result having both `aiobotocore` and
-`boto3` in one environment can be a bit tricky. The easiest way to solve this,
-is to install `aiobotocore[awscli,boto3]` before anything else, which will pull
-in a compatible version of `boto3` and `awscli` into the environment.
-
-```
-pip install -U "aiobotocore[awscli,boto3]==1.3.3"
-# OR for conda setups
-conda install "aiobotocore==1.3.3" boto3 awscli
-```
-
-The specific version of `aiobotocore` is not relevant, but it is needed in
-practice to limit `pip`/`conda` package resolution search.
-
-
 1. For cloud (AWS only)
    ```
    pip install odc-apps-cloud
@@ -175,7 +155,7 @@ practice to limit `pip`/`conda` package resolution search.
    ```
    pip install odc-apps-cloud[GCP,THREDDS]
    ```
-2. For `dc-index-from-tar` (indexing to datacube from tar archive)
+3. For `dc-index-from-tar` (indexing to datacube from tar archive)
    ```
    pip install odc-apps-dc-tools
    ```

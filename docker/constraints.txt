@@ -5,9 +5,7 @@
 #    pip-compile --no-annotate --no-build-isolation --output-file=constraints.txt --strip-extras requirements.in
 #
 affine==2.3.0
-aiobotocore==2.4.0
 aiohttp==3.8.1
-aioitertools==0.9.0
 aiosignal==1.2.0
 alabaster==0.7.12
 argon2-cffi==21.3.0

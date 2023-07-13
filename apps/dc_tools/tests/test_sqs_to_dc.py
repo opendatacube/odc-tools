@@ -8,7 +8,7 @@ import pytest
 from deepdiff import DeepDiff
 from functools import partial
 from moto import mock_sqs
-from odc.aws.queue import get_messages
+from odc.aws.sqs import get_messages
 from pathlib import Path
 from pprint import pformat
 
