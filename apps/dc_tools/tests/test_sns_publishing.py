@@ -316,6 +316,7 @@ def test_with_archive_less_mature(
     aws_credentials,
     aws_env,
     odc_db,
+    test_data_dir,
     nrt_dsid,
     final_dsid,
     sns_setup,
@@ -329,7 +330,7 @@ def test_with_archive_less_mature(
     nrt_result = runner.invoke(
         fs_cli,
         [
-            str(TEST_DATA_FOLDER),
+            test_data_dir,
             "--glob=**/maturity-nrt.odc-metadata.yaml",
             "--archive-less-mature",
             f"--publish-action={output_topic_arn}",
@@ -356,7 +357,7 @@ def test_with_archive_less_mature(
     final_result = runner.invoke(
         fs_cli,
         [
-            str(TEST_DATA_FOLDER),
+            test_data_dir,
             "--glob=**/maturity-final.odc-metadata.yaml",
             "--archive-less-mature",
             f"--publish-action={output_topic_arn}",

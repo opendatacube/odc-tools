@@ -222,7 +222,7 @@ def index_update_dataset(
         added = False
         updated = False
         if archive_less_mature and publish_action:
-            dupes = dc.index.datasets.find_less_mature(ds)
+            dupes = dc.index.datasets.find_less_mature(ds, 500)
             for dupe in dupes:
                 archive_stacs.append(ds_to_stac(dupe))
 
