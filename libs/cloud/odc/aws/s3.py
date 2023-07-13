@@ -87,7 +87,7 @@ def s3_head_object(url, s3, **kw):
     bucket, key = s3_url_parse(url)
     try:
         rr = s3.head_object(Bucket=bucket, Key=key, **kw)
-    except (ClientError, BotoCoreError) as e:
+    except (ClientError, BotoCoreError):
         return None
 
     return unpack(url, rr)
@@ -293,7 +293,6 @@ class S3Fetcher:
                     _range = None
 
                 obj = _s3_fetch_object(url, s3=s3, _range=_range, **kw)
-                logging.info(f"fetched object: {obj}")
                 yield obj
 
         for rr in generate_requests(urls, self._s3, **kw):
