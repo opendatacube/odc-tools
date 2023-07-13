@@ -3,7 +3,7 @@ import logging
 import signal
 import sys
 import tarfile
-from odc.aio import S3Fetcher
+from odc.aws.s3 import S3Fetcher
 from odc.io import read_stdin_lines
 from odc.io.tar import add_txt_file, tar_mode
 from odc.io.timer import RateEstimator

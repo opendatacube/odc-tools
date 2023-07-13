@@ -1,6 +1,6 @@
 import click
 import sys
-from odc.aio import S3Fetcher, s3_find_glob
+from odc.aws.s3 import S3Fetcher, s3_find_glob
 
 
 @click.command("s3-find")

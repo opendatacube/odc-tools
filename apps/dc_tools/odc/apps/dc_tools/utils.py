@@ -1,8 +1,8 @@
 import click
 import logging
-import pkg_resources
+import importlib_resources
 from datadog import statsd, initialize
-from odc.aws.queue import publish_to_topic
+from odc.aws.sqs import publish_to_topic
 from typing import Iterable, Optional, Union
 
 from datacube import Datacube
@@ -161,7 +161,7 @@ statsd_setting = click.option(
 
 
 def get_esri_list():
-    stream = pkg_resources.resource_stream(__name__, "esri-lc-tiles-list.txt")
+    stream = importlib_resources.files(__name__).joinpath("esri-lc-tiles-list.txt")
     with stream as f:
         for tile in f.readlines():
             tile_id = tile.decode().rstrip("\n")

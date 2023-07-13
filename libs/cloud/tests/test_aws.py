@@ -5,7 +5,7 @@ import pytest
 from click.testing import CliRunner
 from moto import mock_sqs
 from odc.aws._find import parse_query
-from odc.aws.queue import get_queue, get_queues, redrive_queue
+from odc.aws.sqs import get_queue, get_queues, redrive_queue
 from types import SimpleNamespace
 
 from odc.apps.cloud import redrive_to_queue

@@ -11,7 +11,7 @@ import sys
 import uuid
 from botocore import UNSIGNED
 from botocore.config import Config
-from odc.aws.queue import get_messages, publish_to_topic
+from odc.aws.sqs import get_messages, publish_to_topic
 from pathlib import PurePath
 from toolz import dicttoolz
 from typing import Tuple
