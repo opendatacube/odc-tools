@@ -24,7 +24,7 @@ click
 dask[complete]
 dask_image
 
-datacube[dev]>=1.8.13
+datacube[dev]>=1.8.13,!=1.8.14
 datadog
 # things needed for tests that might not be referenced in setup.py
 deepdiff
