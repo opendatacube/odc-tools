@@ -24,7 +24,7 @@ click
 dask[complete]
 dask_image
 
-datacube[dev]>=1.8.13
+datacube[dev]>=1.8.15
 datadog
 # things needed for tests that might not be referenced in setup.py
 deepdiff
@@ -54,6 +54,7 @@ toolz
 tqdm
 urlpath
 xarray==2022.3.0
+importlib_resources>=6.0
 
 
 # Moto and Flask
