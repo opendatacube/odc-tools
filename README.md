@@ -149,9 +149,9 @@ CLI Tools
 Installation
 ------------
 
-Cloud tools depend on the `aiobotocore` package which depend on a specific
-versions of `botocore`. Another package we use, `boto3`, also depends on a
-specific versions of `botocore`. As a result having both `aiobotocore` and
+Cloud tools depend on the `aiobotocore` package, which depends on specific
+versions of `botocore`. Another package we use, `boto3`, also depends on
+specific versions of `botocore`. As a result, having both `aiobotocore` and
 `boto3` in one environment can be a bit tricky. The way to solve this
 is to install `aiobotocore[awscli,boto3]` before anything else, which will install
 compatible versions of `boto3` and `awscli` into the environment.
