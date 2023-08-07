@@ -30,7 +30,6 @@ Full list of libraries, and install instructions:
 Installation
 ============
 
-
 Libraries and applications in this repository are published to PyPI, and can be installed \
 with `pip` like so:
 
@@ -48,103 +47,17 @@ pip install \
 For Conda Users
 ---------------
 
-`odc-tools` aren't available as conda packages, but the most
-dependencies can be installed with conda from `conda-forge` channel.
+Some **odc-tools** are available via `conda` from the `conda-forge` channel.
 
-Use `conda env update -f <file>` to install all needed dependencies for
-`odc-tools` libraries and apps.
 
-<details><summary>Conda `environment.yaml` (click to expand)</summary><div markdown="1">
-
-```yaml
-channels:
-  - conda-forge
-dependencies:
-  # Datacube
-  - datacube>=1.8.5
-
-  # odc.dscache
-  - python-lmdb
-  - zstandard
-
-  # odc.algo
-  - dask-image
-  - numexpr
-  - scikit-image
-  - scipy
-  - toolz
-
-  # odc.ui
-  - ipywidgets
-  - ipyleaflet
-  - tqdm
-
-  # odc-apps-dc-tools
-  - pystac>=1
-  - pystac-client>=0.2.0
-  - azure-storage-blob
-  - fsspec
-  - lxml  # needed for thredds-crawler
-
-  # odc.{aio,aws}: aiobotocore/boto3
-  #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.3.3
-  - boto3
-
-  # eodatasets3 (used by odc-stats)
-  - boltons
-  - ciso8601
-  - python-rapidjson
-  - requests-cache
-  - ruamel.yaml
-  - structlog
-  - url-normalize
-
-  # for dev
-  - pylint
-  - autopep8
-  - flake8
-  - isort
-  - black
-  - mypy
-
-  # For tests
-  - pytest
-  - pytest-httpserver
-  - pytest-cov
-  - pytest-timeout
-  - moto
-  - deepdiff
-
-  - pip>=20
-  - pip:
-      # odc.apps.dc-tools
-      - thredds-crawler
-
-      # odc.stats
-      - eodatasets3
-
-      # tests
-      - pytest-depends
-
-      # odc.ui
-      - jupyter-ui-poll
-
-      # odc-tools libs
-      - odc-stac
-      - odc-algo
-      - odc-ui
-      - odc-dscache
-      - odc-stats
-
-      # odc-tools CLI apps
-      - odc-apps-cloud
-      - odc-apps-dc-tools
 ```
-</div></details>
+conda install -c conda-forge odc-apps-dc-tools odc-algo odc-io odc-cloud 
 
-CLI Tools
-=========
+```
+
+
+Cloud Tools
+===========
 
 Installation
 ------------
@@ -251,6 +164,98 @@ libs apps
 # Optional, to delete the environment
 conda env remove -n odc-tests-py38
 ```
+
+Use `conda env update -f <file>` to install all needed dependencies for
+`odc-tools` libraries and apps.
+
+<details><summary>Conda `environment.yaml` (click to expand)</summary><div markdown="1">
+
+```yaml
+channels:
+  - conda-forge
+dependencies:
+  # Datacube
+  - datacube>=1.8.5
+
+  # odc.dscache
+  - python-lmdb
+  - zstandard
+
+  # odc.algo
+  - dask-image
+  - numexpr
+  - scikit-image
+  - scipy
+  - toolz
+
+  # odc.ui
+  - ipywidgets
+  - ipyleaflet
+  - tqdm
+
+  # odc-apps-dc-tools
+  - pystac>=1
+  - pystac-client>=0.2.0
+  - azure-storage-blob
+  - fsspec
+  - lxml  # needed for thredds-crawler
+
+  # odc.{aio,aws}: aiobotocore/boto3
+  #  pin aiobotocore for easier resolution of dependencies
+  - aiobotocore==1.3.3
+  - boto3
+
+  # eodatasets3 (used by odc-stats)
+  - boltons
+  - ciso8601
+  - python-rapidjson
+  - requests-cache
+  - ruamel.yaml
+  - structlog
+  - url-normalize
+
+  # for dev
+  - pylint
+  - autopep8
+  - flake8
+  - isort
+  - black
+  - mypy
+
+  # For tests
+  - pytest
+  - pytest-httpserver
+  - pytest-cov
+  - pytest-timeout
+  - moto
+  - deepdiff
+
+  - pip>=20
+  - pip:
+      # odc.apps.dc-tools
+      - thredds-crawler
+
+      # odc.stats
+      - eodatasets3
+
+      # tests
+      - pytest-depends
+
+      # odc.ui
+      - jupyter-ui-poll
+
+      # odc-tools libs
+      - odc-stac
+      - odc-algo
+      - odc-ui
+      - odc-dscache
+      - odc-stats
+
+      # odc-tools CLI apps
+      - odc-apps-cloud
+      - odc-apps-dc-tools
+```
+</div></details>
 
 Release Process
 ===============
