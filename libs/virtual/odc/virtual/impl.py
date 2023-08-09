@@ -15,9 +15,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Dict, List, Optional, cast
 from typing import Mapping as TypeMapping
 
+import networkx as nx
 import numpy
 import xarray
 import yaml
+import uuid
 
 from datacube import Datacube
 from datacube.api.core import output_geobox
@@ -250,6 +252,51 @@ class Transformation(ABC):
         Perform computation on `data` that results in an `xarray.Dataset`
         having measurements reported by the `measurements` method.
         """
+
+
+class Tree(Mapping):
+    def __init__(self, product_def: Dict[str, Any]):
+        self.graph = nx.DiGraph()
+        self.add_nodes_from_dict(self.graph, product_def)
+        self.root = None
+
+    def add_nodes_from_dict(self, graph, dictionary: Dict[str, Any], parent=None):
+        for key, value in dictionary.items():
+            key_id = str(uuid.uuid4())
+            if isinstance(value, dict):
+                attrs = {k: v for k, v in value.items() if k != "input"}
+            else:
+                attrs = {}
+
+            graph.add_node(key_id, name=key, **attrs)
+
+            # If this node has a parent, then add an edge from the parent to this node
+            if parent is not None:
+                graph.add_edge(parent, key_id)
+            else:
+                self.root = key_id
+
+            # If the value is a dictionary  and has input, recursively call this function
+            if isinstance(value, dict) and value.get("input") is not None:
+                self.add_nodes_from_dict(graph, value.get("input"), key_id)
+
+            # If the value is a list of dictionary, add each element as a child node
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        self.add_nodes_from_dict(graph, item, key_id)
+
+    def __getitem__(self, key):
+        return self.graph.nodes[key]["name"]
+
+    def __iter__(self):
+        return iter(self.graph.nodes)
+
+    def __len__(self):
+        return self.graph.number_of_nodes()
+
+    def load(self, current_key: str, dc: Datacube, **query: Dict[str, Any]):
+        return
 
 
 class VirtualProduct(Mapping):
