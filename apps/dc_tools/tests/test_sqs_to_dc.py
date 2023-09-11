@@ -124,7 +124,7 @@ def test_extract_metadata_from_message(aws_credentials, odc_test_db_with_product
         uri
         == "s3://dea-public-data/cemp_insar/insar/displacement/alos/2009/06/17/alos_cumul_2009-06-17.yaml"
     )
-    assert type(data) == dict
+    assert isinstance(data, dict)
 
     doc2ds = Doc2Dataset(dc.index, products=["cemp_insar_alos_displacement"])
     index_update_dataset(
