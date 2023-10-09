@@ -3,7 +3,7 @@ import logging
 import importlib_resources
 from datadog import statsd, initialize
 from odc.aws.queue import publish_to_topic
-from typing import Iterable, Optional, Union
+from typing import Optional
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
@@ -209,8 +209,8 @@ def index_update_dataset(
            * If True, enforce dataset maturity by looking for existing datasets with same product, region_code and time
              values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
              If a match of the same or greater maturity is found a SkippedException is raised.
-           * If an integer is provided, it is used as the timedelta value for allowing a leniency when comparing timestamp
-             values, for datasets where there is a slight discrepancy. Default is 500ms.
+           * If an integer is provided, it is used as the timedelta value for allowing a leniency when comparing
+             timestamp values, for datasets where there is a slight discrepancy. Default is 500ms.
     :param publish_action: SNS topic arn to publish action to.
     :param stac_doc: STAC document for publication to SNS topic.
     :return: Returns nothing.  Raises an exception if anything goes wrong.
@@ -235,7 +235,7 @@ def index_update_dataset(
         added = False
         updated = False
 
-        valid_delta = type(archive_less_mature) is int and archive_less_mature >= 0
+        valid_delta = isinstance(archive_less_mature, int) and archive_less_mature >= 0
         if valid_delta and publish_action:
             dupes = dc.index.datasets.find_less_mature(ds, archive_less_mature)
             for dupe in dupes:
