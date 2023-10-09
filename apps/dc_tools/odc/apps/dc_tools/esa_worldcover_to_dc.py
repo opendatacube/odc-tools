@@ -117,7 +117,7 @@ def process_uri_tile(
     dc: Datacube,
     doc2ds: Doc2Dataset,
     update_if_exists: bool = True,
-    archive_less_mature: bool = False,
+    archive_less_mature: int = None,
     publish_action: str = None,
 ) -> Tuple[pystac.Item, str]:
     product_name = "esa_worldcover_" + map_version["year"]
@@ -166,7 +166,7 @@ def esa_wc_to_dc(
     limit: int,
     update: bool,
     n_workers: int = 100,
-    archive_less_mature: bool = False,
+    archive_less_mature: int = None,
     publish_action: str = None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)

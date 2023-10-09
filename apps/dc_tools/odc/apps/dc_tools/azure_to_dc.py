@@ -102,7 +102,7 @@ def cli(
     allow_unsafe: bool,
     stac: bool,
     statsd_setting: str,
-    archive_less_mature: bool,
+    archive_less_mature: int,
     publish_action: str,
     account_url: str,
     container_name: str,

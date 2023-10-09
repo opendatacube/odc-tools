@@ -107,7 +107,7 @@ def process_uri_tile(
     dc: Datacube,
     doc2ds: Doc2Dataset,
     update_if_exists: bool = True,
-    archive_less_mature: bool = False,
+    archive_less_mature: int = None,
     publish_action: str = None,
 ) -> Tuple[pystac.Item, str]:
     product_name = f"dem_{product}"
