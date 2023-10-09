@@ -4,35 +4,37 @@
 DEA Prototype Code
 ==================
 
-- AWS s3 tools
-- Rasterio from S3 investigations
+This repository provides developmental [libraries](https://github.com/opendatacube/odc-tools/tree/develop/libs)
+and [CLI tools](https://github.com/opendatacube/odc-tools/tree/develop/apps) for Open Datacube.
+
+- AWS S3 tools
+- CLIs for using ODC data from AWS S3 and SQS 
 - Utilities for data visualizations in notebooks
-
-Installation
-============
-
-This repository provides a number of small [libraries](https://github.com/opendatacube/odc-tools/tree/develop/libs)
-and [CLI tools](https://github.com/opendatacube/odc-tools/tree/develop/apps).
+- Experiments on optimising Rasterio usage on AWS S3 
 
 Full list of libraries, and install instructions:
 
 - `odc.algo` algorithms (GeoMedian wrapper is here)
-- `odc.stats` large scale processing framework (Moved to [odc-stats](http://github.com/opendatacube/odc-stats))
 - `odc.ui` tools for data visualization in notebook/lab
-- `odc.stac` STAC to ODC conversion tools (Moved to [odc-stac](https://github.com/opendatacube/odc-stac))
-- `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset` (moved to [odc-dscache](https://github.com/opendatacube/odc-dscache))
 - `odc.io` common IO utilities, used by apps mainly
 - `odc-cloud[ASYNC,AZURE,THREDDS]` cloud crawling support package
   - `odc.aws` AWS/S3 utilities, used by apps mainly
   - `odc.aio` faster concurrent fetching from S3 with async, used by apps `odc-cloud[ASYNC]`
   - `odc.{thredds,azure}` internal libs for cloud IO `odc-cloud[THREDDS,AZURE]`
 
-Pre-release of these libraries is on PyPI now, so can be installed with `pip`
-"the normal way". Most recent development versions of `odc-tools` packages are
-pushed to `https://packages.dea.ga.gov.au`, and can be installed like so:
+## Promoted to their own repositories 
+- `odc.stats` large scale processing framework (Moved to [odc-stats](http://github.com/opendatacube/odc-stats))
+- `odc.stac` STAC to ODC conversion tools (Moved to [odc-stac](https://github.com/opendatacube/odc-stac))
+- `odc.dscache` experimental key-value store where `key=UUID`, `value=Dataset` (moved to [odc-dscache](https://github.com/opendatacube/odc-dscache))
+
+Installation
+============
+
+Libraries and applications in this repository are published to PyPI, and can be installed \
+with `pip` like so:
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" \
+pip install \
   odc-ui \
   odc-stac \
   odc-stats \
@@ -42,15 +44,126 @@ pip install --extra-index-url="https://packages.dea.ga.gov.au" \
   odc-dscache
 ```
 
-**NOTE**: on Ubuntu 18.04 the default `pip` version is awfully old and does not
-support `--extra-index-url` command line option, so make sure to upgrade `pip`
-first: `pip3 install --upgrade pip`.
-
 For Conda Users
 ---------------
 
-Currently there are no `odc-tools` conda packages. But majority of `odc-tools`
-dependencies can be installed with conda from `conda-forge` channel.
+Some **odc-tools** are available via `conda` from the `conda-forge` channel.
+
+
+```
+conda install -c conda-forge odc-apps-dc-tools odc-algo odc-io odc-cloud 
+
+```
+
+
+Cloud Tools
+===========
+
+Installation
+------------
+
+Cloud tools depend on the `aiobotocore` package, which depends on specific
+versions of `botocore`. Another package we use, `boto3`, also depends on
+specific versions of `botocore`. As a result, having both `aiobotocore` and
+`boto3` in one environment can be a bit tricky. The way to solve this
+is to install `aiobotocore[awscli,boto3]` before anything else, which will install
+compatible versions of `boto3` and `awscli` into the environment.
+
+```
+pip install -U "aiobotocore[awscli,boto3]==1.3.3"
+# OR for conda setups
+conda install "aiobotocore==1.3.3" boto3 awscli
+```
+
+
+1. For cloud (AWS only)
+   ```
+   pip install odc-apps-cloud
+   ```
+2. For cloud (GCP, THREDDS and AWS)
+   ```
+   pip install odc-apps-cloud[GCP,THREDDS]
+   ```
+2. For `dc-index-from-tar` (indexing to datacube from tar archive)
+   ```
+   pip install odc-apps-dc-tools
+   ```
+
+Apps
+----
+
+1. `s3-find` list S3 bucket with wildcard
+2. `s3-to-tar` fetch documents from S3 and dump them to a tar archive
+3. `gs-to-tar` search GS for documents and dump them to a tar archive
+4. `dc-index-from-tar` read yaml documents from a tar archive and add them to datacube
+
+
+Example:
+
+```bash
+#!/bin/bash
+
+s3_src='s3://dea-public-data/L2/sentinel-2-nrt/**/*.yaml'
+
+s3-find "${s3_src}" | \
+  s3-to-tar | \
+    dc-index-from-tar --env s2 --ignore-lineage
+```
+
+Fastest way to list regularly placed files is to use fixed depth listing:
+
+```bash
+#!/bin/bash
+
+# only works when your metadata is same depth and has fixed file name
+s3_src='s3://dea-public-data/L2/sentinel-2-nrt/S2MSIARD/*/*/ARD-METADATA.yaml'
+
+s3-find --skip-check "${s3_src}" | \
+  s3-to-tar | \
+    dc-index-from-tar --env s2 --ignore-lineage
+```
+
+When using Google Storage:
+
+```bash
+#!/bin/bash
+
+# Google Storage support
+gs-to-tar --bucket data.deadev.com --prefix mangrove_cover
+dc-index-from-tar --protocol gs --env mangroves --ignore-lineage metadata.tar.gz
+```
+
+
+Local Development
+=================
+
+The following steps are used in the GitHub Actions workflow `main.yml`
+
+```bash
+
+# build environment from file
+mamba env create -f tests/test-env-py38.yml
+
+# this environment name is defined in tests/test-env-py38.yml file
+conda activate odc-tests-py38
+
+# install additional packages
+./scripts/dev-install.sh --no-deps
+
+# setup database for testing
+./scripts/setup-test-db.sh
+
+# run test
+echo "Running Tests"
+pytest --cov=. \
+--cov-report=html \
+--cov-report=xml:coverage.xml \
+--timeout=30 \
+libs apps
+
+# Optional, to delete the environment
+conda env remove -n odc-tests-py38
+```
 
 Use `conda env update -f <file>` to install all needed dependencies for
 `odc-tools` libraries and apps.
@@ -144,138 +257,19 @@ dependencies:
 ```
 </div></details>
 
-CLI Tools
-=========
-
-Installation
-------------
-
-Cloud tools depend on `aiobotocore` package which has a dependency on a specific
-version of `botocore`. Another package we use, `boto3`, also depends on a
-specific version of `botocore`. As a result having both `aiobotocore` and
-`boto3` in one environment can be a bit tricky. The easiest way to solve this,
-is to install `aiobotocore[awscli,boto3]` before anything else, which will pull
-in a compatible version of `boto3` and `awscli` into the environment.
-
-```
-pip install -U "aiobotocore[awscli,boto3]==1.3.3"
-# OR for conda setups
-conda install "aiobotocore==1.3.3" boto3 awscli
-```
-
-The specific version of `aiobotocore` is not relevant, but it is needed in
-practice to limit `pip`/`conda` package resolution search.
-
-
-1. For cloud (AWS only)
-   ```
-   pip install odc-apps-cloud
-   ```
-2. For cloud (GCP, THREDDS and AWS)
-   ```
-   pip install odc-apps-cloud[GCP,THREDDS]
-   ```
-2. For `dc-index-from-tar` (indexing to datacube from tar archive)
-   ```
-   pip install odc-apps-dc-tools
-   ```
-
-Apps
-----
-
-1. `s3-find` list S3 bucket with wildcard
-2. `s3-to-tar` fetch documents from S3 and dump them to a tar archive
-3. `gs-to-tar` search GS for documents and dump them to a tar archive
-4. `dc-index-from-tar` read yaml documents from a tar archive and add them to datacube
-
-
-Example:
-
-```bash
-#!/bin/bash
-
-s3_src='s3://dea-public-data/L2/sentinel-2-nrt/**/*.yaml'
-
-s3-find "${s3_src}" | \
-  s3-to-tar | \
-    dc-index-from-tar --env s2 --ignore-lineage
-```
-
-Fastest way to list regularly placed files is to use fixed depth listing:
-
-```bash
-#!/bin/bash
-
-# only works when your metadata is same depth and has fixed file name
-s3_src='s3://dea-public-data/L2/sentinel-2-nrt/S2MSIARD/*/*/ARD-METADATA.yaml'
-
-s3-find --skip-check "${s3_src}" | \
-  s3-to-tar | \
-    dc-index-from-tar --env s2 --ignore-lineage
-```
-
-When using Google Storage:
-
-```bash
-#!/bin/bash
-
-# Google Storage support
-gs-to-tar --bucket data.deadev.com --prefix mangrove_cover
-dc-index-from-tar --protocol gs --env mangroves --ignore-lineage metadata.tar.gz
-```
-
-
-Local Development
-=================
-
-The following steps is used in github workflow `main.yml`
-
-```bash
-
-# build environment from file
-mamba env create -f tests/test-env-py38.yml
-
-# this environment name is defined in tests/test-env-py38.yml file
-conda activate odc-tests-py38
-
-# install additional packages
-./scripts/dev-install.sh --no-deps
-
-# setup database for testing
-./scripts/setup-test-db.sh
-
-# run test
-echo "Running Tests"
-pytest --cov=. \
---cov-report=html \
---cov-report=xml:coverage.xml \
---timeout=30 \
-libs apps
-
-# Optional, to delete the environment
-conda env remove -n odc-tests-py38
-```
-
 Release Process
 ===============
 
-Development versions of packages are pushed to [DEA packages
-repo](https://packages.dea.ga.gov.au/) on every push to `develop` branch,
-version is automatically increased by a script that runs before creating wheels
-and source distribution tar balls. Right now new dev version is pushed for all
-the packages even the ones that have not changed since last push.
-
-Publishing to [PyPi](https://pypi.org/) happens automatically when changes are
-pushed to a protected `pypi/publish` branch. Only members of [Open Datacube
-Admins](https://github.com/orgs/opendatacube/teams/admins) group have the
-permission to push to this branch.
-
-Process:
-
 1. Manually edit `{lib,app}/{pkg}/odc/{pkg}/_version.py` file to increase version number
-2. Merge it to `develop` branch via PR
-3. Fast forward `pypi/publish` branch to match `develop`
-4. Push it to GitHub
+2. Merge changes to the `develop` branch via a Pull Request
+3. Fast-forward the `pypi/publish` branch to match `develop`
+4. Push to GitHub
 
 Steps 3 and 4 can be done by an authorized user with
 `./scripts/sync-publish-branch.sh` script.
+
+
+Publishing to [PyPi](https://pypi.org/) happens automatically when changes are
+pushed to the protected `pypi/publish` branch. Only members of [Open Datacube
+Admins](https://github.com/orgs/opendatacube/teams/admins) group have the
+permission to push to this branch.
