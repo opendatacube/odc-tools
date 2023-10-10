@@ -297,9 +297,6 @@ def cli(
                 "Rewrite assets argument needs to be two strings split by ','"
             )
 
-    if isinstance(archive_less_mature, str):
-        archive_less_mature = int(archive_less_mature)
-
     # Do the thing
     dc = Datacube()
     added, failed, skipped = stac_api_to_odc(

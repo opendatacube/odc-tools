@@ -58,9 +58,6 @@ def cli(
 
     added, failed = 0, 0
 
-    if isinstance(archive_less_mature, str):
-        archive_less_mature = int(archive_less_mature)
-
     for in_file in files_to_process:
         with in_file.open() as f:
             try:

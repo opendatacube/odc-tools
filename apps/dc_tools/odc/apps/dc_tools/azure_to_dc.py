@@ -118,8 +118,6 @@ def cli(
         container_name, credential, prefix, suffix, account_url=account_url
     )
 
-    if isinstance(archive_less_mature, str):
-        archive_less_mature = int(archive_less_mature)
     # Consume generator and fetch YAML's
     added, failed = dump_list_to_odc(
         account_url,

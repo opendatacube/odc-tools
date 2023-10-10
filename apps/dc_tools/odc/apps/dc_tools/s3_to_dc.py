@@ -166,9 +166,6 @@ def cli(
         url.url for url in s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
     )
 
-    if isinstance(archive_less_mature, str):
-        archive_less_mature = int(archive_less_mature)
-
     added, failed, skipped = dump_to_odc(
         fetcher(document_stream),
         dc,

@@ -116,6 +116,7 @@ archive_less_mature = click.option(
     is_flag=False,
     flag_value=500,
     default=None,
+    type=int,
     help=(
         "Archive existing any datasets that match product, "
         "time and region-code, but have lower dataset-maturity."
