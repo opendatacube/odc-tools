@@ -251,6 +251,9 @@ def cli(
 
     print(f"Indexing Copernicus DEM for {product} with bounding box of {bbox}")
 
+    if isinstance(archive_less_mature, str):
+        archive_less_mature = int(archive_less_mature)
+
     added, failed, skipped = cop_dem_to_dc(
         dc,
         product,

@@ -382,6 +382,9 @@ def cli(
     sqs = boto3.resource("sqs")
     queue = sqs.get_queue_by_name(QueueName=queue_name)
 
+    if isinstance(archive_less_mature, str):
+        archive_less_mature = int(archive_less_mature)
+
     # Do the thing
     dc = Datacube()
     success, failed, skipped = queue_to_odc(

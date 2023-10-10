@@ -262,6 +262,9 @@ def cli(
 
     print(f"Indexing ESA WorldCover with bounding box of {bbox}")
 
+    if isinstance(archive_less_mature, str):
+        archive_less_mature = int(archive_less_mature)
+
     added, failed = esa_wc_to_dc(
         dc,
         bbox,

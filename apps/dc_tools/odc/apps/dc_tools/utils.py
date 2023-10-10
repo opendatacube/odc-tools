@@ -113,17 +113,6 @@ request_payer = click.option(
 
 archive_less_mature = click.option(
     "--archive-less-mature",
-    is_flag=True,
-    default=False,
-    help=(
-        "Archive existing any datasets that match product, "
-        "time and region-code, but have lower dataset-maturity."
-        "Note: An error will be raised and the dataset add will "
-        "fail if a matching dataset with higher or equal dataset-maturity."
-    ),
-)
-archive_less_mature = click.option(
-    "--archive-less-mature",
     is_flag=False,
     flag_value=500,
     default=None,
@@ -205,11 +194,11 @@ def index_update_dataset(
     :param update_if_exists: If true allow insert or update.
     :param allow_unsafe: Allow unsafe (arbitrary) dataset updates.
     :param archive_less_mature: Enforce dataset maturity.
-           * If None (the default) or False, ignore dataset maturity.
-           * If True, enforce dataset maturity by looking for existing datasets with same product, region_code and time
+           * If None (the default), ignore dataset maturity.
+           * If integer, enforce dataset maturity by looking for existing datasets with same product, region_code and time
              values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
              If a match of the same or greater maturity is found a SkippedException is raised.
-           * If an integer is provided, it is used as the timedelta value for allowing a leniency when comparing
+             The integer value is used as the timedelta value for allowing a leniency when comparing
              timestamp values, for datasets where there is a slight discrepancy. Default is 500ms.
     :param publish_action: SNS topic arn to publish action to.
     :param stac_doc: STAC document for publication to SNS topic.
@@ -235,8 +224,7 @@ def index_update_dataset(
         added = False
         updated = False
 
-        valid_delta = isinstance(archive_less_mature, int) and archive_less_mature >= 0
-        if valid_delta and publish_action:
+        if isinstance(archive_less_mature, int) and publish_action:
             dupes = dc.index.datasets.find_less_mature(ds, archive_less_mature)
             for dupe in dupes:
                 archive_stacs.append(ds_to_stac(dupe))

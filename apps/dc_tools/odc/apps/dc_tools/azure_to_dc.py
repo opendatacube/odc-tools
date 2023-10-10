@@ -39,7 +39,7 @@ def dump_list_to_odc(
     update: Optional[bool] = False,
     update_if_exists: Optional[bool] = False,
     allow_unsafe: Optional[bool] = False,
-    archive_less_mature: Optional[bool] = False,
+    archive_less_mature: Optional[int] = None,
     publish_action: Optional[str] = None,
 ):
     ds_added = 0
@@ -118,6 +118,8 @@ def cli(
         container_name, credential, prefix, suffix, account_url=account_url
     )
 
+    if isinstance(archive_less_mature, str):
+        archive_less_mature = int(archive_less_mature)
     # Consume generator and fetch YAML's
     added, failed = dump_list_to_odc(
         account_url,
