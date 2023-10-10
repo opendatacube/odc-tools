@@ -51,6 +51,36 @@ def test_archive_less_mature(odc_db, test_data_dir, nrt_dsid, final_dsid):
     assert dc.index.datasets.get(nrt_dsid).archived_time is not None
 
 
+def test_dont_archive_less_mature(odc_db, test_data_dir, nrt_dsid, final_dsid):
+    # no archiving should be done if --archive-less-mature is not set
+    dc = odc_db
+    runner = CliRunner()
+
+    # Index NRT dataset
+    result = runner.invoke(
+        fs_to_dc_cli,
+        [
+            test_data_dir,
+            "--glob=**/maturity-nrt.odc-metadata.yaml",
+        ],
+    )
+    assert result.exit_code == 0
+    assert dc.index.datasets.get(final_dsid) is None
+    assert dc.index.datasets.get(nrt_dsid).archived_time is None
+
+    # Index Final dataset (autoarchiving NRT)
+    result = runner.invoke(
+        fs_to_dc_cli,
+        [
+            test_data_dir,
+            "--glob=**/maturity-final.odc-metadata.yaml",
+        ],
+    )
+    assert result.exit_code == 0
+    assert dc.index.datasets.get(final_dsid).archived_time is None
+    assert dc.index.datasets.get(nrt_dsid).archived_time is None
+
+
 def test_keep_more_mature(odc_db, test_data_dir, nrt_dsid, final_dsid):
     dc = odc_db
     runner = CliRunner()
