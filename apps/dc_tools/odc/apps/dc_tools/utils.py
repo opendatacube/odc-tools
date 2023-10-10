@@ -195,7 +195,7 @@ def index_update_dataset(
     :param allow_unsafe: Allow unsafe (arbitrary) dataset updates.
     :param archive_less_mature: Enforce dataset maturity.
            * If None (the default), ignore dataset maturity.
-           * If integer, enforce dataset maturity by looking for existing datasets with same product, region_code and time
+           * If int, enforce dataset maturity by looking for existing datasets with same product, region_code and time
              values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
              If a match of the same or greater maturity is found a SkippedException is raised.
              The integer value is used as the timedelta value for allowing a leniency when comparing
