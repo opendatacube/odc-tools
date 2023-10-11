@@ -39,7 +39,7 @@ def dump_list_to_odc(
     update: Optional[bool] = False,
     update_if_exists: Optional[bool] = False,
     allow_unsafe: Optional[bool] = False,
-    archive_less_mature: Optional[bool] = False,
+    archive_less_mature: Optional[int] = None,
     publish_action: Optional[str] = None,
 ):
     ds_added = 0
@@ -102,7 +102,7 @@ def cli(
     allow_unsafe: bool,
     stac: bool,
     statsd_setting: str,
-    archive_less_mature: bool,
+    archive_less_mature: int,
     publish_action: str,
     account_url: str,
     container_name: str,

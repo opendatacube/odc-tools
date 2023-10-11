@@ -125,7 +125,7 @@ def process_item(
     allow_unsafe: bool,
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
-    archive_less_mature: bool = False,
+    archive_less_mature: int = None,
     publish_action: bool = False,
 ):
     meta, uri, stac = item_to_meta_uri(item, rewrite, rename_product)
@@ -150,7 +150,7 @@ def stac_api_to_odc(
     allow_unsafe: bool = True,
     rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
-    archive_less_mature: bool = False,
+    archive_less_mature: int = None,
     publish_action: Optional[str] = None,
 ) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index)

@@ -3,7 +3,7 @@ import logging
 import importlib_resources
 from datadog import statsd, initialize
 from odc.aws.queue import publish_to_topic
-from typing import Iterable, Optional, Union
+from typing import Optional
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
@@ -113,13 +113,17 @@ request_payer = click.option(
 
 archive_less_mature = click.option(
     "--archive-less-mature",
-    is_flag=True,
-    default=False,
+    is_flag=False,
+    flag_value=500,
+    default=None,
+    type=int,
     help=(
         "Archive existing any datasets that match product, "
         "time and region-code, but have lower dataset-maturity."
         "Note: An error will be raised and the dataset add will "
         "fail if a matching dataset with higher or equal dataset-maturity."
+        "Can specify an of leniency for comparing timestamps, provided in milliseconds. "
+        "Default value is 500ms."
     ),
 )
 
@@ -176,7 +180,7 @@ def index_update_dataset(
     update: bool = False,
     update_if_exists: bool = False,
     allow_unsafe: bool = False,
-    archive_less_mature: Optional[Union[bool, Iterable[str]]] = None,
+    archive_less_mature: Optional[int] = None,
     publish_action: Optional[str] = None,
     stac_doc: Optional[dict] = None,
 ) -> int:
@@ -191,13 +195,12 @@ def index_update_dataset(
     :param update_if_exists: If true allow insert or update.
     :param allow_unsafe: Allow unsafe (arbitrary) dataset updates.
     :param archive_less_mature: Enforce dataset maturity.
-           * If None (the default) or False or an empty iterable, ignore dataset maturity.
-           * If True, enforce dataset maturity by looking for existing datasets with same product, region_code and time
+           * If None (the default), ignore dataset maturity.
+           * If int, enforce dataset maturity by looking for existing datasets with same product, region_code and time
              values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
              If a match of the same or greater maturity is found a SkippedException is raised.
-           * If an iterable of valid search field names is provided, it is used as the "grouping" fields for
-             identifying dataset maturity matches.
-             (i.e. `archive_less_mature=True` is the same as `archive_less_mature=['region_code', 'time'])
+             The integer value is used as the timedelta value for allowing a leniency when comparing
+             timestamp values, for datasets where there is a slight discrepancy. Default is 500ms.
     :param publish_action: SNS topic arn to publish action to.
     :param stac_doc: STAC document for publication to SNS topic.
     :return: Returns nothing.  Raises an exception if anything goes wrong.
@@ -221,8 +224,9 @@ def index_update_dataset(
         archive_stacs = []
         added = False
         updated = False
-        if archive_less_mature and publish_action:
-            dupes = dc.index.datasets.find_less_mature(ds, 500)
+
+        if isinstance(archive_less_mature, int) and publish_action:
+            dupes = dc.index.datasets.find_less_mature(ds, archive_less_mature)
             for dupe in dupes:
                 archive_stacs.append(ds_to_stac(dupe))
 
