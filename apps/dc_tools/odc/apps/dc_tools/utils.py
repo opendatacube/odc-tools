@@ -209,6 +209,8 @@ def index_update_dataset(
         raise IndexingException("Failed to get URI from metadata doc")
     # Make sure we can create a dataset first
     try:
+        print(metadata)
+        print(uri)
         ds, err = doc2ds(metadata, uri)
     except ValueError as e:
         raise IndexingException(
