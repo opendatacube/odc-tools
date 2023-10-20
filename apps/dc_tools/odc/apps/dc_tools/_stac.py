@@ -129,8 +129,8 @@ def _stac_product_lookup(
                 except KeyError:
                     region_code = (
                         f"{str(properties['proj:epsg'])[-2:]}"
-                        f"{properties['sentinel:latitude_band']}"
-                        f"{properties['sentinel:grid_square']}"
+                        f"{properties['mgrs:latitude_band']}"
+                        f"{properties['mgrs:grid_square']}"
                     )
 
             default_grid = "g10m"
