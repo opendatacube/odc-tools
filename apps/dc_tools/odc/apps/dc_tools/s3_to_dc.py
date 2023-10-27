@@ -152,7 +152,6 @@ def cli(
         opts["RequestPayer"] = "requester"
 
     dc = Datacube()
-    logging.warning(f"product is: {product}")
 
     # if it's a uri, a product wasn't provided, and 'product' is actually another uri
     if product.startswith("s3://"):
