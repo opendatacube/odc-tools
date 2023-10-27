@@ -111,7 +111,7 @@ def dump_to_odc(
 @archive_less_mature
 @publish_action
 @click.argument("uri", type=str, nargs=-1)
-@click.argument("product", type=str, nargs=1)
+@click.argument("product", type=str, nargs=1, required=False)
 def cli(
     skip_lineage,
     fail_on_missing_lineage,
@@ -130,7 +130,15 @@ def cli(
     uri,
     product,
 ):
-    """Iterate through files in an S3 bucket and add them to datacube"""
+    """
+    Iterate through files in an S3 bucket and add them to datacube.
+
+    File uris can be provided as a glob, or as a list of absolute URLs.
+    If more than one uri is given, all will be treated as absolute URLs.
+
+    Product is optional; if one is provided, it must match all datasets.
+    Only one product can be provided.
+    """
 
     transform = None
     if stac:
@@ -144,6 +152,7 @@ def cli(
         opts["RequestPayer"] = "requester"
 
     dc = Datacube()
+    logging.warning(f"product is: {product}")
 
     # if it's a uri, a product wasn't provided, and 'product' is actually another uri
     if product.startswith("s3://"):
