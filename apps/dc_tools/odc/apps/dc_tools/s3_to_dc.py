@@ -173,15 +173,18 @@ def cli(
         is_glob = False
         for url in uri:
             if "*" in url:
-                logging.warning("A list of uris is assumed to include only absolute URLs. "
-                                "Any wildcard characters will be escaped.")
+                logging.warning(
+                    "A list of uris is assumed to include only absolute URLs. "
+                    "Any wildcard characters will be escaped."
+                )
 
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     # Grab the URL from the resulting S3 item
     if is_glob:
         document_stream = (
-            url.url for url in s3_find_glob(uri[0], skip_check=skip_check, s3=fetcher, **opts)
+            url.url
+            for url in s3_find_glob(uri[0], skip_check=skip_check, s3=fetcher, **opts)
         )
     else:
         # if working with absolute URLs, no need for all the globbing logic

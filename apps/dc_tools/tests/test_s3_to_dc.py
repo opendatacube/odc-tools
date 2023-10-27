@@ -133,9 +133,7 @@ def test_s3_to_dc_partially_succeeds_when_given_invalid_and_valid_dataset_yamls(
     )
 
 
-def test_s3_to_dc_list_absolute_urls(
-        mocked_s3_datasets, odc_test_db_with_products
-):
+def test_s3_to_dc_list_absolute_urls(mocked_s3_datasets, odc_test_db_with_products):
     # provide mulitple uris, as absolute URLs
     runner = CliRunner()
     result = runner.invoke(
@@ -154,9 +152,7 @@ def test_s3_to_dc_list_absolute_urls(
     )
 
 
-def test_s3_to_dc_no_product(
-        mocked_s3_datasets, odc_test_db_with_products
-):
+def test_s3_to_dc_no_product(mocked_s3_datasets, odc_test_db_with_products):
     # product should not need to be specified
     runner = CliRunner()
     result = runner.invoke(
@@ -184,5 +180,6 @@ def test_s3_to_dc_no_product(
     )
     assert result2.exit_code == 0
     assert (
-        result2.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+        result2.output
+        == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
