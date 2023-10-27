@@ -48,7 +48,7 @@ def doc_error(uri, doc):
 def dump_to_odc(
     document_stream,
     dc: Datacube,
-    products: list,
+    product: list,
     transform=None,
     update=False,
     update_if_exists=False,
@@ -57,7 +57,7 @@ def dump_to_odc(
     publish_action=None,
     **kwargs,
 ) -> Tuple[int, int, int]:
-    doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
+    doc2ds = Doc2Dataset(dc.index, products=product, **kwargs)
 
     ds_added = 0
     ds_failed = 0
@@ -110,7 +110,7 @@ def dump_to_odc(
 @request_payer
 @archive_less_mature
 @publish_action
-@click.argument("uri", type=str, nargs=1)
+@click.argument("uri", type=str, nargs=-1)
 @click.argument("product", type=str, nargs=1)
 def cli(
     skip_lineage,
@@ -139,37 +139,58 @@ def cli(
         else:
             transform = stac_transform
 
-    candidate_products = product.split()
-
     opts = {}
     if request_payer:
         opts["RequestPayer"] = "requester"
 
-    # Check datacube connection and products
     dc = Datacube()
-    odc_products = dc.list_products().name.values
 
-    odc_products = set(odc_products)
-    if not set(candidate_products).issubset(odc_products):
-        missing_products = list(set(candidate_products) - odc_products)
-        print(
-            f"Error: Requested Product/s {', '.join(missing_products)} {'is' if len(missing_products) == 1 else 'are'} "
-            "not present in the ODC Database",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    # if it's a uri, a product wasn't provided, and 'product' is actually another uri
+    if product.startswith("s3://"):
+        candidate_product = []
+        if isinstance(uri, str):
+            uri = [uri, product]
+        else:
+            uri = list(uri)
+            uri.append(product)
+    else:
+        # Check datacube connection and products
+        candidate_product = product.split()
+        odc_products = dc.list_products().name.values
+
+        odc_products = set(odc_products)
+        if not set(candidate_product).issubset(odc_products):
+            print(
+                f"Error: Requested Product {product} is not present in the ODC Database",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    is_glob = True
+    # we assume the uri to be an absolute URL if it contains no wildcards
+    # or if there are multiple uri values provided
+    if (len(uri) > 1) or ("*" not in uri[0]):
+        is_glob = False
+        for url in uri:
+            if "*" in url:
+                logging.warning("A list of uris is assumed to include only absolute URLs. "
+                                "Any wildcard characters will be escaped.")
 
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     # Grab the URL from the resulting S3 item
-    document_stream = (
-        url.url for url in s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
-    )
+    if is_glob:
+        document_stream = (
+            url.url for url in s3_find_glob(uri[0], skip_check=skip_check, s3=fetcher, **opts)
+        )
+    else:
+        # if working with absolute URLs, no need for all the globbing logic
+        document_stream = uri
 
     added, failed, skipped = dump_to_odc(
         fetcher(document_stream),
         dc,
-        candidate_products,
+        candidate_product,
         skip_lineage=skip_lineage,
         fail_on_missing_lineage=fail_on_missing_lineage,
         verify_lineage=verify_lineage,

@@ -1,13 +1,13 @@
 # Conda environment for running tests in odc-tools
-#   conda env create -f test-env-py38.yml
-#   conda activate odc-tests-py38
+#   conda env create -f test-env.yml
+#   conda activate odc-tools-tests
 
-name: odc-tests-py38
+name: odc-tools-tests
 channels:
   - conda-forge
 
 dependencies:
-  - python=3.8
+  - python>=3.9
 
   # Datacube
   - datacube>=1.8.15
@@ -56,7 +56,7 @@ dependencies:
   - sphinx-autodoc-typehints
   - nbsphinx
 
-  - pip=20
+  - pip=23
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler

@@ -102,9 +102,7 @@ def test_s3_to_dc_fails_to_index_non_dataset_yaml(
         s3_to_dc,
         [
             "--no-sign-request",
-            # absolute single file s3 uri won't work with s3-to-dc, only uri string contain *
-            # absolute path = "s3://dea-public-data/derivative/ga_ls5t_nbart_gm_cyear_3/3-0-0/x08/y23/1994--P1Y/ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final.proc-info.yaml",
-            "s3://odc-tools-test/derivative/ga_ls5t_nbart_gm_cyear_3/3-0-0/x08/y23/1994--P1Y/*.proc-info.yaml",
+            "s3://dea-public-data/derivative/ga_ls5t_nbart_gm_cyear_3/3-0-0/x08/y23/1994--P1Y/ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final.proc-info.yaml",
             "ga_ls5t_nbart_gm_cyear_3",
         ],
         catch_exceptions=False,
@@ -132,4 +130,59 @@ def test_s3_to_dc_partially_succeeds_when_given_invalid_and_valid_dataset_yamls(
     assert result.exit_code == 1
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 1 datasets.\n"
+    )
+
+
+def test_s3_to_dc_list_absolute_urls(
+        mocked_s3_datasets, odc_test_db_with_products
+):
+    # provide mulitple uris, as absolute URLs
+    runner = CliRunner()
+    result = runner.invoke(
+        s3_to_dc,
+        [
+            "--no-sign-request",
+            "s3://odc-tools-test/cemp_insar/01/07/alos_cumul_2010-01-07.yaml",
+            "s3://odc-tools-test/cemp_insar/04/01/alos_cumul_2010-04-01.yaml",
+            "s3://odc-tools-test/cemp_insar/08/11/alos_cumul_2010-08-11.yaml",
+            "cemp_insar_alos_displacement",
+        ],
+    )
+    assert result.exit_code == 0
+    assert (
+        result.output == "Added 3 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
+
+
+def test_s3_to_dc_no_product(
+        mocked_s3_datasets, odc_test_db_with_products
+):
+    # product should not need to be specified
+    runner = CliRunner()
+    result = runner.invoke(
+        s3_to_dc,
+        [
+            "--no-sign-request",
+            "s3://odc-tools-test/cemp_insar/01/07/alos_cumul_2010-01-07.yaml",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert (
+        result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
+    )
+
+    # test with glob
+    result2 = CliRunner().invoke(
+        s3_to_dc,
+        [
+            "--no-sign-request",
+            "--stac",
+            "s3://odc-tools-test/sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/*_L2A.json",
+        ],
+        catch_exceptions=False,
+    )
+    assert result2.exit_code == 0
+    assert (
+        result2.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )

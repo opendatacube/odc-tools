@@ -142,10 +142,10 @@ The following steps are used in the GitHub Actions workflow `main.yml`
 ```bash
 
 # build environment from file
-mamba env create -f tests/test-env-py38.yml
+mamba env create -f tests/test-env.yml
 
-# this environment name is defined in tests/test-env-py38.yml file
-conda activate odc-tests-py38
+# this environment name is defined in tests/test-env.yml file
+conda activate odc-tools-tests
 
 # install additional packages
 ./scripts/dev-install.sh --no-deps
@@ -162,7 +162,7 @@ pytest --cov=. \
 libs apps
 
 # Optional, to delete the environment
-conda env remove -n odc-tests-py38
+conda env remove -n odc-tools-tests
 ```
 
 Use `conda env update -f <file>` to install all needed dependencies for
