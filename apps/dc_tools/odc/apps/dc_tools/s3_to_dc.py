@@ -48,7 +48,7 @@ def doc_error(uri, doc):
 def dump_to_odc(
     document_stream,
     dc: Datacube,
-    product: list,
+    products: list,
     transform=None,
     update=False,
     update_if_exists=False,
@@ -57,7 +57,7 @@ def dump_to_odc(
     publish_action=None,
     **kwargs,
 ) -> Tuple[int, int, int]:
-    doc2ds = Doc2Dataset(dc.index, products=product, **kwargs)
+    doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
 
     ds_added = 0
     ds_failed = 0
@@ -90,7 +90,7 @@ def dump_to_odc(
         except SkippedException:
             ds_skipped += 1
     if not found_docs:
-        raise click.Abort("Doc stream was empty")
+        raise click.ClickException("Doc stream was empty")
 
     return ds_added, ds_failed, ds_skipped
 
@@ -155,7 +155,7 @@ def cli(
 
     # if it's a uri, a product wasn't provided, and 'product' is actually another uri
     if product.startswith("s3://"):
-        candidate_product = []
+        candidate_products = []
         if isinstance(uri, str):
             uri = [uri, product]
         else:
@@ -163,13 +163,15 @@ def cli(
             uri.append(product)
     else:
         # Check datacube connection and products
-        candidate_product = product.split()
+        candidate_products = product.split()
         odc_products = dc.list_products().name.values
 
         odc_products = set(odc_products)
-        if not set(candidate_product).issubset(odc_products):
+        if not set(candidate_products).issubset(odc_products):
+            missing_products = list(set(candidate_products) - odc_products)
             print(
-                f"Error: Requested Product {product} is not present in the ODC Database",
+                f"Error: Requested Product/s {', '.join(missing_products)} {'is' if len(missing_products) == 1 else 'are'} "
+                "not present in the ODC Database",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -201,7 +203,7 @@ def cli(
     added, failed, skipped = dump_to_odc(
         fetcher(document_stream),
         dc,
-        candidate_product,
+        candidate_products,
         skip_lineage=skip_lineage,
         fail_on_missing_lineage=fail_on_missing_lineage,
         verify_lineage=verify_lineage,
