@@ -170,7 +170,8 @@ def cli(
         if not set(candidate_products).issubset(odc_products):
             missing_products = list(set(candidate_products) - odc_products)
             print(
-                f"Error: Requested Product/s {', '.join(missing_products)} {'is' if len(missing_products) == 1 else 'are'} "
+                f"Error: Requested Product/s {', '.join(missing_products)} "
+                f"{'is' if len(missing_products) == 1 else 'are'} "
                 "not present in the ODC Database",
                 file=sys.stderr,
             )
