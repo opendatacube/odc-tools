@@ -279,6 +279,10 @@ def index_update_dataset(
 
     if updated:
         logging.info("Existing Dataset Updated: %s", ds.id)
+        if publish_action:
+            # if STAC was not provided, generate from dataset
+            stac_doc = stac_doc if stac_doc else ds_to_stac(ds)
+            publish_to_topic(arn=publish_action, action="UPDATED", stac=stac_doc)
 
 
 def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125"):
