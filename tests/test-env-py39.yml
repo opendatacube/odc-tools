@@ -38,7 +38,7 @@ dependencies:
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.4.2
+  - aiobotocore
   - boto3
 
   # For tests
@@ -46,9 +46,8 @@ dependencies:
   - pytest-httpserver
   - pytest-cov
   - pytest-timeout
-  - moto[server]
+  - moto
   - deepdiff
-
 
   # for docs
   - sphinx
