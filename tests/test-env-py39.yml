@@ -46,7 +46,7 @@ dependencies:
   - pytest-httpserver
   - pytest-cov
   - pytest-timeout
-  - moto
+  - moto[server]
   - deepdiff
 
 
