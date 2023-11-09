@@ -142,7 +142,7 @@ The following steps are used in the GitHub Actions workflow `main.yml`
 ```bash
 
 # build environment from file
-mamba env create -f tests/test-env-py38.yml
+mamba env create -f tests/test-env-py39.yml
 
 # this environment name is defined in tests/test-env-py38.yml file
 conda activate odc-tests-py38

@@ -28,7 +28,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - uses: actions/cache@v3
       id: wheels_cache
@@ -76,7 +76,7 @@ jobs:
         path: |
           tests/env
 
-        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+        key: ${{ runner.os }}-test-env-py39-${{ hashFiles('tests/test-env-py39.yml') }}
 
     - uses: conda-incubator/setup-miniconda@v2
       if: steps.conda_cache.outputs.cache-hit != 'true'
