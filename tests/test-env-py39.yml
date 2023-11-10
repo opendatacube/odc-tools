@@ -1,13 +1,13 @@
 # Conda environment for running tests in odc-tools
-#   conda env create -f test-env-py38.yml
-#   conda activate odc-tests-py38
+#   conda env create -f test-env-py39.yml
+#   conda activate odc-tests-py39
 
-name: odc-tests-py38
+name: odc-tests-py39
 channels:
   - conda-forge
 
 dependencies:
-  - python=3.8
+  - python=3.9
 
   # Datacube
   - datacube>=1.8.15
@@ -38,7 +38,7 @@ dependencies:
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.4.2
+  - aiobotocore
   - boto3
 
   # For tests
@@ -48,7 +48,6 @@ dependencies:
   - pytest-timeout
   - moto
   - deepdiff
-
 
   # for docs
   - sphinx
