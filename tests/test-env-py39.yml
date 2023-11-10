@@ -13,13 +13,6 @@ dependencies:
   - datacube>=1.8.15
   - sqlalchemy<2.0.0
 
-  # odc.algo
-  - dask-image
-  - numexpr
-  - scikit-image
-  - scipy
-  - toolz
-
   # odc.ui
   - ipywidgets>=8.0
   - ipyleaflet
@@ -60,9 +53,6 @@ dependencies:
       # odc.apps.dc-tools
       - thredds-crawler
       - rio-stac
-
-      # odc.algo optional dependency
-      - hdstats
 
       # odc.ui
       - jupyter-ui-poll>=0.2.0a

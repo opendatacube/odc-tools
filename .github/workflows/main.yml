@@ -265,7 +265,6 @@ jobs:
     strategy:
       matrix:
         pkg:
-        - odc-algo
         - odc-cloud
         - odc-io
         - odc-ui
