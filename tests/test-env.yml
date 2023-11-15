@@ -7,18 +7,11 @@ channels:
   - conda-forge
 
 dependencies:
-  - python>=3.9,<3.12
+  - python=3.9
 
   # Datacube
   - datacube>=1.8.15
   - sqlalchemy<2.0.0
-
-  # odc.algo
-  - dask-image
-  - numexpr
-  - scikit-image
-  - scipy
-  - toolz
 
   # odc.ui
   - ipywidgets>=8.0
@@ -38,7 +31,7 @@ dependencies:
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.4.2
+  - aiobotocore
   - boto3
 
   # For tests
@@ -48,7 +41,6 @@ dependencies:
   - pytest-timeout
   - moto
   - deepdiff
-
 
   # for docs
   - sphinx
@@ -61,9 +53,6 @@ dependencies:
       # odc.apps.dc-tools
       - thredds-crawler
       - rio-stac
-
-      # odc.algo optional dependency
-      - hdstats
 
       # odc.ui
       - jupyter-ui-poll>=0.2.0a
