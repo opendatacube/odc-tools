@@ -14,7 +14,6 @@ and [CLI tools](https://github.com/opendatacube/odc-tools/tree/develop/apps) for
 
 Full list of libraries, and install instructions:
 
-- `odc.algo` algorithms (GeoMedian wrapper is here)
 - `odc.ui` tools for data visualization in notebook/lab
 - `odc.io` common IO utilities, used by apps mainly
 - `odc-cloud[ASYNC,AZURE,THREDDS]` cloud crawling support package
@@ -38,7 +37,6 @@ pip install \
   odc-ui \
   odc-stac \
   odc-stats \
-  odc-algo \
   odc-io \
   odc-cloud[ASYNC] \
   odc-dscache
@@ -51,7 +49,7 @@ Some **odc-tools** are available via `conda` from the `conda-forge` channel.
 
 
 ```
-conda install -c conda-forge odc-apps-dc-tools odc-algo odc-io odc-cloud 
+conda install -c conda-forge odc-apps-dc-tools odc-io odc-cloud 
 
 ```
 
@@ -181,13 +179,6 @@ dependencies:
   - python-lmdb
   - zstandard
 
-  # odc.algo
-  - dask-image
-  - numexpr
-  - scikit-image
-  - scipy
-  - toolz
-
   # odc.ui
   - ipywidgets
   - ipyleaflet
@@ -246,7 +237,6 @@ dependencies:
 
       # odc-tools libs
       - odc-stac
-      - odc-algo
       - odc-ui
       - odc-dscache
       - odc-stats

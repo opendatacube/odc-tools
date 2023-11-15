@@ -59,6 +59,9 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# VIM swap files
+.*.sw?
+
 # PyBuilder
 target/
 .idea/

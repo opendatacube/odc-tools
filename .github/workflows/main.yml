@@ -28,7 +28,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - uses: actions/cache@v3
       id: wheels_cache
@@ -75,7 +75,6 @@ jobs:
       with:
         path: |
           tests/env
-
         key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
     - uses: conda-incubator/setup-miniconda@v2
@@ -127,7 +126,6 @@ jobs:
       with:
         path: |
           tests/env
-
         key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
     - name: Update PATH
@@ -210,7 +208,6 @@ jobs:
       with:
         path: |
           tests/env
-
         key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
     - name: Update PATH
@@ -265,7 +262,6 @@ jobs:
     strategy:
       matrix:
         pkg:
-        - odc-algo
         - odc-cloud
         - odc-io
         - odc-ui

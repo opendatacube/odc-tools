@@ -1,0 +1,58 @@
+# Conda environment for running tests in odc-tools
+#   conda env create -f test-env-py39.yml
+#   conda activate odc-tests-py39
+
+name: odc-tests-py39
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.9
+
+  # Datacube
+  - datacube>=1.8.15
+  - sqlalchemy<2.0.0
+
+  # odc.ui
+  - ipywidgets>=8.0
+  - ipyleaflet
+  - tqdm
+
+  # odc-apps-dc-tools
+  - pystac>=1.2.0
+  - pystac-client>=0.4.0
+  - azure-storage-blob
+  - fsspec
+  - lxml # needed for thredds-crawler
+  - urlpath
+  - datadog
+  - eodatasets3
+  - importlib_resources>=6.0
+
+  # odc.{aws,aio}: aiobotocore/boto3
+  #  pin aiobotocore for easier resolution of dependencies
+  - aiobotocore
+  - boto3
+
+  # For tests
+  - pytest
+  - pytest-httpserver
+  - pytest-cov
+  - pytest-timeout
+  - moto
+  - deepdiff
+
+  # for docs
+  - sphinx
+  - sphinx_rtd_theme
+  - sphinx-autodoc-typehints
+  - nbsphinx
+
+  - pip=20
+  - pip:
+      # odc.apps.dc-tools
+      - thredds-crawler
+      - rio-stac
+
+      # odc.ui
+      - jupyter-ui-poll>=0.2.0a
