@@ -1,8 +1,8 @@
 # Conda environment for running tests in odc-tools
-#   conda env create -f test-env-py39.yml
-#   conda activate odc-tests-py39
+#   conda env create -f test-env.yml
+#   conda activate odc-tools-tests
 
-name: odc-tests-py39
+name: odc-tools-tests
 channels:
   - conda-forge
 
@@ -48,7 +48,7 @@ dependencies:
   - sphinx-autodoc-typehints
   - nbsphinx
 
-  - pip=20
+  - pip=23
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
