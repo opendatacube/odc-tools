@@ -110,7 +110,7 @@ def dump_to_odc(
 @request_payer
 @archive_less_mature
 @publish_action
-@click.argument("uri", type=str, nargs=-1)
+@click.argument("uris", nargs=-1)
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
     skip_lineage,
@@ -127,7 +127,7 @@ def cli(
     request_payer,
     archive_less_mature,
     publish_action,
-    uri,
+    uris,
     product,
 ):
     """
@@ -137,7 +137,8 @@ def cli(
     If more than one uri is given, all will be treated as absolute URLs.
 
     Product is optional; if one is provided, it must match all datasets.
-    Only one product can be provided.
+    Can provide a single product name or a space separated list of multiple products
+    (formatted as a single string).
     """
 
     transform = None
@@ -156,11 +157,7 @@ def cli(
     # if it's a uri, a product wasn't provided, and 'product' is actually another uri
     if product.startswith("s3://"):
         candidate_products = []
-        if isinstance(uri, str):
-            uri = [uri, product]
-        else:
-            uri = list(uri)
-            uri.append(product)
+        uris += (product,)
     else:
         # Check datacube connection and products
         candidate_products = product.split()
@@ -180,9 +177,9 @@ def cli(
     is_glob = True
     # we assume the uri to be an absolute URL if it contains no wildcards
     # or if there are multiple uri values provided
-    if (len(uri) > 1) or ("*" not in uri[0]):
+    if (len(uris) > 1) or ("*" not in uris[0]):
         is_glob = False
-        for url in uri:
+        for url in uris:
             if "*" in url:
                 logging.warning(
                     "A list of uris is assumed to include only absolute URLs. "
@@ -195,11 +192,11 @@ def cli(
     if is_glob:
         document_stream = (
             url.url
-            for url in s3_find_glob(uri[0], skip_check=skip_check, s3=fetcher, **opts)
+            for url in s3_find_glob(uris[0], skip_check=skip_check, s3=fetcher, **opts)
         )
     else:
         # if working with absolute URLs, no need for all the globbing logic
-        document_stream = uri
+        document_stream = uris
 
     added, failed, skipped = dump_to_odc(
         fetcher(document_stream),
