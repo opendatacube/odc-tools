@@ -14,7 +14,6 @@ and [CLI tools](https://github.com/opendatacube/odc-tools/tree/develop/apps) for
 
 Full list of libraries, and install instructions:
 
-- `odc.algo` algorithms (GeoMedian wrapper is here)
 - `odc.ui` tools for data visualization in notebook/lab
 - `odc.io` common IO utilities, used by apps mainly
 - `odc-cloud[ASYNC,AZURE,THREDDS]` cloud crawling support package
@@ -38,7 +37,6 @@ pip install \
   odc-ui \
   odc-stac \
   odc-stats \
-  odc-algo \
   odc-io \
   odc-cloud[ASYNC] \
   odc-dscache
@@ -51,7 +49,7 @@ Some **odc-tools** are available via `conda` from the `conda-forge` channel.
 
 
 ```
-conda install -c conda-forge odc-apps-dc-tools odc-algo odc-io odc-cloud 
+conda install -c conda-forge odc-apps-dc-tools odc-io odc-cloud 
 
 ```
 
@@ -142,10 +140,10 @@ The following steps are used in the GitHub Actions workflow `main.yml`
 ```bash
 
 # build environment from file
-mamba env create -f tests/test-env-py38.yml
+mamba env create -f tests/test-env.yml
 
-# this environment name is defined in tests/test-env-py38.yml file
-conda activate odc-tests-py38
+# this environment name is defined in tests/test-env.yml file
+conda activate odc-tools-tests
 
 # install additional packages
 ./scripts/dev-install.sh --no-deps
@@ -162,7 +160,7 @@ pytest --cov=. \
 libs apps
 
 # Optional, to delete the environment
-conda env remove -n odc-tests-py38
+conda env remove -n odc-tools-tests
 ```
 
 Use `conda env update -f <file>` to install all needed dependencies for
@@ -180,13 +178,6 @@ dependencies:
   # odc.dscache
   - python-lmdb
   - zstandard
-
-  # odc.algo
-  - dask-image
-  - numexpr
-  - scikit-image
-  - scipy
-  - toolz
 
   # odc.ui
   - ipywidgets
@@ -246,7 +237,6 @@ dependencies:
 
       # odc-tools libs
       - odc-stac
-      - odc-algo
       - odc-ui
       - odc-dscache
       - odc-stats

@@ -90,7 +90,7 @@ def dump_to_odc(
         except SkippedException:
             ds_skipped += 1
     if not found_docs:
-        raise click.Abort("Doc stream was empty")
+        raise click.ClickException("Doc stream was empty")
 
     return ds_added, ds_failed, ds_skipped
 
@@ -110,8 +110,8 @@ def dump_to_odc(
 @request_payer
 @archive_less_mature
 @publish_action
-@click.argument("uri", type=str, nargs=1)
-@click.argument("product", type=str, nargs=1)
+@click.argument("uris", nargs=-1)
+@click.argument("product", type=str, nargs=1, required=False)
 def cli(
     skip_lineage,
     fail_on_missing_lineage,
@@ -127,10 +127,19 @@ def cli(
     request_payer,
     archive_less_mature,
     publish_action,
-    uri,
+    uris,
     product,
 ):
-    """Iterate through files in an S3 bucket and add them to datacube"""
+    """
+    Iterate through files in an S3 bucket and add them to datacube.
+
+    File uris can be provided as a glob, or as a list of absolute URLs.
+    If more than one uri is given, all will be treated as absolute URLs.
+
+    Product is optional; if one is provided, it must match all datasets.
+    Can provide a single product name or a space separated list of multiple products
+    (formatted as a single string).
+    """
 
     transform = None
     if stac:
@@ -139,32 +148,55 @@ def cli(
         else:
             transform = stac_transform
 
-    candidate_products = product.split()
-
     opts = {}
     if request_payer:
         opts["RequestPayer"] = "requester"
 
-    # Check datacube connection and products
     dc = Datacube()
-    odc_products = dc.list_products().name.values
 
-    odc_products = set(odc_products)
-    if not set(candidate_products).issubset(odc_products):
-        missing_products = list(set(candidate_products) - odc_products)
-        print(
-            f"Error: Requested Product/s {', '.join(missing_products)} {'is' if len(missing_products) == 1 else 'are'} "
-            "not present in the ODC Database",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    # if it's a uri, a product wasn't provided, and 'product' is actually another uri
+    if product.startswith("s3://"):
+        candidate_products = []
+        uris += (product,)
+    else:
+        # Check datacube connection and products
+        candidate_products = product.split()
+        odc_products = dc.list_products().name.values
+
+        odc_products = set(odc_products)
+        if not set(candidate_products).issubset(odc_products):
+            missing_products = list(set(candidate_products) - odc_products)
+            print(
+                f"Error: Requested Product/s {', '.join(missing_products)} "
+                f"{'is' if len(missing_products) == 1 else 'are'} "
+                "not present in the ODC Database",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    is_glob = True
+    # we assume the uri to be an absolute URL if it contains no wildcards
+    # or if there are multiple uri values provided
+    if (len(uris) > 1) or ("*" not in uris[0]):
+        is_glob = False
+        for url in uris:
+            if "*" in url:
+                logging.warning(
+                    "A list of uris is assumed to include only absolute URLs. "
+                    "Any wildcard characters will be escaped."
+                )
 
     # Get a generator from supplied S3 Uri for candidate documents
     fetcher = S3Fetcher(aws_unsigned=no_sign_request)
     # Grab the URL from the resulting S3 item
-    document_stream = (
-        url.url for url in s3_find_glob(uri, skip_check=skip_check, s3=fetcher, **opts)
-    )
+    if is_glob:
+        document_stream = (
+            url.url
+            for url in s3_find_glob(uris[0], skip_check=skip_check, s3=fetcher, **opts)
+        )
+    else:
+        # if working with absolute URLs, no need for all the globbing logic
+        document_stream = uris
 
     added, failed, skipped = dump_to_odc(
         fetcher(document_stream),

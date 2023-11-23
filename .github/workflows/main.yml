@@ -28,7 +28,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - uses: actions/cache@v3
       id: wheels_cache
@@ -75,8 +75,7 @@ jobs:
       with:
         path: |
           tests/env
-
-        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+        key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
     - uses: conda-incubator/setup-miniconda@v2
       if: steps.conda_cache.outputs.cache-hit != 'true'
@@ -103,7 +102,7 @@ jobs:
       shell: bash -l {0}
       if: steps.conda_cache.outputs.cache-hit != 'true'
       run: |
-        mamba env create -f tests/test-env-py38.yml -p tests/env
+        mamba env create -f tests/test-env.yml -p tests/env
 
     - name: Check Python Env
       shell: bash -l {0}
@@ -127,8 +126,7 @@ jobs:
       with:
         path: |
           tests/env
-
-        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+        key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
     - name: Update PATH
       shell: bash
@@ -210,8 +208,7 @@ jobs:
       with:
         path: |
           tests/env
-
-        key: ${{ runner.os }}-test-env-py38-${{ hashFiles('tests/test-env-py38.yml') }}
+        key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
     - name: Update PATH
       shell: bash
@@ -265,7 +262,6 @@ jobs:
     strategy:
       matrix:
         pkg:
-        - odc-algo
         - odc-cloud
         - odc-io
         - odc-ui
