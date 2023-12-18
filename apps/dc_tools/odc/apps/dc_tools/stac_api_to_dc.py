@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """Index datasets found from an SQS queue into Postgres
 """
-import click
 import concurrent
 import json
 import logging
 import os
-import pystac
 import sys
-from pystac.item import Item
-from pystac_client import Client
 from typing import Any, Dict, Generator, Optional, Tuple
 
+import click
+import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
@@ -22,11 +20,14 @@ from odc.apps.dc_tools.utils import (
     bbox,
     index_update_dataset,
     limit,
+    publish_action,
+    rename_product,
     statsd_gauge_reporting,
     statsd_setting,
     update_if_exists_flag,
-    publish_action,
 )
+from pystac.item import Item
+from pystac_client import Client
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -243,15 +244,7 @@ def stac_api_to_odc(
         "HTTPS to S3 URIs, --rewrite-assets=https://example.com/,s3://"
     ),
 )
-@click.option(
-    "--rename-product",
-    type=str,
-    default=None,
-    help=(
-        "Name of product to overwrite collection(s) names, "
-        "only one product name can overwrite, despite multiple collections "
-    ),
-)
+@rename_product
 @archive_less_mature
 @publish_action
 @statsd_setting
