@@ -94,6 +94,7 @@ def dump_list_to_odc(
             executor.submit(
                 process_doc,
                 doc,
+                uri,
                 dc,
                 doc2ds,
                 stac,
