@@ -1,13 +1,14 @@
-import click
 import logging
-import importlib_resources
-from datadog import statsd, initialize
-from odc.aws.queue import publish_to_topic
 from typing import Optional
 
+import click
+import importlib_resources
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
+from datadog import initialize, statsd
+from odc.aws.queue import publish_to_topic
+
 from ._stac import ds_to_stac
 
 ESRI_LANDCOVER_BASE_URI = (
@@ -161,6 +162,16 @@ statsd_setting = click.option(
     is_flag=False,
     default=None,
     help="statsd exporter hostname and port, i.e. prometheus-statsd-exporter:9125",
+)
+
+rename_product = click.option(
+    "--rename-product",
+    type=str,
+    default=None,
+    help=(
+        "Name of product to overwrite collection(s) names, "
+        "only one product name can overwrite, despite multiple collections "
+    ),
 )
 
 
