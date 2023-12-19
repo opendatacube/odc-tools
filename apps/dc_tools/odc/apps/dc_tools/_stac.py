@@ -2,17 +2,18 @@
 Tools for STAC to EO3 translation
 """
 import math
-import numpy
-from eodatasets3.serialise import from_doc
-from eodatasets3.stac import to_stac_item
 from pathlib import Path
-from toolz import get_in
 from typing import Any, Dict, Optional, Tuple
-from urlpath import URL
 from uuid import UUID
 
+import numpy
 from datacube.model import Dataset
-from datacube.utils.geometry import Geometry
+from datacube.utils.geometry import Geometry, box
+from eodatasets3.serialise import from_doc
+from eodatasets3.stac import to_stac_item
+from toolz import get_in
+from urlpath import URL
+
 from ._docs import odc_uuid
 
 Document = Dict[str, Any]
@@ -390,14 +391,26 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
 
         geometry = _geographic_to_projected(geometry, native_crs, precision)
 
-    # Get rid of multi-polygons
-    geom_type = None
-    try:
-        geom_type = geometry.geom_type
-    except AttributeError:
-        geom_type = geometry.type
-    if geom_type is not None and geom_type == "MultiPolygon":
-        geometry = geometry.convex_hull
+    if geometry is not None:
+        # We have a geometry, but let's make it simple
+        geom_type = None
+        try:
+            geom_type = geometry.geom_type
+        except AttributeError:
+            geom_type = geometry.type
+        if geom_type is not None and geom_type == "MultiPolygon":
+            geometry = geometry.convex_hull
+    else:
+        # Build geometry from the native transform
+        min_x = proj_transform[2]
+        min_y = proj_transform[5]
+        max_x = min_x + proj_transform[0] * proj_shape[0]
+        max_y = min_y + proj_transform[4] * proj_shape[1]
+
+        if min_y > max_y:
+            min_y, max_y = max_y, min_y
+
+        geometry = box(min_x, min_y, max_x, max_y, native_crs)
 
     stac_odc = {
         "$schema": "https://schemas.opendatacube.org/dataset",

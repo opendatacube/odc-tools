@@ -1,0 +1,318 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0",
+    "id": "dep_ls_geomad_66_20_2023",
+    "properties": {
+        "start_datetime": "2023-01-01T00:00:00.000Z",
+        "datetime": "2023-01-01T00:00:00Z",
+        "end_datetime": "2023-12-31T23:59:59Z",
+        "created": "2023-12-01T03:19:24.875082Z",
+        "proj:epsg": 3832,
+        "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [
+                        3336000.0,
+                        -2080020.0
+                    ],
+                    [
+                        3432000.0,
+                        -2080020.0
+                    ],
+                    [
+                        3432000.0,
+                        -1983990.0
+                    ],
+                    [
+                        3336000.0,
+                        -1983990.0
+                    ],
+                    [
+                        3336000.0,
+                        -2080020.0
+                    ]
+                ]
+            ]
+        },
+        "proj:bbox": [
+            3336000.0,
+            -2080020.0,
+            3432000.0,
+            -1983990.0
+        ],
+        "proj:shape": [
+            3201,
+            3200
+        ],
+        "proj:transform": [
+            30.0,
+            0.0,
+            3336000.0,
+            0.0,
+            -30.0,
+            -1983990.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "proj:projjson": {
+            "$schema": "https://proj.org/schemas/v0.7/projjson.schema.json",
+            "type": "ProjectedCRS",
+            "name": "WGS 84 / PDC Mercator",
+            "base_crs": {
+                "name": "WGS 84",
+                "datum": {
+                    "type": "GeodeticReferenceFrame",
+                    "name": "World Geodetic System 1984",
+                    "ellipsoid": {
+                        "name": "WGS 84",
+                        "semi_major_axis": 6378137,
+                        "inverse_flattening": 298.257223563
+                    }
+                },
+                "coordinate_system": {
+                    "subtype": "ellipsoidal",
+                    "axis": [
+                        {
+                            "name": "Geodetic latitude",
+                            "abbreviation": "Lat",
+                            "direction": "north",
+                            "unit": "degree"
+                        },
+                        {
+                            "name": "Geodetic longitude",
+                            "abbreviation": "Lon",
+                            "direction": "east",
+                            "unit": "degree"
+                        }
+                    ]
+                },
+                "id": {
+                    "authority": "EPSG",
+                    "code": 4326
+                }
+            },
+            "conversion": {
+                "name": "unnamed",
+                "method": {
+                    "name": "Mercator (variant A)",
+                    "id": {
+                        "authority": "EPSG",
+                        "code": 9804
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "Latitude of natural origin",
+                        "value": 0,
+                        "unit": "degree",
+                        "id": {
+                            "authority": "EPSG",
+                            "code": 8801
+                        }
+                    },
+                    {
+                        "name": "Longitude of natural origin",
+                        "value": 150,
+                        "unit": "degree",
+                        "id": {
+                            "authority": "EPSG",
+                            "code": 8802
+                        }
+                    },
+                    {
+                        "name": "Scale factor at natural origin",
+                        "value": 1,
+                        "unit": "unity",
+                        "id": {
+                            "authority": "EPSG",
+                            "code": 8805
+                        }
+                    },
+                    {
+                        "name": "False easting",
+                        "value": 0,
+                        "unit": "metre",
+                        "id": {
+                            "authority": "EPSG",
+                            "code": 8806
+                        }
+                    },
+                    {
+                        "name": "False northing",
+                        "value": 0,
+                        "unit": "metre",
+                        "id": {
+                            "authority": "EPSG",
+                            "code": 8807
+                        }
+                    }
+                ]
+            },
+            "coordinate_system": {
+                "subtype": "Cartesian",
+                "axis": [
+                    {
+                        "name": "Easting",
+                        "abbreviation": "",
+                        "direction": "east",
+                        "unit": "metre"
+                    },
+                    {
+                        "name": "Northing",
+                        "abbreviation": "",
+                        "direction": "north",
+                        "unit": "metre"
+                    }
+                ]
+            },
+            "id": {
+                "authority": "EPSG",
+                "code": 3832
+            }
+        }
+    },
+    "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+            [
+                [
+                    [
+                        179.96779787822723,
+                        -18.477840859860567
+                    ],
+                    [
+                        179.96779787822723,
+                        -17.65272718152993
+                    ],
+                    [
+                        180.0,
+                        -17.65272718152993
+                    ],
+                    [
+                        180.0,
+                        -18.477840859860567
+                    ],
+                    [
+                        179.96779787822723,
+                        -18.477840859860567
+                    ]
+                ]
+            ],
+            [
+                [
+                    [
+                        -179.169819449018,
+                        -17.65272718152993
+                    ],
+                    [
+                        -179.169819449018,
+                        -18.477840859860567
+                    ],
+                    [
+                        -180.0,
+                        -18.477840859860567
+                    ],
+                    [
+                        -180.0,
+                        -17.65272718152993
+                    ],
+                    [
+                        -179.169819449018,
+                        -17.65272718152993
+                    ]
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "collection",
+            "href": "https://stac.staging.digitalearthpacific.org/collections/dep_ls_geomad",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "red": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_red.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "green": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_green.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "blue": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_blue.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "nir08": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_nir08.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "swir16": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_swir16.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "swir22": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_swir22.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "emad": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_emad.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "smad": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_smad.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "bcmad": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_bcmad.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        },
+        "count": {
+            "href": "https://deppcpublicstorage.blob.core.windows.net/output/dep_ls_geomad/0-0-2/66/20/2023/dep_ls_geomad_66_20_2023_count.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "roles": [
+                "data"
+            ]
+        }
+    },
+    "bbox": [
+        -180.0,
+        -18.477840859860567,
+        180.0,
+        -17.65272718152993
+    ],
+    "stac_extensions": [
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+    ],
+    "collection": "dep_ls_geomad"
+}
