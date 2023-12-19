@@ -1,23 +1,24 @@
-import boto3
 import configparser
-import docker
 import json
 import os
-import psycopg2
-import pytest
 import time
-import yaml
-from click.testing import CliRunner
-from moto import mock_s3
-from moto.server import ThreadedMotoServer
 from pathlib import Path
 
+import boto3
+import psycopg2
+import pytest
+import yaml
+from click.testing import CliRunner
 from datacube import Datacube
 from datacube.drivers.postgres import _core as pgres_core
 from datacube.index import index_connect
 from datacube.model import MetadataType
 from datacube.utils import documents
+from moto import mock_s3
+from moto.server import ThreadedMotoServer
 from odc.apps.dc_tools.add_update_products import add_update_products
+
+import docker
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LANDSAT_STAC: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
@@ -29,6 +30,7 @@ USGS_LANDSAT_STAC: str = "LC08_L2SR_081119_20200101_20200823_02_T2.json"
 LIDAR_STAC: str = "lidar_dem.json"
 MATURITY_PRODUCT: str = "ga_ls5t_gm_product.yaml"
 ESRI_LULC_STAC: str = "29V-2021.stac-item.json"
+WORLD_WRAPPING_STAC: str = "world-wrapping.stac-item.json"
 
 
 @pytest.fixture
@@ -106,6 +108,12 @@ def mocked_s3_datasets(mocked_aws_s3_env):
                 Key=str(fname.relative_to(TEST_DATA_FOLDER)),
             )
         yield bucket
+
+
+@pytest.fixture
+def world_wrapping_stac():
+    with TEST_DATA_FOLDER.joinpath(WORLD_WRAPPING_STAC).open("r", encoding="utf8") as f:
+        return json.load(f)
 
 
 @pytest.fixture

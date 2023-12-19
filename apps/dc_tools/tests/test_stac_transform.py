@@ -96,3 +96,18 @@ def test_lidar_stac_transform(lidar_stac):
     assert (
         transformed_stac_doc["geometry"]["coordinates"] == expected_geometry_coordinates
     )
+
+
+def test_world_wrapping_stac(world_wrapping_stac):
+    transformed_stac_doc = stac_transform(world_wrapping_stac)
+    expected_geometry_coordinates = (
+        (3336000.0, -2079990.0),
+        (3336000.0, -1983990.0),
+        (3432030.0, -1983990.0),
+        (3432030.0, -2079990.0),
+        (3336000.0, -2079990.0),
+    )
+    assert (
+        transformed_stac_doc["geometry"]["coordinates"][0]
+        == expected_geometry_coordinates
+    )
