@@ -48,9 +48,8 @@ class S3Client:
         """Open whole or part of S3 object
 
         :param url: s3://bucket/path/to/object
-        :param s3: pre-configured s3 client, see make_s3_client()
         :param range: Byte range to read (first_byte, one_past_last_byte), default is whole object
-        :param kwargs: are passed on to ``s3.get_object(..)``
+        :param kwargs: are passed on to ``s3_client.get_object(..)``
         """
         if range is not None:
             try:
@@ -75,7 +74,6 @@ class S3Client:
 
         :param url: Source object
         :param destination: Output file name (defaults to object name in current directory)
-        :param s3: pre-configured s3 client, see make_s3_client()
         :param range: Byte range to read (first_byte, one_past_last_byte), default is whole object
         :param read_chunk_size: How many bytes to read at a time (default 10Mb)
         :param kwargs: are passed on to ``s3.get_object(..)``
@@ -93,12 +91,11 @@ class S3Client:
 
         return destination
 
-    def s3_head_object(self, url: str, **kwargs) -> Optional[Dict[str, Any]]:
+    def head_object(self, url: str, **kwargs) -> Optional[Dict[str, Any]]:
         """
         Head object, return object metadata.
 
         :param url: s3://bucket/path/to/object
-        :param s3: pre-configured s3 client, see make_s3_client()
         :param kwargs: are passed on to ``s3.head_object(..)``
         """
         bucket, key = s3_url_parse(url)
@@ -125,7 +122,6 @@ class S3Client:
         """Read entire or part of object into memory and return as bytes
 
         :param url: s3://bucket/path/to/object
-        :param s3: pre-configured s3 client, see make_s3_client()
         :param range: Byte range to read (first_byte, one_past_last_byte), default is whole object
         """
         return self.open(url, range=range, **kwargs).read()
@@ -135,7 +131,6 @@ class S3Client:
 
         :param data: bytes to write
         :param url: s3://bucket/path/to/object
-        :param s3: pre-configured s3 client, see s3_client()
         :param kwargs: Are passed on to ``s3.put_object(..)``
 
         ContentType
