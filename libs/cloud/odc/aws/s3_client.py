@@ -10,6 +10,7 @@ from ._find import norm_predicate, s3_file_info
 from typing import IO, Any, Dict, Optional, Union
 from botocore.credentials import ReadOnlyCredentials
 from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError
 from botocore.session import Session
 
 
@@ -126,7 +127,7 @@ class S3Client:
         """
         return self.open(url, range=range, **kwargs).read()
 
-    def dump(self, data: Union[bytes, str, IO], url: str, **kwargs):
+    def dump(self, data: Union[bytes, str, IO], url: str, with_deps=None, **kwargs):
         """Write data to s3 object.
 
         :param data: bytes to write
@@ -139,9 +140,14 @@ class S3Client:
 
         bucket, key = s3_url_parse(url)
 
-        r = self.s3_client.put_object(Bucket=bucket, Key=key, Body=data, **kwargs)
-        code = r["ResponseMetadata"]["HTTPStatusCode"]
-        return 200 <= code < 300
+        try:
+            r = self.s3_client.put_object(Bucket=bucket, Key=key, Body=data, **kwargs)
+            code = r["ResponseMetadata"]["HTTPStatusCode"]
+            result = 200 <= code < 300
+        except (IOError, BotoCoreError, ClientError):
+            result = False
+
+        return url, result
 
     def ls_all(self, url, **kw):
         bucket, prefix = s3_url_parse(url)
