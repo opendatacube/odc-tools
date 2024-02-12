@@ -1,5 +1,6 @@
 """ Notebook display helper methods (mapping related).
 """
+
 # pylint:disable=import-outside-toplevel
 
 import math

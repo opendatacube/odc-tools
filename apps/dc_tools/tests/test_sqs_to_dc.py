@@ -1,6 +1,7 @@
 """
 Test for SQS to DC tool
 """
+
 import boto3
 import json
 import os
