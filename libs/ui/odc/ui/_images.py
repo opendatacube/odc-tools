@@ -1,5 +1,6 @@
 """ Notebook display helper methods.
 """
+
 import numpy as np
 import rasterio
 import warnings

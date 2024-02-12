@@ -9,6 +9,7 @@ The config file contains the grid mappings to band names:
       default: ['3', '4', '5']
       swir: ['1', '2']
 """
+
 import click
 import logging
 import yaml

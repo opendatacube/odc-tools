@@ -1,6 +1,7 @@
 """
 Helper methods for working with AWS
 """
+
 import botocore
 import botocore.session
 import json

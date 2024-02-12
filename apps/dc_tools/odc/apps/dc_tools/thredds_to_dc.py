@@ -1,6 +1,7 @@
 """Crawl Thredds for prefixes and fetch YAML's for indexing
 and dump them into a Datacube instance
 """
+
 import click
 import logging
 from odc.thredds import download_yamls, thredds_find_glob
