@@ -14,7 +14,7 @@ from datacube.drivers.postgres import _core as pgres_core
 from datacube.index import index_connect
 from datacube.model import MetadataType
 from datacube.utils import documents
-from moto import mock_s3
+from moto import mock_aws
 from moto.server import ThreadedMotoServer
 from odc.apps.dc_tools.add_update_products import add_update_products
 
@@ -66,7 +66,7 @@ def mocked_aws_s3_env():
 
 @pytest.fixture
 def mocked_s3_datasets(mocked_aws_s3_env):
-    with mock_s3():
+    with mock_aws():
         bucket = mocked_aws_s3_env.Bucket("odc-tools-test")
         bucket.create(
             ACL="public-read",

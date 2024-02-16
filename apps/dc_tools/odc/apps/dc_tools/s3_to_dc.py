@@ -11,7 +11,7 @@ from typing import Tuple
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from odc.apps.dc_tools._docs import parse_doc_stream
-from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
+from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     IndexingException,
     SkippedException,
@@ -26,7 +26,6 @@ from odc.apps.dc_tools.utils import (
     statsd_gauge_reporting,
     statsd_setting,
     transform_stac,
-    transform_stac_absolute,
     update_flag,
     update_if_exists_flag,
     verify_lineage,
@@ -65,12 +64,15 @@ def dump_to_odc(
     uris_docs = parse_doc_stream(
         ((doc.url, doc.data) for doc in document_stream),
         on_error=doc_error,
-        transform=transform,
     )
 
     found_docs = False
     for uri, metadata in uris_docs:
         found_docs = True
+        stac_doc = None
+        if transform:
+            stac_doc = metadata
+            metadata = stac_transform(metadata)
         try:
             index_update_dataset(
                 metadata,
@@ -82,6 +84,7 @@ def dump_to_odc(
                 allow_unsafe=allow_unsafe,
                 archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
+                stac_doc=stac_doc,
             )
             ds_added += 1
         except IndexingException:
@@ -100,7 +103,6 @@ def dump_to_odc(
 @fail_on_missing_lineage
 @verify_lineage
 @transform_stac
-@transform_stac_absolute
 @update_flag
 @update_if_exists_flag
 @allow_unsafe
@@ -117,7 +119,6 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
     stac,
-    absolute,
     update,
     update_if_exists,
     allow_unsafe,
@@ -140,13 +141,6 @@ def cli(
     Can provide a single product name or a space separated list of multiple products
     (formatted as a single string).
     """
-
-    transform = None
-    if stac:
-        if absolute:
-            transform = stac_transform_absolute
-        else:
-            transform = stac_transform
 
     opts = {}
     if request_payer:
@@ -205,7 +199,7 @@ def cli(
         skip_lineage=skip_lineage,
         fail_on_missing_lineage=fail_on_missing_lineage,
         verify_lineage=verify_lineage,
-        transform=transform,
+        transform=stac,
         update=update,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,

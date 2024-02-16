@@ -7,7 +7,7 @@ import os
 import pytest
 from deepdiff import DeepDiff
 from functools import partial
-from moto import mock_sqs
+from moto import mock_aws
 from odc.aws.queue import get_messages
 from pathlib import Path
 from pprint import pformat
@@ -97,7 +97,7 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
-@mock_sqs
+@mock_aws
 def test_extract_metadata_from_message(aws_credentials, odc_test_db_with_products):
     TEST_QUEUE_NAME = "a_test_queue"
     sqs_resource = boto3.resource("sqs")
@@ -139,7 +139,7 @@ def test_extract_metadata_from_message(aws_credentials, odc_test_db_with_product
 
 def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
     actual_doc, uri = handle_json_message(
-        ga_ls8c_ard_3_message, None, "STAC-LINKS-REL:odc_yaml"
+        ga_ls8c_ard_3_message, "STAC-LINKS-REL:odc_yaml"
     )
 
     assert type(actual_doc) is dict
@@ -169,7 +169,7 @@ def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
 
 def test_odc_metadata_link(ga_ls8c_ard_3_message):
     actual_doc, uri = handle_json_message(
-        ga_ls8c_ard_3_message, None, "STAC-LINKS-REL:odc_yaml"
+        ga_ls8c_ard_3_message, "STAC-LINKS-REL:odc_yaml"
     )
     assert (
         uri == "https://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
@@ -179,7 +179,7 @@ def test_odc_metadata_link(ga_ls8c_ard_3_message):
 
 
 def test_stac_link(ga_ls8c_ard_3_message):
-    metadata, uri = handle_json_message(ga_ls8c_ard_3_message, stac_transform, None)
+    metadata, uri = handle_json_message(ga_ls8c_ard_3_message, None)
     assert (
         uri != "https://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
         "baseline/ga_ls8c_ard_3/088/080/2020/05/25/"
@@ -193,7 +193,8 @@ def test_stac_link(ga_ls8c_ard_3_message):
 
 
 def test_transform(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
-    actual_doc, uri = handle_json_message(ga_ls8c_ard_3_message, stac_transform, None)
+    actual_doc, uri = handle_json_message(ga_ls8c_ard_3_message, None)
+    actual_doc = stac_transform(actual_doc)
 
     assert ga_ls8c_ard_3_yaml["id"] == actual_doc["id"]
     assert ga_ls8c_ard_3_yaml["crs"] == actual_doc["crs"]

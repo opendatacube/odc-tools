@@ -4,15 +4,13 @@
 import concurrent
 import json
 import logging
-import os
 import sys
 from typing import Any, Dict, Generator, Optional, Tuple
 
 import click
-import pystac
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
-from odc.apps.dc_tools._stac import stac_transform, stac_transform_absolute
+from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     SkippedException,
     allow_unsafe,
@@ -63,57 +61,24 @@ def _parse_options(options: Optional[str]) -> Dict[str, Any]:
     return parsed_options
 
 
-def _guess_location(
-    item: pystac.Item, rewrite: Optional[Tuple[str, str]] = None
-) -> Tuple[str, bool]:
-    self_link = None
-    asset_link = None
-    relative = True
-
+def item_to_meta_uri(
+    item: Item,
+    rename_product: Optional[str] = None,
+) -> Generator[Tuple[dict, str, bool], None, None]:
     for link in item.links:
         if link.rel == "self":
-            self_link = link.target
+            uri = link.target
 
         # Override self with canonical
         if link.rel == "canonical":
-            self_link = link.target
+            uri = link.target
             break
 
-    for _, asset in item.assets.items():
-        if "geotiff" in asset.media_type:
-            asset_link = os.path.dirname(asset.href)
-            break
-
-    if rewrite is not None:
-        for _, asset in item.assets.items():
-            if "geotiff" in asset.media_type:
-                asset.href = asset.href.replace(rewrite[0], rewrite[1])
-
-    # If the metadata and the document are not on the same path,
-    # we need to use absolute links and not relative ones.
-    if (self_link and asset_link) and os.path.dirname(self_link) != os.path.dirname(
-        asset_link
-    ):
-        relative = False
-
-    return self_link, relative
-
-
-def item_to_meta_uri(
-    item: Item,
-    rewrite: Optional[Tuple[str, str]] = None,
-    rename_product: Optional[str] = None,
-) -> Generator[Tuple[dict, str, bool], None, None]:
-    uri, relative = _guess_location(item, rewrite)
     metadata = item.to_dict()
     if rename_product is not None:
         metadata["properties"]["odc:product"] = rename_product
     stac = metadata
-
-    if relative:
-        metadata = stac_transform(metadata)
-    else:
-        metadata = stac_transform_absolute(metadata)
+    metadata = stac_transform(metadata)
 
     return (metadata, uri, stac)
 
@@ -124,12 +89,11 @@ def process_item(
     doc2ds: Doc2Dataset,
     update_if_exists: bool,
     allow_unsafe: bool,
-    rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
     archive_less_mature: int = None,
     publish_action: bool = False,
 ):
-    meta, uri, stac = item_to_meta_uri(item, rewrite, rename_product)
+    meta, uri, stac = item_to_meta_uri(item, rename_product)
     index_update_dataset(
         meta,
         uri,
@@ -149,7 +113,6 @@ def stac_api_to_odc(
     config: dict,
     catalog_href: str,
     allow_unsafe: bool = True,
-    rewrite: Optional[Tuple[str, str]] = None,
     rename_product: Optional[str] = None,
     archive_less_mature: int = None,
     publish_action: Optional[str] = None,
@@ -182,7 +145,6 @@ def stac_api_to_odc(
                 doc2ds,
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
-                rewrite=rewrite,
                 rename_product=rename_product,
                 archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
@@ -235,15 +197,6 @@ def stac_api_to_odc(
     default=None,
     help="Other search terms, as a # separated list, i.e., --options=cloud_cover=0,100#sky=green",
 )
-@click.option(
-    "--rewrite-assets",
-    type=str,
-    default=None,
-    help=(
-        "Rewrite asset hrefs, for example, to change from "
-        "HTTPS to S3 URIs, --rewrite-assets=https://example.com/,s3://"
-    ),
-)
 @rename_product
 @archive_less_mature
 @publish_action
@@ -257,7 +210,6 @@ def cli(
     bbox,
     datetime,
     options,
-    rewrite_assets,
     rename_product,
     statsd_setting,
     archive_less_mature,
@@ -267,7 +219,6 @@ def cli(
     Iterate through STAC items from a STAC API and add them to datacube.
     """
     config = _parse_options(options)
-    rewrite = None
 
     # Format the search terms
     if bbox:
@@ -283,13 +234,6 @@ def cli(
     # number if max_items is not None.
     config["max_items"] = limit
 
-    if rewrite_assets is not None:
-        rewrite = list(rewrite_assets.split(","))
-        if len(rewrite) != 2:
-            raise ValueError(
-                "Rewrite assets argument needs to be two strings split by ','"
-            )
-
     # Do the thing
     dc = Datacube()
     added, failed, skipped = stac_api_to_odc(
@@ -298,7 +242,6 @@ def cli(
         config,
         catalog_href,
         allow_unsafe=allow_unsafe,
-        rewrite=rewrite,
         rename_product=rename_product,
         archive_less_mature=archive_less_mature,
         publish_action=publish_action,
