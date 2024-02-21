@@ -1,6 +1,7 @@
 """
 Various data visualisation helper methods
 """
+
 from matplotlib import pyplot as plt
 
 from ._cmaps import scl_colormap
