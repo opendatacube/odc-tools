@@ -3,7 +3,7 @@ import json
 import os
 import pytest
 from click.testing import CliRunner
-from moto import mock_sqs
+from moto import mock_aws
 from odc.aws._find import parse_query
 from odc.aws.queue import get_queue, get_queues, redrive_queue
 from types import SimpleNamespace
@@ -24,7 +24,7 @@ def aws_env(monkeypatch):
         monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
 
 
-@mock_sqs
+@mock_aws
 def test_redrive_to_queue(aws_env):
     resource = boto3.resource("sqs")
 
@@ -66,7 +66,7 @@ def test_redrive_to_queue(aws_env):
     assert get_n_messages(dead_queue) == 0
 
 
-@mock_sqs
+@mock_aws
 def test_redrive_to_queue_cli(aws_env):
     resource = boto3.resource("sqs")
 
@@ -127,7 +127,7 @@ def test_redrive_to_queue_cli(aws_env):
     )
 
 
-@mock_sqs
+@mock_aws
 def test_get_queues(aws_env):
     resource = boto3.resource("sqs")
 
@@ -169,7 +169,7 @@ def test_get_queues(aws_env):
     assert len(list(queues)) == 0
 
 
-@mock_sqs
+@mock_aws
 def test_get_queues_empty(aws_env):
     queues = get_queues()
 
