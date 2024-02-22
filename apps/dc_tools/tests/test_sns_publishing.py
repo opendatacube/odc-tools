@@ -3,7 +3,7 @@ import json
 import os
 import pytest
 from click.testing import CliRunner
-from moto import mock_sns, mock_sqs
+from moto import mock_aws
 from pathlib import Path
 
 from odc.apps.dc_tools.fs_to_dc import cli as fs_cli
@@ -27,7 +27,7 @@ def sns_setup(aws_credentials, aws_env):
     Tests are structured as follows:
     input: [ STAC -> SNS -> SQS ] -> dc_tools -> output: [ STAC -> SNS -> SQS ]
     """
-    with mock_sqs(), mock_sns():
+    with mock_aws():
         sns = boto3.client("sns")
         sqs = boto3.client("sqs")
 
