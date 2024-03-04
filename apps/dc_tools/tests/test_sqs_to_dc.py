@@ -1,6 +1,7 @@
 """
 Test for SQS to DC tool
 """
+
 import boto3
 import json
 import os
@@ -97,25 +98,25 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
-@mock_aws
 def test_extract_metadata_from_message(aws_credentials, odc_test_db_with_products):
-    TEST_QUEUE_NAME = "a_test_queue"
-    sqs_resource = boto3.resource("sqs")
+    with mock_aws():
+        TEST_QUEUE_NAME = "a_test_queue"
+        sqs_resource = boto3.resource("sqs")
 
-    dc = Datacube()
+        dc = Datacube()
 
-    a_queue = sqs_resource.create_queue(QueueName=TEST_QUEUE_NAME)
-    assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 0
+        a_queue = sqs_resource.create_queue(QueueName=TEST_QUEUE_NAME)
+        assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 0
 
-    a_queue.send_message(MessageBody=json.dumps(sqs_message))
-    assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 1
+        a_queue.send_message(MessageBody=json.dumps(sqs_message))
+        assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 1
 
-    assert dc.index.datasets.get("69a6eca2-ca45-4808-a5b3-694029200c43") is None
+        assert dc.index.datasets.get("69a6eca2-ca45-4808-a5b3-694029200c43") is None
 
-    queue = sqs_resource.get_queue_by_name(QueueName=TEST_QUEUE_NAME)
+        queue = sqs_resource.get_queue_by_name(QueueName=TEST_QUEUE_NAME)
 
-    msg = next(get_messages(queue))
-    metadata = extract_metadata_from_message(msg)
+        msg = next(get_messages(queue))
+        metadata = extract_metadata_from_message(msg)
     data, uri = handle_bucket_notification_message(
         msg, metadata, "cemp_insar/insar/displacement/alos/*", True
     )

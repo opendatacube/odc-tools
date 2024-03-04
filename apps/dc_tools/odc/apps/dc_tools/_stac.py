@@ -1,6 +1,7 @@
 """
 Tools for STAC to EO3 translation
 """
+
 import math
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple

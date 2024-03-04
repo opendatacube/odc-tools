@@ -32,12 +32,6 @@ from odc.apps.dc_tools.utils import (
     publish_action,
 )
 
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s: %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
-)
-
 
 def doc_error(uri, doc):
     """Log the internal errors parsing docs"""
@@ -99,6 +93,15 @@ def dump_to_odc(
 
 
 @click.command("s3-to-dc")
+@click.option(
+    "--log",
+    type=click.Choice(
+        ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
+    ),
+    default="WARNING",
+    show_default=True,
+    help="control the log level, e.g., --log=error",
+)
 @skip_lineage
 @fail_on_missing_lineage
 @verify_lineage
@@ -115,6 +118,7 @@ def dump_to_odc(
 @click.argument("uris", nargs=-1)
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
+    log,
     skip_lineage,
     fail_on_missing_lineage,
     verify_lineage,
@@ -141,6 +145,12 @@ def cli(
     Can provide a single product name or a space separated list of multiple products
     (formatted as a single string).
     """
+    log_level = getattr(logging, log.upper())
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s: %(levelname)s: %(message)s",
+        datefmt="%m/%d/%Y %I:%M:%S",
+    )
 
     opts = {}
     if request_payer:
