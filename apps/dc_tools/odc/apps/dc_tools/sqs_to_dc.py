@@ -248,9 +248,7 @@ def queue_to_odc(
                 if not record_path:
                     # Extract metadata and URI from a STAC or similar
                     # json structure for indexing
-                    metadata, uri = handle_json_message(
-                        metadata, odc_metadata_link
-                    )
+                    metadata, uri = handle_json_message(metadata, odc_metadata_link)
                     if transform:
                         stac_doc = metadata
                         metadata = stac_transform(metadata)

@@ -182,8 +182,8 @@ def _find_self_href(item: Document) -> str:
 def _get_relative_path(asset_href, self_link):
     if self_link is None:
         return asset_href
-    
-    self_path =  urlparse(self_link).path
+
+    self_path = urlparse(self_link).path
     href_path = urlparse(asset_href).path
 
     try:
@@ -215,7 +215,9 @@ def _get_stac_bands(
         if not any(
             t in asset.get("type", []) for t in image_types
         ) or "thumbnail" in asset.get("roles", []):
-            accessories[asset_name] = {"path": _get_relative_path(asset["href"], self_link)}
+            accessories[asset_name] = {
+                "path": _get_relative_path(asset["href"], self_link)
+            }
             continue
 
         # If transform specified here in the asset it should override
