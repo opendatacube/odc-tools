@@ -2,22 +2,22 @@
 systematically maintain a CSV of products and synchronise it with
 a database"""
 
-from collections import Counter, namedtuple
-
-import click
-import fsspec
 import logging
 import sys
-import yaml
+from collections import Counter, namedtuple
 from csv import DictReader
-from typing import Any, Dict, List, Optional, Generator, Tuple
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
+import click
 import datacube
+import fsspec
+import yaml
 from datacube import Datacube
 from odc.apps.dc_tools.utils import (
-    update_if_exists_flag,
     statsd_gauge_reporting,
     statsd_setting,
+    update_if_exists_flag,
 )
 
 Product = namedtuple("Product", ["name", "doc"])
@@ -134,7 +134,12 @@ def cli(csv_path: str, update_if_exists: bool, statsd_setting: str):
         update_if_exists,
     )
 
-    # TODO: Add in some QA/QC checks
+    # Check if the CSV file exists
+    in_file = Path(csv_path)
+    if not in_file.exists():
+        logging.error("Could not find input CSV at %s", csv_path)
+        sys.exit(1)
+
     added, updated, failed = add_update_products(dc, csv_path, update_if_exists)
 
     print(f"Added: {added}, Updated: {updated} and Failed: {failed}")
