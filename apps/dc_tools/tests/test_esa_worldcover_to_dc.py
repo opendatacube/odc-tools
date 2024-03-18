@@ -1,7 +1,14 @@
+from pathlib import Path
+
 import pytest
 from click.testing import CliRunner
 
-from odc.apps.dc_tools.esa_worldcover_to_dc import _unpack_bbox, cli, get_tile_uris
+from odc.apps.dc_tools.esa_worldcover_to_dc import (
+    _unpack_bbox,
+    cli,
+    get_tile_uris,
+    URI_TEMPLATE,
+)
 
 
 @pytest.fixture
@@ -43,6 +50,7 @@ def test_get_dem_tile_uris(bbox):
         "v100/2020/map/ESA_WorldCover_10m_2020_v100_N03E003_Map.tif"
     )
 
+    print(uris)
     assert len(uris) == 4
 
 
@@ -52,16 +60,27 @@ def test_complex_bbox(bbox_africa):
     assert len(uris) == 899
 
 
-# Test the actual process
-def test_indexing_cli(bbox, odc_test_db_with_products):
+@pytest.fixture
+def mock_esa_worldcover_datasets(monkeypatch):
+    """Replace the fetching of remote ESA WorldCover datasets with local downsampled versions"""
+    fname_template = URI_TEMPLATE.split("/")[-1]
+    local_template = (
+        "file://"
+        + str(Path(__name__).parent.absolute())
+        + f"/data/esa_worldcover/{fname_template}"
+    )
+    monkeypatch.setattr(
+        "odc.apps.dc_tools.esa_worldcover_to_dc.URI_TEMPLATE", local_template
+    )
+
+
+def test_indexing_cli(bbox, odc_test_db_with_products, mock_esa_worldcover_datasets):
     runner = CliRunner()
     result = runner.invoke(
         cli,
         [
             "--bbox",
             bbox,
-            "--statsd-setting",
-            "localhost:8125",
         ],
     )
     assert result.exit_code == 0
