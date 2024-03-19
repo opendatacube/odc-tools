@@ -204,6 +204,7 @@ def esa_wc_to_dc(
                     sys.stdout.write(f"\rAdded {success} datasets...")
             except rasterio.errors.RasterioIOError:
                 logging.info("Couldn't read file %s", uri, exc_info=True)
+                failure += 1
             except Exception:  # pylint:disable=broad-except
                 logging.exception("Failed to handle uri %s", uri)
                 failure += 1
