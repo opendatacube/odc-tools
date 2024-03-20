@@ -33,14 +33,13 @@ from odc.apps.dc_tools.utils import (
     statsd_setting,
     statsd_gauge_reporting,
     transform_stac,
-    transform_stac_absolute,
     archive_less_mature,
     update_flag,
     update_if_exists_flag,
     verify_lineage,
     publish_action,
 )
-from ._stac import stac_transform, stac_transform_absolute, ds_to_stac
+from ._stac import stac_transform, ds_to_stac
 
 # Added log handler
 logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
@@ -72,7 +71,7 @@ def extract_action_from_message(message):
         return None
 
 
-def handle_json_message(metadata, transform, odc_metadata_link):
+def handle_json_message(metadata, odc_metadata_link):
     odc_yaml_uri = None
     uri = None
 
@@ -99,9 +98,6 @@ def handle_json_message(metadata, transform, odc_metadata_link):
     else:
         # if no odc_metadata_link provided, it will look for metadata dict "href" value with "rel==self"
         uri = get_uri(metadata, "self")
-
-    if transform:
-        metadata = transform(metadata)
 
     return metadata, uri
 
@@ -250,13 +246,12 @@ def queue_to_odc(
                 do_archiving(metadata, dc, publish_action)
             else:
                 if not record_path:
-                    if transform:
-                        stac_doc = metadata
                     # Extract metadata and URI from a STAC or similar
                     # json structure for indexing
-                    metadata, uri = handle_json_message(
-                        metadata, transform, odc_metadata_link
-                    )
+                    metadata, uri = handle_json_message(metadata, odc_metadata_link)
+                    if transform:
+                        stac_doc = metadata
+                        metadata = stac_transform(metadata)
                 else:
                     # Extract metadata from an S3 bucket notification
                     # or similar for indexing
@@ -315,7 +310,6 @@ def queue_to_odc(
 @fail_on_missing_lineage
 @verify_lineage
 @transform_stac
-@transform_stac_absolute
 @update_flag
 @update_if_exists_flag
 @allow_unsafe
@@ -352,7 +346,6 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
     stac,
-    absolute,
     update,
     update_if_exists,
     allow_unsafe,
@@ -370,13 +363,6 @@ def cli(
 ):
     """Iterate through messages on an SQS queue and add them to datacube"""
 
-    transform = None
-    if stac:
-        if absolute:
-            transform = stac_transform_absolute
-        else:
-            transform = stac_transform
-
     candidate_products = product.split()
 
     sqs = boto3.resource("sqs")
@@ -391,7 +377,7 @@ def cli(
         skip_lineage=skip_lineage,
         fail_on_missing_lineage=fail_on_missing_lineage,
         verify_lineage=verify_lineage,
-        transform=transform,
+        transform=stac,
         limit=limit,
         update=update,
         no_sign_request=no_sign_request,
