@@ -136,8 +136,7 @@ def _sqs_message_stream(queue, **kw):
         if len(messages) == 0:
             return
 
-        for msg in messages:
-            yield msg
+        yield from messages
 
 
 def get_messages(

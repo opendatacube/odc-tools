@@ -52,7 +52,9 @@ def cli(uri, skip_check, no_sign_request=None, request_payer=False):
     try:
         stream = s3_find_glob(uri, skip_check=skip_check, s3=s3, **opts)
         for i, o in enumerate(stream):
-            print(o.url, flush=(i % flush_freq == 0))
+            print(
+                o.url, flush=(i % flush_freq == 0)
+            )  # pylint:disable=superfluous-parens
     except ValueError as ve:
         click.echo(str(ve), err=True)
         sys.exit(1)

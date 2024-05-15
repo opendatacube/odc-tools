@@ -73,7 +73,7 @@ def slurp(fname: PathLike, binary: bool = False) -> RawDoc:
     """
     mode = "rb" if binary else "rt"
 
-    with open(fname, mode) as f:
+    with open(fname, mode) as f:  # pylint: disable=unspecified-encoding
         return f.read()
 
 
@@ -82,7 +82,7 @@ def slurp_lines(fname: str, *args, **kwargs) -> List[str]:
     if len(args) > 0 or len(kwargs) > 0:
         fname = fname.format(*args, **kwargs)
 
-    with open(fname, "rt") as f:
+    with open(fname, "rt") as f:  # pylint: disable=unspecified-encoding
         return [s.rstrip() for s in f.readlines()]
 
 

@@ -33,15 +33,15 @@ def gridspec_to_geojson(gs, xx, yy, styles):
 
     def to_geojson(gs, tidx):
         bbox = gs.tile_geobox(tidx)
-        return dict(
-            geometry=bbox.geographic_extent.__geo_interface__,
-            type="Feature",
-            properties=dict(
+        return {
+            "geometry": bbox.geographic_extent.__geo_interface__,
+            "type": "Feature",
+            "properties": {
                 # pylint:disable=consider-using-f-string
-                title="{:+d},{:+d}".format(*tidx),
+                "title": "{:+d},{:+d}".format(*tidx),
                 **styles,
-            ),
-        )
+            },
+        }
 
     tiles = itertools.product(range(*xx), range(*yy))
 
@@ -179,9 +179,9 @@ def mk_map_region_selector(m=None, height="600px", **kwargs):
 
     shape_opts = {"fillColor": "#fca45d", "color": "#000000", "fillOpacity": 0.1}
     draw.rectangle = {"shapeOptions": shape_opts, "metric": ["km", "m"]}
-    poly_opts = {"shapeOptions": dict(**shape_opts)}
-    poly_opts["shapeOptions"]["original"] = dict(**shape_opts)
-    poly_opts["shapeOptions"]["editing"] = dict(**shape_opts)
+    poly_opts = {"shapeOptions": {**shape_opts}}
+    poly_opts["shapeOptions"]["original"] = {**shape_opts}
+    poly_opts["shapeOptions"]["editing"] = {**shape_opts}
 
     draw.polygon = poly_opts
     draw.edit = True
@@ -200,7 +200,7 @@ def mk_map_region_selector(m=None, height="600px", **kwargs):
         bounds = event["new"]
         render_bounds(bounds)
         (lat1, lon1), (lat2, lon2) = bounds
-        state.bounds = dict(lat=(lat1, lat2), lon=(lon1, lon2))
+        state.bounds = {"lat": (lat1, lat2), "lon": (lon1, lon2)}
 
     def on_draw(event):
         v = event["new"]

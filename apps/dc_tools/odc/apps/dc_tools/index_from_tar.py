@@ -126,13 +126,13 @@ def cli(
     if ignore_lineage:
         auto_add_lineage = False
 
-    ds_resolve_args = dict(
-        products=product_names,
-        exclude_products=exclude_product_names,
-        fail_on_missing_lineage=not auto_add_lineage,
-        verify_lineage=verify_lineage,
-        skip_lineage=ignore_lineage,
-    )
+    ds_resolve_args = {
+        "products": product_names,
+        "exclude_products": exclude_product_names,
+        "fail_on_missing_lineage": not auto_add_lineage,
+        "verify_lineage": verify_lineage,
+        "skip_lineage": ignore_lineage,
+    }
 
     allowed_changes = {(): allow_any}
 

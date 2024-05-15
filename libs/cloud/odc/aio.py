@@ -44,7 +44,7 @@ async def _s3_fetch_object(url, s3, _range=None, **kw):
         )
 
     bucket, key = s3_url_parse(url)
-    extra_args = dict(**kw)
+    extra_args = {**kw}
 
     if _range is not None:
         try:
@@ -327,7 +327,7 @@ class S3Fetcher:
         s3_cfg = AioConfig(
             max_pool_connections=nconcurrent,
             **opts,
-            s3=dict(addressing_style=addressing_style),
+            s3={"addressing_style": addressing_style},
         )
 
         self._nconcurrent = nconcurrent
@@ -582,4 +582,4 @@ def s3_find_glob(
         else:
             stream = do_dir_query(qq, dirs_pred=dirs_pred)
 
-    return stream
+    return stream  # pylint: disable=possibly-used-before-assignment
