@@ -4,6 +4,7 @@ Tools for STAC to EO3 translation
 
 import math
 from pathlib import Path
+import posixpath
 from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
@@ -13,7 +14,7 @@ from datacube.utils.geometry import Geometry, box
 from eodatasets3.serialise import from_doc
 from eodatasets3.stac import to_stac_item
 from toolz import get_in
-from urlpath import URL
+from urllib.parse import urlparse
 
 from ._docs import odc_uuid
 
@@ -195,14 +196,23 @@ def _get_stac_bands(
 
     assets = item.get("assets", {})
 
-    def _get_path(asset, force_relative=False):
-        path = URL(asset["href"])
+    def _get_path(asset, force_relative=False) -> str:
+        parts = urlparse(asset["href"])
         if relative:
             try:
                 if self_link is None:
                     raise ValueError
-                path = path.relative_to(URL(self_link).parent)
+
+                self_parts = urlparse(self_link)
+                if self_parts.scheme != parts.scheme or self_parts.netloc != self_parts.netloc:
+                    raise ValueError("href cannot be made relative to self link")
+                path = parts.path
+                self_path = self_parts.path
+                path = posixpath.relpath(path, self_path)
+                return str(path)
+
             # Value error is raised if the path is not relative to the parent
+
             # or if the self link cannot be found.
             except ValueError:
                 # If the path is not relative to the parent force_relative
@@ -210,11 +220,8 @@ def _get_stac_bands(
                 # TODO: Implement rewrite_assets (like in stac_to_dc) in all
                 # tools so that this is no longer necessary.
                 if force_relative:
-                    path = path.name
-                else:
-                    pass
-
-        return str(path)
+                    return str(posixpath.basename(parts.path))
+        return str(asset["href"])
 
     for asset_name, asset in assets.items():
         image_types = ["jp2", "geotiff"]
