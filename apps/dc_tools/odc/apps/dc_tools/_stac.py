@@ -204,7 +204,10 @@ def _get_stac_bands(
                     raise ValueError
 
                 self_parts = urlparse(self_link)
-                if self_parts.scheme != parts.scheme or self_parts.netloc != self_parts.netloc:
+                if (
+                    self_parts.scheme != parts.scheme
+                    or self_parts.netloc != self_parts.netloc
+                ):
                     raise ValueError("href cannot be made relative to self link")
                 path = parts.path
                 self_path = self_parts.path
