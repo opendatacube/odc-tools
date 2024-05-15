@@ -183,17 +183,8 @@ def _get_relative_path(asset_href, self_link):
     if self_link is None:
         return asset_href
 
-    self_parsed = urlparse(self_link)
-    href_parsed = urlparse(asset_href)
-
-    # keep as an absolute link if scheme or netloc differ
-    if self_parsed.scheme != href_parsed.scheme:
-        return asset_href
-    if self_parsed.netloc != href_parsed.netloc:
-        return asset_href
-
-    self_path = self_parsed.path
-    href_path = href_parsed.path
+    self_path = urlparse(self_link).path
+    href_path = urlparse(asset_href).path
 
     try:
         return str(Path(href_path).relative_to(Path(self_path).parent))
