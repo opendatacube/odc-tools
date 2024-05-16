@@ -15,7 +15,7 @@ create_pip_tree() {
 
         echo "${src}/${w}"*.whl "-> ${out}/"
         echo "${src}/${w}"*tar.gz "-> ${out}/"
-        cp "${src}/${w}"* "${out}/"
+        cp "${src}/${w}"*.whl "${out}/"
         cp "${src}/${w}"*.tar.gz "${out}/"
     done
 }
