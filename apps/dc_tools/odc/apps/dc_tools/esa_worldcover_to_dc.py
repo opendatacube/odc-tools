@@ -38,7 +38,7 @@ URI_TEMPLATE = (
     "{algo}/{year}/map/ESA_WorldCover_10m_{year}_{algo}_{ns}{ew}_Map.tif"
 )
 
-map_version = dict(algo="v100", year="2020")
+map_version = {"algo": "v100", "year": "2020"}
 
 
 def _unpack_bbox(bounding_box: str) -> Tuple[int, int, int, int]:

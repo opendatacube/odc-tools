@@ -27,7 +27,7 @@ def compare_masks(
     - ``removed`` are pixels that turned False from A->B
     """
     fig, axs = plt.subplots(2, 2, figsize=figsize)
-    opts = dict(interpolation=interpolation, cmap=cmap, **kw)
+    opts = {"interpolation": interpolation, "cmap": cmap, **kw}
 
     axs[0][0].set_title(names[0])
     axs[0][0].imshow(a, **opts)

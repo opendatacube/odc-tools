@@ -71,7 +71,7 @@ def cli(n, verbose, gzip, xz, outfile, no_sign_request=None, request_payer=False
 
     fetcher = S3Fetcher(nconcurrent=nconnections, aws_unsigned=no_sign_request)
     is_pipe = outfile == "-"
-    tar_opts = dict(mode="w" + tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe))
+    tar_opts = {"mode": "w" + tar_mode(gzip=gzip, xz=xz, is_pipe=is_pipe)}
     if is_pipe:
         if stdout.isatty():
             click.echo("Will not write to a terminal", err=True)

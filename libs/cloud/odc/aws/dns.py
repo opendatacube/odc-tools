@@ -1,6 +1,8 @@
 """ Tools for interacting with route53
 """
 
+import sys
+
 from . import _fetch_text, ec2_tags, mk_boto_session
 
 
@@ -134,6 +136,4 @@ Examples:
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(cli(sys.argv[1:]))

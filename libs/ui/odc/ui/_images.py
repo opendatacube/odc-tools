@@ -71,7 +71,14 @@ def _compress_image(im: np.ndarray, driver="PNG", **opts) -> bytes:
     else:
         raise ValueError(f"Expect 2 or 3 dimensional array got: {im.ndim}")
 
-    rio_opts = dict(width=w, height=h, count=nc, driver=driver, dtype="uint8", **opts)
+    rio_opts = {
+        "width": w,
+        "height": h,
+        "count": nc,
+        "driver": driver,
+        "dtype": "uint8",
+        **opts,
+    }
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", rasterio.errors.NotGeoreferencedWarning)
@@ -139,11 +146,11 @@ def mk_image_overlay(
     ipyleaflet.ImageOverlay or a list of them one per time slice
     """
 
-    comp, mime = dict(
-        png=(to_png_data, "image/png"),
-        jpg=(to_jpeg_data, "image/jpeg"),
-        jpeg=(to_jpeg_data, "image/jpeg"),
-    ).get(fmt.lower(), (None, None))
+    comp, mime = {
+        "png": (to_png_data, "image/png"),
+        "jpg": (to_jpeg_data, "image/jpeg"),
+        "jpeg": (to_jpeg_data, "image/jpeg"),
+    }.get(fmt.lower(), (None, None))
 
     if comp is None or mime is None:
         raise ValueError("Only support png an jpeg formats")

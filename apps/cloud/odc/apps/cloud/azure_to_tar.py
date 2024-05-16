@@ -35,9 +35,10 @@ def cli(
     url_prefix = (account_url + "/" + container_name + "/")[len("https://") :]
 
     # jam it all in a tar
-    tar_opts = dict(
-        name=outfile, mode="w" + tar_mode(gzip=True, xz=True, is_pipe=False)
-    )
+    tar_opts = {
+        "name": outfile,
+        "mode": "w" + tar_mode(gzip=True, xz=True, is_pipe=False),
+    }
     with tarfile.open(**tar_opts) as tar:
         for yaml in yamls:
             add_txt_file(tar=tar, content=yaml[0], fname=url_prefix + yaml[1])

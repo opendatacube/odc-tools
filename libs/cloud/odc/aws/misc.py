@@ -71,6 +71,6 @@ def s3_get_object_request_maker(region_name=None, credentials=None, ssl=True):
 
         auth.add_auth(req)
 
-        return Request(req.url, headers=dict(**req.headers), method="GET")
+        return Request(req.url, headers={**req.headers}, method="GET")
 
     return build_request

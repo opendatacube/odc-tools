@@ -13,7 +13,7 @@ from datacube.utils.geometry import Geometry, box
 from eodatasets3.serialise import from_doc
 from eodatasets3.stac import to_stac_item
 from toolz import get_in
-from urlpath import URL
+from urllib.parse import urlparse
 
 from ._docs import odc_uuid
 
@@ -179,10 +179,23 @@ def _find_self_href(item: Document) -> str:
     return self_uri[0]
 
 
+def _get_relative_path(asset_href, self_link):
+    if self_link is None:
+        return asset_href
+
+    self_path = urlparse(self_link).path
+    href_path = urlparse(asset_href).path
+
+    try:
+        return str(Path(href_path).relative_to(Path(self_path).parent))
+    except ValueError:
+        # if it's not relative, keep as an absolute link
+        return asset_href
+
+
 def _get_stac_bands(
     item: Document,
     default_grid: str,
-    relative: bool = False,
     proj_shape: Optional[str] = None,
     proj_transform: Optional[str] = None,
 ) -> Tuple[Document, Document, Document]:
@@ -195,27 +208,6 @@ def _get_stac_bands(
 
     assets = item.get("assets", {})
 
-    def _get_path(asset, force_relative=False):
-        path = URL(asset["href"])
-        if relative:
-            try:
-                if self_link is None:
-                    raise ValueError
-                path = path.relative_to(URL(self_link).parent)
-            # Value error is raised if the path is not relative to the parent
-            # or if the self link cannot be found.
-            except ValueError:
-                # If the path is not relative to the parent force_relative
-                # is still used for data assets, due to a historical assumption.
-                # TODO: Implement rewrite_assets (like in stac_to_dc) in all
-                # tools so that this is no longer necessary.
-                if force_relative:
-                    path = path.name
-                else:
-                    pass
-
-        return str(path)
-
     for asset_name, asset in assets.items():
         image_types = ["jp2", "geotiff"]
         # If something's not in image_types, make it an accessory
@@ -223,7 +215,9 @@ def _get_stac_bands(
         if not any(
             t in asset.get("type", []) for t in image_types
         ) or "thumbnail" in asset.get("roles", []):
-            accessories[asset_name] = {"path": _get_path(asset)}
+            accessories[asset_name] = {
+                "path": _get_relative_path(asset["href"], self_link)
+            }
             continue
 
         # If transform specified here in the asset it should override
@@ -240,7 +234,7 @@ def _get_stac_bands(
                 "transform": transform,
             }
 
-        path = _get_path(asset, force_relative=True)
+        path = _get_relative_path(asset["href"], self_link)
         band_index = asset.get("band", None)
 
         band_info = {"path": path}
@@ -273,10 +267,6 @@ def _geographic_to_projected(geometry, crs, precision=10):
         return geom.transform(round_coords)
     else:
         return None
-
-
-def stac_transform_absolute(input_stac):
-    return stac_transform(input_stac, relative=False)
 
 
 def _convert_value_to_eo3_type(key: str, value):
@@ -332,7 +322,7 @@ def _check_valid_uuid(uuid_string: str) -> bool:
         return False
 
 
-def stac_transform(input_stac: Document, relative: bool = True) -> Document:
+def stac_transform(input_stac: Document) -> Document:
     """Takes in a raw STAC 1.0 dictionary and returns an ODC dictionary"""
     # pylint: disable=too-many-locals
 
@@ -371,7 +361,6 @@ def stac_transform(input_stac: Document, relative: bool = True) -> Document:
     bands, grids, accessories = _get_stac_bands(
         input_stac,
         default_grid,
-        relative=relative,
         proj_shape=proj_shape,
         proj_transform=proj_transform,
     )

@@ -59,7 +59,7 @@ class DcViewer:
             products = list(p.name for p, c in dc.index.datasets.count_by_product())
 
         if style is None:
-            style = dict(fillOpacity=0.1, weight=1)
+            style = {"fillOpacity": 0.1, "weight": 1}
 
         state, gui = self._build_ui(
             products, time, zoom=zoom, center=center, height=height, width=width
@@ -169,7 +169,7 @@ class DcViewer:
             lat1 = max(lat1, -90)
             lat2 = min(lat2, +90)
 
-            state.bounds = dict(lat=(lat1, lat2), lon=(lon1, lon2))
+            state.bounds = {"lat": (lat1, lat2), "lon": (lon1, lon2)}
 
             self.on_bounds(state.bounds)
 
@@ -228,7 +228,7 @@ class DcViewer:
             self._clear_footprints()
 
             self._dss_layer = new_layer
-            self._last_query_bounds = dict(**s.bounds)
+            self._last_query_bounds = {**s.bounds}
             self._last_query_polygon = _query_polygon(**s.bounds)
         else:
             self._clear_footprints()
