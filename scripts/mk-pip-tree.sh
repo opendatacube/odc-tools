@@ -13,10 +13,10 @@ create_pip_tree() {
         local out="${dst}/${base}"
         mkdir -p "${out}"
 
-        echo "${src}/${w}"* "-> ${out}/"
-        echo "${src}/${base}"*tar.gz "-> ${out}/"
+        echo "${src}/${w}"*.whl "-> ${out}/"
+        echo "${src}/${w}"*tar.gz "-> ${out}/"
         cp "${src}/${w}"*.whl "${out}/"
-        cp "${src}/${base}"*.tar.gz "${out}/"
+        cp "${src}/${w}"*.tar.gz "${out}/"
     done
 }
 
