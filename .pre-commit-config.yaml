@@ -26,11 +26,11 @@ repos:
         #        name: isort (python)
         #        args: [ "--profile", "black", "--filter-files" ]
   - repo: https://github.com/psf/black
-    rev: 24.4.0
+    rev: 24.4.2
     hooks:
       - id: black
   - repo: https://github.com/PyCQA/pylint
-    rev: 'v3.2.0'  # Use the sha / tag you want to point at
+    rev: 'v3.2.3'  # Use the sha / tag you want to point at
     hooks:
       - id: pylint
   - repo: https://github.com/PyCQA/flake8
