@@ -29,7 +29,7 @@ TO_BE_HARD_CODED_COLLECTION = [
     "sentinel_s2_l2a_cogs",
     "sentinel-s2-l2a-cogs",
     "sentinel-2-l2a",
-    "s2_l2a_c1"
+    "s2_l2a_c1",
 ]
 
 # Mapping between EO3 field names and STAC properties object field names
@@ -190,7 +190,7 @@ def _get_relative_path(asset_href, self_link):
         # files are not stored in same domain (e.g. diferent buckets)
         # therefore use the absolute path
         return asset_href
-    
+
     self_path = urlparse(self_link).path
     href_path = urlparse(asset_href).path
 
