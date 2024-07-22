@@ -29,6 +29,7 @@ TO_BE_HARD_CODED_COLLECTION = [
     "sentinel_s2_l2a_cogs",
     "sentinel-s2-l2a-cogs",
     "sentinel-2-l2a",
+    "s2_l2a_c1"
 ]
 
 # Mapping between EO3 field names and STAC properties object field names
@@ -118,7 +119,10 @@ def _stac_product_lookup(
             dataset_id = properties.get("sentinel:product_id") or properties.get(
                 "s2:granule_id", dataset_id
             )
-            product_name = "s2_l2a"
+            if collection == "s2_l2a_c1":
+                product_name = "s2_l2a_c1"
+            else:
+                product_name = "s2_l2a"
             if region_code is None:
                 # Let's try two options, and throw an exception if we still don't get it
                 try:
@@ -182,7 +186,11 @@ def _find_self_href(item: Document) -> str:
 def _get_relative_path(asset_href, self_link):
     if self_link is None:
         return asset_href
-
+    elif urlparse(self_link).netloc != urlparse(asset_href).netloc:
+        # files are not stored in same domain (e.g. diferent buckets)
+        # therefore use the absolute path
+        return asset_href
+    
     self_path = urlparse(self_link).path
     href_path = urlparse(asset_href).path
 
