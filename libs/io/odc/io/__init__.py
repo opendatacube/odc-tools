@@ -7,7 +7,7 @@ from .text import (
     parse_yaml,  # pylint: disable=W0406
     read_stdin_lines,  # pylint: disable=W0406
     slurp,  # pylint: disable=W0406
-    slurp_lines  # pylint: disable=W0406
+    slurp_lines,  # pylint: disable=W0406
 )
 from .timer import RateEstimator  # pylint: disable=W0406
 
