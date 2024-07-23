@@ -26,6 +26,7 @@ dependencies:
   - lxml # needed for thredds-crawler
   - urlpath
   - datadog
+  - docker-py
   - eodatasets3
   - importlib_resources>=6.0
 

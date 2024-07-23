@@ -62,7 +62,8 @@ def test_landsat_stac_transform(landsat_stac, landsat_odc):
 
 def test_sentinel_stac_transform(sentinel_stac_old, sentinel_odc):
     transformed_stac_doc = stac_transform(sentinel_stac_old)
-    assert len(get_doc_changes(transformed_stac_doc, sentinel_odc)) == 1
+    doc_changes = get_doc_changes(transformed_stac_doc, sentinel_odc)
+    assert len(doc_changes) == 1
 
 
 def test_usgs_landsat_stac_transform(usgs_landsat_stac):
