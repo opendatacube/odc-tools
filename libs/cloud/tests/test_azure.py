@@ -1,9 +1,10 @@
 """Test thredds downloader code
 """
-
+import pytest
 from odc.azure import download_yamls, find_blobs
 
 
+@pytest.xfail
 def test_find_blobs():
     """Find blobs in a sample Azure account, this will fail if the blob store changes or is removed"""
 
@@ -21,6 +22,7 @@ def test_find_blobs():
     assert len(blob_names) == 1
 
 
+@pytest.xfail
 def test_download_yamls():
     """Test pass/fail arms of YAML download from Azure blobstore"""
 
