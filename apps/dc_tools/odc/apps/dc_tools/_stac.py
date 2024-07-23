@@ -186,10 +186,10 @@ def _find_self_href(item: Document) -> str:
 def _get_relative_path(asset_href, self_link):
     if self_link is None:
         return asset_href
-    elif urlparse(self_link).netloc != urlparse(asset_href).netloc:
-        # files are not stored in same domain (e.g. diferent buckets)
-        # therefore use the absolute path
-        return asset_href
+    # elif urlparse(self_link).netloc != urlparse(asset_href).netloc:
+    #     # files are not stored in same domain (e.g. diferent buckets)
+    #     # therefore use the absolute path
+    #     return asset_href
 
     self_path = urlparse(self_link).path
     href_path = urlparse(asset_href).path
