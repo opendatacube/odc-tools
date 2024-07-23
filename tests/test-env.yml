@@ -26,7 +26,9 @@ dependencies:
   - lxml # needed for thredds-crawler
   - urlpath
   - datadog
+  - docker-py
   # - eodatasets3>=1.9.0
+  - importlib_resources>=6.0
   - odc-geo
 
   # odc.{aws,aio}: aiobotocore/boto3
