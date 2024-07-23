@@ -62,9 +62,9 @@ def test_landsat_stac_transform(landsat_stac, landsat_odc):
 
 def filter_out_url_base_diffs(changes_in):
     for path, old, new in changes_in:
-        if len(path) == 3 and path[0] == 'measurements' and path[2] == 'path':
+        if len(path) == 3 and path[0] == "measurements" and path[2] == "path":
             # band path mismatch
-            if  old.split('/')[-1] == new.split('/')[-1]:
+            if old.split("/")[-1] == new.split("/")[-1]:
                 # match apart from url base: ignore:
                 continue
         yield path, old, new
@@ -72,7 +72,9 @@ def filter_out_url_base_diffs(changes_in):
 
 def test_sentinel_stac_transform(sentinel_stac_old, sentinel_odc):
     transformed_stac_doc = stac_transform(sentinel_stac_old)
-    doc_changes = list(filter_out_url_base_diffs(get_doc_changes(transformed_stac_doc, sentinel_odc)))
+    doc_changes = list(
+        filter_out_url_base_diffs(get_doc_changes(transformed_stac_doc, sentinel_odc))
+    )
     assert len(doc_changes) == 1
 
 
