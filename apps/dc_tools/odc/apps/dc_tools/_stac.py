@@ -189,7 +189,7 @@ def _get_relative_path(asset_href, self_link):
     self_parts = urlparse(self_link)
     href_parts = urlparse(asset_href)
 
-    if self_parts.netloc.split('.')[0] != href_parts.netloc.split('.')[0]:
+    if self_parts.netloc.split(".")[0] != href_parts.netloc.split(".")[0]:
         # files are not stored with same hostname (e.g. different buckets)
         # therefore use the absolute path
         return asset_href
