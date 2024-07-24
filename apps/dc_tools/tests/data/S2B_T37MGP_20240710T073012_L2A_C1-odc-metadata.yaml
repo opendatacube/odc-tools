@@ -1,0 +1,156 @@
+---
+# Dataset
+# url: https://explorer.dev.digitalearth.africa/dataset/83d02080-0394-5bb1-bd1d-cfc23e0db47d.odc-metadata.yaml
+$schema: https://schemas.opendatacube.org/dataset
+id: 83d02080-0394-5bb1-bd1d-cfc23e0db47d
+
+label: S2B_T37MGP_20240710T073012_L2A
+product:
+  name: s2_l2a_c1
+
+location: 
+  s3://deafrica-sentinel-2-l2a-c1-dev/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/S2B_T37MGP_20240710T073012_L2A.json
+
+crs: epsg:32737
+geometry:
+  type: Polygon
+  coordinates: [[[6.99961e+05, 9.399999e+06], [6.99961e+05, 9.290201e+06], [8.09759e+05,
+        9.290201e+06], [8.09759e+05, 9.399999e+06], [6.99961e+05, 9.399999e+06]]]
+grids:
+  g20m:
+    shape: [5490, 5490]
+    transform: [2.e+01, 0.e+00, 6.9996e+05, 0.e+00, -2.e+01, 9.4e+06]
+  g60m:
+    shape: [1830, 1830]
+    transform: [6.e+01, 0.e+00, 6.9996e+05, 0.e+00, -6.e+01, 9.4e+06]
+  g320m:
+    shape: [343, 343]
+    transform: [3.2e+02, 0.e+00, 6.9996e+05, 0.e+00, -3.2e+02, 9.4e+06, 0.e+00, 0.e+00,
+      1.e+00]
+  default:
+    shape: [10980, 10980]
+    transform: [1.e+01, 0.e+00, 6.9996e+05, 0.e+00, -1.e+01, 9.4e+06]
+
+properties:
+  created: '2024-07-10T13:38:13.736092+00:00'
+  datetime: '2024-07-10T07:41:33.657000Z'
+  earthsearch:payload_id: 
+    roda-sentinel-2-c1-l2a/workflow-sentinel-2-c1-l2a-to-stac/c76ef495ac22038115a5d0865aafac19
+  eo:azimuth: 1.8551802377940393e+02
+  eo:cloud_cover: 8.3505428e+01
+  eo:constellation: sentinel-2
+  eo:instrument: MSI
+  eo:platform: sentinel-2b
+  eo:sun_azimuth: 3.99264277845747e+01
+  eo:sun_elevation: 5.29617721681249e+01
+  grid:code: MGRS-37MGP
+  mgrs:grid_square: GP
+  mgrs:latitude_band: M
+  mgrs:utm_zone: 37
+  odc:file_format: GeoTIFF
+  odc:processing_datetime: '2024-07-10T13:38:13.736092+00:00'
+  odc:region_code: 37MGP
+  processing:software:
+    sentinel-2-c1-l2a-to-stac: v2024.02.01
+  proj:centroid:
+    lat: -5.92002e+00
+    lon: 4.130189e+01
+  proj:epsg: 32737
+  s2:cloud_shadow_percentage: 0.e+00
+  s2:dark_features_percentage: 0.e+00
+  s2:datastrip_id: S2B_OPER_MSI_L2A_DS_2BPS_20240710T103747_S20240710T073012_N05.10
+  s2:datatake_id: GS2B_20240710T071619_038356_N05.10
+  s2:datatake_type: INS-NOBS
+  s2:degraded_msi_data_percentage: 7.9e-03
+  s2:generation_time: '2024-07-10T10:37:47.000000Z'
+  s2:high_proba_clouds_percentage: 3.4168363e+01
+  s2:medium_proba_clouds_percentage: 2.7591509e+01
+  s2:nodata_pixel_percentage: 0.e+00
+  s2:not_vegetated_percentage: 2.3e-05
+  s2:processing_baseline: '05.10'
+  s2:product_type: S2MSI2A
+  s2:product_uri: S2B_MSIL2A_20240710T071619_N0510_R006_T37MGP_20240710T103747.SAFE
+  s2:reflectance_conversion_factor: 9.67377332839659e-01
+  s2:saturated_defective_pixel_percentage: 0.e+00
+  s2:snow_ice_percentage: 0.e+00
+  s2:thin_cirrus_percentage: 2.1745561e+01
+  s2:tile_id: S2B_OPER_MSI_L2A_TL_2BPS_20240710T103747_A038356_T37MGP_N05.10
+  s2:unclassified_percentage: 0.e+00
+  s2:vegetation_percentage: 1.e-05
+  s2:water_percentage: 1.6494533e+01
+  storage:platform: AWS
+  storage:region: us-west-2
+  storage:requester_pays: false
+  updated: '2024-07-10T13:38:13.736092+00:00'
+  view:incidence_angle: 2.7972589825435863e+00
+
+measurements:
+  aot:
+    grid: g20m
+    path: AOT.tif
+  nir:
+    path: B08.tif
+  red:
+    path: B04.tif
+  scl:
+    grid: g20m
+    path: SCL.tif
+  wvp:
+    grid: g20m
+    path: WVP.tif
+  blue:
+    path: B02.tif
+  snow:
+    grid: g20m
+    path: SNW_20m.tif
+  cloud:
+    grid: g20m
+    path: CLD_20m.tif
+  green:
+    path: B03.tif
+  nir08:
+    grid: g20m
+    path: B8A.tif
+  nir09:
+    grid: g60m
+    path: B09.tif
+  swir16:
+    grid: g20m
+    path: B11.tif
+  swir22:
+    grid: g20m
+    path: B12.tif
+  visual:
+    path: TCI.tif
+  coastal:
+    grid: g60m
+    path: B01.tif
+  preview:
+    grid: g320m
+    path: L2A_PVI.tif
+  rededge1:
+    grid: g20m
+    path: B05.tif
+  rededge2:
+    grid: g20m
+    path: B06.tif
+  rededge3:
+    grid: g20m
+    path: B07.tif
+
+accessories:
+  thumbnail:
+    path: 
+      https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/L2A_PVI.jpg
+  granule_metadata:
+    path: 
+      https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/metadata.xml
+  product_metadata:
+    path: 
+      https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/product_metadata.xml
+  tileinfo_metadata:
+    path: 
+      https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/tileInfo.json
+
+lineage: {}
+...

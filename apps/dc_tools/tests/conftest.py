@@ -26,6 +26,8 @@ LANDSAT_ODC: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml"
 LANDSAT_ODC_NRT: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_nrt.odc-metadata.yaml"
 SENTINEL_STAC_OLD: str = "S2A_28QCH_20200714_0_L2A_old.json"
 SENTINEL_ODC: str = "S2A_28QCH_20200714_0_L2A.odc-metadata.json"
+SENTINEL_STAC_C1: str = "S2B_T37MGP_20240710T073012_L2A_C1.json"
+SENTINEL_ODC_C1: str = "S2B_T37MGP_20240710T073012_L2A_C1-odc-metadata.yaml"
 USGS_LANDSAT_STAC: str = "LC08_L2SR_081119_20200101_20200823_02_T2.json"
 LIDAR_STAC: str = "lidar_dem.json"
 MATURITY_PRODUCT: str = "ga_ls5t_gm_product.yaml"
@@ -163,6 +165,22 @@ def sentinel_odc():
     """Return an example ODC EO3 metadata dict. Pair with `sentinel_stac_odc`"""
     with TEST_DATA_FOLDER.joinpath(SENTINEL_ODC).open("r", encoding="utf8") as f:
         metadata = json.load(f)
+    return metadata
+
+
+@pytest.fixture
+def sentinel_c1_stac():
+    """Return an example of new collection Sentinel 2 L2A C1 STAC metadata."""
+    with TEST_DATA_FOLDER.joinpath(SENTINEL_STAC_C1).open("r", encoding="utf8") as f:
+        metadata = json.load(f)
+    return metadata
+
+
+@pytest.fixture
+def sentinel_c1_odc():
+    metadata = yield from documents.load_documents(
+        TEST_DATA_FOLDER.joinpath(SENTINEL_ODC_C1)
+    )
     return metadata
 
 
