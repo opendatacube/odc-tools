@@ -73,19 +73,19 @@ def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc):
     # test that absolute links are maintained for accessories
     assert (
         transformed_stac_doc["accessories"]["thumbnail"]["path"]
-        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/L2A_PVI.jpg"
+        == sentinel_c1_stac["assets"]["thumbnail"]["href"]
     )
     assert (
         transformed_stac_doc["accessories"]["product_metadata"]["path"]
-        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/product_metadata.xml"
+        == sentinel_c1_stac["assets"]["product_metadata"]["href"]
     )
     assert (
         transformed_stac_doc["accessories"]["tileinfo_metadata"]["path"]
-        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/tileInfo.json"
+        == sentinel_c1_stac["assets"]["tileinfo_metadata"]["href"]
     )
     assert (
         transformed_stac_doc["accessories"]["granule_metadata"]["path"]
-        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/metadata.xml"
+        == sentinel_c1_stac["assets"]["granule_metadata"]["href"]
     )
 
 
