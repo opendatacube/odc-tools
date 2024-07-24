@@ -70,6 +70,43 @@ def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc):
     transformed_stac_doc = stac_transform(sentinel_c1_stac)
     doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_odc)
     assert len(doc_changes) == 3
+    # test that absolute links are maintained for accessories
+    assert (
+        transformed_stac_doc["accessories"]["thumbnail"]["path"]
+        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/L2A_PVI.jpg"
+    )
+    assert (
+        transformed_stac_doc["accessories"]["product_metadata"]["path"]
+        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/product_metadata.xml"
+    )
+    assert (
+        transformed_stac_doc["accessories"]["tileinfo_metadata"]["path"]
+        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/tileInfo.json"
+    )
+    assert (
+        transformed_stac_doc["accessories"]["granule_metadata"]["path"]
+        == "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/metadata.xml"
+    )
+
+
+def test_sentinel_c1_rel_stac_transform(sentinel_c1_rel_stac, sentinel_c1_rel_odc):
+    transformed_stac_doc = stac_transform(sentinel_c1_rel_stac)
+    doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_rel_odc)
+    assert len(doc_changes) == 3
+    # test that absolute links are converted to relative links for accessories
+    assert transformed_stac_doc["accessories"]["thumbnail"]["path"] == "L2A_PVI.jpg"
+    assert (
+        transformed_stac_doc["accessories"]["product_metadata"]["path"]
+        == "product_metadata.xml"
+    )
+    assert (
+        transformed_stac_doc["accessories"]["tileinfo_metadata"]["path"]
+        == "tileInfo.json"
+    )
+    assert (
+        transformed_stac_doc["accessories"]["granule_metadata"]["path"]
+        == "metadata.xml"
+    )
 
 
 def test_usgs_landsat_stac_transform(usgs_landsat_stac):
