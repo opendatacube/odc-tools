@@ -94,7 +94,6 @@
       "href": "s3://e84-earth-search-sentinel-data/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/S2B_T37MGP_20240710T073012_L2A.json",
       "title": "Source STAC Item"
     },
-<<<<<<< HEAD
     {
       "rel": "collection",
       "href": "https://explorer.digitalearth.africa/stac/collections/s2_l2a_c1",
@@ -926,13 +925,3 @@
   ],
   "collection": "s2_l2a_c1"
 }
-=======
-    "bbox": [40.804737, -6.418314, 41.800047, -5.421772],
-    "stac_extensions": [
-      "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-      "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-      "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
-    ],
-    "collection": "s2_l2a_c1"
-  }
->>>>>>> d4773661662d537594fb86d05adf00a0e801e26c
