@@ -66,6 +66,49 @@ def test_sentinel_stac_transform(sentinel_stac_old, sentinel_odc):
     assert len(doc_changes) == 1
 
 
+def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc):
+    transformed_stac_doc = stac_transform(sentinel_c1_stac)
+    doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_odc)
+    assert len(doc_changes) == 0
+    # test that absolute links are maintained for accessories
+    assert (
+        transformed_stac_doc["accessories"]["thumbnail"]["path"]
+        == sentinel_c1_stac["assets"]["thumbnail"]["href"]
+    )
+    assert (
+        transformed_stac_doc["accessories"]["product_metadata"]["path"]
+        == sentinel_c1_stac["assets"]["product_metadata"]["href"]
+    )
+    assert (
+        transformed_stac_doc["accessories"]["tileinfo_metadata"]["path"]
+        == sentinel_c1_stac["assets"]["tileinfo_metadata"]["href"]
+    )
+    assert (
+        transformed_stac_doc["accessories"]["granule_metadata"]["path"]
+        == sentinel_c1_stac["assets"]["granule_metadata"]["href"]
+    )
+
+
+def test_sentinel_c1_rel_stac_transform(sentinel_c1_rel_stac, sentinel_c1_rel_odc):
+    transformed_stac_doc = stac_transform(sentinel_c1_rel_stac)
+    doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_rel_odc)
+    assert len(doc_changes) == 0
+    # test that absolute links are converted to relative links for accessories
+    assert transformed_stac_doc["accessories"]["thumbnail"]["path"] == "L2A_PVI.jpg"
+    assert (
+        transformed_stac_doc["accessories"]["product_metadata"]["path"]
+        == "product_metadata.xml"
+    )
+    assert (
+        transformed_stac_doc["accessories"]["tileinfo_metadata"]["path"]
+        == "tileInfo.json"
+    )
+    assert (
+        transformed_stac_doc["accessories"]["granule_metadata"]["path"]
+        == "metadata.xml"
+    )
+
+
 def test_usgs_landsat_stac_transform(usgs_landsat_stac):
     transformed_stac_doc = stac_transform(usgs_landsat_stac)
 
