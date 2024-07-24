@@ -69,7 +69,7 @@ def test_sentinel_stac_transform(sentinel_stac_old, sentinel_odc):
 def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc):
     transformed_stac_doc = stac_transform(sentinel_c1_stac)
     doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_odc)
-    assert len(doc_changes) == 3
+    assert len(doc_changes) == 0
     # test that absolute links are maintained for accessories
     assert (
         transformed_stac_doc["accessories"]["thumbnail"]["path"]
@@ -92,7 +92,7 @@ def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc):
 def test_sentinel_c1_rel_stac_transform(sentinel_c1_rel_stac, sentinel_c1_rel_odc):
     transformed_stac_doc = stac_transform(sentinel_c1_rel_stac)
     doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_rel_odc)
-    assert len(doc_changes) == 3
+    assert len(doc_changes) == 0
     # test that absolute links are converted to relative links for accessories
     assert transformed_stac_doc["accessories"]["thumbnail"]["path"] == "L2A_PVI.jpg"
     assert (

@@ -8,8 +8,6 @@ label: S2B_T37MGP_20240710T073012_L2A
 product:
   name: s2_l2a_c1
 
-location: s3://deafrica-sentinel-2-l2a-c1-dev/sentinel-2-c1-l2a/37/M/GP/2024/7/S2B_T37MGP_20240710T073012_L2A/S2B_T37MGP_20240710T073012_L2A.json
-
 crs: epsg:32737
 geometry:
   type: Polygon
@@ -52,7 +50,7 @@ properties:
   created: "2024-07-10T13:38:13.736092+00:00"
   datetime: "2024-07-10T07:41:33.657000Z"
   earthsearch:payload_id: roda-sentinel-2-c1-l2a/workflow-sentinel-2-c1-l2a-to-stac/c76ef495ac22038115a5d0865aafac19
-  eo:azimuth: 1.8551802377940393e+02
+  eo:azimuth: 1.85518023779404+02
   eo:cloud_cover: 8.3505428e+01
   eo:constellation: sentinel-2
   eo:instrument: MSI
@@ -98,7 +96,7 @@ properties:
   storage:region: us-west-2
   storage:requester_pays: false
   updated: "2024-07-10T13:38:13.736092+00:00"
-  view:incidence_angle: 2.7972589825435863e+00
+  view:incidence_angle: 2.79725898254359e+00
 
 measurements:
   aot:
