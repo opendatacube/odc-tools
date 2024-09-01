@@ -17,6 +17,7 @@ from datacube.utils import documents
 from moto import mock_aws
 from moto.server import ThreadedMotoServer
 from odc.apps.dc_tools.add_update_products import add_update_products
+from datacube.utils.geometry import Geometry, CRS
 
 import docker
 
@@ -386,3 +387,24 @@ def odc_db_for_archive(odc_test_db_with_products: Datacube):
         assert result.exit_code == 0
 
     return odc_test_db_with_products
+
+
+@pytest.fixture
+def geometry_with_a_twist():
+    # From https://planetarycomputer.microsoft.com/api/stac/v1/collections/
+    #       landsat-c2-l2/items/LC08_L2SR_073071_20130427_02_T1
+    return Geometry(
+        {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-179.9145508, -14.923636],
+                    [-180.0228509, -15.3692234],
+                    [-178.5768881, -16.8780443],
+                    [-179.983072, -16.5695723],
+                    [-179.9145508, -14.923636],
+                ]
+            ],
+        },
+        crs=CRS("epsg:4326"),
+    )

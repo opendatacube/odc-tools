@@ -231,7 +231,10 @@ def _get_stac_bands(
         # If transform specified here in the asset it should override
         # the properties-specified transform.
         transform = asset.get("proj:transform") or proj_transform
-        grid = f"g{transform[0]:g}m"
+        if transform is not None:
+            grid = f"g{transform[0]:g}m"
+        else:
+            grid = default_grid
 
         # As per transform, shape here overrides properties
         shape = asset.get("proj:shape") or proj_shape
@@ -274,7 +277,12 @@ def _geographic_to_projected(geometry, crs, precision=10):
     if geom.is_valid:
         return geom.transform(round_coords)
     else:
-        return None
+        # Attempt to fix it if it's not valid
+        print(
+            "Caution, invalid geometry, attempting to fix. This may result in invalid data."
+        )
+        geom = geom.convex_hull
+        return geom.transform(round_coords)
 
 
 def _convert_value_to_eo3_type(key: str, value):

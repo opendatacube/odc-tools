@@ -3,7 +3,28 @@ Test for stac_transform
 """
 
 from datacube.utils.changes import get_doc_changes
-from odc.apps.dc_tools._stac import stac_transform
+from odc.apps.dc_tools._stac import stac_transform, _geographic_to_projected
+
+
+def test_geographic_to_projected(geometry_with_a_twist):
+    transformed = _geographic_to_projected(geometry_with_a_twist, "EPSG:3832")
+
+    assert transformed is not None
+
+    expected = {
+        "type": "Polygon",
+        "coordinates": (
+            (
+                (3498004.815848052, -1894234.3033218135),
+                (3341469.1401383593, -1858599.0018098454),
+                (3337040.973246038, -1720470.5990706773),
+                (3349096.8852309, -1669403.410330984),
+                (3498004.815848052, -1894234.3033218135),
+            ),
+        ),
+    }
+
+    assert transformed.json == expected
 
 
 def test_esri_lulc_stac_transform(esri_lulc_stac):

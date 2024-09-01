@@ -247,9 +247,6 @@ def cli(
         publish_action=publish_action,
     )
 
-    print(
-        f"Added {added} Datasets, failed {failed} Datasets, skipped {skipped} Datasets"
-    )
     if statsd_setting:
         statsd_gauge_reporting(
             added, ["app:stac_api_to_dc", "action:added"], statsd_setting
