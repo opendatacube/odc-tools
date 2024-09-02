@@ -9,8 +9,10 @@ from typing import Any, Dict, Generator, Optional, Tuple
 
 import click
 from datacube import Datacube
-from datacube.index.hl import Doc2Dataset
-from odc.apps.dc_tools._stac import stac_transform
+from datacube.model import Dataset
+
+from odc.stac.eo3 import stac2ds
+
 from odc.apps.dc_tools.utils import (
     SkippedException,
     allow_unsafe,
@@ -63,8 +65,9 @@ def _parse_options(options: Optional[str]) -> Dict[str, Any]:
 
 def item_to_meta_uri(
     item: Item,
+    dc: Datacube,
     rename_product: Optional[str] = None,
-) -> Generator[Tuple[dict, str, bool], None, None]:
+) -> Generator[Tuple[Dataset, str, bool], None, None]:
     for link in item.links:
         if link.rel == "self":
             uri = link.target
@@ -74,31 +77,37 @@ def item_to_meta_uri(
             uri = link.target
             break
 
-    metadata = item.to_dict()
     if rename_product is not None:
-        metadata["properties"]["odc:product"] = rename_product
-    stac = metadata
-    metadata = stac_transform(metadata)
+        item.properties["odc:product"] = rename_product
 
-    return (metadata, uri, stac)
+    # Try to the Datacube product for the dataset
+    product_name = item.properties.get("odc:product", item.collection_id)
+    product_name_sanitised = product_name.replace("-", "_")
+    product = dc.index.products.get_by_name(product_name_sanitised)
+
+    # Convert the STAC Item to a Dataset
+    dataset = next(stac2ds([item]))
+    # And assign the product ID
+    dataset.product = product
+
+    return (dataset, uri, item.to_dict())
 
 
 def process_item(
     item: Item,
     dc: Datacube,
-    doc2ds: Doc2Dataset,
     update_if_exists: bool,
     allow_unsafe: bool,
     rename_product: Optional[str] = None,
     archive_less_mature: int = None,
     publish_action: bool = False,
 ):
-    meta, uri, stac = item_to_meta_uri(item, rename_product)
+    dataset, uri, stac = item_to_meta_uri(item, dc, rename_product)
     index_update_dataset(
-        meta,
+        dataset,
         uri,
         dc,
-        doc2ds,
+        None,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
         archive_less_mature=archive_less_mature,
@@ -117,7 +126,6 @@ def stac_api_to_odc(
     archive_less_mature: int = None,
     publish_action: Optional[str] = None,
 ) -> Tuple[int, int, int]:
-    doc2ds = Doc2Dataset(dc.index)
     client = Client.open(catalog_href)
 
     search = client.search(**config)
@@ -142,14 +150,13 @@ def stac_api_to_odc(
                 process_item,
                 item,
                 dc,
-                doc2ds,
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
                 rename_product=rename_product,
                 archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
             ): item.id
-            for item in search.get_all_items()
+            for item in search.items()
         }
         for future in concurrent.futures.as_completed(future_to_item):
             item = future_to_item[future]
