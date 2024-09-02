@@ -231,7 +231,11 @@ def _get_stac_bands(
         # If transform specified here in the asset it should override
         # the properties-specified transform.
         transform = asset.get("proj:transform") or proj_transform
-        grid = f"g{transform[0]:g}m"
+
+        if transform is not None:
+            grid = f"g{transform[0]:g}m"
+        else:
+            grid = default_grid
 
         # As per transform, shape here overrides properties
         shape = asset.get("proj:shape") or proj_shape

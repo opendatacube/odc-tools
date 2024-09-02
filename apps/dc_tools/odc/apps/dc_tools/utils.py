@@ -192,6 +192,7 @@ def index_update_dataset(
     update_if_exists: bool = False,
     allow_unsafe: bool = False,
     archive_less_mature: Optional[int] = None,
+    auto_add_lineage: Optional[bool] = False,
     publish_action: Optional[str] = None,
     stac_doc: Optional[dict] = None,
 ) -> int:
@@ -274,7 +275,11 @@ def index_update_dataset(
                     "Can't update dataset because it doesn't exist."
                 )
             # Everything is working as expected, add the dataset
-            dc.index.datasets.add(ds, archive_less_mature=archive_less_mature)
+            dc.index.datasets.add(
+                ds,
+                with_lineage=auto_add_lineage,
+                archive_less_mature=archive_less_mature,
+            )
             added = True
 
     if publish_action:
