@@ -377,6 +377,11 @@ def stac_transform(input_stac: Document) -> Document:
         proj_transform=proj_transform,
     )
 
+    # STAC document may not have top-level proj:shape property
+    # use one of the bands as a default
+    proj_shape = grids.get("default").get("shape")
+    proj_transform = grids.get("default").get("transform")
+
     stac_properties, lineage = _get_stac_properties_lineage(input_stac)
 
     epsg = properties["proj:epsg"]
