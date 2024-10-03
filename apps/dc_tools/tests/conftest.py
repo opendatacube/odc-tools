@@ -10,6 +10,8 @@ import pytest
 import yaml
 from click.testing import CliRunner
 from datacube import Datacube
+from datacube.cfg import ODCConfig, ODCEnvironment
+from datacube.drivers.postgis import _core as pgis_core
 from datacube.drivers.postgres import _core as pgres_core
 from datacube.index import index_connect
 from datacube.model import MetadataType
@@ -188,13 +190,15 @@ def postgresql_server():
 
     # If we're running inside docker already, don't attempt to start a container!
     # Hopefully we're using the `with-test-db` script and can use *that* database.
-    if Path("/.dockerenv").exists() and os.environ.get("ODC_DATACUBE_DB_URL"):
+    if Path("/.dockerenv").exists() and (
+        os.environ.get("ODC_DATACUBE_DB_URL") or os.environ.get("ODC_CONFIG_PATH")
+    ):
         yield GET_DB_FROM_ENV
 
     else:
         client = docker.from_env()
         container = client.containers.run(
-            "postgres:alpine",
+            "postgis/postgis:16-3.4",  # "postgres:alpine",
             auto_remove=True,
             remove=True,
             detach=True,
@@ -236,7 +240,9 @@ def odc_test_db(
         temp_datacube_config_file = tmp_path / "test_datacube.conf"
 
         config = configparser.ConfigParser()
-        config["default"] = postgresql_server
+        config["datacube"] = postgresql_server
+        postgresql_server["index_driver"] = "postgis"
+        config["experimental"] = postgresql_server
         with open(temp_datacube_config_file, "w", encoding="utf8") as fout:
             config.write(fout)
 
@@ -253,7 +259,7 @@ def odc_test_db(
         postgres_url = "postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}".format(
             **postgresql_server
         )
-        monkeypatch.setenv("ODC_DATACUBE_DB_URL", postgres_url)
+        # monkeypatch.setenv("ODC_DATACUBE_DB_URL", postgres_url)
         while True:
             try:
                 with psycopg2.connect(postgres_url):
@@ -264,8 +270,19 @@ def odc_test_db(
         return postgres_url
 
 
+@pytest.fixture(scope="module", params=["datacube", "postgis"])
+def env_name(request) -> str:
+    return request.param
+
+
+@pytest.fixture(scope="module")
+def cfg_env(odc_db, env_name) -> ODCEnvironment:
+    """Provides a :class:`ODCEnvironment` configured with suitable config file paths."""
+    return ODCConfig()[env_name]
+
+
 @pytest.fixture
-def odc_db(odc_test_db):
+def odc_db(odc_test_db, cfg_env):
     """
     Provide a temporary PostgreSQL server initialised by ODC, usable as
     the default ODC DB by setting environment variables.
@@ -273,7 +290,8 @@ def odc_db(odc_test_db):
     :return: Datacube instance
     """
 
-    index = index_connect(validate_connection=False)
+    # if done using with-test-db, wouldn't we already have an index?
+    index = index_connect(cfg_env, validate_connection=False)
     index.init_db()
 
     dc = Datacube(index=index)
@@ -290,13 +308,18 @@ def odc_db(odc_test_db):
     yield dc
 
     dc.close()
-    pgres_core.drop_db(index._db._engine)  # pylint:disable=protected-access
-    # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
-    # and attempts to recreate them. WTF TODO FIX
-    remove_postgres_dynamic_indexes()
-    # with psycopg2.connect(odc_test_db) as conn:
-    #     with conn.cursor() as cur:
-    #         cur.execute("DROP SCHEMA IF EXISTS agdc CASCADE;")
+    if index.name == "pg_index":
+        pgres_core.drop_db(index._db._engine)  # pylint:disable=protected-access
+        # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
+        # and attempts to recreate them. WTF TODO FIX
+        remove_postgres_dynamic_indexes()
+        # with psycopg2.connect(odc_test_db) as conn:
+        #     with conn.cursor() as cur:
+        #         cur.execute("DROP SCHEMA IF EXISTS agdc CASCADE;")
+    else:
+        pgis_core.drop_db(index._db._engine)  # pylint:disable=protected-access
+
+        remove_postgis_dynamic_indexes()
 
 
 def remove_postgres_dynamic_indexes():
@@ -308,6 +331,16 @@ def remove_postgres_dynamic_indexes():
         table.indexes.intersection_update(
             [i for i in table.indexes if not i.name.startswith("dix_")]
         )
+
+
+def remove_postgis_dynamic_indexes():
+    """
+    Clear any dynamically created postgis indexes from the schema.
+    """
+    # Our normal indexes start with "ix_", dynamic indexes with "dix_"
+    # for table in pgis_core.METADATA.tables.values():
+    #    table.indexes.intersection_update([i for i in table.indexes if not i.name.startswith('dix_')])
+    # Dynamic indexes disabled.
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 #syntax=docker/dockerfile:1.2
-ARG V_PG=14
-ARG V_PGIS=14-postgis-3
+ARG V_PG=16
+ARG V_PGIS=16-postgis-3.4
 
 FROM osgeo/gdal:ubuntu-small-3.5.3
 ENV LC_ALL=C.UTF-8
