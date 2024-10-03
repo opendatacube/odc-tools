@@ -155,7 +155,7 @@ jobs:
         pip list --format=freeze
 
       env:
-        DATACUBE_DB_URL: postgresql:///datacube
+        ODC_DATACUBE_DB_URL: postgresql:///datacube
 
     - name: Run Tests
       shell: bash
@@ -173,7 +173,7 @@ jobs:
       env:
         AWS_DEFAULT_REGION: us-west-2
         DASK_TEMPORARY_DIRECTORY: /tmp/dask
-        DATACUBE_DB_URL: postgresql:///datacube
+        ODC_DATACUBE_DB_URL: postgresql:///datacube
 
     - name: Upload Coverage
       if: |
@@ -237,7 +237,7 @@ jobs:
         datacube system init
 
       env:
-        DATACUBE_DB_URL: postgresql:///datacube
+        ODC_DATACUBE_DB_URL: postgresql:///datacube
 
     - name: Run Tests
       shell: bash
@@ -251,7 +251,7 @@ jobs:
       env:
         AWS_DEFAULT_REGION: us-west-2
         DASK_TEMPORARY_DIRECTORY: /tmp/dask
-        DATACUBE_DB_URL: postgresql:///datacube
+        ODC_DATACUBE_DB_URL: postgresql:///datacube
 
   publish-pypi:
     if: |

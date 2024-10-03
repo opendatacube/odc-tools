@@ -24,12 +24,12 @@ click
 dask[complete]
 dask_image
 
-datacube[dev]>=1.8.15
+datacube[dev]>=1.9.0-rc9
 datadog
 # things needed for tests that might not be referenced in setup.py
 deepdiff
 docker
-eodatasets3
+# eodatasets3
 fsspec
 google-cloud-storage
 hdstats>=0.1.7.post5

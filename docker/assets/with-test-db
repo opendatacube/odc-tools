@@ -36,7 +36,7 @@ _prep_db () {
     }
 }
 
-export DATACUBE_DB_URL="postgresql:///datacube"
+export ODC_DATACUBE_DB_URL="postgresql:///datacube"
 
 [ -z "${1:-}" ] || {
     case "$1" in

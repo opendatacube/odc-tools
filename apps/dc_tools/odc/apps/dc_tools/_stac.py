@@ -9,7 +9,7 @@ from uuid import UUID
 
 import numpy
 from datacube.model import Dataset
-from datacube.utils.geometry import Geometry, box
+from odc.geo.geom import Geometry, box
 from eodatasets3.serialise import from_doc
 from eodatasets3.stac import to_stac_item
 from toolz import get_in

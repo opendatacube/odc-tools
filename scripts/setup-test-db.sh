@@ -23,7 +23,7 @@ if [ -d "$(pwd)/.dbdata" ]; then
     rm -rf "$(pwd)/.dbdata"
 fi
 
-export DATACUBE_DB_URL=postgresql:///datacube
+export ODC_DATACUBE_DB_URL=postgresql:///datacube
 pgdata=$(pwd)/.dbdata
 initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
 start_db

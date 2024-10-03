@@ -188,7 +188,7 @@ def postgresql_server():
 
     # If we're running inside docker already, don't attempt to start a container!
     # Hopefully we're using the `with-test-db` script and can use *that* database.
-    if Path("/.dockerenv").exists() and os.environ.get("DATACUBE_DB_URL"):
+    if Path("/.dockerenv").exists() and os.environ.get("ODC_DATACUBE_DB_URL"):
         yield GET_DB_FROM_ENV
 
     else:
@@ -231,7 +231,7 @@ def odc_test_db(
     postgresql_server, tmp_path, monkeypatch
 ):  # pytest: disable=inconsistent-return-statements
     if postgresql_server == GET_DB_FROM_ENV:
-        return os.environ["DATACUBE_DB_URL"]
+        return os.environ["ODC_DATACUBE_DB_URL"]
     else:
         temp_datacube_config_file = tmp_path / "test_datacube.conf"
 
@@ -243,7 +243,7 @@ def odc_test_db(
         # This environment variable points to the configuration file, and is used by the odc-tools CLI apps
         # as well as direct ODC API access, eg creating `Datacube()`
         monkeypatch.setenv(
-            "DATACUBE_CONFIG_PATH",
+            "ODC_CONFIG_PATH",
             str(temp_datacube_config_file.absolute()),
         )
         # This environment is used by the `datacube ...` CLI tools, which don't obey the same environment variables
@@ -253,7 +253,7 @@ def odc_test_db(
         postgres_url = "postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}".format(
             **postgresql_server
         )
-        monkeypatch.setenv("DATACUBE_DB_URL", postgres_url)
+        monkeypatch.setenv("ODC_DATACUBE_DB_URL", postgres_url)
         while True:
             try:
                 with psycopg2.connect(postgres_url):

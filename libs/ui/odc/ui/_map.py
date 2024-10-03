@@ -7,8 +7,8 @@ import math
 
 
 def dss_to_geojson(dss, bbox=False, simplify=True, tolerance=0.001):
-    from datacube.testutils.geom import epsg4326
-    from datacube.utils.geometry import bbox_union
+    from odc.geo.testutils import epsg4326
+    from odc.geo.geom import bbox_union
 
     geoms = [ds.extent.to_crs(epsg4326) for ds in dss]
 
@@ -244,8 +244,8 @@ def select_on_a_map(m=None, **kwargs):
         display(m_2)
 
     def extract_geometry(state):
-        from datacube.testutils.geom import epsg4326
-        from datacube.utils.geometry import Geometry
+        from odc.geo.testutils import epsg4326
+        from odc.geo.geom import Geometry
 
         return Geometry(state.selection, epsg4326)
 

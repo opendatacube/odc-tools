@@ -10,8 +10,8 @@ from ipyleaflet import ImageOverlay
 from odc.algo import is_rgb, to_rgba
 from typing import Optional, Tuple, Union
 
-from datacube.utils.geometry import box
-from datacube.testutils.geom import epsg4326
+from odc.geo.geom import box
+from odc.geo.testutils import epsg4326
 
 
 def image_shape(d):
