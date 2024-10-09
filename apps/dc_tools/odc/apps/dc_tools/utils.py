@@ -263,7 +263,6 @@ def index_update_dataset(
                         f"Updating the dataset raised an exception: {e}"
                     )
             else:
-                logging.warning("Dataset already exists, not indexing")
                 raise SkippedException(
                     f"Dataset {dataset.id} already exists, not indexing"
                 )
