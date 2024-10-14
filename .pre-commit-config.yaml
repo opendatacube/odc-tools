@@ -6,7 +6,7 @@ repos:
       - id: yamllint
         args: ['-c', '.yamllint']
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: end-of-file-fixer
       - id: check-docstring-first
@@ -26,14 +26,14 @@ repos:
         #        name: isort (python)
         #        args: [ "--profile", "black", "--filter-files" ]
   - repo: https://github.com/psf/black
-    rev: 24.4.2
+    rev: 24.10.0
     hooks:
       - id: black
   - repo: https://github.com/PyCQA/pylint
-    rev: 'v3.2.3'  # Use the sha / tag you want to point at
+    rev: 'v3.3.1'  # Use the sha / tag you want to point at
     hooks:
       - id: pylint
   - repo: https://github.com/PyCQA/flake8
-    rev: '7.0.0'
+    rev: '7.1.1'
     hooks:
       - id: flake8
