@@ -63,6 +63,9 @@ def dump_to_odc(
 
     found_docs = False
     for uri, metadata in uris_docs:
+        if metadata is None:
+            ds_skipped += 1
+            continue
         found_docs = True
         stac_doc = None
         if transform:
