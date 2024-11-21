@@ -86,7 +86,6 @@ jobs:
         activate-environment: ""
           # mamba-version: "*"
         use-mamba: true
-        miniforge-variant: Miniforge3
 
     - name: Dump Conda Environment Info
       shell: bash -l {0}
