@@ -77,15 +77,14 @@ jobs:
           tests/env
         key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: conda-incubator/setup-miniconda@v3
       if: steps.conda_cache.outputs.cache-hit != 'true'
       with:
         channels: conda-forge,defaults
         channel-priority: true
         activate-environment: ""
-          # mamba-version: "*"
+        mamba-version: "*"
         use-mamba: true
-        miniforge-variant: Mambaforge
 
     - name: Dump Conda Environment Info
       shell: bash -l {0}
