@@ -84,3 +84,6 @@ docs/notebooks/
 .run/
 
 docker/wheels/
+
+.jj
+.ropeproject
