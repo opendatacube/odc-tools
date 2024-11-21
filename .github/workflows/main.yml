@@ -13,84 +13,84 @@ on:
       - test-ci-*
       - pypi/publish
     paths:
-      - '**'
-      - '!notebooks/**'
-      - '!docs/**'
-      - '!old/**'
-      - '!README.md'
+      - "**"
+      - "!notebooks/**"
+      - "!docs/**"
+      - "!old/**"
+      - "!README.md"
 
 jobs:
   build-wheels:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
 
-    - uses: actions/cache@v4
-      id: wheels_cache
-      with:
-        path: ./wheels
-        key: wheels-${{ github.sha }}
+      - uses: actions/cache@v4
+        id: wheels_cache
+        with:
+          path: ./wheels
+          key: wheels-${{ github.sha }}
 
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade setuptools
-        python -m pip install --upgrade \
-         toml \
-         wheel \
-         packaging \
-         twine
-        python -m pip freeze
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools
+          python -m pip install --upgrade \
+           toml \
+           wheel \
+           packaging \
+           twine
+          python -m pip freeze
 
-    - name: Build Clean Packages
-      run: |
-        mkdir -p ./wheels/clean
-        ./scripts/build-wheels.sh ./wheels/clean
-        find ./wheels/clean -type f
+      - name: Build Clean Packages
+        run: |
+          mkdir -p ./wheels/clean
+          ./scripts/build-wheels.sh ./wheels/clean
+          find ./wheels/clean -type f
 
-    - name: Patch Package Versions
-      run: |
-        grep -R --files-with-matches --include '*.py' '__version__ =' \
-        | xargs python ./scripts/patch_version.py ${GITHUB_RUN_NUMBER:-0}
+      - name: Patch Package Versions
+        run: |
+          grep -R --files-with-matches --include '*.py' '__version__ =' \
+          | xargs python ./scripts/patch_version.py ${GITHUB_RUN_NUMBER:-0}
 
-    - name: Build Dev Packages
-      run: |
-        mkdir -p ./wheels/dev
-        ./scripts/build-wheels.sh ./wheels/dev
-        find ./wheels/dev -type f
+      - name: Build Dev Packages
+        run: |
+          mkdir -p ./wheels/dev
+          ./scripts/build-wheels.sh ./wheels/dev
+          find ./wheels/dev -type f
 
   build-test-env-base:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/cache@v4
-      id: conda_cache
-      with:
-        path: |
-          tests/env
-        key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
+      - uses: actions/cache@v4
+        id: conda_cache
+        with:
+          path: |
+            tests/env
+          key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
-    - uses: conda-incubator/setup-miniconda@v3
-      if: steps.conda_cache.outputs.cache-hit != 'true'
-      with:
-        channels: conda-forge,defaults
-        channel-priority: true
-        activate-environment: ""
-        mamba-version: "*"
-        use-mamba: true
+      - uses: conda-incubator/setup-miniconda@v3
+        if: steps.conda_cache.outputs.cache-hit != 'true'
+        with:
+          channels: conda-forge,defaults
+          channel-priority: true
+          activate-environment: ""
+          mamba-version: "*"
+          use-mamba: true
 
-    - name: Dump Conda Environment Info
-      shell: bash -l {0}
-      if: steps.conda_cache.outputs.cache-hit != 'true'
-      run: |
+      - name: Dump Conda Environment Info
+        shell: bash -l {0}
+        if: steps.conda_cache.outputs.cache-hit != 'true'
+        run: |
           conda info
           conda list
           mamba -V
@@ -98,97 +98,102 @@ jobs:
           conda config --show
           printenv | sort
 
-    - name: Build Python Environment for Testing
-      shell: bash -l {0}
-      if: steps.conda_cache.outputs.cache-hit != 'true'
-      run: |
-        mamba env create -f tests/test-env.yml -p tests/env
+      - name: Build Python Environment for Testing
+        shell: bash -l {0}
+        if: steps.conda_cache.outputs.cache-hit != 'true'
+        run: |
+          mamba env create -f tests/test-env.yml -p tests/env
 
-    - name: Check Python Env
-      shell: bash -l {0}
-      if: steps.conda_cache.outputs.cache-hit != 'true'
-      run: |
-        mamba env export -p tests/env
-
+      - name: Check Python Env
+        shell: bash -l {0}
+        if: steps.conda_cache.outputs.cache-hit != 'true'
+        run: |
+          mamba env export -p tests/env
 
   test-with-coverage:
     runs-on: ubuntu-latest
 
     needs:
       - build-test-env-base
-
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: datacube
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Get Conda Environment from Cache
-      uses: actions/cache@v4
-      id: conda_cache
-      with:
-        path: |
-          tests/env
-        key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
+      - name: Get Conda Environment from Cache
+        uses: actions/cache@v4
+        id: conda_cache
+        with:
+          path: |
+            tests/env
+          key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
-    - name: Update PATH
-      shell: bash
-      run: |
-        echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
-        export PATH="$(pwd)/tests/env/bin"
+      - name: Update PATH
+        shell: bash
+        run: |
+          echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+          export PATH="$(pwd)/tests/env/bin"
 
-    - name: Install in Edit mode
-      shell: bash
-      run: |
-        which python
-        which createdb
-        which datacube
+      - name: Install in Edit mode
+        shell: bash
+        run: |
+          which python
+          which datacube
 
-        ./scripts/dev-install.sh --no-deps
+          ./scripts/dev-install.sh --no-deps
+      - name: Setup Test DB
+        shell: bash
+        run: |
+          echo "Launching test db"
+          datacube system init
+          pip list --format=freeze
 
-    - name: Start Test DB
-      shell: bash
-      run: |
-        echo "Launching test db"
-        pgdata=$(pwd)/.dbdata
-        sudo chmod 777 /var/run/postgresql
-        /usr/lib/postgresql/16/bin/initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
-        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
-        /usr/lib/postgresql/16/bin/createdb datacube
-        datacube system init
-        pip list --format=freeze
+        env:
+          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
-      env:
-        ODC_DATACUBE_DB_URL: postgresql:///datacube
 
-    # - name: Setup tmate session
-    #   if: ${{ failure() }}
-    #   uses: mxschmitt/action-tmate@v3
+      - name: Run Tests
+        shell: bash
+        run: |
+          datacube system check
+          datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
 
-    - name: Run Tests
-      shell: bash
-      run: |
-        datacube system check
-        datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
+          echo "Running Tests"
+          pytest --cov=. \
+          --cov-report=html \
+          --cov-report=xml:coverage.xml \
+          --timeout=30 \
+          libs apps
 
-        echo "Running Tests"
-        pytest --cov=. \
-        --cov-report=html \
-        --cov-report=xml:coverage.xml \
-        --timeout=30 \
-        libs apps
+        env:
+          AWS_DEFAULT_REGION: us-west-2
+          DASK_TEMPORARY_DIRECTORY: /tmp/dask
+          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
-      env:
-        AWS_DEFAULT_REGION: us-west-2
-        DASK_TEMPORARY_DIRECTORY: /tmp/dask
-        ODC_DATACUBE_DB_URL: postgresql:///datacube
+      - name: Upload Coverage
+        if: |
+          github.repository == 'opendatacube/odc-tools'
 
-    - name: Upload Coverage
-      if: |
-        github.repository == 'opendatacube/odc-tools'
-
-      uses: codecov/codecov-action@v5
-      with:
-        fail_ci_if_error: false
-        verbose: false
-
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: false
+          verbose: false
 
   test-wheels:
     runs-on: ubuntu-latest
@@ -197,82 +202,94 @@ jobs:
       - build-test-env-base
       - build-wheels
 
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: datacube
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Get Wheels from Cache
-      uses: actions/cache@v4
-      id: wheels_cache
-      with:
-        path: ./wheels
-        key: wheels-${{ github.sha }}
+      - name: Get Wheels from Cache
+        uses: actions/cache@v4
+        id: wheels_cache
+        with:
+          path: ./wheels
+          key: wheels-${{ github.sha }}
 
-    - name: Get Conda Environment from Cache
-      uses: actions/cache@v4
-      id: conda_cache
-      with:
-        path: |
-          tests/env
-        key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
+      - name: Get Conda Environment from Cache
+        uses: actions/cache@v4
+        id: conda_cache
+        with:
+          path: |
+            tests/env
+          key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
-    - name: Update PATH
-      shell: bash
-      run: |
-        echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
+      - name: Update PATH
+        shell: bash
+        run: |
+          echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
 
-    - name: Install wheels for testing
-      shell: bash
-      run: |
-        which python
-        which createdb
-        which datacube
+      - name: Install wheels for testing
+        shell: bash
+        run: |
+          which python
+          which datacube
 
-        ls -lh wheels/clean
-        python -m pip install --no-deps wheels/clean/*whl
-        python -m pip check || true
+          ls -lh wheels/clean
+          python -m pip install --no-deps wheels/clean/*whl
+          python -m pip check || true
 
-    - name: Start Test DB
-      shell: bash
-      run: |
-        echo "Launching test db"
-        pgdata=$(pwd)/.dbdata
-        sudo chmod 777 /var/run/postgresql
-        /usr/lib/postgresql/16/bin/initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
-        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
-        /usr/lib/postgresql/16/bin/createdb datacube
-        datacube system init
+      - name: Start Test DB
+        shell: bash
+        run: |
+          echo "Launching test db"
+          datacube system init
 
-      env:
-        ODC_DATACUBE_DB_URL: postgresql:///datacube
+        env:
+          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
-    - name: Run Tests
-      shell: bash
-      run: |
-        datacube system check
-        datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
+      - name: Run Tests
+        shell: bash
+        run: |
+          datacube system check
+          datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
 
-        echo "Running Tests"
-        pytest --timeout=30 libs apps
+          echo "Running Tests"
+          pytest --timeout=30 libs apps
 
-      env:
-        AWS_DEFAULT_REGION: us-west-2
-        DASK_TEMPORARY_DIRECTORY: /tmp/dask
-        ODC_DATACUBE_DB_URL: postgresql:///datacube
+        env:
+          AWS_DEFAULT_REGION: us-west-2
+          DASK_TEMPORARY_DIRECTORY: /tmp/dask
+          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
   publish-pypi:
     if: |
-        github.event_name == 'push'
-        && github.repository == 'opendatacube/odc-tools'
-        && (github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/pypi/publish')
+      github.event_name == 'push'
+      && github.repository == 'opendatacube/odc-tools'
+      && (github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/pypi/publish')
 
     strategy:
       matrix:
         pkg:
-        - odc-cloud
-        - odc-io
-        - odc-ui
-        - odc-apps-cloud
-        - odc-apps-dc-tools
+          - odc-cloud
+          - odc-io
+          - odc-ui
+          - odc-apps-cloud
+          - odc-apps-dc-tools
 
     needs:
       - build-wheels
@@ -281,57 +298,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Config
-      if: |
-        github.event_name == 'push'
-        && github.repository == 'opendatacube/odc-tools'
-        && (github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/pypi/publish')
-      id: cfg
-      env:
-        PKG: ${{ matrix.pkg }}
-      run: |
-        tk="pypi_token_${PKG//-/_}"
-        echo "tk=${tk}" >> $GITHUB_OUTPUT
-        echo "publish=yes" >> $GITHUB_OUTPUT
+      - name: Config
+        if: |
+          github.event_name == 'push'
+          && github.repository == 'opendatacube/odc-tools'
+          && (github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/pypi/publish')
+        id: cfg
+        env:
+          PKG: ${{ matrix.pkg }}
+        run: |
+          tk="pypi_token_${PKG//-/_}"
+          echo "tk=${tk}" >> $GITHUB_OUTPUT
+          echo "publish=yes" >> $GITHUB_OUTPUT
 
-    - name: Setup Python
-      if: steps.cfg.outputs.publish == 'yes'
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Setup Python
+        if: steps.cfg.outputs.publish == 'yes'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Install Twine
-      if: steps.cfg.outputs.publish == 'yes'
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade setuptools
-        python -m pip install --upgrade \
-         toml \
-         wheel \
-         twine
-        python -m pip freeze
-    - uses: actions/cache@v3
-      id: wheels_cache
-      if: steps.cfg.outputs.publish == 'yes'
-      with:
-        path: ./wheels
-        key: wheels-${{ github.sha }}
+      - name: Install Twine
+        if: steps.cfg.outputs.publish == 'yes'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools
+          python -m pip install --upgrade \
+           toml \
+           wheel \
+           twine
+          python -m pip freeze
+      - uses: actions/cache@v4
+        id: wheels_cache
+        if: steps.cfg.outputs.publish == 'yes'
+        with:
+          path: ./wheels
+          key: wheels-${{ github.sha }}
 
-    - name: Prepare for upload
-      if: steps.cfg.outputs.publish == 'yes'
-      run: |
-        mkdir -p ./pips
-        ./scripts/mk-pip-tree.sh ./wheels/clean ./pips
-        find ./pips -type f
-    - name: Upload to PyPI
-      if: steps.cfg.outputs.publish == 'yes'
-      env:
-        TWINE_PASSWORD: ${{ secrets[ steps.cfg.outputs.tk ] }}
-        TWINE_USERNAME: __token__
-        PKG: ${{ matrix.pkg }}
+      - name: Prepare for upload
+        if: steps.cfg.outputs.publish == 'yes'
+        run: |
+          mkdir -p ./pips
+          ./scripts/mk-pip-tree.sh ./wheels/clean ./pips
+          find ./pips -type f
+      - name: Upload to PyPI
+        if: steps.cfg.outputs.publish == 'yes'
+        env:
+          TWINE_PASSWORD: ${{ secrets[ steps.cfg.outputs.tk ] }}
+          TWINE_USERNAME: __token__
+          PKG: ${{ matrix.pkg }}
 
-      run: |
-        ls pips/${PKG}
-        twine upload --non-interactive --skip-existing pips/${PKG}/*
+        run: |
+          ls pips/${PKG}
+          twine upload --non-interactive --skip-existing pips/${PKG}/*

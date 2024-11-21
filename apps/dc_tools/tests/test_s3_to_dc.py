@@ -114,7 +114,7 @@ def test_s3_to_dc_fails_to_index_non_dataset_yaml(
         s3_to_dc,
         [
             "--no-sign-request",
-            "s3://dea-public-data/derivative/ga_ls5t_nbart_gm_cyear_3/3-0-0/x08/y23/1994--P1Y/ga_ls5t_nbart_gm_cyear_3_x08y23_1994--P1Y_final.proc-info.yaml",
+            "s3://odc-tools-test/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.odc-metadata.yaml",
             "ga_ls5t_nbart_gm_cyear_3",
             "--env",
             env_name,
