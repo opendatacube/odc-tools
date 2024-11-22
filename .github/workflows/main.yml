@@ -170,7 +170,6 @@ jobs:
         shell: bash
         run: |
           datacube system check
-          datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
 
           echo "Running Tests"
           pytest --cov=. \
