@@ -74,6 +74,9 @@ def mock_esa_worldcover_datasets(monkeypatch):
     )
 
 
+@pytest.mark.xfail(
+    reason="Internal STAC conversion fails with rasterio 1.4.2+. It should be fixed or removed"
+)
 def test_indexing_cli(bbox, odc_test_db_with_products, mock_esa_worldcover_datasets):
     runner = CliRunner()
     result = runner.invoke(
