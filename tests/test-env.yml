@@ -10,7 +10,7 @@ dependencies:
   - python=3.10
 
   # Datacube
-  # - datacube>=1.8.19
+  # - datacube[postgres]>=1.9.0
   - sqlalchemy>=2.0
 
   # odc.ui
@@ -26,8 +26,7 @@ dependencies:
   - lxml # needed for thredds-crawler
   - urlpath
   - datadog
-  - eodatasets3
-  - importlib_resources>=6.0
+  # - eodatasets3>=1.9.0
   - odc-geo
 
   # odc.{aws,aio}: aiobotocore/boto3
@@ -51,12 +50,12 @@ dependencies:
 
   - pip=24
   - pip:
-      - datacube>=1.9.0-rc9
+      - datacube[postgres]>=1.9.0
       # odc.apps.dc-tools
       - thredds-crawler
       - rio-stac
       # - psycopg2-binary
-      # - eodatasets3 @ git+https://github.com/opendatacube/eo-datasets@integrate-1.9
+      - eodatasets3>=1.9.0
 
       # odc.ui
       - jupyter-ui-poll>=0.2.0a
