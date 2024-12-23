@@ -242,7 +242,7 @@ def odc_test_db(
         config = configparser.ConfigParser()
         config["datacube"] = postgresql_server
         postgresql_server["index_driver"] = "postgis"
-        config["experimental"] = postgresql_server
+        config["postgis"] = postgresql_server
         with open(temp_datacube_config_file, "w", encoding="utf8") as fout:
             config.write(fout)
 
