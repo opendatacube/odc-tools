@@ -9,7 +9,7 @@ on:
     # Everything should be merged through PRs anyway.
     branches:
       - develop
-      - integrate_1.9
+      - develop-1.9
       - test-ci-*
       - pypi/publish
     paths:
@@ -150,7 +150,7 @@ jobs:
         echo "Launching test db"
         pgdata=$(pwd)/.dbdata
         /usr/lib/postgresql/16/bin/initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
-        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l logfile start
+        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
         /usr/lib/postgresql/16/bin/createdb datacube
         datacube system init
         pip list --format=freeze
@@ -233,7 +233,7 @@ jobs:
         echo "Launching test db"
         pgdata=$(pwd)/.dbdata
         /usr/lib/postgresql/16/bin/initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
-        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l logfile start
+        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
         /usr/lib/postgresql/16/bin/createdb datacube
         datacube system init
 
