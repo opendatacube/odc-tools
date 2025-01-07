@@ -40,12 +40,11 @@ skip_lineage = click.option(
 )
 
 fail_on_missing_lineage = click.option(
-    "--fail-on-missing-lineage/--auto-add-lineage",
+    "--fail-on-missing-lineage",
     is_flag=True,
-    default=True,
     help=(
-        "Default is to fail if lineage documents not present in the database. "
-        "Set auto add to try to index lineage documents."
+        "Default is to permit unindexed/external lineage documents. "
+        "Set flag to fail if lineage documents are not present in the database."
     ),
 )
 

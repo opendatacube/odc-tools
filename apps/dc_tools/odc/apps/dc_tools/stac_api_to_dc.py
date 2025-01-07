@@ -10,6 +10,7 @@ from typing import Any, Dict, Generator, Optional, Tuple
 import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     SkippedException,
@@ -169,6 +170,8 @@ def stac_api_to_odc(
 
 
 @click.command("stac-to-dc")
+@environment_option
+@pass_config
 @limit
 @update_if_exists_flag
 @allow_unsafe
@@ -202,6 +205,7 @@ def stac_api_to_odc(
 @publish_action
 @statsd_setting
 def cli(
+    cfg_env,
     limit,
     update_if_exists,
     allow_unsafe,
@@ -235,7 +239,7 @@ def cli(
     config["max_items"] = limit
 
     # Do the thing
-    dc = Datacube()
+    dc = Datacube(env=cfg_env)
     added, failed, skipped = stac_api_to_odc(
         dc,
         update_if_exists,

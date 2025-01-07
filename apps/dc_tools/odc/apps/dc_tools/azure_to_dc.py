@@ -10,7 +10,9 @@ from typing import List, Optional
 
 import click
 from datacube import Datacube
+from datacube.cfg import ODCEnvironment
 from datacube.index.hl import Doc2Dataset
+from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     SkippedException,
@@ -128,6 +130,8 @@ def dump_list_to_odc(
 
 
 @click.command("azure-to-dc")
+@environment_option
+@pass_config
 @update_flag
 @update_if_exists_flag
 @allow_unsafe
@@ -151,6 +155,7 @@ def dump_list_to_odc(
 @click.argument("suffix", type=str, nargs=1)
 @rename_product
 def cli(
+    cfg_env: ODCEnvironment,
     update: bool,
     update_if_exists: bool,
     allow_unsafe: bool,
@@ -166,7 +171,7 @@ def cli(
     rename_product: str,
 ):
     # Set up the datacube first, to ensure we have a connection
-    dc = Datacube()
+    dc = Datacube(env=cfg_env)
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
     yaml_urls = find_blobs(

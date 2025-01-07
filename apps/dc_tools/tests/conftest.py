@@ -223,7 +223,6 @@ def postgresql_server():
                 "db_port": host_port,
                 "db_database": "odc_tools_test",
                 "db_password": "badpassword",
-                "index_driver": "default",
             }
             # 'f"postgresql://odc_tools_test:badpassword@localhost:{host_port}/odc_tools_test",
         finally:
@@ -243,8 +242,9 @@ def odc_test_db(
 
         config = configparser.ConfigParser()
         config["default"] = postgresql_server
-        postgresql_server["index_driver"] = "postgis"
+        config["default"]["index_driver"] = "default"
         config["postgis"] = postgresql_server
+        config["postgis"]["index_driver"] = "postgis"
         with open(temp_datacube_config_file, "w", encoding="utf8") as fout:
             config.write(fout)
 
@@ -265,6 +265,7 @@ def odc_test_db(
             **postgresql_server
         )
         new_db_database = request.module.__name__.replace(".", "_")
+        new_db_database = new_db_database.replace("-", "_")
         while True:
             try:
                 conn = psycopg2.connect(postgres_url)
@@ -291,8 +292,8 @@ def cfg_env(odc_test_db, env_name) -> ODCEnvironment:
     return ODCConfig()[env_name]
 
 
-@pytest.fixture(scope="module")
-def odc_db(odc_test_db, cfg_env):
+@pytest.fixture
+def odc_db(cfg_env):
     """
     Provide a temporary PostgreSQL server initialised by ODC, usable as
     the default ODC DB by setting environment variables.
@@ -318,7 +319,8 @@ def odc_db(odc_test_db, cfg_env):
     yield dc
 
     dc.close()
-    with index._db._engine.connect() as conn:  # pylint:disable=protected-access
+
+    with index._db._engine.begin() as conn:  # pylint:disable=protected-access
         if index.name == "pg_index":
             pgres_core.drop_db(conn)
             # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
@@ -374,7 +376,7 @@ def s2am_dsid():
 
 
 @pytest.fixture
-def odc_db_for_archive(odc_test_db_with_products: Datacube):
+def odc_db_for_archive(odc_test_db_with_products: Datacube, env_name):
     """Create a temporary test database with some pre-indexed datasets."""
     # pylint:disable=import-outside-toplevel
     from odc.apps.dc_tools.fs_to_dc import cli as fs_to_dc_cli
@@ -384,7 +386,8 @@ def odc_db_for_archive(odc_test_db_with_products: Datacube):
         "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.stac-item.json",
     ):
         result = CliRunner().invoke(
-            fs_to_dc_cli, ["--stac", "--glob", filename, str(TEST_DATA_FOLDER)]
+            fs_to_dc_cli,
+            ["--stac", "--glob", filename, str(TEST_DATA_FOLDER), "--env", env_name],
         )
         print(result.output)
         assert result.exit_code == 0

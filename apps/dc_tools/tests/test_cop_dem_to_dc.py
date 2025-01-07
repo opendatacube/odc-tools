@@ -42,7 +42,7 @@ def test_complex_bbox(bbox_africa):
 
 # Test the actual process
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_indexing_cli(bbox, product, odc_db):
+def test_indexing_cli(bbox, product, odc_db, env_name):
     runner = CliRunner()
     result = runner.invoke(
         cop_dem_to_dc_cli,
@@ -52,6 +52,8 @@ def test_indexing_cli(bbox, product, odc_db):
             bbox,
             "--product",
             product,
+            "--env",
+            env_name,
         ],
     )
     assert result.exit_code == 0
@@ -67,6 +69,8 @@ def test_indexing_cli(bbox, product, odc_db):
             bbox,
             "--product",
             product,
+            "--env",
+            env_name,
         ],
     )
     assert result.exit_code == 0

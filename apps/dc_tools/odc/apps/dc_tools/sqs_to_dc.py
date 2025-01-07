@@ -19,6 +19,7 @@ from yaml import safe_load
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.ui.click import environment_option, pass_config
 from datacube.utils import documents
 from odc.apps.dc_tools.utils import (
     IndexingException,
@@ -306,6 +307,8 @@ def queue_to_odc(
 
 
 @click.command("sqs-to-dc")
+@environment_option
+@pass_config
 @skip_lineage
 @fail_on_missing_lineage
 @verify_lineage
@@ -342,6 +345,7 @@ def queue_to_odc(
 @click.argument("queue_name", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
+    cfg_env,
     skip_lineage,
     fail_on_missing_lineage,
     verify_lineage,
@@ -369,7 +373,7 @@ def cli(
     queue = sqs.get_queue_by_name(QueueName=queue_name)
 
     # Do the thing
-    dc = Datacube()
+    dc = Datacube(env=cfg_env)
     success, failed, skipped = queue_to_odc(
         queue,
         dc,

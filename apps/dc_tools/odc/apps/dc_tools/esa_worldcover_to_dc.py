@@ -14,6 +14,7 @@ from typing import Tuple
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.ui.click import environment_option, pass_config
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
     bbox,
@@ -213,6 +214,8 @@ def esa_wc_to_dc(
 
 
 @click.command("esa-wc-to-dc")
+@environment_option
+@pass_config
 @limit
 @update_if_exists_flag
 @bbox
@@ -238,6 +241,7 @@ def esa_wc_to_dc(
     help="Select version of world cover map, default 2020",
 )
 def cli(
+    cfg_env,
     limit,
     update_if_exists,
     bbox,
@@ -255,7 +259,7 @@ def cli(
     # Select map version
     select_map_version(version)
 
-    dc = Datacube()
+    dc = Datacube(env=cfg_env)
 
     if add_product:
         add_odc_product(dc)

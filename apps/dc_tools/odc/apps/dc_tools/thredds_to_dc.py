@@ -8,6 +8,8 @@ from odc.thredds import download_yamls, thredds_find_glob
 from typing import List, Tuple
 
 from datacube import Datacube
+from datacube.cfg import ODCEnvironment
+from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
 from ._docs import from_yaml_doc_stream
 
@@ -48,6 +50,8 @@ def dump_list_to_odc(
 
 
 @click.command("thredds-to-dc")
+@environment_option
+@pass_config
 @click.option(
     "--skip-lineage",
     is_flag=True,
@@ -73,6 +77,7 @@ def dump_list_to_odc(
 @click.argument("uri", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
+    cfg_env: ODCEnvironment,
     skip_lineage: bool,
     fail_on_missing_lineage: bool,
     verify_lineage: bool,
@@ -91,7 +96,7 @@ def cli(
     yaml_contents = download_yamls(yaml_urls)
 
     # Consume generator and fetch YAML's
-    dc = Datacube()
+    dc = Datacube(env=cfg_env)
     added, failed = dump_list_to_odc(
         yaml_contents,
         dc,
