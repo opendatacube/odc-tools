@@ -163,6 +163,7 @@ jobs:
       uses: namespacelabs/breakpoint-action@v0
       with:
         duration: 30m
+        authorized-users: Ariana-B
 
     - name: Run Tests
       shell: bash
