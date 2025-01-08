@@ -56,6 +56,7 @@ dependencies:
       - rio-stac
       # - psycopg2-binary
       - eodatasets3>=1.9.0
+      - docker
 
       # odc.ui
       - jupyter-ui-poll>=0.2.0a
