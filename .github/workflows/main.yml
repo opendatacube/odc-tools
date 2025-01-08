@@ -158,6 +158,12 @@ jobs:
       env:
         ODC_DATACUBE_DB_URL: postgresql:///datacube
 
+    - name: Breakpoint if setup failed
+      if: failure()
+      uses: namespacelabs/breakpoint-action@v0
+      with:
+        duration: 30m
+
     - name: Run Tests
       shell: bash
       run: |
