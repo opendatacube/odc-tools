@@ -149,6 +149,7 @@ jobs:
       run: |
         echo "Launching test db"
         pgdata=$(pwd)/.dbdata
+        sudo chown 777 /var/run/postgresql
         /usr/lib/postgresql/16/bin/initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
         /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
         /usr/lib/postgresql/16/bin/createdb datacube
