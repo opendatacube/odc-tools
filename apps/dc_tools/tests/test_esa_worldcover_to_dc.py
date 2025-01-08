@@ -53,7 +53,7 @@ def test_complex_bbox(bbox_africa):
 
 
 # Test the actual process
-def test_indexing_cli(bbox, odc_test_db_with_products):
+def test_indexing_cli(bbox, odc_test_db_with_products, env_name):
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -62,6 +62,8 @@ def test_indexing_cli(bbox, odc_test_db_with_products):
             bbox,
             "--statsd-setting",
             "localhost:8125",
+            "--env",
+            env_name,
         ],
     )
     assert result.exit_code == 0

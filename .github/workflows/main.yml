@@ -9,6 +9,7 @@ on:
     # Everything should be merged through PRs anyway.
     branches:
       - develop
+      - develop-1.9
       - test-ci-*
       - pypi/publish
     paths:
@@ -23,14 +24,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Setup Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: '3.10'
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: wheels_cache
       with:
         path: ./wheels
@@ -68,16 +69,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: conda_cache
       with:
         path: |
           tests/env
         key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
 
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: conda-incubator/setup-miniconda@v3
       if: steps.conda_cache.outputs.cache-hit != 'true'
       with:
         channels: conda-forge,defaults
@@ -85,7 +86,7 @@ jobs:
         activate-environment: ""
           # mamba-version: "*"
         use-mamba: true
-        miniforge-variant: Mambaforge
+        miniforge-variant: Miniforge3
 
     - name: Dump Conda Environment Info
       shell: bash -l {0}
@@ -118,10 +119,10 @@ jobs:
       - build-test-env-base
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Get Conda Environment from Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: conda_cache
       with:
         path: |
@@ -148,14 +149,19 @@ jobs:
       run: |
         echo "Launching test db"
         pgdata=$(pwd)/.dbdata
-        initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
-        pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
-        createdb datacube
+        sudo chmod 777 /var/run/postgresql
+        /usr/lib/postgresql/16/bin/initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
+        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
+        /usr/lib/postgresql/16/bin/createdb datacube
         datacube system init
         pip list --format=freeze
 
       env:
         ODC_DATACUBE_DB_URL: postgresql:///datacube
+
+    # - name: Setup tmate session
+    #   if: ${{ failure() }}
+    #   uses: mxschmitt/action-tmate@v3
 
     - name: Run Tests
       shell: bash
@@ -179,7 +185,7 @@ jobs:
       if: |
         github.repository == 'opendatacube/odc-tools'
 
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v5
       with:
         fail_ci_if_error: false
         verbose: false
@@ -193,17 +199,17 @@ jobs:
       - build-wheels
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Get Wheels from Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: wheels_cache
       with:
         path: ./wheels
         key: wheels-${{ github.sha }}
 
     - name: Get Conda Environment from Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: conda_cache
       with:
         path: |
@@ -231,9 +237,10 @@ jobs:
       run: |
         echo "Launching test db"
         pgdata=$(pwd)/.dbdata
-        initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
-        pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
-        createdb datacube
+        sudo chmod 777 /var/run/postgresql
+        /usr/lib/postgresql/16/bin/initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
+        /usr/lib/postgresql/16/bin/pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start
+        /usr/lib/postgresql/16/bin/createdb datacube
         datacube system init
 
       env:
@@ -275,7 +282,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Config
       if: |
@@ -292,9 +299,9 @@ jobs:
 
     - name: Setup Python
       if: steps.cfg.outputs.publish == 'yes'
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: '3.10'
 
     - name: Install Twine
       if: steps.cfg.outputs.publish == 'yes'

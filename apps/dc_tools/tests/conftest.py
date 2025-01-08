@@ -223,32 +223,37 @@ def postgresql_server():
                 "db_port": host_port,
                 "db_database": "odc_tools_test",
                 "db_password": "badpassword",
-                "index_driver": "default",
             }
             # 'f"postgresql://odc_tools_test:badpassword@localhost:{host_port}/odc_tools_test",
         finally:
             container.remove(v=True, force=True)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def odc_test_db(
-    postgresql_server, tmp_path, monkeypatch
+    postgresql_server, tmp_path_factory, request
 ):  # pytest: disable=inconsistent-return-statements
     if postgresql_server == GET_DB_FROM_ENV:
-        return os.environ["ODC_DATACUBE_DB_URL"]
+        yield None  # return os.environ["ODC_DATACUBE_DB_URL"]
     else:
-        temp_datacube_config_file = tmp_path / "test_datacube.conf"
+        temp_datacube_config_file = (
+            tmp_path_factory.mktemp("odc") / "test_datacube.conf"
+        )
 
         config = configparser.ConfigParser()
-        config["datacube"] = postgresql_server
-        postgresql_server["index_driver"] = "postgis"
-        config["experimental"] = postgresql_server
+        config["default"] = postgresql_server
+        config["default"]["index_driver"] = "default"
+        config["postgis"] = postgresql_server
+        config["postgis"]["index_driver"] = "postgis"
         with open(temp_datacube_config_file, "w", encoding="utf8") as fout:
             config.write(fout)
 
+        # Use pytest.MonkeyPatch instead of the monkeypatch fixture
+        # to enable this fixture to not be function scoped
+        mp = pytest.MonkeyPatch()
         # This environment variable points to the configuration file, and is used by the odc-tools CLI apps
         # as well as direct ODC API access, eg creating `Datacube()`
-        monkeypatch.setenv(
+        mp.setenv(
             "ODC_CONFIG_PATH",
             str(temp_datacube_config_file.absolute()),
         )
@@ -259,30 +264,36 @@ def odc_test_db(
         postgres_url = "postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}".format(
             **postgresql_server
         )
-        # monkeypatch.setenv("ODC_DATACUBE_DB_URL", postgres_url)
+        new_db_database = request.module.__name__.replace(".", "_")
+        new_db_database = new_db_database.replace("-", "_")
         while True:
             try:
-                with psycopg2.connect(postgres_url):
-                    break
+                conn = psycopg2.connect(postgres_url)
+                conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+
+                with conn.cursor() as cur:
+                    cur.execute(f"CREATE DATABASE {new_db_database};")
+                break
             except psycopg2.OperationalError:
                 print("Waiting for PostgreSQL to become available")
                 time.sleep(1)
-        return postgres_url
+        yield postgres_url
+        mp.undo()
 
 
-@pytest.fixture(scope="module", params=["datacube", "postgis"])
+@pytest.fixture(scope="module", params=["default", "postgis"])
 def env_name(request) -> str:
     return request.param
 
 
 @pytest.fixture(scope="module")
-def cfg_env(odc_db, env_name) -> ODCEnvironment:
+def cfg_env(odc_test_db, env_name) -> ODCEnvironment:
     """Provides a :class:`ODCEnvironment` configured with suitable config file paths."""
     return ODCConfig()[env_name]
 
 
 @pytest.fixture
-def odc_db(odc_test_db, cfg_env):
+def odc_db(cfg_env):
     """
     Provide a temporary PostgreSQL server initialised by ODC, usable as
     the default ODC DB by setting environment variables.
@@ -308,18 +319,20 @@ def odc_db(odc_test_db, cfg_env):
     yield dc
 
     dc.close()
-    if index.name == "pg_index":
-        pgres_core.drop_db(index._db._engine)  # pylint:disable=protected-access
-        # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
-        # and attempts to recreate them. WTF TODO FIX
-        remove_postgres_dynamic_indexes()
-        # with psycopg2.connect(odc_test_db) as conn:
-        #     with conn.cursor() as cur:
-        #         cur.execute("DROP SCHEMA IF EXISTS agdc CASCADE;")
-    else:
-        pgis_core.drop_db(index._db._engine)  # pylint:disable=protected-access
 
-        remove_postgis_dynamic_indexes()
+    with index._db._engine.begin() as conn:  # pylint:disable=protected-access
+        if index.name == "pg_index":
+            pgres_core.drop_db(conn)
+            # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
+            # and attempts to recreate them. WTF TODO FIX
+            remove_postgres_dynamic_indexes()
+            # with psycopg2.connect(odc_test_db) as conn:
+            #     with conn.cursor() as cur:
+            #         cur.execute("DROP SCHEMA IF EXISTS agdc CASCADE;")
+        else:
+            pgis_core.drop_db(conn)
+
+            remove_postgis_dynamic_indexes()
 
 
 def remove_postgres_dynamic_indexes():
@@ -363,7 +376,7 @@ def s2am_dsid():
 
 
 @pytest.fixture
-def odc_db_for_archive(odc_test_db_with_products: Datacube):
+def odc_db_for_archive(odc_test_db_with_products: Datacube, env_name):
     """Create a temporary test database with some pre-indexed datasets."""
     # pylint:disable=import-outside-toplevel
     from odc.apps.dc_tools.fs_to_dc import cli as fs_to_dc_cli
@@ -373,7 +386,8 @@ def odc_db_for_archive(odc_test_db_with_products: Datacube):
         "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.stac-item.json",
     ):
         result = CliRunner().invoke(
-            fs_to_dc_cli, ["--stac", "--glob", filename, str(TEST_DATA_FOLDER)]
+            fs_to_dc_cli,
+            ["--stac", "--glob", filename, str(TEST_DATA_FOLDER), "--env", env_name],
         )
         print(result.output)
         assert result.exit_code == 0

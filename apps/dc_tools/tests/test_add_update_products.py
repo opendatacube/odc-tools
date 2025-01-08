@@ -32,7 +32,7 @@ def test_load_product_def(remote_product):
     assert products[0]["name"] == "s2_l2a"
 
 
-def test_add_products(local_csv, odc_db):
+def test_add_products(local_csv, odc_db, env_name):
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(
@@ -40,6 +40,8 @@ def test_add_products(local_csv, odc_db):
         [
             local_csv,
             "--update-if-exists",
+            "--env",
+            env_name,
         ],
     )
     print(f"CLI Output: {result.output}")

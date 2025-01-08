@@ -71,7 +71,7 @@ def sns_setup(aws_credentials, aws_env):
 
 
 def test_s3_publishing_action_from_stac(
-    mocked_s3_datasets, odc_test_db_with_products, s2am_dsid, sns_setup
+    mocked_s3_datasets, odc_test_db_with_products, env_name, s2am_dsid, sns_setup
 ):
     _, _, output_topic_arn, sqs, _, output_queue_url = sns_setup
 
@@ -90,6 +90,8 @@ def test_s3_publishing_action_from_stac(
             f"--publish-action={output_topic_arn}",
             "s3://odc-tools-test/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/*stac-item.json",
             "ga_s2am_ard_3",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
@@ -109,7 +111,7 @@ def test_s3_publishing_action_from_stac(
 
 
 def test_s3_publishing_action_from_eo3(
-    mocked_s3_datasets, odc_test_db_with_products, s2am_dsid, sns_setup
+    mocked_s3_datasets, odc_test_db_with_products, env_name, s2am_dsid, sns_setup
 ):
     """Same as above but requiring stac to eo3 conversion"""
     _, _, output_topic_arn, sqs, _, output_queue_url = sns_setup
@@ -127,6 +129,8 @@ def test_s3_publishing_action_from_eo3(
             f"--publish-action={output_topic_arn}",
             "s3://odc-tools-test/baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/*odc-metadata.yaml",
             "ga_s2am_ard_3",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
@@ -156,7 +160,7 @@ def stac_doc():
 
 
 def test_sqs_publishing(
-    aws_credentials, aws_env, stac_doc, odc_test_db_with_products, sns_setup
+    aws_credentials, aws_env, stac_doc, odc_test_db_with_products, env_name, sns_setup
 ):
     """Test that actions are published with sqs_to_dc"""
     (
@@ -195,6 +199,8 @@ def test_sqs_publishing(
             "--update-if-exists",
             "--stac",
             f"--publish-action={output_topic_arn}",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
@@ -213,7 +219,13 @@ def test_sqs_publishing(
 
 
 def test_sqs_publishing_archive_flag(
-    aws_credentials, aws_env, stac_doc, odc_db_for_archive, ls5t_dsid, sns_setup
+    aws_credentials,
+    aws_env,
+    stac_doc,
+    odc_db_for_archive,
+    env_name,
+    ls5t_dsid,
+    sns_setup,
 ):
     """Test that an ARCHIVE SNS message is published when the --archive flag is used."""
     (
@@ -246,6 +258,8 @@ def test_sqs_publishing_archive_flag(
             "--stac",
             "--archive",
             f"--publish-action={output_topic_arn}",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
@@ -263,7 +277,13 @@ def test_sqs_publishing_archive_flag(
 
 
 def test_sqs_publishing_archive_attribute(
-    aws_credentials, aws_env, stac_doc, odc_db_for_archive, ls5t_dsid, sns_setup
+    aws_credentials,
+    aws_env,
+    stac_doc,
+    odc_db_for_archive,
+    env_name,
+    ls5t_dsid,
+    sns_setup,
 ):
     """Test that archiving occurs when ARCHIVED is in the message attributes"""
     (
@@ -297,6 +317,8 @@ def test_sqs_publishing_archive_attribute(
             "--update-if-exists",
             "--stac",
             f"--publish-action={output_topic_arn}",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
@@ -316,6 +338,7 @@ def test_with_archive_less_mature(
     aws_credentials,
     aws_env,
     odc_db,
+    env_name,
     nrt_dsid,
     final_dsid,
     sns_setup,
@@ -333,6 +356,8 @@ def test_with_archive_less_mature(
             "--glob=**/maturity-nrt.odc-metadata.yaml",
             "--archive-less-mature",
             f"--publish-action={output_topic_arn}",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
@@ -360,6 +385,8 @@ def test_with_archive_less_mature(
             "--glob=**/maturity-final.odc-metadata.yaml",
             "--archive-less-mature",
             f"--publish-action={output_topic_arn}",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )

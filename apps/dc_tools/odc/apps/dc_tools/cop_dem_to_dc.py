@@ -14,6 +14,7 @@ from typing import Tuple
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.ui.click import environment_option, pass_config
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
     SkippedException,
@@ -202,6 +203,8 @@ def cop_dem_to_dc(
 
 
 @click.command("cop-dem-to-dc")
+@environment_option
+@pass_config
 @limit
 @update_if_exists_flag
 @bbox
@@ -226,6 +229,7 @@ def cop_dem_to_dc(
     help="Number of threads to use to process, default 20",
 )
 def cli(
+    cfg_env,
     limit,
     update_if_exists,
     bbox,
@@ -244,7 +248,7 @@ def cli(
             f"Unknown product {product}, must be one of {' '.join(PRODUCTS)}"
         )
 
-    dc = Datacube()
+    dc = Datacube(env=cfg_env)
 
     if add_product:
         add_cop_dem_product(dc, product)

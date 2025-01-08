@@ -6,6 +6,7 @@ from pathlib import Path
 
 import datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     allow_unsafe,
@@ -26,6 +27,8 @@ logging.basicConfig(
 
 
 @click.command("fs-to-dc")
+@environment_option
+@pass_config
 @click.argument("input_directory", type=str, nargs=1)
 @update_if_exists_flag
 @allow_unsafe
@@ -39,6 +42,7 @@ logging.basicConfig(
     help="File system glob to use, defaults to **/*.yaml or **/*.json for STAC.",
 )
 def cli(
+    cfg_env,
     input_directory,
     update_if_exists,
     allow_unsafe,
@@ -48,7 +52,7 @@ def cli(
     archive_less_mature,
     publish_action,
 ):
-    dc = datacube.Datacube()
+    dc = datacube.Datacube(env=cfg_env)
     doc2ds = Doc2Dataset(dc.index)
 
     if glob is None:
