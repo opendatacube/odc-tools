@@ -115,6 +115,10 @@ jobs:
   test-with-coverage:
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write
+      contents: read
+
     needs:
       - build-test-env-base
 
