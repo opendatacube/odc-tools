@@ -41,9 +41,6 @@ def test_complex_bbox(bbox_africa):
 
 
 # Test the actual process
-@pytest.mark.xfail(
-    reason="Internal STAC conversion fails with rasterio 1.4.2+. It should be fixed or removed"
-)
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_indexing_cli(bbox, product, odc_db, env_name):
     runner = CliRunner()
