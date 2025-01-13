@@ -4,6 +4,7 @@ from typing import Optional
 import click
 import importlib_resources
 from datacube import Datacube
+from datacube.model import Dataset
 from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
 from datadog import initialize, statsd
@@ -183,14 +184,15 @@ def get_esri_list():
 
 
 def index_update_dataset(
-    metadata: dict,
+    dataset: dict | Dataset,
     uri: str,
     dc: Datacube,
-    doc2ds: Doc2Dataset,
+    doc2ds: Doc2Dataset | None,
     update: bool = False,
     update_if_exists: bool = False,
     allow_unsafe: bool = False,
     archive_less_mature: Optional[int] = None,
+    auto_add_lineage: Optional[bool] = False,
     publish_action: Optional[str] = None,
     stac_doc: Optional[dict] = None,
 ) -> int:
@@ -215,19 +217,17 @@ def index_update_dataset(
     :param stac_doc: STAC document for publication to SNS topic.
     :return: Returns nothing.  Raises an exception if anything goes wrong.
     """
-    if uri is None:
-        raise IndexingException("Failed to get URI from metadata doc")
     # Make sure we can create a dataset first
-    try:
-        ds, err = doc2ds(metadata, uri)
-    except ValueError as e:
-        raise IndexingException(
-            f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
-        ) from e
-    if ds is None:
-        raise IndexingException(
-            f"Failed to create dataset with error {err}\n The URI was {uri}"
-        )
+    if not isinstance(dataset, Dataset):
+        print("Not a dataset: ", dataset)
+        try:
+            if doc2ds is None:
+                doc2ds = Doc2Dataset(dc.index)
+            dataset, _ = doc2ds(dataset, uri)
+        except ValueError as e:
+            raise IndexingException(
+                f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
+            ) from e
 
     with dc.index.transaction():
         # Process in a transaction
@@ -236,13 +236,13 @@ def index_update_dataset(
         updated = False
 
         if isinstance(archive_less_mature, int) and publish_action:
-            dupes = dc.index.datasets.find_less_mature(ds, archive_less_mature)
+            dupes = dc.index.datasets.find_less_mature(dataset, archive_less_mature)
             for dupe in dupes:
                 archive_stacs.append(ds_to_stac(dupe))
 
         # Now do something with the dataset
         # Note that any of the exceptions raised below will rollback any archiving performed above.
-        if dc.index.datasets.has(metadata.get("id")):
+        if dc.index.datasets.has(dataset.id):
             # Update
             if update or update_if_exists:
                 # Set up update fields
@@ -252,7 +252,7 @@ def index_update_dataset(
                 # Do the updating
                 try:
                     dc.index.datasets.update(
-                        ds,
+                        dataset,
                         updates_allowed=updates,
                         archive_less_mature=archive_less_mature,
                     )
@@ -262,9 +262,8 @@ def index_update_dataset(
                         f"Updating the dataset raised an exception: {e}"
                     )
             else:
-                logging.warning("Dataset already exists, not indexing")
                 raise SkippedException(
-                    f"Dataset {metadata.get('id')} already exists, not indexing"
+                    f"Dataset {dataset.id} already exists, not indexing"
                 )
         else:
             if update:
@@ -273,7 +272,11 @@ def index_update_dataset(
                     "Can't update dataset because it doesn't exist."
                 )
             # Everything is working as expected, add the dataset
-            dc.index.datasets.add(ds, archive_less_mature=archive_less_mature)
+            dc.index.datasets.add(
+                dataset,
+                with_lineage=auto_add_lineage,
+                archive_less_mature=archive_less_mature,
+            )
             added = True
 
     if publish_action:
@@ -281,14 +284,14 @@ def index_update_dataset(
             publish_to_topic(arn=publish_action, action="ARCHIVED", stac=arch_stac)
 
     if added:
-        logging.info("New Dataset Added: %s", ds.id)
+        logging.info("New Dataset Added: %s", dataset.id)
         if publish_action:
             # if STAC was not provided, generate from dataset
-            stac_doc = stac_doc if stac_doc else ds_to_stac(ds)
+            stac_doc = stac_doc if stac_doc else ds_to_stac(dataset)
             publish_to_topic(arn=publish_action, action="ADDED", stac=stac_doc)
 
     if updated:
-        logging.info("Existing Dataset Updated: %s", ds.id)
+        logging.info("Existing Dataset Updated: %s", dataset.id)
 
 
 def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125"):

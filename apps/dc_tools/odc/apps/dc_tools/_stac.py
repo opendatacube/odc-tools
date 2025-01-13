@@ -10,7 +10,6 @@ from uuid import UUID
 import numpy
 from datacube.model import Dataset
 from odc.geo.geom import Geometry, box
-from eodatasets3.serialise import from_doc
 from eodatasets3.stac import to_stac_item
 from toolz import get_in
 from urllib.parse import urlparse
@@ -231,7 +230,11 @@ def _get_stac_bands(
         # If transform specified here in the asset it should override
         # the properties-specified transform.
         transform = asset.get("proj:transform") or proj_transform
-        grid = f"g{transform[0]:g}m"
+
+        if transform is not None:
+            grid = f"g{transform[0]:g}m"
+        else:
+            grid = default_grid
 
         # As per transform, shape here overrides properties
         shape = asset.get("proj:shape") or proj_shape
@@ -373,6 +376,11 @@ def stac_transform(input_stac: Document) -> Document:
         proj_transform=proj_transform,
     )
 
+    # STAC document may not have top-level proj:shape property
+    # use one of the bands as a default
+    proj_shape = grids.get("default").get("shape")
+    proj_transform = grids.get("default").get("transform")
+
     stac_properties, lineage = _get_stac_properties_lineage(input_stac)
 
     epsg = properties["proj:epsg"]
@@ -444,6 +452,7 @@ def transform_geom_json_coordinates_to_list(geom_json):
 
 def ds_to_stac(ds: Dataset) -> dict:
     """Get STAC document from dataset with eo3 metadata"""
+    from eodatasets3.serialise import from_doc
     if ds.is_eo3:
         if not ds.uris:
             raise ValueError("Can't find dataset location")
