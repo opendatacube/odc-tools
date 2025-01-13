@@ -30,6 +30,7 @@ dependencies:
   # - eodatasets3>=1.9.0
   - importlib_resources>=6.0
   - odc-geo
+  - odc-stac
 
   # odc.{aws,aio}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
