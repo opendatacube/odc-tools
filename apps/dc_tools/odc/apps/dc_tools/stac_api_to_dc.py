@@ -90,7 +90,9 @@ def item_to_meta_uri(
             "Couldn't find matching product for product name: %s",
             product_name_sanitised,
         )
-        raise SkippedException(f"Couldn't find matching product for product name: {product_name_sanitised}")
+        raise SkippedException(
+            f"Couldn't find matching product for product name: {product_name_sanitised}"
+        )
 
     # Convert the STAC Item to a Dataset
     dataset = next(stac2ds([item]))

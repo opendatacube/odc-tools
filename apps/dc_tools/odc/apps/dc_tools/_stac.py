@@ -453,6 +453,7 @@ def transform_geom_json_coordinates_to_list(geom_json):
 def ds_to_stac(ds: Dataset) -> dict:
     """Get STAC document from dataset with eo3 metadata"""
     from eodatasets3.serialise import from_doc
+
     if ds.is_eo3:
         if not ds.uris:
             raise ValueError("Can't find dataset location")
