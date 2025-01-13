@@ -67,7 +67,7 @@ def mock_esa_worldcover_datasets(monkeypatch):
     local_template = (
         "file://"
         + str(Path(__name__).parent.absolute())
-        + f"/data/esa_worldcover/{fname_template}"
+        + f"/tests/data/esa_worldcover/{fname_template}"
     )
     monkeypatch.setattr(
         "odc.apps.dc_tools.esa_worldcover_to_dc.URI_TEMPLATE", local_template
