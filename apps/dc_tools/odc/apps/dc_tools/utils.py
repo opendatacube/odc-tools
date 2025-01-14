@@ -6,7 +6,7 @@ import importlib_resources
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.index.hl import Doc2Dataset
-from datacube.utils import changes
+from datacube.utils import changes, jsonify_document
 from datadog import initialize, statsd
 from odc.aws.queue import publish_to_topic
 
@@ -222,7 +222,7 @@ def index_update_dataset(
         try:
             if doc2ds is None:
                 doc2ds = Doc2Dataset(dc.index)
-            dataset, err = doc2ds(dataset, uri)
+            dataset, err = doc2ds(jsonify_document(dataset), uri)
         except ValueError as e:
             raise IndexingException(
                 f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
