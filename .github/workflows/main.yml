@@ -156,18 +156,17 @@ jobs:
           which datacube
 
           ./scripts/dev-install.sh --no-deps
+
       - name: Setup Test DB
         shell: bash
         run: |
           echo "Launching test db"
           datacube --version
-          datacube system check
           datacube system init
           pip list --format=freeze
 
         env:
-          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
-
+          ODC_DEFAULT_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
       - name: Run Tests
         shell: bash
@@ -184,7 +183,7 @@ jobs:
         env:
           AWS_DEFAULT_REGION: us-west-2
           DASK_TEMPORARY_DIRECTORY: /tmp/dask
-          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
+          ODC_DEFAULT_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
       - name: Upload Coverage
         if: |
@@ -260,7 +259,7 @@ jobs:
           datacube system init
 
         env:
-          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
+          ODC_DEFAULT_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
       - name: Run Tests
         shell: bash
@@ -274,7 +273,7 @@ jobs:
         env:
           AWS_DEFAULT_REGION: us-west-2
           DASK_TEMPORARY_DIRECTORY: /tmp/dask
-          ODC_DATACUBE_DB_URL: postgresql://postgres:postgres@localhost/datacube
+          ODC_DEFAULT_DB_URL: postgresql://postgres:postgres@localhost/datacube
 
   publish-pypi:
     if: |
