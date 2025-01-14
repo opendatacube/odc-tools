@@ -219,15 +219,18 @@ def index_update_dataset(
     """
     # Make sure we can create a dataset first
     if not isinstance(dataset, Dataset):
-        print("Not a dataset: ", dataset)
         try:
             if doc2ds is None:
                 doc2ds = Doc2Dataset(dc.index)
-            dataset, _ = doc2ds(dataset, uri)
+            dataset, err = doc2ds(dataset, uri)
         except ValueError as e:
             raise IndexingException(
                 f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
             ) from e
+        if dataset is None:
+            raise IndexingException(
+                f"Failed to create dataset with error {err}\n The URI was {uri}"
+            )
 
     with dc.index.transaction():
         # Process in a transaction
