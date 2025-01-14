@@ -160,6 +160,8 @@ jobs:
         shell: bash
         run: |
           echo "Launching test db"
+          datacube --version
+          datacube system check
           datacube system init
           pip list --format=freeze
 
@@ -315,7 +317,7 @@ jobs:
         if: steps.cfg.outputs.publish == 'yes'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.12"
 
       - name: Install Twine
         if: steps.cfg.outputs.publish == 'yes'
