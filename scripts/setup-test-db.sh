@@ -12,7 +12,7 @@ function start_db() {
         if [[ "$(<${pgdata}/pg.log)" =~ .*"Address already in use".* ]]; then
             sudo kill -9 $(sudo lsof -i:5432 | awk 'NR==2 {print $2}')
             pg_ctl -D ${pgdata} -l "${pgdata}/pg.log" start || cat "${pgdata}/pg.log"
-        else   
+        else
             cat "${pgdata}/pg.log"
             exit 1
         fi
@@ -30,4 +30,5 @@ start_db
 createdb datacube
 datacube system init
 # add any new metadata types
-datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
+# datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
+datacube metadata add apps/dc_tools/tests/data/eo3_sentinel_ard.odc-type.yaml
