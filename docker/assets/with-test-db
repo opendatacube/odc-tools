@@ -36,7 +36,20 @@ _prep_db () {
     }
 }
 
-export DATACUBE_DB_URL="postgresql:///datacube"
+cat <<EOL > $HOME/.odc_tools_datacube.conf
+[datacube]
+db_hostname:
+db_database: odc_tools_test
+index_driver: default
+
+[postgis]
+db_hostname:
+db_database: odc_tools_test
+index_driver: postgis
+
+EOL
+
+export ODC_CONFIG_PATH="${HOME}/.odc_tools_datacube.conf"
 
 [ -z "${1:-}" ] || {
     case "$1" in

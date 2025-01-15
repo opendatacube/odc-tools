@@ -98,12 +98,14 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
-def test_extract_metadata_from_message(aws_credentials, odc_test_db_with_products):
+def test_extract_metadata_from_message(
+    aws_credentials, odc_test_db_with_products, cfg_env
+):
     with mock_aws():
         TEST_QUEUE_NAME = "a_test_queue"
         sqs_resource = boto3.resource("sqs")
 
-        dc = Datacube()
+        dc = Datacube(env=cfg_env)
 
         a_queue = sqs_resource.create_queue(QueueName=TEST_QUEUE_NAME)
         assert int(a_queue.attributes.get("ApproximateNumberOfMessages")) == 0

@@ -5,6 +5,10 @@ from toolz import dicttoolz
 from typing import Any, Iterable, Mapping, Optional
 
 
+class ODCSQSException(Exception):
+    """Something wrong with ODC/AWS SQS handling"""
+
+
 def redrive_queue(
     queue_name: str,
     to_queue_name: Optional[str] = None,
@@ -36,11 +40,11 @@ def redrive_queue(
     else:
         source_queues = list(dead_queue.dead_letter_source_queues.all())
         if len(source_queues) == 0:
-            raise Exception(
+            raise ODCSQSException(
                 "No alive queue found for the deadletter queue, please check your configuration."
             )
         if len(source_queues) > 1:
-            raise Exception(
+            raise ODCSQSException(
                 "Deadletter queue has more than one source, please specify the target queue name."
             )
         alive_queue = source_queues[0]
@@ -178,7 +182,7 @@ def get_messages(
         return messages
 
     if limit < 1:
-        raise Exception(f"Limit {limit} is not valid.")
+        raise ODCSQSException(f"Limit {limit} is not valid.")
 
     return itertools.islice(messages, limit)
 

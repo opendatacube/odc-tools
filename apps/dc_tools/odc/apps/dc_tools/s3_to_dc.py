@@ -10,6 +10,7 @@ from typing import Tuple
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools._docs import parse_doc_stream
 from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
@@ -62,6 +63,9 @@ def dump_to_odc(
 
     found_docs = False
     for uri, metadata in uris_docs:
+        if metadata is None:
+            ds_skipped += 1
+            continue
         found_docs = True
         stac_doc = None
         if transform:
@@ -93,6 +97,8 @@ def dump_to_odc(
 
 
 @click.command("s3-to-dc")
+@environment_option
+@pass_config
 @click.option(
     "--log",
     type=click.Choice(
@@ -118,6 +124,7 @@ def dump_to_odc(
 @click.argument("uris", nargs=-1)
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
+    cfg_env,
     log,
     skip_lineage,
     fail_on_missing_lineage,
@@ -156,7 +163,7 @@ def cli(
     if request_payer:
         opts["RequestPayer"] = "requester"
 
-    dc = Datacube()
+    dc = Datacube(env=cfg_env)
 
     # if it's a uri, a product wasn't provided, and 'product' is actually another uri
     if product.startswith("s3://"):

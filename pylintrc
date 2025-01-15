@@ -33,7 +33,8 @@ disable=duplicate-code,
     # and `odc.io`, whereby you can't put an __init__.py in `libs/io/odc/`, so
     # pylint thinks the `io` directory is actually the python built in `io` package
     # and it's really confusing
-    cyclic-import
+    cyclic-import,
+    too-many-positional-arguments  # We have this all over the place, lots of click CLI arguments, and elsewhere
 
 [BASIC]
 
@@ -197,4 +198,4 @@ max-public-methods=20
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception

@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Generator, Tuple
 
 import datacube
 from datacube import Datacube
+from datacube.cfg import ODCEnvironment
+from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools.utils import (
     update_if_exists_flag,
     statsd_gauge_reporting,
@@ -123,12 +125,16 @@ def add_update_products(
 
 
 @click.command("dc-sync-products")
+@environment_option
+@pass_config
 @click.argument("csv-path", nargs=1)
 @update_if_exists_flag
 @statsd_setting
-def cli(csv_path: str, update_if_exists: bool, statsd_setting: str):
+def cli(
+    cfg_env: ODCEnvironment, csv_path: str, update_if_exists: bool, statsd_setting: str
+):
     # Check we can connect to the Datacube
-    dc = datacube.Datacube(app="add_update_products")
+    dc = datacube.Datacube(app="add_update_products", env=cfg_env)
     logging.info(
         "Starting up: connected to Datacube, and update-if-exists is: %s",
         update_if_exists,

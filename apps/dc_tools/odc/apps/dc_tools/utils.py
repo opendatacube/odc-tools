@@ -6,7 +6,7 @@ import importlib_resources
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.index.hl import Doc2Dataset
-from datacube.utils import changes
+from datacube.utils import changes, jsonify_document
 from datadog import initialize, statsd
 from odc.aws.queue import publish_to_topic
 
@@ -41,12 +41,11 @@ skip_lineage = click.option(
 )
 
 fail_on_missing_lineage = click.option(
-    "--fail-on-missing-lineage/--auto-add-lineage",
+    "--fail-on-missing-lineage",
     is_flag=True,
-    default=True,
     help=(
-        "Default is to fail if lineage documents not present in the database. "
-        "Set auto add to try to index lineage documents."
+        "Default is to permit unindexed/external lineage documents. "
+        "Set flag to fail if lineage documents are not present in the database."
     ),
 )
 
@@ -220,15 +219,18 @@ def index_update_dataset(
     """
     # Make sure we can create a dataset first
     if not isinstance(dataset, Dataset):
-        print("Not a dataset: ", dataset)
         try:
             if doc2ds is None:
                 doc2ds = Doc2Dataset(dc.index)
-            dataset, _ = doc2ds(dataset, uri)
+            dataset, err = doc2ds(jsonify_document(dataset), uri)
         except ValueError as e:
             raise IndexingException(
                 f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
             ) from e
+        if dataset is None:
+            raise IndexingException(
+                f"Failed to create dataset with error {err}\n The URI was {uri}"
+            )
 
     with dc.index.transaction():
         # Process in a transaction
