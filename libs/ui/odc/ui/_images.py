@@ -1,5 +1,4 @@
-""" Notebook display helper methods.
-"""
+"""Notebook display helper methods."""
 
 import numpy as np
 import rasterio

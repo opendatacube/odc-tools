@@ -1,5 +1,4 @@
-""" Notebook display helper methods (mapping related).
-"""
+"""Notebook display helper methods (mapping related)."""
 
 # pylint:disable=import-outside-toplevel
 

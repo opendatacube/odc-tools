@@ -1,5 +1,4 @@
-""" Various file io helpers
-"""
+"""Various file io helpers"""
 
 from .tar import tar_doc_stream  # pylint: disable=W0406
 from .text import (

@@ -1,5 +1,4 @@
-""" Index datasets from tar arachive
-"""
+"""Index datasets from tar arachive"""
 
 import click
 import sys

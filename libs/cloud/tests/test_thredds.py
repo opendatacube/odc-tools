@@ -1,5 +1,4 @@
-"""Test thredds downloader code
-"""
+"""Test thredds downloader code"""
 
 import pytest
 from odc.thredds import download_yamls, thredds_find_glob

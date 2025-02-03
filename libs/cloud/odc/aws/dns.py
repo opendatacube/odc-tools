@@ -1,5 +1,4 @@
-""" Tools for interacting with route53
-"""
+"""Tools for interacting with route53"""
 
 import sys
 

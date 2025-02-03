@@ -1,5 +1,4 @@
-""" Parallel Processing Tools
-"""
+"""Parallel Processing Tools"""
 
 import asyncio
 import logging
