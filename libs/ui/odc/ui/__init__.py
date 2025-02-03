@@ -1,5 +1,4 @@
-""" Notebook display helper methods.
-"""
+"""Notebook display helper methods."""
 
 from ._dc_explore import (
     DcViewer,

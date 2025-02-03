@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Index datasets found from an SQS queue into Postgres
-"""
+"""Index datasets found from an SQS queue into Postgres"""
 import concurrent
 import json
 import logging

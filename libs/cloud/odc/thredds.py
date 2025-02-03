@@ -1,5 +1,4 @@
-"""Thredds crawling and YAML fetching utilities
-"""
+"""Thredds crawling and YAML fetching utilities"""
 
 from multiprocessing.dummy import Pool as ThreadPool
 

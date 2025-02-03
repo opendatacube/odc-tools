@@ -1,5 +1,4 @@
-""" Notebook display helper methods.
-"""
+"""Notebook display helper methods."""
 
 from IPython.display import display
 from ipywidgets import HBox, IntProgress, Label, Layout, VBox
