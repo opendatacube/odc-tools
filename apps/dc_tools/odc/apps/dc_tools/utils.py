@@ -2,7 +2,6 @@ import logging
 from typing import Optional
 
 import click
-import importlib_resources
 from datacube import Datacube
 from datacube.model import Dataset
 from datacube.index.hl import Doc2Dataset
@@ -12,10 +11,6 @@ from odc.aws.queue import publish_to_topic
 
 from ._stac import ds_to_stac
 
-ESRI_LANDCOVER_BASE_URI = (
-    "https://ai4edataeuwest.blob.core.windows.net/io-lulc/"
-    "io-lulc-model-001-v01-composite-v03-supercell-v02-clip-v01/{id}_20200101-20210101.tif"
-)
 
 MICROSOFT_PC_STAC_URI = "https://planetarycomputer.microsoft.com/api/stac/v1/"
 
@@ -175,14 +170,6 @@ rename_product = click.option(
 )
 
 
-def get_esri_list():
-    stream = importlib_resources.files(__name__).joinpath("esri-lc-tiles-list.txt")
-    with stream as f:
-        for tile in f.readlines():
-            tile_id = tile.decode().rstrip("\n")
-            yield ESRI_LANDCOVER_BASE_URI.format(id=tile_id)
-
-
 def index_update_dataset(
     dataset: dict | Dataset,
     uri: str,
@@ -195,7 +182,7 @@ def index_update_dataset(
     auto_add_lineage: Optional[bool] = False,
     publish_action: Optional[str] = None,
     stac_doc: Optional[dict] = None,
-) -> int:
+):
     """
     Index and/or update a dataset.  Called by all the **_to_dc CLI tools.
 
