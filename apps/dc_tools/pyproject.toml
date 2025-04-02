@@ -6,3 +6,6 @@ build-backend = "setuptools.build_meta"
 addopts = [
     "--import-mode=importlib",
 ]
+filterwarnings = [
+    "ignore:datetime.datetime.utcnow*:DeprecationWarning:botocore.*"
+]
