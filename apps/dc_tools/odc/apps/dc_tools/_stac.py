@@ -454,14 +454,9 @@ def transform_geom_json_coordinates_to_list(geom_json):
 def ds_to_stac(ds: Dataset) -> dict:
     """Get STAC document from dataset with eo3 metadata"""
     if ds.is_eo3:
-        if not ds.uris:
+        if ds.uri is None:
             raise ValueError("Can't find dataset location")
-        location = ds.uris[0]
-        stac = to_stac_item(
-            from_doc(ds.metadata_doc, skip_validation=True),
-            location,
-        )
-        return stac
+        return to_stac_item(from_doc(ds.metadata_doc, skip_validation=True), ds.uri)
     else:
         raise ValueError(
             f"Cannot convert to STAC for dataset with metadata of type {ds.metadata_type}"
