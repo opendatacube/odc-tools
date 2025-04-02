@@ -73,8 +73,8 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
     for dataset_id in dataset_ids:
         dataset = index.datasets.get(dataset_id.id, include_sources=True)
 
-        if not dataset.uris:
-            _LOG.warning("Empty uris or No uris (skippins): %s", dataset_id)
+        if dataset.uri is None:
+            _LOG.warning("No uri for %s, skipping..", dataset_id)
             continue
 
         if not grids_done:
