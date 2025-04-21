@@ -22,7 +22,9 @@ from sys import stderr, stdout
     help="Needed when accessing requester pays public buckets",
 )
 @click.argument("outfile", type=str, nargs=1, default="-")
-def cli(n, verbose, gzip, xz, outfile, no_sign_request=None, request_payer=False):
+def cli(
+    n, verbose, gzip, xz, outfile, no_sign_request=None, request_payer=False
+) -> None:
     """Fetch a bunch of s3 files into a tar archive.
 
     \b
@@ -43,7 +45,7 @@ def cli(n, verbose, gzip, xz, outfile, no_sign_request=None, request_payer=False
     nconnections = 24 if n is None else n
     exit_early = False
 
-    def dump_to_tar(data_stream, tar):
+    def dump_to_tar(data_stream, tar) -> None:
         nonlocal exit_early
         fps = RateEstimator()
 
@@ -83,7 +85,7 @@ def cli(n, verbose, gzip, xz, outfile, no_sign_request=None, request_payer=False
 
     urls = read_stdin_lines(skip_empty=True)
 
-    def on_ctrlc(sig, frame):
+    def on_ctrlc(sig, frame) -> None:
         nonlocal exit_early
         print("Shutting down...", file=sys.stderr)
         exit_early = True

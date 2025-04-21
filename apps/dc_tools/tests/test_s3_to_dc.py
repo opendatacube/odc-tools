@@ -8,7 +8,7 @@ from odc.apps.dc_tools.s3_to_dc import cli as s3_to_dc
 
 def test_s3_to_dc_skips_already_indexed_datasets(
     mocked_s3_datasets, odc_test_db_with_products, env_name
-):
+) -> None:
     runner = CliRunner()
     # This will fail if requester pays is enabled
     results = [
@@ -42,7 +42,7 @@ def test_s3_to_dc_skips_already_indexed_datasets(
 
 def test_s3_to_dc_stac(
     mocked_s3_datasets, aws_env, odc_test_db_with_products, env_name
-):
+) -> None:
     result = CliRunner().invoke(
         s3_to_dc,
         [
@@ -63,7 +63,7 @@ def test_s3_to_dc_stac(
 
 def test_s3_to_dc_stac_update_if_exist(
     mocked_s3_datasets, odc_test_db_with_products, env_name
-):
+) -> None:
     result = CliRunner().invoke(
         s3_to_dc,
         [
@@ -84,7 +84,7 @@ def test_s3_to_dc_stac_update_if_exist(
 
 def test_s3_to_dc_stac_update_if_exist_allow_unsafe(
     mocked_s3_datasets, odc_test_db_with_products, env_name
-):
+) -> None:
     runner = CliRunner()
     result = runner.invoke(
         s3_to_dc,
@@ -108,7 +108,7 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(
 
 def test_s3_to_dc_fails_to_index_non_dataset_yaml(
     mocked_s3_datasets, odc_test_db_with_products, env_name
-):
+) -> None:
     runner = CliRunner()
     result = runner.invoke(
         s3_to_dc,
@@ -129,7 +129,7 @@ def test_s3_to_dc_fails_to_index_non_dataset_yaml(
 
 def test_s3_to_dc_partially_succeeds_when_given_invalid_and_valid_dataset_yamls(
     mocked_s3_datasets, odc_test_db_with_products, env_name
-):
+) -> None:
     runner = CliRunner()
     result = runner.invoke(
         s3_to_dc,
@@ -151,7 +151,7 @@ def test_s3_to_dc_partially_succeeds_when_given_invalid_and_valid_dataset_yamls(
 
 def test_s3_to_dc_list_absolute_urls(
     mocked_s3_datasets, odc_test_db_with_products, env_name
-):
+) -> None:
     # provide mulitple uris, as absolute URLs
     runner = CliRunner()
     result = runner.invoke(
@@ -172,7 +172,9 @@ def test_s3_to_dc_list_absolute_urls(
     )
 
 
-def test_s3_to_dc_no_product(mocked_s3_datasets, odc_test_db_with_products, env_name):
+def test_s3_to_dc_no_product(
+    mocked_s3_datasets, odc_test_db_with_products, env_name
+) -> None:
     # product should not need to be specified
     runner = CliRunner()
     result = runner.invoke(

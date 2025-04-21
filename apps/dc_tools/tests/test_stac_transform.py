@@ -6,7 +6,7 @@ from datacube.utils.changes import get_doc_changes
 from odc.apps.dc_tools._stac import stac_transform
 
 
-def test_esri_lulc_stac_transform(esri_lulc_stac):
+def test_esri_lulc_stac_transform(esri_lulc_stac) -> None:
     transformed_stac_doc = stac_transform(esri_lulc_stac)
     expected_geometry_coordinates = (
         (
@@ -55,18 +55,18 @@ def test_esri_lulc_stac_transform(esri_lulc_stac):
     )
 
 
-def test_landsat_stac_transform(landsat_stac, landsat_odc):
+def test_landsat_stac_transform(landsat_stac, landsat_odc) -> None:
     transformed_stac_doc = stac_transform(landsat_stac)
     assert len(get_doc_changes(transformed_stac_doc, landsat_odc)) == 5
 
 
-def test_sentinel_stac_transform(sentinel_stac_old, sentinel_odc):
+def test_sentinel_stac_transform(sentinel_stac_old, sentinel_odc) -> None:
     transformed_stac_doc = stac_transform(sentinel_stac_old)
     doc_changes = get_doc_changes(transformed_stac_doc, sentinel_odc)
     assert len(doc_changes) == 1
 
 
-def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc):
+def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc) -> None:
     transformed_stac_doc = stac_transform(sentinel_c1_stac)
     doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_odc)
     assert len(doc_changes) == 0
@@ -89,7 +89,9 @@ def test_sentinel_c1_stac_transform(sentinel_c1_stac, sentinel_c1_odc):
     )
 
 
-def test_sentinel_c1_rel_stac_transform(sentinel_c1_rel_stac, sentinel_c1_rel_odc):
+def test_sentinel_c1_rel_stac_transform(
+    sentinel_c1_rel_stac, sentinel_c1_rel_odc
+) -> None:
     transformed_stac_doc = stac_transform(sentinel_c1_rel_stac)
     doc_changes = get_doc_changes(transformed_stac_doc, sentinel_c1_rel_odc)
     assert len(doc_changes) == 0
@@ -109,7 +111,7 @@ def test_sentinel_c1_rel_stac_transform(sentinel_c1_rel_stac, sentinel_c1_rel_od
     )
 
 
-def test_usgs_landsat_stac_transform(usgs_landsat_stac):
+def test_usgs_landsat_stac_transform(usgs_landsat_stac) -> None:
     transformed_stac_doc = stac_transform(usgs_landsat_stac)
 
     expected_geometry_coordinates = (
@@ -126,7 +128,7 @@ def test_usgs_landsat_stac_transform(usgs_landsat_stac):
     )
 
 
-def test_lidar_stac_transform(lidar_stac):
+def test_lidar_stac_transform(lidar_stac) -> None:
     transformed_stac_doc = stac_transform(lidar_stac)
     expected_geometry_coordinates = (
         (
@@ -142,7 +144,7 @@ def test_lidar_stac_transform(lidar_stac):
     )
 
 
-def test_world_wrapping_stac(world_wrapping_stac):
+def test_world_wrapping_stac(world_wrapping_stac) -> None:
     transformed_stac_doc = stac_transform(world_wrapping_stac)
     expected_geometry_coordinates = (
         (3336000.0, -2079990.0),

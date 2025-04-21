@@ -30,7 +30,7 @@ _LOG = logging.getLogger(__name__)
     type=click.Path(exists=True),
 )
 @click.pass_context
-def cli(ctx, datacube_config):
+def cli(ctx, datacube_config) -> None:
     """Specify datacube index to be used for the given datacube config"""
     ctx.obj = Datacube(config=datacube_config).index
 
@@ -45,7 +45,7 @@ def cli(ctx, datacube_config):
 )
 @click.option("--limit", help="maximum number of datasets to process")
 @click.pass_obj
-def transform(index, product, config, output_dir, limit):
+def transform(index, product, config, output_dir, limit) -> None:
     # Get the product
     dataset_type = index.products.get_by_name(product)
 
@@ -59,7 +59,7 @@ def transform(index, product, config, output_dir, limit):
         transform_indexed_datasets(index, product, cfg, Path(output_dir), limit)
 
 
-def transform_ingested_datasets(index, product, config, output_dir, limit):
+def transform_ingested_datasets(index, product, config, output_dir, limit) -> None:
     """
     Transform the metadata of ingested product. The product-wide fixed sections
     of metadata such as 'grids' is computed just once.
@@ -90,7 +90,7 @@ def transform_ingested_datasets(index, product, config, output_dir, limit):
         _make_and_write_dataset(get_output_file(dataset, output_dir), *dataset_sections)
 
 
-def transform_indexed_datasets(index, product, config, output_dir, limit):
+def transform_indexed_datasets(index, product, config, output_dir, limit) -> None:
     """
     Transform metadata of an indexed product. All sections of metadata are computed
     per dataset.
@@ -141,7 +141,7 @@ def _variable_sections_of_metadata(dataset, config):
     )
 
 
-def _make_and_write_dataset(out_file_name, *args):
+def _make_and_write_dataset(out_file_name, *args) -> None:
     """
     Assemble the metadata sections and write out.
     """

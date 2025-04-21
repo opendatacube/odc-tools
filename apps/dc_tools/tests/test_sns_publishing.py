@@ -12,7 +12,7 @@ from odc.apps.dc_tools.sqs_to_dc import cli as sqs_cli
 
 
 @pytest.fixture
-def aws_credentials():
+def aws_credentials() -> None:
     """Mocked AWS Credentials for moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -72,7 +72,7 @@ def sns_setup(aws_credentials, aws_env):
 
 def test_s3_publishing_action_from_stac(
     mocked_s3_datasets, odc_test_db_with_products, env_name, s2am_dsid, sns_setup
-):
+) -> None:
     _, _, output_topic_arn, sqs, _, output_queue_url = sns_setup
 
     dc = odc_test_db_with_products
@@ -112,7 +112,7 @@ def test_s3_publishing_action_from_stac(
 
 def test_s3_publishing_action_from_eo3(
     mocked_s3_datasets, odc_test_db_with_products, env_name, s2am_dsid, sns_setup
-):
+) -> None:
     """Same as above but requiring stac to eo3 conversion"""
     _, _, output_topic_arn, sqs, _, output_queue_url = sns_setup
 
@@ -161,7 +161,7 @@ def stac_doc():
 
 def test_sqs_publishing(
     aws_credentials, aws_env, stac_doc, odc_test_db_with_products, env_name, sns_setup
-):
+) -> None:
     """Test that actions are published with sqs_to_dc"""
     (
         _,
@@ -226,7 +226,7 @@ def test_sqs_publishing_archive_flag(
     env_name,
     ls5t_dsid,
     sns_setup,
-):
+) -> None:
     """Test that an ARCHIVE SNS message is published when the --archive flag is used."""
     (
         sns,
@@ -284,7 +284,7 @@ def test_sqs_publishing_archive_attribute(
     env_name,
     ls5t_dsid,
     sns_setup,
-):
+) -> None:
     """Test that archiving occurs when ARCHIVED is in the message attributes"""
     (
         sns,
@@ -342,7 +342,7 @@ def test_with_archive_less_mature(
     nrt_dsid,
     final_dsid,
     sns_setup,
-):
+) -> None:
     _, _, output_topic_arn, sqs, _, output_queue_url = sns_setup
 
     dc = odc_db

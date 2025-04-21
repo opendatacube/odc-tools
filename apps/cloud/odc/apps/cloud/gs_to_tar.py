@@ -20,7 +20,7 @@ from google.cloud import storage
 @click.option(
     "--outfile", type=str, default="metadata.tar.gz", help="Sets the output file name"
 )
-def cli(bucket, prefix, suffix, outfile):
+def cli(bucket, prefix, suffix, outfile) -> None:
     """Download Metadata from GS bucket to tarball
 
     Example:

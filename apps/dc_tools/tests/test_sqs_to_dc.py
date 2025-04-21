@@ -90,7 +90,7 @@ deep_diff = partial(
 
 
 @pytest.fixture
-def aws_credentials():
+def aws_credentials() -> None:
     """Mocked AWS Credentials for moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -100,7 +100,7 @@ def aws_credentials():
 
 def test_extract_metadata_from_message(
     aws_credentials, odc_test_db_with_products, cfg_env
-):
+) -> None:
     with mock_aws():
         TEST_QUEUE_NAME = "a_test_queue"
         sqs_resource = boto3.resource("sqs")
@@ -140,7 +140,7 @@ def test_extract_metadata_from_message(
     assert dc.index.datasets.get("69a6eca2-ca45-4808-a5b3-694029200c43") is not None
 
 
-def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
+def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml) -> None:
     actual_doc, uri = handle_json_message(
         ga_ls8c_ard_3_message, "STAC-LINKS-REL:odc_yaml"
     )
@@ -170,7 +170,7 @@ def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
     assert doc_diff == {}, pformat(doc_diff)
 
 
-def test_odc_metadata_link(ga_ls8c_ard_3_message):
+def test_odc_metadata_link(ga_ls8c_ard_3_message) -> None:
     actual_doc, uri = handle_json_message(
         ga_ls8c_ard_3_message, "STAC-LINKS-REL:odc_yaml"
     )
@@ -181,7 +181,7 @@ def test_odc_metadata_link(ga_ls8c_ard_3_message):
     )
 
 
-def test_stac_link(ga_ls8c_ard_3_message):
+def test_stac_link(ga_ls8c_ard_3_message) -> None:
     metadata, uri = handle_json_message(ga_ls8c_ard_3_message, None)
     assert (
         uri != "https://dea-public-data.s3-ap-southeast-2.amazonaws.com/"
@@ -195,7 +195,7 @@ def test_stac_link(ga_ls8c_ard_3_message):
     )
 
 
-def test_transform(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml):
+def test_transform(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml) -> None:
     actual_doc, uri = handle_json_message(ga_ls8c_ard_3_message, None)
     actual_doc = stac_transform(actual_doc)
 

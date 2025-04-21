@@ -16,7 +16,7 @@ from odc.aio import S3Fetcher, s3_find_glob
     help="Needed when accessing requester pays public buckets",
 )
 @click.argument("uri", type=str, nargs=1)
-def cli(uri, skip_check, no_sign_request=None, request_payer=False):
+def cli(uri, skip_check, no_sign_request=None, request_payer=False) -> None:
     """List files on S3 bucket.
 
     Example:

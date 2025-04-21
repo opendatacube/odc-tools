@@ -34,7 +34,7 @@ from odc.apps.dc_tools.utils import (
 )
 
 
-def doc_error(uri, doc):
+def doc_error(uri, doc) -> None:
     """Log the internal errors parsing docs"""
     logging.exception("Failed to parse doc at %s", uri)
 
@@ -141,7 +141,7 @@ def cli(
     publish_action,
     uris,
     product,
-):
+) -> None:
     """
     Iterate through files in an S3 bucket and add them to datacube.
 

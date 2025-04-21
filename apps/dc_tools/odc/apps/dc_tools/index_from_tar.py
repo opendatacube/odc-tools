@@ -116,7 +116,7 @@ def cli(
     xz,
     protocol,
     stac,
-):
+) -> None:
     # Ensure :// is present in prefix
     prefix = protocol.rstrip("://") + "://"
     if prefix.startswith("file"):
@@ -142,7 +142,7 @@ def cli(
     def mk_uri(name):
         return prefix + name
 
-    def report_error(msg):
+    def report_error(msg) -> None:
         print(msg, file=sys.stderr)
 
     def process_file(filename, index, fps, mode=None, n_failed=0, doc_transform=None):

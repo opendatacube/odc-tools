@@ -132,7 +132,7 @@ def add_update_products(
 @statsd_setting
 def cli(
     cfg_env: ODCEnvironment, csv_path: str, update_if_exists: bool, statsd_setting: str
-):
+) -> None:
     # Check we can connect to the Datacube
     dc = datacube.Datacube(app="add_update_products", env=cfg_env)
     logging.info(

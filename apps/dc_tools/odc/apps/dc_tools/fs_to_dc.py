@@ -51,7 +51,7 @@ def cli(
     glob,
     archive_less_mature,
     publish_action,
-):
+) -> None:
     dc = datacube.Datacube(env=cfg_env)
     doc2ds = Doc2Dataset(dc.index)
 
