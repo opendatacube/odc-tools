@@ -2,7 +2,7 @@
 ARG V_PG=16
 ARG V_PGIS=16-postgis-3
 
-FROM osgeo/gdal:ubuntu-small-3.5.3
+FROM osgeo/gdal:ubuntu-small-3.6.3
 ENV LC_ALL=C.UTF-8
 ENV PATH="/env/bin:${PATH}"
 
