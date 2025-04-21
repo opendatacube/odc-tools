@@ -13,26 +13,26 @@ PRODUCT_EXAMPLE: str = (
 )
 
 
-def test_parse_local_csv(local_csv):
+def test_parse_local_csv(local_csv) -> None:
     local_contents = [x for x in _parse_csv(local_csv)]
 
     assert len(local_contents) == 12
     assert local_contents[0].name == "s2_l2a"
 
 
-def test_parse_remote_csv(remote_csv):
+def test_parse_remote_csv(remote_csv) -> None:
     remote_contents = [x for x in _parse_csv(remote_csv)]
     assert len(remote_contents) == 12
     assert remote_contents[0].name == "s2_l2a"
 
 
-def test_load_product_def(remote_product):
+def test_load_product_def(remote_product) -> None:
     products = _get_product(remote_product)
 
     assert products[0]["name"] == "s2_l2a"
 
 
-def test_add_products(local_csv, odc_db, env_name):
+def test_add_products(local_csv, odc_db, env_name) -> None:
     runner = CliRunner()
     # This will fail if requester pays is enabled
     result = runner.invoke(

@@ -363,7 +363,7 @@ def cli(
     publish_action,
     queue_name,
     product,
-):
+) -> None:
     """Iterate through messages on an SQS queue and add them to datacube"""
 
     candidate_products = product.split()

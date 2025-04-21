@@ -64,7 +64,7 @@ def cli(
     aws_profile,
     no_sign_request=None,
     request_payer=False,
-):
+) -> None:
     """List S3 inventory entries.
 
         prefix can be combined with regex or glob pattern, but supplying both
@@ -76,7 +76,7 @@ def cli(
 
     """
 
-    def entry_to_url(entry):
+    def entry_to_url(entry) -> str:
         return "s3://{e.Bucket}/{e.Key}".format(e=entry)
 
     opts = {}

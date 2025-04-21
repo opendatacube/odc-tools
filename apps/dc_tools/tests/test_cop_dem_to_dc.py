@@ -7,17 +7,17 @@ PRODUCTS = ["cop_30", "cop_90"]
 
 
 @pytest.fixture
-def bbox():
+def bbox() -> str:
     return "5,5,7,7"
 
 
 @pytest.fixture
-def bbox_africa():
+def bbox_africa() -> str:
     return "-26.359944882003788,-47.96476498374171,64.4936701740102,38.34459242512347"
 
 
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_get_dem_tile_uris(bbox, product, odc_db):
+def test_get_dem_tile_uris(bbox, product, odc_db) -> None:
     uris = list(get_dem_tile_uris(bbox, product))
 
     if product == "cop_30":
@@ -34,7 +34,7 @@ def test_get_dem_tile_uris(bbox, product, odc_db):
     assert len(uris) == 4
 
 
-def test_complex_bbox(bbox_africa):
+def test_complex_bbox(bbox_africa) -> None:
     uris = list(get_dem_tile_uris(bbox_africa, "cop_30"))
 
     assert len(uris) == 8004
@@ -42,7 +42,7 @@ def test_complex_bbox(bbox_africa):
 
 # Test the actual process
 @pytest.mark.parametrize("product", PRODUCTS)
-def test_indexing_cli(bbox, product, odc_db, env_name):
+def test_indexing_cli(bbox, product, odc_db, env_name) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cop_dem_to_dc_cli,

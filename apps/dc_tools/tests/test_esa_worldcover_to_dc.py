@@ -12,16 +12,16 @@ from odc.apps.dc_tools.esa_worldcover_to_dc import (
 
 
 @pytest.fixture
-def bbox():
+def bbox() -> str:
     return "5,5,7,7"
 
 
 @pytest.fixture
-def bbox_africa():
+def bbox_africa() -> str:
     return "-26.359944882003788,-47.96476498374171,64.4936701740102,38.34459242512347"
 
 
-def test_bboxes():
+def test_bboxes() -> None:
     bbox = "0,0,1,1"
     bounding_box = [float(x) for x in bbox.split(",")]
     assert _unpack_bbox(bounding_box) == (0, 0, 3, 3)
@@ -42,7 +42,7 @@ def test_bboxes():
     assert len(list(get_tile_uris(bbox))) == 15
 
 
-def test_get_dem_tile_uris(bbox):
+def test_get_dem_tile_uris(bbox) -> None:
     uris = list(get_tile_uris(bbox))
 
     assert uris[0][0] == (
@@ -54,14 +54,14 @@ def test_get_dem_tile_uris(bbox):
     assert len(uris) == 4
 
 
-def test_complex_bbox(bbox_africa):
+def test_complex_bbox(bbox_africa) -> None:
     uris = list(get_tile_uris(bbox_africa))
 
     assert len(uris) == 899
 
 
 @pytest.fixture
-def mock_esa_worldcover_datasets(monkeypatch):
+def mock_esa_worldcover_datasets(monkeypatch) -> None:
     """Replace the fetching of remote ESA WorldCover datasets with local downsampled versions"""
     fname_template = URI_TEMPLATE.split("/")[-1]
     local_template = (
@@ -76,7 +76,7 @@ def mock_esa_worldcover_datasets(monkeypatch):
 
 def test_indexing_cli(
     bbox, odc_test_db_with_products, mock_esa_worldcover_datasets, env_name
-):
+) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,

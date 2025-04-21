@@ -47,7 +47,7 @@ def test_data_dir():
 
 
 @pytest.fixture
-def aws_env(monkeypatch):
+def aws_env(monkeypatch) -> None:
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
 
 
@@ -209,12 +209,12 @@ def sentinel_c1_rel_odc():
 
 
 @pytest.fixture
-def nrt_dsid():
+def nrt_dsid() -> str:
     return "2e9f4623-c51c-5233-869a-bb690f8c2cac"
 
 
 @pytest.fixture
-def final_dsid():
+def final_dsid() -> str:
     return "9f27a15e-3cdf-4e3f-a58e-dd624b2c3bef"
 
 
@@ -375,7 +375,7 @@ def odc_db(cfg_env):
             remove_postgis_dynamic_indexes()
 
 
-def remove_postgres_dynamic_indexes():
+def remove_postgres_dynamic_indexes() -> None:
     """
     Clear any dynamically created postgresql indexes from the schema.
     """
@@ -386,7 +386,7 @@ def remove_postgres_dynamic_indexes():
         )
 
 
-def remove_postgis_dynamic_indexes():
+def remove_postgis_dynamic_indexes() -> None:
     """
     Clear any dynamically created postgis indexes from the schema.
     """
@@ -406,12 +406,12 @@ def odc_test_db_with_products(odc_db: Datacube):
 
 
 @pytest.fixture
-def ls5t_dsid():
+def ls5t_dsid() -> str:
     return "57814bc4-6fdf-4fa1-84e5-865b364c4284"
 
 
 @pytest.fixture
-def s2am_dsid():
+def s2am_dsid() -> str:
     return "e2baf679-c20a-479f-86c5-ffd98c65ff87"
 
 

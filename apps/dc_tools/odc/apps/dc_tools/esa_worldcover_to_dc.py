@@ -66,7 +66,7 @@ def _unpack_bbox(bounding_box: str) -> Tuple[int, int, int, int]:
     return left, bottom, right, top
 
 
-def add_odc_product(dc: Datacube):
+def add_odc_product(dc: Datacube) -> None:
     for _, doc in read_documents(PRODUCT.format(year=map_version["year"])):
         dc.index.products.add_document(doc)
     print("Product definition added")
@@ -119,8 +119,8 @@ def process_uri_tile(
     dc: Datacube,
     doc2ds: Doc2Dataset,
     update_if_exists: bool = True,
-    archive_less_mature: int = None,
-    publish_action: str = None,
+    archive_less_mature: int | None = None,
+    publish_action: str | None = None,
 ) -> Tuple[pystac.Item, str]:
     product_name = "esa_worldcover_" + map_version["year"]
     uri, tile = uri_tile
@@ -156,7 +156,7 @@ def process_uri_tile(
     return True
 
 
-def select_map_version(version: str):
+def select_map_version(version: str) -> None:
     if str(version) == "2021":
         map_version["year"] = "2021"
         map_version["algo"] = "v200"
@@ -169,8 +169,8 @@ def esa_wc_to_dc(
     limit: int,
     update: bool,
     n_workers: int = 100,
-    archive_less_mature: int = None,
-    publish_action: str = None,
+    archive_less_mature: int | None = None,
+    publish_action: str | None = None,
 ) -> Tuple[int, int]:
     doc2ds = Doc2Dataset(dc.index)
 
@@ -254,7 +254,7 @@ def cli(  # pylint: disable=too-many-positional-arguments
     statsd_setting,
     publish_action,
     version,
-):
+) -> None:
     """
     Index the ESA WorldCover product automatically.
     """

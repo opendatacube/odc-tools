@@ -48,7 +48,7 @@ def process_doc(
     archive_less_mature,
     publish_action,
     rename_product,
-):
+) -> None:
     stac_doc = None
     if stac:
         stac_doc = doc
@@ -169,7 +169,7 @@ def cli(
     prefix: str,
     suffix: str,
     rename_product: str,
-):
+) -> None:
     # Set up the datacube first, to ensure we have a connection
     dc = Datacube(env=cfg_env)
     print(f"Opening AZ Container {container_name} on {account_url}")

@@ -6,7 +6,7 @@ from odc.apps.dc_tools.fs_to_dc import cli as fs_to_dc_cli
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 
 
-def test_fs_to_fc_yaml(test_data_dir, env_name, odc_test_db_with_products):
+def test_fs_to_fc_yaml(test_data_dir, env_name, odc_test_db_with_products) -> None:
     runner = CliRunner()
     result = runner.invoke(
         fs_to_dc_cli,
@@ -22,7 +22,9 @@ def test_fs_to_fc_yaml(test_data_dir, env_name, odc_test_db_with_products):
     assert result.exit_code == 0
 
 
-def test_archive_less_mature(odc_db, env_name, test_data_dir, nrt_dsid, final_dsid):
+def test_archive_less_mature(
+    odc_db, env_name, test_data_dir, nrt_dsid, final_dsid
+) -> None:
     dc = odc_db
     runner = CliRunner()
 
@@ -59,7 +61,7 @@ def test_archive_less_mature(odc_db, env_name, test_data_dir, nrt_dsid, final_ds
 
 def test_dont_archive_less_mature(
     odc_db, env_name, test_data_dir, nrt_dsid, final_dsid
-):
+) -> None:
     # no archiving should be done if --archive-less-mature is not set
     dc = odc_db
     runner = CliRunner()
@@ -93,7 +95,9 @@ def test_dont_archive_less_mature(
     assert dc.index.datasets.get(nrt_dsid).archived_time is None
 
 
-def test_keep_more_mature(odc_db, env_name, test_data_dir, nrt_dsid, final_dsid):
+def test_keep_more_mature(
+    odc_db, env_name, test_data_dir, nrt_dsid, final_dsid
+) -> None:
     dc = odc_db
     runner = CliRunner()
 

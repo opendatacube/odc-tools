@@ -84,7 +84,7 @@ def cli(
     statsd_setting: str,
     uri: str,
     product: str,
-):
+) -> None:
     skips = [".*NBAR.*", ".*SUPPLEMENTARY.*", ".*NBART.*", ".*/QA/.*"]
     select = [".*ARD-METADATA.yaml"]
     candidate_products = product.split()

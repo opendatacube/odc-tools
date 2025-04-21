@@ -107,9 +107,9 @@ def process_item(
     update_if_exists: bool,
     allow_unsafe: bool,
     rename_product: Optional[str] = None,
-    archive_less_mature: int = None,
+    archive_less_mature: int | None = None,
     publish_action: bool = False,
-):
+) -> None:
     dataset, uri, stac = item_to_meta_uri(item, dc, rename_product)
     index_update_dataset(
         dataset,
@@ -131,7 +131,7 @@ def stac_api_to_odc(
     catalog_href: str,
     allow_unsafe: bool = True,
     rename_product: Optional[str] = None,
-    archive_less_mature: int = None,
+    archive_less_mature: int | None = None,
     publish_action: Optional[str] = None,
 ) -> Tuple[int, int, int]:
     client = Client.open(catalog_href)
@@ -232,7 +232,7 @@ def cli(
     statsd_setting,
     archive_less_mature,
     publish_action,
-):
+) -> None:
     """
     Iterate through STAC items from a STAC API and add them to datacube.
     """

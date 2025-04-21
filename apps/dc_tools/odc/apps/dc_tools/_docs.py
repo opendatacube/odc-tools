@@ -118,7 +118,7 @@ def from_yaml_doc_stream(doc_stream, index, logger=None, transform=None, **kwarg
 
     """
 
-    def on_parse_error(uri, doc):
+    def on_parse_error(uri, doc) -> None:
         # pylint: disable=unused-argument
         if logger is not None:
             logger.error(f"Failed to parse: {uri}")

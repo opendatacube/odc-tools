@@ -36,7 +36,7 @@ from odc.thredds import download_yamls, thredds_find_glob
 @click.option(
     "--outfile", type=str, default="metadata.tar.gz", help="Sets the output file name"
 )
-def cli(thredds_catalogue, skips, select, workers, outfile):
+def cli(thredds_catalogue, skips, select, workers, outfile) -> None:
     """Download Metadata from THREDDS server to tarball
 
     Example:

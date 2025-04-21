@@ -7,7 +7,7 @@ from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
 
 
 @pytest.mark.xfail(reason="Earth Search API has changed and now this is failing too")
-def test_stac_to_dc_earthsearch(odc_test_db_with_products):
+def test_stac_to_dc_earthsearch(odc_test_db_with_products) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -25,7 +25,7 @@ def test_stac_to_dc_earthsearch(odc_test_db_with_products):
 
 
 @pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
-def test_stac_to_dc_usgs(odc_test_db_with_products):
+def test_stac_to_dc_usgs(odc_test_db_with_products) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -44,7 +44,7 @@ def test_stac_to_dc_usgs(odc_test_db_with_products):
 @pytest.mark.xfail(
     reason="Failing with error 'ConformanceClasses.ITEM_SEARCH not supported'"
 )
-def test_stac_to_dc_planetarycomputer(odc_test_db_with_products):
+def test_stac_to_dc_planetarycomputer(odc_test_db_with_products) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,

@@ -284,7 +284,7 @@ def index_update_dataset(
         logging.info("Existing Dataset Updated: %s", dataset.id)
 
 
-def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125"):
+def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125") -> None:
     if tags is None:
         tags = []
     host = statsd_setting.split(":")[0]
