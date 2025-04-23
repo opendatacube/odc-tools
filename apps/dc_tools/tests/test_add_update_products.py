@@ -13,6 +13,17 @@ PRODUCT_EXAMPLE: str = (
 )
 
 
+def test_non_existing_csv():
+    runner = CliRunner()
+    result = runner.invoke(
+        add_update_products_cli,
+        [
+            "some_non_existing_file.csv",
+        ],
+    )
+    assert result.exit_code == 1
+
+
 def test_parse_local_csv(local_csv):
     local_contents = [x for x in _parse_csv(local_csv)]
 
