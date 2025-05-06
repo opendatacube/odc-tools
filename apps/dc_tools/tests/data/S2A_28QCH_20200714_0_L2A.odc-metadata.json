@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.opendatacube.org/dataset",
     "id": "503fa092-0f0f-5544-89fb-b45c1da0d5e1",
-    "crs": "epsg:32628",
+    "crs": "EPSG:32628",
     "grids": {
         "g320m": {
             "shape": [

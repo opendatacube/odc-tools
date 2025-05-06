@@ -8,7 +8,7 @@ label: S2B_T37MGP_20240710T073012_L2A
 product:
   name: s2_l2a_c1
 
-crs: epsg:32737
+crs: EPSG:32737
 geometry:
   type: Polygon
   coordinates:
