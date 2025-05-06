@@ -343,6 +343,7 @@ def extract_crs(stac_properties: Document) -> str:
     epsg = stac_properties.get("proj:code") or stac_properties.get("proj:epsg")
     return f"EPSG:{epsg}"
 
+
 def stac_transform(input_stac: Document) -> Document:
     """Takes in a raw STAC 1.0 dictionary and returns an ODC dictionary"""
     # pylint: disable=too-many-locals
