@@ -128,9 +128,11 @@ def test_usgs_landsat_stac_transform(usgs_landsat_stac) -> None:
     )
 
 
-def test_stac_1_1(stac_1_1) -> None:
-    transformed_stac_doc = stac_transform(stac_1_1)
-    assert transformed_stac_doc["crs"] == "epsg:32656"
+def test_stac_versions(landsat_stac, stac_1_1) -> None:
+    transformed_stac_doc_1_0 = stac_transform(landsat_stac)
+    transformed_stac_doc_1_1 = stac_transform(stac_1_1)
+    assert transformed_stac_doc_1_0["crs"] == "EPSG:32656"
+    assert transformed_stac_doc_1_1["crs"] == "EPSG:32656"
 
 
 def test_lidar_stac_transform(lidar_stac) -> None:
