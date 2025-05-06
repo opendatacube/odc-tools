@@ -24,6 +24,7 @@ import docker
 
 TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
 LANDSAT_STAC: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
+LANDSAT_STAC_1_1: str = "ga_ls8c_ard_3-1-1_088080_2020-05-25_final.stac-item.json"
 LANDSAT_ODC: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml"
 LANDSAT_ODC_NRT: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_nrt.odc-metadata.yaml"
 SENTINEL_STAC_OLD: str = "S2A_28QCH_20200714_0_L2A_old.json"
@@ -139,6 +140,13 @@ def usgs_landsat_stac():
 @pytest.fixture
 def landsat_stac():
     with TEST_DATA_FOLDER.joinpath(LANDSAT_STAC).open("r", encoding="utf8") as f:
+        metadata = json.load(f)
+    return metadata
+
+
+@pytest.fixture
+def stac_1_1():
+    with TEST_DATA_FOLDER.joinpath(LANDSAT_STAC_1_1).open("r", encoding="utf8") as f:
         metadata = json.load(f)
     return metadata
 
