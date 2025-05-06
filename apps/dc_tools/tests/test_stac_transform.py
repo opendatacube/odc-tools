@@ -124,7 +124,7 @@ def test_usgs_landsat_stac_transform(usgs_landsat_stac) -> None:
         ),
     )
     assert (
-            transformed_stac_doc["geometry"]["coordinates"] == expected_geometry_coordinates
+        transformed_stac_doc["geometry"]["coordinates"] == expected_geometry_coordinates
     )
 
 
