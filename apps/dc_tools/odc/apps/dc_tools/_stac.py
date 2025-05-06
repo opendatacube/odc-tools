@@ -124,17 +124,18 @@ def _stac_product_lookup(
             else:
                 product_name = "s2_l2a"
             if region_code is None:
+                epsg = properties.get("proj:code") or properties.get("proj:epsg")
                 # Let's try two options, and throw an exception if we still don't get it
                 try:
                     # The 'mgrs' prefix (and STAC extension) started with STAC v1.0.0
                     region_code = (
-                        f"{str(properties['proj:epsg'])[-2:]}"
+                        f"{str(epsg)[-2:]}"
                         f"{properties['mgrs:latitude_band']}"
                         f"{properties['mgrs:grid_square']}"
                     )
                 except KeyError:
                     region_code = (
-                        f"{str(properties['proj:epsg'])[-2:]}"
+                        f"{str(epsg)[-2:]}"
                         f"{properties['sentinel:latitude_band']}"
                         f"{properties['sentinel:grid_square']}"
                     )
@@ -375,7 +376,8 @@ def stac_transform(input_stac: Document) -> Document:
 
     stac_properties, lineage = _get_stac_properties_lineage(input_stac)
 
-    epsg = properties["proj:epsg"]
+    # Check for STAC 1.1 location first, then fall back to STAC 1.0
+    epsg = properties.get("proj:code") or properties.get("proj:epsg")
     native_crs = f"epsg:{epsg}"
 
     # Transform geometry to the native CRS at an appropriate precision
