@@ -39,7 +39,7 @@ dataset:
       description: |
         The raw CRS string as it appears in metadata
 
-        (e.g. ‘epsg:32654’)
+        (e.g. ‘EPSG:32654’)
       offset: ['crs']
       indexed: false
 

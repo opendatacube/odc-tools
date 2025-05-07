@@ -147,6 +147,7 @@ def test_handle_json_message(ga_ls8c_ard_3_message, ga_ls8c_ard_3_yaml) -> None:
 
     assert type(actual_doc) is dict
     assert ga_ls8c_ard_3_yaml["id"] == actual_doc["id"]
+    # actual_doc comes from DEA S3 bucket and may have CRS in lower case.
     assert ga_ls8c_ard_3_yaml["crs"].upper() == actual_doc["crs"].upper()
     assert ga_ls8c_ard_3_yaml["product"]["name"] == actual_doc["product"]["name"]
     assert ga_ls8c_ard_3_yaml["label"] == actual_doc["label"]

@@ -340,7 +340,7 @@ def _check_valid_uuid(uuid_string: str) -> bool:
 def extract_crs(stac_properties: Document) -> str:
     if "proj:code" in stac_properties:
         return stac_properties["proj:code"]
-    epsg = stac_properties.get("proj:code") or stac_properties.get("proj:epsg")
+    epsg = stac_properties["proj:epsg"]
     return f"EPSG:{epsg}"
 
 
@@ -398,8 +398,8 @@ def stac_transform(input_stac: Document) -> Document:
     native_crs = extract_crs(properties)
 
     # Transform geometry to the native CRS at an appropriate precision
-    geometry = Geometry(input_stac["geometry"], "epsg:4326")
-    if native_crs != "epsg:4326":
+    geometry = Geometry(input_stac["geometry"], "EPSG:4326")
+    if native_crs != "EPSG:4326":
         # Arbitrary precisions, but should be fine
         pixel_size = get_in(["default", "transform", 0], grids, no_default=True)
         precision = 0
