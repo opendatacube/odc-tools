@@ -4,7 +4,7 @@ id: 1f45d5f3-6d23-4e74-87ac-e9072e73050e
 label: cemp_insar_alos_displacement_2010-10-10
 product:
   name: cemp_insar_alos_displacement
-crs: epsg:32756
+crs: EPSG:32756
 geometry:
   type: Polygon
   coordinates: [[[275175.0, 6251175.0], [275125.0, 6184575.0], [294625.0, 6184475.0], [329025.0727801267, 6184525.00005297], [329124.99995848397, 6223374.935567064], [329074.99991705426, 6251125.09107453], [275175.0, 6251175.0]]]
