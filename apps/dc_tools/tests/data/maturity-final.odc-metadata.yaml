@@ -9,7 +9,7 @@ product:
   href: https://collections.dea.ga.gov.au/product/ga_ls5t_nbart_gm_cyear_3
   name: ga_ls5t_nbart_gm_cyear_3
 
-crs: epsg:3577
+crs: EPSG:3577
 geometry:
   type: Polygon
   coordinates: [[[4.8e+05, -3.072e+06], [4.8e+05, -3.168e+06], [5.76e+05, -3.168e+06],
