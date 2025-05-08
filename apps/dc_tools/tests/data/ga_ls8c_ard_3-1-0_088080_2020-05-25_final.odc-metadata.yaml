@@ -8,7 +8,7 @@ product:
   name: ga_ls8c_ard_3
   href: https://collections.dea.ga.gov.au/product/ga_ls8c_ard_3
 
-crs: epsg:32656
+crs: EPSG:32656
 geometry:
   type: Polygon
   coordinates:

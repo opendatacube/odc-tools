@@ -124,17 +124,20 @@ def _stac_product_lookup(
             else:
                 product_name = "s2_l2a"
             if region_code is None:
+                crs = extract_crs(properties)
+                # CRS stub is last two digits of code.
+                crs_stub = crs[-2:]
                 # Let's try two options, and throw an exception if we still don't get it
                 try:
                     # The 'mgrs' prefix (and STAC extension) started with STAC v1.0.0
                     region_code = (
-                        f"{str(properties['proj:epsg'])[-2:]}"
+                        f"{crs_stub}"
                         f"{properties['mgrs:latitude_band']}"
                         f"{properties['mgrs:grid_square']}"
                     )
                 except KeyError:
                     region_code = (
-                        f"{str(properties['proj:epsg'])[-2:]}"
+                        f"{crs_stub}"
                         f"{properties['sentinel:latitude_band']}"
                         f"{properties['sentinel:grid_square']}"
                     )
@@ -330,6 +333,13 @@ def _check_valid_uuid(uuid_string: str) -> bool:
         return False
 
 
+def extract_crs(stac_properties: Document) -> str:
+    if "proj:code" in stac_properties:
+        return stac_properties["proj:code"]
+    epsg = stac_properties["proj:epsg"]
+    return f"EPSG:{epsg}"
+
+
 def stac_transform(input_stac: Document) -> Document:
     """Takes in a raw STAC 1.0 dictionary and returns an ODC dictionary"""
     # pylint: disable=too-many-locals
@@ -375,12 +385,12 @@ def stac_transform(input_stac: Document) -> Document:
 
     stac_properties, lineage = _get_stac_properties_lineage(input_stac)
 
-    epsg = properties["proj:epsg"]
-    native_crs = f"epsg:{epsg}"
+    # Check for STAC 1.1 location first, then fall back to STAC 1.0
+    native_crs = extract_crs(properties)
 
     # Transform geometry to the native CRS at an appropriate precision
-    geometry = Geometry(input_stac["geometry"], "epsg:4326")
-    if native_crs != "epsg:4326":
+    geometry = Geometry(input_stac["geometry"], "EPSG:4326")
+    if native_crs != "EPSG:4326":
         # Arbitrary precisions, but should be fine
         pixel_size = get_in(["default", "transform", 0], grids, no_default=True)
         precision = 0

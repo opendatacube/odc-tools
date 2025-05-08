@@ -8,7 +8,7 @@ product:
   name: ga_s2am_ard_3
   href: https://collections.dea.ga.gov.au/product/ga_s2am_ard_3
 
-crs: epsg:32749
+crs: EPSG:32749
 geometry:
   type: Polygon
   coordinates: [[[600000.0, 7200040.0], [709800.0, 7200040.0], [709800.0, 7090240.0],
