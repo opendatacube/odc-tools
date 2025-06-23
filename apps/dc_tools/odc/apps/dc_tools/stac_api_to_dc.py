@@ -66,6 +66,7 @@ def item_to_meta_uri(
     item: Item,
     dc: Datacube,
     rename_product: Optional[str] = None,
+    url_string_replace: tuple[str, str] | None = None,
 ) -> Generator[Tuple[Dataset, str, bool], None, None]:
     for link in item.links:
         if link.rel == "self":
@@ -78,6 +79,15 @@ def item_to_meta_uri(
 
     if rename_product is not None:
         item.properties["odc:product"] = rename_product
+
+    # If we need to modify URLs, do it for the main URL and the asset links
+    if url_string_replace is not None:
+        old_url, new_url = url_string_replace
+
+        uri = uri.replace(old_url, new_url)
+
+        for asset in item.assets.values():
+            asset.href = asset.href.replace(old_url, new_url)
 
     # Try to the Datacube product for the dataset
     product_name = item.properties.get("odc:product", item.collection_id)
@@ -107,10 +117,11 @@ def process_item(
     update_if_exists: bool,
     allow_unsafe: bool,
     rename_product: Optional[str] = None,
+    url_string_replace: tuple[str, str] | None = None,
     archive_less_mature: int | None = None,
     publish_action: bool = False,
 ) -> None:
-    dataset, uri, stac = item_to_meta_uri(item, dc, rename_product)
+    dataset, uri, stac = item_to_meta_uri(item, dc, rename_product, url_string_replace)
     index_update_dataset(
         dataset,
         uri,
@@ -131,6 +142,7 @@ def stac_api_to_odc(
     catalog_href: str,
     allow_unsafe: bool = True,
     rename_product: Optional[str] = None,
+    url_string_replace: tuple[str, str] | None = None,
     archive_less_mature: int | None = None,
     publish_action: Optional[str] = None,
 ) -> Tuple[int, int, int]:
@@ -161,6 +173,7 @@ def stac_api_to_odc(
                 update_if_exists=update_if_exists,
                 allow_unsafe=allow_unsafe,
                 rename_product=rename_product,
+                url_string_replace=url_string_replace,
                 archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
             ): item.id
@@ -215,6 +228,12 @@ def stac_api_to_odc(
     help="Other search terms, as a # separated list, i.e., --options=cloud_cover=0,100#sky=green",
 )
 @rename_product
+@click.option(
+    "--url-string-replace",
+    type=str,
+    default=None,
+    help="Replace a string in the STAC API URLs, e.g., 'https://stac.example.com,s3://stac.example.org'",
+)
 @archive_less_mature
 @publish_action
 @statsd_setting
@@ -229,9 +248,10 @@ def cli(
     datetime,
     options,
     rename_product,
-    statsd_setting,
+    url_string_replace,
     archive_less_mature,
     publish_action,
+    statsd_setting,
 ) -> None:
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -248,6 +268,13 @@ def cli(
     if datetime:
         config["datetime"] = datetime
 
+    if url_string_replace:
+        url_string_replace_tuple = tuple(url_string_replace.split(","))
+        if len(url_string_replace_tuple) != 2:
+            raise ValueError(
+                "url_string_replace must be two strings separated by a comma"
+            )
+
     # Always set the limit, because some APIs will stop at an arbitrary
     # number if max_items is not None.
     config["max_items"] = limit
@@ -261,6 +288,7 @@ def cli(
         catalog_href,
         allow_unsafe=allow_unsafe,
         rename_product=rename_product,
+        url_string_replace=url_string_replace_tuple,
         archive_less_mature=archive_less_mature,
         publish_action=publish_action,
     )

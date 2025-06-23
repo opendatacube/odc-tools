@@ -1,9 +1,35 @@
-# Tests using the Click framework the stac_api-to-dc CLI tool
+# Tests for the stac_api-to-dc CLI tool
 import pytest
 from click.testing import CliRunner
-
-from odc.apps.dc_tools.stac_api_to_dc import cli
+from odc.apps.dc_tools.stac_api_to_dc import cli, item_to_meta_uri
 from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
+from pystac import Item
+
+
+def test_rewrite_urls(landsat_stac, odc_test_db_with_products):
+    url_rewrite_tuple = (
+        "https://dea-public-data-dev.s3-ap-southeast-2.amazonaws.com",
+        "s3://dea-public-data-dev",
+    )
+
+    item = Item.from_dict(landsat_stac)
+
+    print(item.self_href)
+
+    _, uri, _ = item_to_meta_uri(
+        item,
+        odc_test_db_with_products,
+        rename_product="ls8_c2l2_sr",
+        url_string_replace=url_rewrite_tuple,
+    )
+
+    # https://dea-public-data-dev.s3-ap-southeast-2.amazonaws.com/
+    # analysis-ready-data/ga_ls8c_ard_3/088/080/2020/05/25/ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json
+    changed_uri = (
+        "s3://dea-public-data-dev/analysis-ready-data/ga_ls8c_ard_3/088/080/2020/05/25/"
+        "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
+    )
+    assert uri == changed_uri
 
 
 @pytest.mark.xfail(reason="Earth Search API has changed and now this is failing too")
