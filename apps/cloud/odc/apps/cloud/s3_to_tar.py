@@ -46,7 +46,7 @@ def cli(
     exit_early = False
 
     def dump_to_tar(data_stream, tar) -> None:
-        nonlocal exit_early
+        nonlocal exit_early  # noqa: F824
         fps = RateEstimator()
 
         for d in data_stream:
