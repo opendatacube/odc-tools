@@ -6,7 +6,7 @@ from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
 from pystac import Item
 
 
-def test_rewrite_urls(landsat_stac, odc_db):
+def test_rewrite_urls(landsat_stac, odc_test_db_with_products):
     url_rewrite_tuple = (
         "https://dea-public-data-dev.s3-ap-southeast-2.amazonaws.com",
         "s3://dea-public-data-dev",
@@ -16,12 +16,10 @@ def test_rewrite_urls(landsat_stac, odc_db):
 
     print(item.self_href)
 
-    dc = odc_db()
-
     _, uri, _ = item_to_meta_uri(
         item,
-        dc,
-        rename_product=None,
+        odc_test_db_with_products,
+        rename_product="ls8_c2l2_sr",
         url_string_replace=url_rewrite_tuple,
     )
 
