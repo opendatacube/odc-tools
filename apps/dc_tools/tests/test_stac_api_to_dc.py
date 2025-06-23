@@ -25,11 +25,13 @@ def test_rewrite_urls(landsat_stac, odc_db):
         url_string_replace=url_rewrite_tuple,
     )
 
-    # https://dea-public-data-dev.s3-ap-southeast-2.amazonaws.com/analysis-ready-data/ga_ls8c_ard_3/088/080/2020/05/25/ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json
-    assert (
-        uri
-        == "s3://dea-public-data-dev/analysis-ready-data/ga_ls8c_ard_3/088/080/2020/05/25/ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
+    # https://dea-public-data-dev.s3-ap-southeast-2.amazonaws.com/
+    # analysis-ready-data/ga_ls8c_ard_3/088/080/2020/05/25/ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json
+    changed_uri = (
+        "s3://dea-public-data-dev/analysis-ready-data/ga_ls8c_ard_3/088/080/2020/05/25/"
+        "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.stac-item.json"
     )
+    assert uri == changed_uri
 
 
 @pytest.mark.xfail(reason="Earth Search API has changed and now this is failing too")
