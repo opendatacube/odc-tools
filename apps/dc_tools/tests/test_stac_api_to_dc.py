@@ -1,5 +1,4 @@
 # Tests for the stac_api-to-dc CLI tool
-import pytest
 from click.testing import CliRunner
 from odc.apps.dc_tools.stac_api_to_dc import cli, item_to_meta_uri
 from odc.apps.dc_tools.utils import MICROSOFT_PC_STAC_URI
@@ -32,17 +31,19 @@ def test_rewrite_urls(landsat_stac, odc_test_db_with_products):
     assert uri == changed_uri
 
 
-@pytest.mark.xfail(reason="Earth Search API has changed and now this is failing too")
-def test_stac_to_dc_earthsearch(odc_test_db_with_products) -> None:
+def test_stac_to_dc_earthsearch(odc_test_db_with_products, env_name) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,
         [
-            "--catalog-href=https://earth-search.aws.element84.com/v0/",
+            "--catalog-href=https://earth-search.aws.element84.com/v1/",
             "--bbox=5,15,10,20",
             "--limit=10",
-            "--collections=sentinel-s2-l2a-cogs",
+            "--collections=sentinel-2-l2a",  # sentinel-s2-l2a-cogs is no longer available
+            "--rename-product=s2_l2a",
             "--datetime=2020-08-01/2020-08-31",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
@@ -50,27 +51,25 @@ def test_stac_to_dc_earthsearch(odc_test_db_with_products) -> None:
     assert "Added 10 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
 
 
-@pytest.mark.xfail(reason="Currently failing because the USGS STAC is not up to spec")
-def test_stac_to_dc_usgs(odc_test_db_with_products) -> None:
+def test_stac_to_dc_usgs(odc_test_db_with_products, env_name) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,
         [
-            "--catalog-href=https://ibhoyw8md9.execute-api.us-west-2.amazonaws.com/prod",
+            "--catalog-href=https://landsatlook.usgs.gov/stac-server/",
             "--bbox=5,15,10,20",
             "--limit=10",
             "--collections=landsat-c2l2-sr",
             "--datetime=2020-08-01/2020-08-31",
+            "--env",
+            env_name,
         ],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
 
 
-@pytest.mark.xfail(
-    reason="Failing with error 'ConformanceClasses.ITEM_SEARCH not supported'"
-)
-def test_stac_to_dc_planetarycomputer(odc_test_db_with_products) -> None:
+def test_stac_to_dc_planetarycomputer(odc_test_db_with_products, env_name) -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -78,6 +77,8 @@ def test_stac_to_dc_planetarycomputer(odc_test_db_with_products) -> None:
             f"--catalog-href={MICROSOFT_PC_STAC_URI}",
             "--limit=1",
             "--collections=nasadem",
+            "--env",
+            env_name,
         ],
     )
     assert result.exit_code == 0
