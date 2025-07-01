@@ -274,6 +274,8 @@ def cli(
             raise ValueError(
                 "url_string_replace must be two strings separated by a comma"
             )
+    else:
+        url_string_replace_tuple = None
 
     # Always set the limit, because some APIs will stop at an arbitrary
     # number if max_items is not None.
