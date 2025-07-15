@@ -308,7 +308,7 @@ def item_to_meta_uri(
     dc: Datacube,
     rename_product: Optional[str] = None,
     url_string_replace: tuple[str, str] | None = None,
-) -> Tuple[Dataset, str, Dict[Any, Any]]:
+) -> Tuple[Dataset, str, Dict[str, Any]]:
     for link in item.links:
         if link.rel == "self":
             uri = link.target
