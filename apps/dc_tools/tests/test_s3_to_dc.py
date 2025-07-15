@@ -2,7 +2,6 @@
 # flake8: noqa
 
 from click.testing import CliRunner
-
 from odc.apps.dc_tools.s3_to_dc import cli as s3_to_dc
 
 
@@ -49,6 +48,7 @@ def test_s3_to_dc_stac(
             "--no-sign-request",
             "--stac",
             "s3://odc-tools-test/sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/*_L2A.json",
+            "--rename-product",
             "s2_l2a",
             "--env",
             env_name,
@@ -71,6 +71,7 @@ def test_s3_to_dc_stac_update_if_exist(
             "--stac",
             "--update-if-exists",
             "s3://odc-tools-test/sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/*_L2A.json",
+            "--rename-product",
             "s2_l2a",
             "--env",
             env_name,
@@ -94,6 +95,7 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(
             "--update-if-exists",
             "--allow-unsafe",
             "s3://odc-tools-test/sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/*_L2A.json",
+            "--rename-product",
             "s2_l2a",
             "--env",
             env_name,
@@ -199,6 +201,8 @@ def test_s3_to_dc_no_product(
             "--no-sign-request",
             "--stac",
             "s3://odc-tools-test/sentinel-s2-l2a-cogs/31/Q/GB/2020/8/S2B_31QGB_20200831_0_L2A/*_L2A.json",
+            "--rename-product",
+            "s2_l2a",
             "--env",
             env_name,
         ],

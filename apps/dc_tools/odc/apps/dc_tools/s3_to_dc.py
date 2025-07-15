@@ -2,17 +2,19 @@
 """Build S3 iterators using odc-tools
 and index datasets found into RDS
 """
-import click
+
 import logging
 import sys
-from odc.aio import S3Fetcher, s3_find_glob
-from typing import Tuple
+from types import SimpleNamespace
+from typing import Any, Dict, Tuple
 
+import botocore
+import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.ui.click import environment_option, pass_config
+from odc.aio import S3Fetcher, s3_find_glob
 from odc.apps.dc_tools._docs import parse_doc_stream
-from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     IndexingException,
     SkippedException,
@@ -20,7 +22,10 @@ from odc.apps.dc_tools.utils import (
     archive_less_mature,
     fail_on_missing_lineage,
     index_update_dataset,
+    item_to_meta_uri,
     no_sign_request,
+    publish_action,
+    rename_product,
     request_payer,
     skip_check,
     skip_lineage,
@@ -29,14 +34,73 @@ from odc.apps.dc_tools.utils import (
     transform_stac,
     update_flag,
     update_if_exists_flag,
+    url_string_replace,
     verify_lineage,
-    publish_action,
 )
+from odc.aws import _aws_unsigned_check_env, auto_find_region, s3_client, s3_fetch
+from pystac import Item
 
 
 def doc_error(uri, doc) -> None:
     """Log the internal errors parsing docs"""
     logging.exception("Failed to parse doc at %s", uri)
+
+
+class SimpleFetcher:
+    """
+    Super simple S3 URL fetcher.
+
+    Args:
+        region_name (str, optional): AWS region name to use for S3 requests.If not provided, attempts to auto-detect.
+        aws_unsigned (bool, optional): If True, disables AWS request signing for public buckets.
+        request_opts (dict, optional): Additional options to pass to the S3 fetch operation.
+
+    Methods:
+        __call__(uris):
+            Fetches a sequence of S3 URLs.
+            Args:
+                uris (Iterable): Sequence of S3 URLs.
+            Yields:
+                SimpleNamespace: For each input, yields an object with:
+                    - url (str): The S3 URL.
+                    - data (bytes or None): The fetched data.
+            Notes:
+                - The order of results is not guaranteed to match the input order.
+                - One result is yielded for each input URI.
+    """
+
+    def __init__(
+        self,
+        region_name: str | None = None,
+        aws_unsigned: bool | None = None,
+        request_opts: Dict[Any, Any] | None = None,
+    ):
+        opts = {}
+
+        if request_opts is None:
+            request_opts = {}
+
+        if region_name is None:
+            region_name = auto_find_region()
+
+        if aws_unsigned is None:
+            aws_unsigned = _aws_unsigned_check_env()
+
+        if aws_unsigned:
+            opts["signature_version"] = botocore.UNSIGNED
+
+        opts["region_name"] = region_name
+        opts["aws_unsigned"] = aws_unsigned
+
+        self.opts = opts
+        self.request_opts = request_opts
+
+    def __call__(self, uris):
+        for url in uris:
+            client = s3_client(**self.opts)
+            data = s3_fetch(s3=client, url=url, **self.request_opts)
+
+            yield SimpleNamespace(url=url, data=data)
 
 
 def dump_to_odc(
@@ -49,6 +113,8 @@ def dump_to_odc(
     allow_unsafe=False,
     archive_less_mature=None,
     publish_action=None,
+    rename_product: None | str = None,
+    url_string_replace: None | tuple[str, str] | None = None,
     **kwargs,
 ) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
@@ -62,18 +128,23 @@ def dump_to_odc(
     )
 
     found_docs = False
-    for uri, metadata in uris_docs:
-        if metadata is None:
+    for uri, dataset in uris_docs:
+        if dataset is None:
             ds_skipped += 1
             continue
         found_docs = True
-        stac_doc = None
+        stac = None
         if transform:
-            stac_doc = metadata
-            metadata = stac_transform(metadata)
+            item = Item.from_dict(dataset)
+            dataset, uri, stac = item_to_meta_uri(
+                item,
+                dc,
+                rename_product=rename_product,
+                url_string_replace=url_string_replace,
+            )
         try:
             index_update_dataset(
-                metadata,
+                dataset,
                 uri,
                 dc,
                 doc2ds,
@@ -82,7 +153,7 @@ def dump_to_odc(
                 allow_unsafe=allow_unsafe,
                 archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
-                stac_doc=stac_doc,
+                stac_doc=stac,
             )
             ds_added += 1
         except IndexingException:
@@ -121,6 +192,8 @@ def dump_to_odc(
 @request_payer
 @archive_less_mature
 @publish_action
+@rename_product
+@url_string_replace
 @click.argument("uris", nargs=-1)
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
@@ -139,6 +212,8 @@ def cli(
     request_payer,
     archive_less_mature,
     publish_action,
+    rename_product,
+    url_string_replace,
     uris,
     product,
 ) -> None:
@@ -196,18 +271,31 @@ def cli(
                     "A list of uris is assumed to include only absolute URLs. "
                     "Any wildcard characters will be escaped."
                 )
-
     # Get a generator from supplied S3 Uri for candidate documents
-    fetcher = S3Fetcher(aws_unsigned=no_sign_request)
+    fetcher = None
     # Grab the URL from the resulting S3 item
     if is_glob:
+        fetcher = S3Fetcher(aws_unsigned=no_sign_request)
         document_stream = (
             url.url
             for url in s3_find_glob(uris[0], skip_check=skip_check, s3=fetcher, **opts)
         )
     else:
         # if working with absolute URLs, no need for all the globbing logic
+        fetcher = SimpleFetcher(
+            aws_unsigned=no_sign_request,
+            request_opts=opts,
+        )
         document_stream = uris
+
+    if url_string_replace:
+        url_string_replace_tuple = tuple(url_string_replace.split(","))
+        if len(url_string_replace_tuple) != 2:
+            raise ValueError(
+                "url_string_replace must be two strings separated by a comma"
+            )
+    else:
+        url_string_replace_tuple = None
 
     added, failed, skipped = dump_to_odc(
         fetcher(document_stream),
@@ -222,6 +310,8 @@ def cli(
         allow_unsafe=allow_unsafe,
         archive_less_mature=archive_less_mature,
         publish_action=publish_action,
+        rename_product=rename_product,
+        url_string_replace=url_string_replace_tuple,
     )
 
     print(
