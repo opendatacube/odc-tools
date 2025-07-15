@@ -1,16 +1,17 @@
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional, Tuple
 
 import click
 from datacube import Datacube
-from datacube.model import Dataset
 from datacube.index.hl import Doc2Dataset
+from datacube.model import Dataset
 from datacube.utils import changes, jsonify_document
 from datadog import initialize, statsd
 from odc.aws.queue import publish_to_topic
+from odc.stac.eo3 import stac2ds
+from pystac import Item
 
 from ._stac import ds_to_stac
-
 
 MICROSOFT_PC_STAC_URI = "https://planetarycomputer.microsoft.com/api/stac/v1/"
 
@@ -169,6 +170,13 @@ rename_product = click.option(
     ),
 )
 
+url_string_replace = click.option(
+    "--url-string-replace",
+    type=str,
+    default=None,
+    help="Replace a string in the STAC API URLs, e.g., 'https://stac.example.com,s3://stac.example.org'",
+)
+
 
 def index_update_dataset(
     dataset: dict | Dataset,
@@ -293,3 +301,52 @@ def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125") ->
     initialize(**options)
 
     statsd.gauge("datacube_index", value, tags=tags)
+
+
+def item_to_meta_uri(
+    item: Item,
+    dc: Datacube,
+    rename_product: Optional[str] = None,
+    url_string_replace: tuple[str, str] | None = None,
+) -> Tuple[Dataset, str, Dict[str, Any]]:
+    for link in item.links:
+        if link.rel == "self":
+            uri = link.target
+
+        # Override self with canonical
+        if link.rel == "canonical":
+            uri = link.target
+            break
+
+    if rename_product is not None:
+        item.properties["odc:product"] = rename_product
+
+    # If we need to modify URLs, do it for the main URL and the asset links
+    if url_string_replace is not None:
+        old_url, new_url = url_string_replace
+
+        uri = uri.replace(old_url, new_url)
+
+        for asset in item.assets.values():
+            asset.href = asset.href.replace(old_url, new_url)
+
+    # Try to the Datacube product for the dataset
+    product_name = item.properties.get("odc:product", item.collection_id)
+    product_name_sanitised = product_name.replace("-", "_")
+    product = dc.index.products.get_by_name(product_name_sanitised)
+
+    if product is None:
+        logging.warning(
+            "Couldn't find matching product for product name: %s",
+            product_name_sanitised,
+        )
+        raise SkippedException(
+            f"Couldn't find matching product for product name: {product_name_sanitised}"
+        )
+
+    # Convert the STAC Item to a Dataset
+    dataset = next(stac2ds([item]))
+    # And assign the product ID
+    dataset.product = product
+
+    return (dataset, uri, item.to_dict(transform_hrefs=False))
