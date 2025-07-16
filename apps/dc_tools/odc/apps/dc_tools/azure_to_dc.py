@@ -18,14 +18,17 @@ from odc.apps.dc_tools.utils import (
     SkippedException,
     allow_unsafe,
     archive_less_mature,
+    fail_on_missing_lineage,
     index_update_dataset,
     publish_action,
     rename_product,
+    skip_lineage,
     statsd_gauge_reporting,
     statsd_setting,
     transform_stac,
     update_flag,
     update_if_exists_flag,
+    verify_lineage,
 )
 from odc.azure import download_blob, find_blobs
 
@@ -83,8 +86,9 @@ def dump_list_to_odc(
     archive_less_mature: Optional[int] = None,
     publish_action: Optional[str] = None,
     rename_product: Optional[str] = None,
+    **kwargs,
 ):
-    doc2ds = Doc2Dataset(dc.index)
+    doc2ds = Doc2Dataset(dc.index, **kwargs)
 
     # Do the indexing of all the things
     success = 0
@@ -154,6 +158,9 @@ def dump_list_to_odc(
 @click.argument("prefix", type=str, nargs=1)
 @click.argument("suffix", type=str, nargs=1)
 @rename_product
+@skip_lineage
+@fail_on_missing_lineage
+@verify_lineage
 def cli(
     cfg_env: ODCEnvironment,
     update: bool,
@@ -169,6 +176,9 @@ def cli(
     prefix: str,
     suffix: str,
     rename_product: str,
+    skip_lineage: bool,
+    fail_on_missing_lineage: bool,
+    verify_lineage: bool,
 ) -> None:
     # Set up the datacube first, to ensure we have a connection
     dc = Datacube(env=cfg_env)
@@ -192,6 +202,9 @@ def cli(
         archive_less_mature=archive_less_mature,
         publish_action=publish_action,
         rename_product=rename_product,
+        skip_lineage=skip_lineage,
+        fail_on_missing_lineage=fail_on_missing_lineage,
+        verify_lineage=verify_lineage,
     )
 
     print(
