@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import click
 from datacube import Datacube
+from datacube.index.hl import Doc2Dataset
 from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools.utils import (
     SkippedException,
@@ -24,6 +25,9 @@ from odc.apps.dc_tools.utils import (
     statsd_gauge_reporting,
     statsd_setting,
     update_if_exists_flag,
+    skip_lineage,
+    fail_on_missing_lineage,
+    verify_lineage,
 )
 from pystac.item import Item
 from pystac_client import Client
@@ -71,13 +75,15 @@ def process_item(
     url_string_replace: tuple[str, str] | None = None,
     archive_less_mature: int | None = None,
     publish_action: bool = False,
+    **kwargs,
 ) -> None:
     dataset, uri, stac = item_to_meta_uri(item, dc, rename_product, url_string_replace)
+    doc2ds = Doc2Dataset(dc.index, **kwargs)
     index_update_dataset(
         dataset,
         uri,
         dc,
-        None,
+        doc2ds,
         update_if_exists=update_if_exists,
         allow_unsafe=allow_unsafe,
         archive_less_mature=archive_less_mature,
@@ -96,6 +102,7 @@ def stac_api_to_odc(
     url_string_replace: tuple[str, str] | None = None,
     archive_less_mature: int | None = None,
     publish_action: Optional[str] = None,
+    **kwargs,
 ) -> Tuple[int, int, int]:
     client = Client.open(catalog_href)
 
@@ -127,6 +134,7 @@ def stac_api_to_odc(
                 url_string_replace=url_string_replace,
                 archive_less_mature=archive_less_mature,
                 publish_action=publish_action,
+                **kwargs,
             ): item.id
             for item in search.items()
         }
@@ -183,6 +191,9 @@ def stac_api_to_odc(
 @archive_less_mature
 @publish_action
 @statsd_setting
+@skip_lineage
+@fail_on_missing_lineage
+@verify_lineage
 def cli(
     cfg_env,
     limit,
@@ -198,6 +209,9 @@ def cli(
     archive_less_mature,
     publish_action,
     statsd_setting,
+    skip_lineage,
+    fail_on_missing_lineage,
+    verify_lineage,
 ) -> None:
     """
     Iterate through STAC items from a STAC API and add them to datacube.
@@ -239,6 +253,9 @@ def cli(
         url_string_replace=url_string_replace_tuple,
         archive_less_mature=archive_less_mature,
         publish_action=publish_action,
+        skip_lineage=skip_lineage,
+        fail_on_missing_lineage=fail_on_missing_lineage,
+        verify_lineage=verify_lineage,
     )
 
     print(

@@ -11,12 +11,15 @@ from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     allow_unsafe,
     archive_less_mature,
+    fail_on_missing_lineage,
     index_update_dataset,
     update_if_exists_flag,
     publish_action,
+    skip_lineage,
     statsd_setting,
     statsd_gauge_reporting,
     transform_stac,
+    verify_lineage,
 )
 
 logging.basicConfig(
@@ -36,6 +39,9 @@ logging.basicConfig(
 @transform_stac
 @statsd_setting
 @publish_action
+@skip_lineage
+@fail_on_missing_lineage
+@verify_lineage
 @click.option(
     "--glob",
     default=None,
@@ -51,9 +57,17 @@ def cli(
     glob,
     archive_less_mature,
     publish_action,
+    skip_lineage,
+    fail_on_missing_lineage,
+    verify_lineage,
 ) -> None:
     dc = datacube.Datacube(env=cfg_env)
-    doc2ds = Doc2Dataset(dc.index)
+    doc2ds = Doc2Dataset(
+        dc.index,
+        skip_lineage=skip_lineage,
+        fail_on_missing_lineage=fail_on_missing_lineage,
+        verify_lineage=verify_lineage,
+    )
 
     if glob is None:
         glob = "**/*.json" if stac else "**/*.yaml"
