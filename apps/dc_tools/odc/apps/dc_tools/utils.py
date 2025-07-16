@@ -8,7 +8,7 @@ from datacube.model import Dataset
 from datacube.utils import changes, jsonify_document
 from datadog import initialize, statsd
 from odc.aws.queue import publish_to_topic
-from odc.stac.eo3 import stac2ds
+from datacube.metadata import stac2ds
 from pystac import Item
 
 from ._stac import ds_to_stac
