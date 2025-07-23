@@ -52,7 +52,6 @@ scikit-image
 thredds_crawler
 toolz
 tqdm
-urlpath
 xarray>=2023.9.0
 
 
