@@ -24,7 +24,6 @@ dependencies:
   - azure-storage-blob
   - fsspec
   - lxml # needed for thredds-crawler
-  - urlpath
   - datadog
   - docker-py
   - eodatasets3>=1.9.0
