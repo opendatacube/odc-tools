@@ -1,3 +1,42 @@
+[project]
+name = "odc-ui"
+dynamic = ["version"]
+description = "Notebook display helper methods"
+authors = [
+    {name = "Open Data Cube", email = "earth.observation@ga.gov.au"},
+]
+dependencies = [
+    "datacube>=1.9.2",
+    "ipyleaflet",
+    "ipython",
+    "ipywidgets>=8.0",
+    "jupyter_ui_poll",
+    "matplotlib",
+    "numpy",
+    "odc-algo",
+    "odc-geo",
+    "pandas",
+    "rasterio",
+    "xarray",
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = "Apache-2.0"
+
+[project.optional-dependencies]
+tests = [
+    "pytest",
+]
+
+[project.urls]
+Homepage = "https://github.com/opendatacube/odc-tools/"
+
 [build-system]
-requires = ["setuptools>=51.0.0", "wheel"]
+requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "odc.ui._version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["odc*"]

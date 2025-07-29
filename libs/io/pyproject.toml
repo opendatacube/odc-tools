@@ -1,3 +1,28 @@
+[project]
+name = "odc-io"
+dynamic = ["version"]
+description = "Miscellaneous file IO helper methods"
+authors = [
+    {name = "Open Data Cube", email = "earth.observation@ga.gov.au"},
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = "Apache-2.0"
+
+[project.urls]
+Homepage = "https://github.com/opendatacube/odc-tools/"
+
+[project.optional-dependencies]
+tests = [
+    "pytest",
+]
+
 [build-system]
-requires = ["setuptools>=51.0.0", "wheel"]
+requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "odc.io._version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["odc*"]

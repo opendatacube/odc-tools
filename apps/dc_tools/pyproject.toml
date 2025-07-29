@@ -1,6 +1,72 @@
+[project]
+name = "odc-apps-dc-tools"
+dynamic = ["version"]
+description = "CLI utils for working with a datacube index"
+authors = [
+    {name = "Open Data Cube", email = "earth.observation@ga.gov.au"},
+]
+dependencies = [
+    "click",
+    "datacube>=1.9.6",
+    "datadog",
+    "eodatasets3>=1.9",
+    "fsspec",
+    "odc-cloud[ASYNC]>=0.2.3",
+    "odc-geo",
+    "odc_io",
+    "pystac-client>=0.2.0",
+    "pystac>=1.0.0,<2",
+    "pyyaml",
+    "rio-stac",
+    "toolz",
+]
+requires-python = ">= 3.10"
+readme = "README.md"
+license = "Apache-2.0"
+
+[project.urls]
+Homepage = "https://github.com/opendatacube/odc-tools/"
+
+[project.optional-dependencies]
+tests = [
+    "deepdiff",
+    "docker",
+    "flask",
+    "flask_cors",
+    "moto",
+    "psycopg2",
+    "pytest",
+    "pytest_httpserver",
+]
+azure = [
+    "odc-cloud[AZURE]",
+]
+thredds = [
+    "odc-cloud[THREDDS]",
+]
+
+[project.scripts]
+azure-to-dc = "odc.apps.dc_tools.azure_to_dc:cli[AZURE]"
+cop-dem-to-dc = "odc.apps.dc_tools.cop_dem_to_dc:cli"
+dc-index-export-md = "odc.apps.dc_tools.export_md:cli"
+dc-index-from-tar = "odc.apps.dc_tools.index_from_tar:cli"
+dc-sync-products = "odc.apps.dc_tools.add_update_products:cli"
+esa-wc-to-dc = "odc.apps.dc_tools.esa_worldcover_to_dc:cli"
+fs-to-dc = "odc.apps.dc_tools.fs_to_dc:cli"
+s3-to-dc = "odc.apps.dc_tools.s3_to_dc:cli"
+sqs-to-dc = "odc.apps.dc_tools.sqs_to_dc:cli"
+stac-to-dc = "odc.apps.dc_tools.stac_api_to_dc:cli"
+thredds-to-dc = "odc.apps.dc_tools.thredds_to_dc:cli[THREDDS]"
+
 [build-system]
-requires = ["setuptools>=51.0.0", "wheel"]
+requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "odc.apps.dc_tools._version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["odc*"]
 
 [tool.pytest.ini_options]
 addopts = [
