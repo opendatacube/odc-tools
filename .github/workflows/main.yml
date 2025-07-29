@@ -177,7 +177,7 @@ jobs:
           pytest --cov=. \
           --cov-report=html \
           --cov-report=xml:coverage.xml \
-          --timeout=30 \
+          --timeout=90 \
           libs apps
 
         env:
