@@ -1,3 +1,42 @@
+[project]
+name = "odc-cloud"
+dynamic = ["version"]
+description = "Various AWS helper methods"
+authors = [
+    {name = "Open Data Cube", email = "earth.observation@ga.gov.au"},
+]
+dependencies = [
+    "boto3",
+    "botocore",
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = "Apache-2.0"
+
+[project.urls]
+Homepage = "https://github.com/opendatacube/odc-tools/"
+
+[project.optional-dependencies]
+tests = [
+    "pytest",
+]
+thredds = [
+    "requests",
+    "thredds_crawler",
+]
+azure = [
+    "azure-storage-blob",
+]
+async = [
+    "aiobotocore[boto3]>=1.0",
+]
+
 [build-system]
-requires = ["setuptools>=51.0.0", "wheel"]
+requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "odc.cloud._version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["odc*"]

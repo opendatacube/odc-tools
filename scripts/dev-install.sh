@@ -5,7 +5,7 @@
 set -eu
 
 mk_edit_requirements () {
-    for d in $(find $(pwd)/libs $(pwd)/apps -name "setup.py" -type f -exec dirname '{}' ';'); do
+    for d in $(find $(pwd)/libs $(pwd)/apps -name "pyproject.toml" -type f -exec dirname '{}' ';'); do
         echo "-e $d"
     done
 }
