@@ -1,4 +1,5 @@
 [tool.pytest.ini_options]
+console_output_style = "times"
 filterwarnings = [
     "ignore:datetime.datetime.utcnow*:DeprecationWarning:botocore.*"
 ]
