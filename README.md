@@ -76,11 +76,11 @@ conda install "aiobotocore==1.3.3" boto3 awscli
 
 1. For cloud (AWS only)
    ```
-   pip install odc-apps-cloud
+   pip install odc-apps-dc-tools
    ```
-2. For cloud (GCP, THREDDS and AWS)
+2. For cloud (AZURE, GCP, THREDDS and AWS)
    ```
-   pip install odc-apps-cloud[GCP,THREDDS]
+   pip install odc-apps-dc-tools[AZURE,GCP,THREDDS]
    ```
 2. For `dc-index-from-tar` (indexing to datacube from tar archive)
    ```
@@ -242,7 +242,6 @@ dependencies:
       - odc-stats
 
       # odc-tools CLI apps
-      - odc-apps-cloud
       - odc-apps-dc-tools
 ```
 </div></details>
