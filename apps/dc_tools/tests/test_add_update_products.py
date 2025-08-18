@@ -22,7 +22,7 @@ def test_parse_local_csv(local_csv) -> None:
 
 def test_parse_remote_csv(remote_csv) -> None:
     remote_contents = [x for x in _parse_csv(remote_csv)]
-    assert len(remote_contents) == 12
+    assert len(remote_contents) == 13
     assert remote_contents[0].name == "s2_l2a"
 
 
