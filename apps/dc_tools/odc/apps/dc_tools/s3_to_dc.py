@@ -115,7 +115,7 @@ def dump_to_odc(
     publish_action=None,
     rename_product: None | str = None,
     url_string_replace: None | tuple[str, str] | None = None,
-    convert_bools=False,
+    convert_bools: bool = False,
     **kwargs,
 ) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
