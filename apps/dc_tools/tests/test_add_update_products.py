@@ -16,13 +16,13 @@ PRODUCT_EXAMPLE: str = (
 def test_parse_local_csv(local_csv) -> None:
     local_contents = [x for x in _parse_csv(local_csv)]
 
-    assert len(local_contents) == 12
+    assert len(local_contents) == 13
     assert local_contents[0].name == "s2_l2a"
 
 
 def test_parse_remote_csv(remote_csv) -> None:
     remote_contents = [x for x in _parse_csv(remote_csv)]
-    assert len(remote_contents) == 12
+    assert len(remote_contents) == 13
     assert remote_contents[0].name == "s2_l2a"
 
 

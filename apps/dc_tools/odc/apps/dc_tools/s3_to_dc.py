@@ -115,6 +115,7 @@ def dump_to_odc(
     publish_action=None,
     rename_product: None | str = None,
     url_string_replace: None | tuple[str, str] | None = None,
+    convert_bools: bool = False,
     **kwargs,
 ) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
@@ -134,6 +135,12 @@ def dump_to_odc(
             continue
         found_docs = True
         stac = None
+        if convert_bools:
+            for prop, val in dataset["properties"].items():
+                if val is True:
+                    dataset["properties"][prop] = "true"
+                elif val is False:
+                    dataset["properties"][prop] = "false"
         if transform:
             item = Item.from_dict(dataset)
             dataset, uri, stac = item_to_meta_uri(
@@ -194,6 +201,12 @@ def dump_to_odc(
 @publish_action
 @rename_product
 @url_string_replace
+@click.option(
+    "--convert-bools",
+    is_flag=True,
+    default=False,
+    help="Convert boolean properties to strings for backwards compatibility",
+)
 @click.argument("uris", nargs=-1)
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
@@ -214,6 +227,7 @@ def cli(
     publish_action,
     rename_product,
     url_string_replace,
+    convert_bools,
     uris,
     product,
 ) -> None:
@@ -312,6 +326,7 @@ def cli(
         publish_action=publish_action,
         rename_product=rename_product,
         url_string_replace=url_string_replace_tuple,
+        convert_bools=convert_bools,
     )
 
     print(

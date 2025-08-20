@@ -213,3 +213,28 @@ def test_s3_to_dc_no_product(
         result2.output
         == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
+
+
+def test_convert_bools(mocked_s3_datasets, odc_test_db_with_products, env_name) -> None:
+    dc = odc_test_db_with_products
+    assert dc.index.products.get_by_name("ga_s1_iw_hh_c1") is not None
+    runner = CliRunner()
+    result = runner.invoke(
+        s3_to_dc,
+        [
+            "--no-sign-request",
+            "--convert-bools",
+            "--stac",
+            "s3://odc-tools-test/experimental/linkage/s1_rtc_c1/t007_014549_iw1/2025/1/29/*.json",
+            "--env",
+            env_name,
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    ds = dc.index.datasets.get("5f94dd81-241f-559a-9362-05b223d45ae1")
+    # boolean values converted to strings
+    assert ds.metadata.noise_removal_applied == "true"
+    # other values left as they are
+    assert ds.metadata.speckle_filter_applied == "False"
+    assert ds.metadata_doc["properties"]["sarard:speckle_filter_window"] == []
