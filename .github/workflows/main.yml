@@ -301,7 +301,6 @@ jobs:
           - odc-cloud
           - odc-io
           - odc-ui
-          - odc-apps-cloud
           - odc-apps-dc-tools
 
     needs:
