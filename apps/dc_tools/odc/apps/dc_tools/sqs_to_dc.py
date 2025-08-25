@@ -5,6 +5,7 @@ import click
 import json
 import logging
 import pandas as pd
+import pystac
 import requests
 import sys
 import uuid
@@ -18,6 +19,7 @@ from yaml import safe_load
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.metadata import stac2ds
 from datacube.ui.click import environment_option, pass_config
 from datacube.utils import documents
 from odc.apps.dc_tools.utils import (
@@ -39,7 +41,7 @@ from odc.apps.dc_tools.utils import (
     verify_lineage,
     publish_action,
 )
-from ._stac import stac_transform, ds_to_stac
+from ._stac import ds_to_stac
 
 # Added log handler
 logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
@@ -181,7 +183,7 @@ def get_uri(metadata, rel_value):
     return uri
 
 
-def do_archiving(metadata, dc: Datacube, publish_action):
+def do_archiving(metadata, dc: Datacube, publish_action, stac):
     dataset_id = uuid.UUID(metadata.get("id"))
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
@@ -189,7 +191,9 @@ def do_archiving(metadata, dc: Datacube, publish_action):
             publish_to_topic(
                 arn=publish_action,
                 action="ARCHIVED",
-                stac=ds_to_stac(dc.index.datasets.get(dataset_id)),
+                stac=(
+                    metadata if stac else ds_to_stac(dc.index.datasets.get(dataset_id))
+                ),
             )
     else:
         raise IndexingException("Failed to get an ID from the message, can't archive.")
@@ -243,7 +247,7 @@ def queue_to_odc(
             action = extract_action_from_message(message)
             if archive or action == "ARCHIVED":
                 # Archive metadata
-                do_archiving(metadata, dc, publish_action)
+                do_archiving(metadata, dc, publish_action, stac=transform)
             else:
                 if not record_path:
                     # Extract metadata and URI from a STAC or similar
@@ -251,7 +255,7 @@ def queue_to_odc(
                     metadata, uri = handle_json_message(metadata, odc_metadata_link)
                     if transform:
                         stac_doc = metadata
-                        metadata = stac_transform(metadata)
+                        metadata = next(stac2ds([pystac.Item.from_dict(metadata)]))
                 else:
                     # Extract metadata from an S3 bucket notification
                     # or similar for indexing
