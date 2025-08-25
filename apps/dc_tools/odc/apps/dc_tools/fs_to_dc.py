@@ -3,11 +3,12 @@ import json
 import logging
 import yaml
 from pathlib import Path
+import pystac
 
 import datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.metadata import stac2ds
 from datacube.ui.click import environment_option, pass_config
-from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     allow_unsafe,
     archive_less_mature,
@@ -87,7 +88,7 @@ def cli(
                 stac_doc = None
                 if stac:
                     stac_doc = metadata
-                    metadata = stac_transform(metadata)
+                    metadata = next(stac2ds([pystac.Item.from_dict(metadata)]))
                 index_update_dataset(
                     metadata,
                     in_file.absolute().as_uri(),

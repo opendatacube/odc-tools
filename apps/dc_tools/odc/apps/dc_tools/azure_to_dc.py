@@ -7,13 +7,14 @@ import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
+import pystac
 
 import click
 from datacube import Datacube
 from datacube.cfg import ODCEnvironment
 from datacube.index.hl import Doc2Dataset
+from datacube.metadata import stac2ds
 from datacube.ui.click import environment_option, pass_config
-from odc.apps.dc_tools._stac import stac_transform
 from odc.apps.dc_tools.utils import (
     SkippedException,
     allow_unsafe,
@@ -58,7 +59,7 @@ def process_doc(
         if rename_product is not None:
             # This possibly should be possible for yaml loading too
             doc["properties"]["odc:product"] = rename_product
-        doc = stac_transform(doc)
+        doc = next(stac2ds([pystac.Item.from_dict(doc)]))
     index_update_dataset(
         doc,
         uri,

@@ -8,10 +8,9 @@ from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
 import numpy
+from datacube.metadata import ds2stac
 from datacube.model import Dataset
 from odc.geo.geom import Geometry, box
-from eodatasets3.stac import to_stac_item
-from eodatasets3.serialise import from_doc
 from toolz import get_in
 from urllib.parse import urlparse
 
@@ -466,7 +465,7 @@ def ds_to_stac(ds: Dataset) -> dict:
     if ds.is_eo3:
         if ds.uri is None:
             raise ValueError("Can't find dataset location")
-        return to_stac_item(from_doc(ds.metadata_doc, skip_validation=True), ds.uri)
+        return ds2stac(ds, self_url=ds.uri).to_dict()
     else:
         raise ValueError(
             f"Cannot convert to STAC for dataset with metadata of type {ds.metadata_type}"

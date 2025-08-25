@@ -14,6 +14,7 @@ from typing import Tuple
 
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
+from datacube.metadata import stac2ds
 from datacube.ui.click import environment_option, pass_config
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
@@ -27,7 +28,6 @@ from odc.apps.dc_tools.utils import (
     statsd_gauge_reporting,
     statsd_setting,
 )
-from ._stac import stac_transform
 
 PRODUCTS = {
     "cop_30": (
@@ -131,7 +131,7 @@ def process_uri_tile(
         )
 
     index_update_dataset(
-        stac_transform(item.to_dict()),
+        next(stac2ds([item])),
         uri,
         dc,
         doc2ds,
