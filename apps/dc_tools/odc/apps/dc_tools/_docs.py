@@ -1,12 +1,11 @@
 """These should probably be in datacube library."""
 
-import json
 import sys
 from typing import Sequence, Union
 from uuid import UUID, uuid5
 
 from datacube.index.hl import Doc2Dataset
-from datacube.utils.documents import parse_yaml
+from datacube.utils.documents import parse_doc_stream
 
 # Some random UUID to be ODC namespace
 ODC_NS = UUID("6f34c6f4-13d6-43c0-8e4e-42b6c13203af")
@@ -71,37 +70,6 @@ def from_metadata_stream(metadata_stream, index, **kwargs):
                 yield (ds, None)
             else:
                 yield (None, f"Error: {uri}, {err}")
-
-
-def parse_doc_stream(doc_stream, on_error=None, transform=None):
-    """
-    Replace doc bytes/strings with parsed dicts.
-
-       Stream[(uri, bytes)] -> Stream[(uri, dict)]
-
-
-    :param doc_stream: sequence of (uri, doc: bytes|string)
-    :param on_error: Callback uri, doc -> None
-    :param transform: dict -> dict if supplied also apply further transform on parsed document
-
-    On output doc is replaced with python dict parsed from yaml, or with None
-    if parsing/transform error occurred.
-    """
-    for uri, doc in doc_stream:
-        try:
-            if uri.endswith(".json"):
-                metadata = json.loads(doc)
-            else:
-                metadata = parse_yaml(doc)
-
-            if transform is not None:
-                metadata = transform(metadata)
-        except Exception:  # pylint: disable=broad-except
-            if on_error is not None:
-                on_error(uri, doc)
-            metadata = None
-
-        yield uri, metadata
 
 
 def from_yaml_doc_stream(doc_stream, index, logger=None, transform=None, **kwargs):

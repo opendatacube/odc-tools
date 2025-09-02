@@ -13,8 +13,8 @@ import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.ui.click import environment_option, pass_config
+from datacube.utils.documents import parse_doc_stream
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.apps.dc_tools._docs import parse_doc_stream
 from odc.apps.dc_tools.utils import (
     IndexingException,
     SkippedException,
