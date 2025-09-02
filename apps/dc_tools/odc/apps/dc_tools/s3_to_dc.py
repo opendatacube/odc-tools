@@ -286,7 +286,6 @@ def cli(
                     "Any wildcard characters will be escaped."
                 )
     # Get a generator from supplied S3 Uri for candidate documents
-    fetcher = None
     # Grab the URL from the resulting S3 item
     if is_glob:
         fetcher = S3Fetcher(aws_unsigned=no_sign_request)
