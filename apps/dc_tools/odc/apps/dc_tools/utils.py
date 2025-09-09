@@ -194,7 +194,7 @@ def index_update_dataset(
     """
     Index and/or update a dataset.  Called by all the **_to_dc CLI tools.
 
-    :param metadata: A dataset metadata dictionary, read from yaml or json, converted from STAC, etc.
+    :param dataset: A dataset metadata dictionary, read from yaml or json, converted from STAC, etc.
     :param uri: The URI of the metadata and associated data.
     :param dc: A datacube object (carries a database index and potentially an active transaction).
     :param doc2ds: A Doc2Dataset object (metadata_type and product resolver)

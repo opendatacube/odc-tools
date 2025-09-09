@@ -8,7 +8,7 @@ from odc.aws._find import parse_query
 from odc.aws.queue import get_queue, get_queues, redrive_queue
 from types import SimpleNamespace
 
-from odc.apps.cloud import redrive_to_queue
+from odc.apps.dc_tools import redrive_to_queue
 
 ALIVE_QUEUE_NAME = "mock-alive-queue"
 DEAD_QUEUE_NAME = "mock-dead-queue"

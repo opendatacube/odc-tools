@@ -109,6 +109,11 @@ def mocked_s3_datasets(mocked_aws_s3_env):
             Key="baseline/ga_s2am_ard_3/49/JFM/2016/12/14/20161214T092514/"
             "ga_s2am_ard_3-2-1_49JFM_2016-12-14_final.odc-metadata.yaml",
         )
+        bucket.upload_file(
+            Filename=str(TEST_DATA_FOLDER / "s1_rtc_c1.stac-item.json"),
+            Key="experimental/linkage/s1_rtc_c1/t007_014549_iw1/2025/1/29/"
+            "metadata.json",
+        )
         test_datasets = list((TEST_DATA_FOLDER / "cemp_insar").glob("**/*.yaml"))
         test_datasets.extend((TEST_DATA_FOLDER / "derivative").glob("**/*.yaml"))
         for fname in test_datasets:
@@ -363,6 +368,9 @@ def odc_db(cfg_env):
     with open(TEST_DATA_FOLDER / MATURITY_PRODUCT, encoding="utf8") as f:
         doc = yaml.safe_load(f)
         dc.index.products.add_document(doc)
+    with open(TEST_DATA_FOLDER / "eo3_s1_ard.odc-type.yaml", encoding="utf8") as f:
+        meta_doc = yaml.safe_load(f)
+        dc.index.metadata_types.add(MetadataType(meta_doc))
 
     yield dc
 

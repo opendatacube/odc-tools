@@ -1,0 +1,593 @@
+{
+    "type": "Feature",
+    "stac_version": "1.1.0",
+    "stac_extensions": [
+        "https://stac-extensions.github.io/product/v0.1.0/schema.json",
+        "https://stac-extensions.github.io/sar/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v2.0.0/schema.json",
+        "https://stac-extensions.github.io/sat/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/sentinel-1/v0.2.0/schema.json",
+        "https://stac-extensions.github.io/processing/v1.2.0/schema.json",
+        "https://stac-extensions.github.io/storage/v2.0.0/schema.json",
+        "https://stac-extensions.github.io/ceos-ard/v0.2.0/schema.json"
+    ],
+    "id": "OPERA_L2_RTC-S1_T007-014549-IW1_20250129T050932Z_20250620T060210Z_S1A_20_v1.0.4",
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -113.9980421256688,
+                    -75.85935083576348
+                ],
+                [
+                    -113.8954400666638,
+                    -75.82473391777432
+                ],
+                [
+                    -113.7943608815863,
+                    -75.79042510983605
+                ],
+                [
+                    -113.6947476573233,
+                    -75.75641267065316
+                ],
+                [
+                    -113.5992300932375,
+                    -75.72361077033034
+                ],
+                [
+                    -113.5023464273423,
+                    -75.69014802916185
+                ],
+                [
+                    -113.4067793436187,
+                    -75.65695059529423
+                ],
+                [
+                    -113.3150363376895,
+                    -75.62490449625713
+                ],
+                [
+                    -113.22192923908,
+                    -75.59220068998641
+                ],
+                [
+                    -113.1300127031324,
+                    -75.5597359591911
+                ],
+                [
+                    -113.0392486348262,
+                    -75.52750236740935
+                ],
+                [
+                    -112.9496008914042,
+                    -75.49549238258052
+                ],
+                [
+                    -112.8610351464356,
+                    -75.46369884904888
+                ],
+                [
+                    -112.7735185461694,
+                    -75.43211500055946
+                ],
+                [
+                    -112.6987939419118,
+                    -75.40502128691826
+                ],
+                [
+                    -112.6131136783899,
+                    -75.37379733325704
+                ],
+                [
+                    -112.5283987462402,
+                    -75.34276551680871
+                ],
+                [
+                    -112.4559254068921,
+                    -75.3160971612454
+                ],
+                [
+                    -112.3729031087587,
+                    -75.28539543485826
+                ],
+                [
+                    -112.2907723832923,
+                    -75.25487055200821
+                ],
+                [
+                    -112.209830929063,
+                    -75.22463768907508
+                ],
+                [
+                    -112.7532511728757,
+                    -75.12864003609809
+                ],
+                [
+                    -112.8347316638655,
+                    -75.15868464816393
+                ],
+                [
+                    -112.9128848001224,
+                    -75.18736172842479
+                ],
+                [
+                    -112.9918080884907,
+                    -75.21618503462575
+                ],
+                [
+                    -113.0761613163225,
+                    -75.24684344580338
+                ],
+                [
+                    -113.1614551726703,
+                    -75.27768650633939
+                ],
+                [
+                    -113.2524976759575,
+                    -75.31043774799267
+                ],
+                [
+                    -113.3326277980009,
+                    -75.3391107046263
+                ],
+                [
+                    -113.4208757469894,
+                    -75.37053439210608
+                ],
+                [
+                    -113.5101799875592,
+                    -75.40216667067675
+                ],
+                [
+                    -113.5879871235704,
+                    -75.42958408144523
+                ],
+                [
+                    -113.6793054932011,
+                    -75.46160852659094
+                ],
+                [
+                    -113.7717775113979,
+                    -75.49386171308545
+                ],
+                [
+                    -113.8654414928736,
+                    -75.5263514582517
+                ],
+                [
+                    -113.9603376354541,
+                    -75.5590860494018
+                ],
+                [
+                    -114.0565084015083,
+                    -75.59207423797056
+                ],
+                [
+                    -114.1539986987296,
+                    -75.62532527635184
+                ],
+                [
+                    -114.2501090435833,
+                    -75.65791875463
+                ],
+                [
+                    -114.350334919985,
+                    -75.69171442086983
+                ],
+                [
+                    -114.4520299851088,
+                    -75.72580374455914
+                ],
+                [
+                    -114.5523529517018,
+                    -75.75923439800971
+                ],
+                [
+                    -113.9980421256688,
+                    -75.85935083576348
+                ]
+            ]
+        ]
+    },
+    "bbox": [
+        -114.5523529517018,
+        -75.85935083576348,
+        -112.209830929063,
+        -75.12864003609809
+    ],
+    "properties": {
+        "gsd": 20.0,
+        "constellation": "Sentinel-1",
+        "platform": "Sentinel-1A",
+        "instruments": [
+            "Sentinel-1A CSAR"
+        ],
+        "created": "2025-06-20T06:02:14.933892Z",
+        "start_datetime": "2025-01-29T05:09:32.860157Z",
+        "end_datetime": "2025-01-29T05:09:35.943491Z",
+        "odc:product": "ga_s1_iw_hh_c1",
+        "odc:product_family": "sar_ard",
+        "odc:region_code": "t007_014549_iw1",
+        "product:type": "RTC_S1",
+        "ceosard:type": "radar",
+        "ceosard:specification": "NRB",
+        "ceosard:specification_version": "1.1",
+        "proj:code": "EPSG:3031",
+        "proj:bbox": [
+            -1502820.0,
+            -653760.0,
+            -1404540.0,
+            -603780.0
+        ],
+        "sar:frequency_band": "C",
+        "sar:center_frequency": 5405000454.33435,
+        "sar:polarizations": [
+            "HH"
+        ],
+        "sar:observation_direction": "right",
+        "sar:beam_ids": [
+            "IW1"
+        ],
+        "sar:instrument_mode": "IW",
+        "sat:orbit_state": "descending",
+        "sat:absolute_orbit": 57654,
+        "sat:relative_orbit": 7,
+        "sat:orbit_cycle": 12,
+        "s1:orbit_source": "POE precise orbit",
+        "processing:level": "L2",
+        "processing:facility": "Geoscience Australia",
+        "processing:datetime": "2025-06-20T06:02:14.933892Z",
+        "processing:version": "1.0.4",
+        "processing:software": {
+            "isce3": "0.15.0",
+            "s1Reader": "0.2.5",
+            "OPERA-adt/RTC": "1.0.4",
+            "sar-pipeline": "0.2.2b1.dev44+g9b4a47a",
+            "dem-handler": "0.2.2"
+        },
+        "sarard:source_id": [
+            "S1A_IW_SLC__1SSH_20250129T050920_20250129T050947_057654_071AE1_7E33.SAFE"
+        ],
+        "sarard:scene_id": "S1A_IW_SLC__1SSH_20250129T050920_20250129T050947_057654_071AE1_7E33",
+        "sarard:burst_id": "t007_014549_iw1",
+        "sarard:orbit_files": [
+            "S1A_OPER_AUX_POEORB_OPOD_20250218T070639_V20250128T225942_20250130T005942.EOF"
+        ],
+        "sarard:pixel_spacing_x": 20.0,
+        "sarard:pixel_spacing_y": 20.0,
+        "sarard:resolution_x": 20.0,
+        "sarard:resolution_y": 20.0,
+        "sarard:speckle_filter_applied": "False",
+        "sarard:speckle_filter_type": "",
+        "sarard:speckle_filter_window": [],
+        "sarard:measurement_type": "gamma0",
+        "sarard:measurement_convention": "linear backscatter intensity",
+        "sarard:conversion_eq": "10*log10(backscatter_linear)",
+        "sarard:noise_removal_applied": true,
+        "sarard:static_tropospheric_correction_applied": true,
+        "sarard:wet_tropospheric_correction_applied": false,
+        "sarard:bistatic_correction_applied": true,
+        "sarard:ionospheric_correction_applied": false,
+        "sarard:geometric_accuracy_ALE": "TODO",
+        "sarard:geometric_accuracy_rmse": "TODO",
+        "sarard:geometric_accuracy_range": "TODO",
+        "sarard:geometric_accuracy_azimuth": "TODO",
+        "storage:schemes": {
+            "aws-std": {
+                "type": "aws-s3",
+                "platform": "https://{bucket}.s3.{region}.amazonaws.com",
+                "bucket": "deant-data-public-dev",
+                "region": "ap-southeast-2",
+                "requester_pays": true
+            }
+        },
+        "datetime": "2025-01-29T05:09:32.860157Z"
+    },
+    "links": [
+        {
+            "rel": "ceos-ard-specification",
+            "href": "https://ceos.org/ard/files/PFS/SAR/v1.1/CEOS-ARD_PFS_Synthetic_Aperture_Radar_v1.1.pdf",
+            "type": "application/pdf"
+        },
+        {
+            "rel": "geoid-source",
+            "href": "https://aria-geoid.s3.us-west-2.amazonaws.com/us_nga_egm2008_1_4326__agisoft.tif"
+        },
+        {
+            "rel": "derived_from",
+            "href": "https://datapool.asf.alaska.edu/SLC/SA/S1A_IW_SLC__1SSH_20250129T050920_20250129T050947_057654_071AE1_7E33.zip"
+        },
+        {
+            "rel": "dem-source",
+            "href": "https://registry.opendata.aws/copernicus-dem/"
+        },
+        {
+            "rel": "rtc-algorithm",
+            "href": "https://doi.org/10.1109/TGRS.2022.3147472"
+        },
+        {
+            "rel": "geocoding-algorithm",
+            "href": "https://doi.org/10.1109/TGRS.2022.3147472"
+        },
+        {
+            "rel": "noise-correction",
+            "href": "https://sentinels.copernicus.eu/documents/247904/2142675/Thermal-Denoising-of-Products-Generated-by-Sentinel-1-IPF.pdf"
+        },
+        {
+            "rel": "additional-metadata",
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_c1/t007_014549_iw1/2025/1/29/OPERA_L2_RTC-S1_T007-014549-IW1_20250129T050932Z_20250620T060210Z_S1A_20_v1.0.4.h5"
+        },
+        {
+            "rel": "static-layers",
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_static_c1/t007_014549_iw1/metadata.json"
+        },
+        {
+            "rel": "self",
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_c1/t007_014549_iw1/2025/1/29/metadata.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "./collection.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "HH": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_c1/t007_014549_iw1/2025/1/29/OPERA_L2_RTC-S1_T007-014549-IW1_20250129T050932Z_20250620T060210Z_S1A_20_v1.0.4_HH.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "HH",
+            "description": "HH polarised backscatter",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "float32",
+            "raster:sampling": "Area",
+            "raster:nodata": "nan",
+            "processing:level": "L2",
+            "roles": [
+                "data",
+                "backscatter"
+            ]
+        },
+        "mask": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_c1/t007_014549_iw1/2025/1/29/OPERA_L2_RTC-S1_T007-014549-IW1_20250129T050932Z_20250620T060210Z_S1A_20_v1.0.4_mask.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "mask",
+            "description": "shadow layover data mask",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "uint8",
+            "raster:sampling": "Area",
+            "raster:nodata": 255.0,
+            "raster:values": {
+                "shadow": 1,
+                "layover": 2,
+                "shadow_and_layover": 3,
+                "invalid_sample": 255
+            },
+            "roles": [
+                "data",
+                "auxiliary",
+                "mask",
+                "shadow",
+                "layover"
+            ]
+        },
+        "thumbnail": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_c1/t007_014549_iw1/2025/1/29/OPERA_L2_RTC-S1_T007-014549-IW1_20250129T050932Z_20250620T060210Z_S1A_20_v1.0.4.png",
+            "type": "image/png",
+            "title": "thumbnail",
+            "description": "thumbnail image for backscatter",
+            "roles": [
+                "thumbnail"
+            ]
+        },
+        "number_of_looks": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_static_c1/t007_014549_iw1/OPERA_L2_RTC-S1-STATIC_T007-014549-IW1_20010101_20250620T054254Z_S1A_20_v1.0.4_number_of_looks.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "number_of_looks",
+            "description": "number of looks",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "float32",
+            "raster:sampling": "Area",
+            "raster:nodata": "nan",
+            "roles": [
+                "data",
+                "auxiliary"
+            ]
+        },
+        "gamma0_to_beta0_ratio": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_static_c1/t007_014549_iw1/OPERA_L2_RTC-S1-STATIC_T007-014549-IW1_20010101_20250620T054254Z_S1A_20_v1.0.4_rtc_anf_gamma0_to_beta0.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "gamma0_to_beta0_ratio",
+            "description": "backscatter conversion layer, gamma0 to beta0. Eq. beta0 = rtc_anf_gamma0_to_beta0*gamma0",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "float32",
+            "raster:sampling": "Area",
+            "raster:nodata": "nan",
+            "roles": [
+                "data",
+                "auxiliary",
+                "conversion"
+            ]
+        },
+        "gamma0_to_sigma0_ratio": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_static_c1/t007_014549_iw1/OPERA_L2_RTC-S1-STATIC_T007-014549-IW1_20010101_20250620T054254Z_S1A_20_v1.0.4_rtc_anf_gamma0_to_sigma0.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "gamma0_to_sigma0_ratio",
+            "description": "backscatter conversion layer, gamma0 to sigma0. Eq. sigma0 = rtc_anf_sigma0_to_sigma0*gamma0",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "float32",
+            "raster:sampling": "Area",
+            "raster:nodata": "nan",
+            "roles": [
+                "data",
+                "auxiliary",
+                "conversion"
+            ]
+        },
+        "local_incidence_angle": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_static_c1/t007_014549_iw1/OPERA_L2_RTC-S1-STATIC_T007-014549-IW1_20010101_20250620T054254Z_S1A_20_v1.0.4_local_incidence_angle.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "local_incidence_angle",
+            "description": "local incidence angle (LIA)",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "float32",
+            "raster:sampling": "Area",
+            "raster:nodata": "nan",
+            "roles": [
+                "data",
+                "auxiliary"
+            ]
+        },
+        "incidence_angle": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_static_c1/t007_014549_iw1/OPERA_L2_RTC-S1-STATIC_T007-014549-IW1_20010101_20250620T054254Z_S1A_20_v1.0.4_incidence_angle.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "incidence_angle",
+            "description": "incidence angle (IA)",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "float32",
+            "raster:sampling": "Area",
+            "raster:nodata": "nan",
+            "roles": [
+                "data",
+                "auxiliary"
+            ]
+        },
+        "digital_elevation_model": {
+            "href": "https://deant-data-public-dev.s3.ap-southeast-2.amazonaws.com/experimental/linkage/s1_rtc_static_c1/t007_014549_iw1/OPERA_L2_RTC-S1-STATIC_T007-014549-IW1_20010101_20250620T054254Z_S1A_20_v1.0.4_interpolated_dem.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "digital_elevation_model",
+            "description": "interpolated digital elevation model (DEM)",
+            "proj:shape": [
+                2499,
+                4914
+            ],
+            "proj:transform": [
+                20.0,
+                0.0,
+                -1502820.0,
+                0.0,
+                -20.0,
+                -603780.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "proj:code": "EPSG:3031",
+            "raster:data_type": "float32",
+            "raster:sampling": "Area",
+            "raster:nodata": "nan",
+            "roles": [
+                "data",
+                "ancillary"
+            ]
+        }
+    },
+    "collection": "s1_rtc_c1"
+}

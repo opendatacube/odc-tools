@@ -13,8 +13,8 @@ import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.ui.click import environment_option, pass_config
+from datacube.utils.documents import parse_doc_stream
 from odc.aio import S3Fetcher, s3_find_glob
-from odc.apps.dc_tools._docs import parse_doc_stream
 from odc.apps.dc_tools.utils import (
     IndexingException,
     SkippedException,
@@ -115,6 +115,7 @@ def dump_to_odc(
     publish_action=None,
     rename_product: None | str = None,
     url_string_replace: None | tuple[str, str] | None = None,
+    convert_bools: bool = False,
     **kwargs,
 ) -> Tuple[int, int, int]:
     doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
@@ -134,6 +135,12 @@ def dump_to_odc(
             continue
         found_docs = True
         stac = None
+        if convert_bools:
+            for prop, val in dataset["properties"].items():
+                if val is True:
+                    dataset["properties"][prop] = "true"
+                elif val is False:
+                    dataset["properties"][prop] = "false"
         if transform:
             item = Item.from_dict(dataset)
             dataset, uri, stac = item_to_meta_uri(
@@ -194,6 +201,12 @@ def dump_to_odc(
 @publish_action
 @rename_product
 @url_string_replace
+@click.option(
+    "--convert-bools",
+    is_flag=True,
+    default=False,
+    help="Convert boolean properties to strings for backwards compatibility",
+)
 @click.argument("uris", nargs=-1)
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
@@ -214,6 +227,7 @@ def cli(
     publish_action,
     rename_product,
     url_string_replace,
+    convert_bools,
     uris,
     product,
 ) -> None:
@@ -272,7 +286,6 @@ def cli(
                     "Any wildcard characters will be escaped."
                 )
     # Get a generator from supplied S3 Uri for candidate documents
-    fetcher = None
     # Grab the URL from the resulting S3 item
     if is_glob:
         fetcher = S3Fetcher(aws_unsigned=no_sign_request)
@@ -312,6 +325,7 @@ def cli(
         publish_action=publish_action,
         rename_product=rename_product,
         url_string_replace=url_string_replace_tuple,
+        convert_bools=convert_bools,
     )
 
     print(
