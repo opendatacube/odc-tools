@@ -26,7 +26,6 @@ dependencies:
   - lxml # needed for thredds-crawler
   - datadog
   - docker-py
-  - eodatasets3>=1.9.0
   - odc-geo
   - odc-stac
 
