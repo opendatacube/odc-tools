@@ -26,7 +26,7 @@ def from_tar_file(tarfname, index, mk_uri, mode, doc_transform=None, **kwargs):
     )
 
 
-@click.command("index_from_tar")
+@click.command("index_from_tar", deprecated=True)
 @click.option("--env", "-E", type=str, help="Datacube environment name")
 @click.option(
     "--product",

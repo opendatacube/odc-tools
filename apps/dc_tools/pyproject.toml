@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "click",
-    "datacube>=1.9.6",
+    "datacube>=1.9.9",
     "datadog",
     "eodatasets3>=1.9",
     "fsspec",
