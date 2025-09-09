@@ -9,7 +9,6 @@ dependencies = [
     "click",
     "datacube>=1.9.9",
     "datadog",
-    "eodatasets3>=1.9",
     "fsspec",
     "odc-cloud[ASYNC]>=0.2.3",
     "odc-geo",
