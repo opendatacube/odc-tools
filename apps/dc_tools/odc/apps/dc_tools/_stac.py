@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
-import numpy
 from datacube.metadata import ds2stac
 from datacube.model import Dataset
 from odc.geo.geom import Geometry, box
@@ -452,12 +451,6 @@ def stac_transform(input_stac: Document) -> Document:
         stac_odc["lineage"] = lineage
 
     return stac_odc
-
-
-# TODO: This is a temporary fix
-def transform_geom_json_coordinates_to_list(geom_json):
-    geom_json["coordinates"] = numpy.array(geom_json["coordinates"]).tolist()
-    return geom_json
 
 
 def ds_to_stac(ds: Dataset) -> dict:
