@@ -183,7 +183,7 @@ def get_uri(metadata, rel_value):
     return uri
 
 
-def do_archiving(metadata, dc: Datacube, publish_action, stac):
+def do_archiving(metadata, dc: Datacube, publish_action: str | None, stac: bool | None):
     dataset_id = uuid.UUID(metadata.get("id"))
     if dataset_id:
         dc.index.datasets.archive([dataset_id])
