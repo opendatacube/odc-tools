@@ -35,11 +35,8 @@ with `pip` like so:
 ```
 pip install \
   odc-ui \
-  odc-stac \
-  odc-stats \
   odc-io \
-  odc-cloud[ASYNC] \
-  odc-dscache
+  odc-cloud[ASYNC]
 ```
 
 For Conda Users
@@ -173,11 +170,7 @@ channels:
   - conda-forge
 dependencies:
   # Datacube
-  - datacube>=1.8.5
-
-  # odc.dscache
-  - python-lmdb
-  - zstandard
+  - datacube>=1.9.9
 
   # odc.ui
   - ipywidgets
@@ -185,25 +178,23 @@ dependencies:
   - tqdm
 
   # odc-apps-dc-tools
-  - pystac>=1
-  - pystac-client>=0.2.0
+  - pystac>=1.2.0
+  - pystac-client>=0.4.0
   - azure-storage-blob
   - fsspec
   - lxml  # needed for thredds-crawler
+  - datadog
 
   # odc.{aio,aws}: aiobotocore/boto3
   #  pin aiobotocore for easier resolution of dependencies
   - aiobotocore==1.3.3
   - boto3
 
-  # eodatasets3 (used by odc-stats)
-  - boltons
-  - ciso8601
-  - python-rapidjson
-  - requests-cache
+  # odc.io
   - ruamel.yaml
-  - structlog
-  - url-normalize
+
+  # odc.cloud
+  - requests-cache
 
   # for dev
   - pylint
@@ -225,9 +216,7 @@ dependencies:
   - pip:
       # odc.apps.dc-tools
       - thredds-crawler
-
-      # odc.stats
-      - eodatasets3
+      - rio-stac
 
       # tests
       - pytest-depends
@@ -236,10 +225,7 @@ dependencies:
       - jupyter-ui-poll
 
       # odc-tools libs
-      - odc-stac
       - odc-ui
-      - odc-dscache
-      - odc-stats
 
       # odc-tools CLI apps
       - odc-apps-dc-tools

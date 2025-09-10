@@ -4,7 +4,6 @@
 # extras are needed:
 #  - test dependencies that are not listed as direct dependencies
 #  - libraries that need extra features enabled (dask[complete], datacube[dev])
-#  - optional dependencies that are needed to run tests more fully (hdstats)
 #  - libraries that we need to constrain versions for to help pip resolutions
 #
 
@@ -24,15 +23,13 @@ click
 dask[complete]>=2023.2.0,<2024.11.0
 dask_image>=2023.2.0,<2024.11.0
 
-datacube[dev]>=1.9.0
+datacube[dev]>=1.9.9
 datadog
 # things needed for tests that might not be referenced in setup.py
 deepdiff
 docker
-eodatasets3>=1.9.0
 fsspec
 google-cloud-storage
-hdstats>=0.1.7.post5
 ipyleaflet
 ipywidgets
 jinja2
