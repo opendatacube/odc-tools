@@ -2,7 +2,7 @@ import click
 import re
 import sys
 from fnmatch import fnmatch
-from odc.aws import s3_client
+from datacube.utils.aws import s3_client
 from odc.aws.inventory import list_inventory
 
 

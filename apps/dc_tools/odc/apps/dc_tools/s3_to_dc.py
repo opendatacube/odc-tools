@@ -13,6 +13,12 @@ import click
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.ui.click import environment_option, pass_config
+from datacube.utils.aws import (
+    _aws_unsigned_check_env,
+    auto_find_region,
+    s3_client,
+    s3_fetch,
+)
 from datacube.utils.documents import parse_doc_stream
 from odc.aio import S3Fetcher, s3_find_glob
 from odc.apps.dc_tools.utils import (
@@ -37,7 +43,6 @@ from odc.apps.dc_tools.utils import (
     url_string_replace,
     verify_lineage,
 )
-from odc.aws import _aws_unsigned_check_env, auto_find_region, s3_client, s3_fetch
 from pystac import Item
 
 
