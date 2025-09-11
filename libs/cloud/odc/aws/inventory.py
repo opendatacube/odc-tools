@@ -47,7 +47,7 @@ def list_inventory(
     prefix: str = "",
     suffix: str = "",
     contains: str = "",
-    n_threads: int = None,
+    n_threads: int | None = None,
     **kw,
 ):
     """
