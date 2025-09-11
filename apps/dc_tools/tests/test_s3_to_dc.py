@@ -1,8 +1,74 @@
 # Tests using the Click framework the s3-to-dc CLI tool
 # flake8: noqa
-
+import boto3
+import json
+import pytest
+from moto import mock_aws
 from click.testing import CliRunner
+from odc.aws.queue import get_queue, get_queues, redrive_queue
 from odc.apps.dc_tools.s3_to_dc import cli as s3_to_dc
+from odc.apps.dc_tools.redrive_to_queue import cli as redrive_cli
+
+
+ALIVE_QUEUE_NAME = "mock-alive-queue"
+DEAD_QUEUE_NAME = "mock-dead-queue"
+
+
+@mock_aws
+def test_redrive_to_queue_cli(aws_env) -> None:
+    resource = boto3.resource("sqs")
+
+    dead_queue = resource.create_queue(QueueName=DEAD_QUEUE_NAME)
+    resource.create_queue(
+        QueueName=ALIVE_QUEUE_NAME,
+        Attributes={
+            "RedrivePolicy": json.dumps(
+                {
+                    "deadLetterTargetArn": dead_queue.attributes.get("QueueArn"),
+                    "maxReceiveCount": 2,
+                }
+            ),
+        },
+    )
+
+    for i in range(35):
+        dead_queue.send_message(MessageBody=json.dumps({"content": f"Something {i}"}))
+    runner = CliRunner()
+    # Invalid value string
+    returned = runner.invoke(
+        redrive_cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", "string_test"],
+    )
+    assert returned.exit_code == 1
+
+    # Invalid value 0
+    returned = runner.invoke(
+        redrive_cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", 0],
+    )
+    assert returned.exit_code == 1
+
+    # Valid value 1
+    returned = runner.invoke(
+        redrive_cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", 1],
+    )
+    assert returned.exit_code == 0
+    assert (
+        int(get_queue(ALIVE_QUEUE_NAME).attributes.get("ApproximateNumberOfMessages"))
+        == 1
+    )
+
+    # Valid value None (all)
+    returned = runner.invoke(
+        redrive_cli,
+        [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", None],
+    )
+    assert returned.exit_code == 0
+    assert (
+        int(get_queue(DEAD_QUEUE_NAME).attributes.get("ApproximateNumberOfMessages"))
+        == 0
+    )
 
 
 def test_s3_to_dc_skips_already_indexed_datasets(
