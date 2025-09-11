@@ -86,7 +86,7 @@ def list_inventory(
     schema = tuple(info["fileSchema"].split(", "))
 
     if n_threads:
-        with ThreadPoolExecutor(max_workers=1000) as executor:
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
             tasks = [
                 executor.submit(retrieve_manifest_files, key, s3, schema)
                 for key in data_urls
