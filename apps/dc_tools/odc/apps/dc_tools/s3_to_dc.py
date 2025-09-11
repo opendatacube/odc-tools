@@ -22,8 +22,8 @@ from datacube.utils.aws import (
 from datacube.utils.documents import parse_doc_stream
 from odc.aio import S3Fetcher, s3_find_glob
 from odc.apps.dc_tools.utils import (
-    IndexingException,
-    SkippedException,
+    DatasetExists,
+    IndexingError,
     allow_unsafe,
     archive_less_mature,
     fail_on_missing_lineage,
@@ -168,10 +168,10 @@ def dump_to_odc(
                 stac_doc=stac,
             )
             ds_added += 1
-        except IndexingException:
+        except IndexingError:
             logging.exception("Failed to index dataset %s", uri)
             ds_failed += 1
-        except SkippedException:
+        except DatasetExists:
             ds_skipped += 1
     if not found_docs:
         raise click.ClickException("Doc stream was empty")

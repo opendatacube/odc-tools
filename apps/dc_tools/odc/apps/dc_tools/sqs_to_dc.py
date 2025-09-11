@@ -23,8 +23,8 @@ from datacube.metadata import stac2ds
 from datacube.ui.click import environment_option, pass_config
 from datacube.utils import documents
 from odc.apps.dc_tools.utils import (
-    IndexingException,
-    SkippedException,
+    DatasetExists,
+    IndexingError,
     allow_unsafe,
     archive,
     fail_on_missing_lineage,
@@ -52,14 +52,14 @@ def extract_metadata_from_message(message):
         body = json.loads(message.body)
         metadata = json.loads(body["Message"])
     except (KeyError, json.JSONDecodeError) as e:
-        raise IndexingException(
+        raise IndexingError(
             f"Failed to load metadata from the SQS message due to error: {e}"
         )
 
     if metadata:
         return metadata
     else:
-        raise IndexingException("Failed to load metadata from the SQS message")
+        raise IndexingError("Failed to load metadata from the SQS message")
 
 
 def extract_action_from_message(message):
@@ -92,11 +92,11 @@ def handle_json_message(metadata, odc_metadata_link):
                 metadata = documents.parse_yaml(content)
                 uri = odc_yaml_uri
             except requests.RequestException as err:
-                raise IndexingException(
+                raise IndexingError(
                     f"Failed to load metadata from the link provided -  {err}"
                 )
         else:
-            raise IndexingException("ODC EO3 metadata link not found")
+            raise IndexingError("ODC EO3 metadata link not found")
     else:
         # if no odc_metadata_link provided, it will look for metadata dict "href" value with "rel==self"
         uri = get_uri(metadata, "self")
@@ -115,7 +115,7 @@ def handle_bucket_notification_message(
         record_path (tuple): [PATH for selecting the s3 key path from the JSON message document]
 
     Raises:
-        IndexingException: [Catch s3 ]
+        IndexingError: [Catch s3 ]
 
     Returns:
         Tuple[dict, str]: [description]
@@ -131,7 +131,7 @@ def handle_bucket_notification_message(
             # Check for bucket name and key, and fail if there isn't one
             if not (bucket_name and key):
                 # Not deleting this message, as it's non-conforming. Check this logic
-                raise IndexingException(
+                raise IndexingError(
                     "No bucket name or key in message, are you sure this is a bucket notification?"
                 )
 
@@ -163,11 +163,11 @@ def handle_bucket_notification_message(
                     )
                     data = safe_load(obj["Body"].read())
             except Exception as e:
-                raise IndexingException(
+                raise IndexingError(
                     "Exception thrown when trying to load s3 object"
                 ) from e
     else:
-        raise IndexingException(
+        raise IndexingError(
             "Attempted to get metadata from record when no record key exists in message."
         )
 
@@ -196,7 +196,7 @@ def do_archiving(metadata, dc: Datacube, publish_action: str | None, stac: bool 
                 ),
             )
     else:
-        raise IndexingException("Failed to get an ID from the message, can't archive.")
+        raise IndexingError("Failed to get an ID from the message, can't archive.")
 
 
 def queue_to_odc(
@@ -230,7 +230,7 @@ def queue_to_odc(
         except FileNotFoundError:
             logging.exception("Could not find region_code file")
         if len(region_codes) == 0:
-            raise IndexingException(
+            raise IndexingError(
                 f"Region code list is empty, please check the list at: {region_code_list_uri}"
             )
 
@@ -294,7 +294,7 @@ def queue_to_odc(
                             stac_doc=stac_doc,
                         )
                         ds_success += 1
-                    except SkippedException:
+                    except DatasetExists:
                         ds_skipped += 1
                 else:
                     logging.warning("Found None for metadata and uri, skipping")
@@ -302,7 +302,7 @@ def queue_to_odc(
 
             # Success, so delete the message.
             message.delete()
-        except IndexingException:
+        except IndexingError:
             logging.exception("Failed to handle SQS message")
             ds_failed += 1
 

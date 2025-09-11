@@ -16,15 +16,15 @@ from ._stac import ds_to_stac
 MICROSOFT_PC_STAC_URI = "https://planetarycomputer.microsoft.com/api/stac/v1/"
 
 
-class IndexingException(Exception):
+class IndexingError(Exception):
     """
     Exception to raise for error during SQS to DC indexing/archiving
     """
 
 
-class SkippedException(Exception):
+class DatasetExists(Exception):
     """
-    Exception to raise for error if dataset exists  and not updating
+    Exception to raise for error if dataset exists and not updating
     """
 
 
@@ -205,7 +205,7 @@ def index_update_dataset(
            * If None (the default), ignore dataset maturity.
            * If int, enforce dataset maturity by looking for existing datasets with same product, region_code and time
              values. If a less mature match is found, it is archived and replaced with the new dataset being inserted.
-             If a match of the same or greater maturity is found a SkippedException is raised.
+             If a match of the same or greater maturity is found a DatasetExists is raised.
              The integer value is used as the timedelta value for allowing a leniency when comparing
              timestamp values, for datasets where there is a slight discrepancy. Default is 500ms.
     :param publish_action: SNS topic arn to publish action to.
@@ -219,11 +219,11 @@ def index_update_dataset(
                 doc2ds = Doc2Dataset(dc.index)
             dataset, err = doc2ds(jsonify_document(dataset), uri)
         except ValueError as e:
-            raise IndexingException(
+            raise IndexingError(
                 f"Exception thrown when trying to create dataset: '{e}'\n The URI was {uri}"
             ) from e
         if dataset is None:
-            raise IndexingException(
+            raise IndexingError(
                 f"Failed to create dataset with error {err}\n The URI was {uri}"
             )
 
@@ -256,19 +256,17 @@ def index_update_dataset(
                     )
                     updated = True
                 except ValueError as e:
-                    raise IndexingException(
+                    raise IndexingError(
                         f"Updating the dataset raised an exception: {e}"
                     )
             else:
-                raise SkippedException(
+                raise DatasetExists(
                     f"Dataset {dataset.id} already exists, not indexing"
                 )
         else:
             if update:
                 # We're expecting to update a dataset, but it doesn't exist
-                raise IndexingException(
-                    "Can't update dataset because it doesn't exist."
-                )
+                raise IndexingError("Can't update dataset because it doesn't exist.")
             # Everything is working as expected, add the dataset
             dc.index.datasets.add(
                 dataset,
@@ -340,7 +338,7 @@ def item_to_meta_uri(
             "Couldn't find matching product for product name: %s",
             product_name_sanitised,
         )
-        raise SkippedException(
+        raise DatasetExists(
             f"Couldn't find matching product for product name: {product_name_sanitised}"
         )
 
