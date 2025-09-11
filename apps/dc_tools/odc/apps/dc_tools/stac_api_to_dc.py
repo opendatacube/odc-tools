@@ -12,7 +12,7 @@ from datacube import Datacube
 from datacube.index.hl import Doc2Dataset
 from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools.utils import (
-    SkippedException,
+    DatasetExists,
     allow_unsafe,
     archive_less_mature,
     bbox,
@@ -145,7 +145,7 @@ def stac_api_to_odc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
-            except SkippedException:
+            except DatasetExists:
                 skipped += 1
             except Exception:  # pylint:disable=broad-except
                 logging.exception("Failed to handle item %s", item)

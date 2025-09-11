@@ -18,7 +18,7 @@ from datacube.metadata import stac2ds
 from datacube.ui.click import environment_option, pass_config
 from datacube.utils import read_documents
 from odc.apps.dc_tools.utils import (
-    SkippedException,
+    DatasetExists,
     archive_less_mature,
     bbox,
     index_update_dataset,
@@ -190,7 +190,7 @@ def cop_dem_to_dc(
                 success += 1
                 if success % 10 == 0:
                     sys.stdout.write(f"\rAdded {success} datasets...")
-            except SkippedException:
+            except DatasetExists:
                 skipped += 1
             except rasterio.errors.RasterioIOError:
                 logging.info("Couldn't read file %s", uri, exc_info=True)
