@@ -1,9 +1,9 @@
 from pathlib import Path
 from sys import stdin
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeAlias, Union
 
-PathLike = Union[str, Path]
-RawDoc = Union[str, bytes]
+PathLike: TypeAlias = Union[str, Path]
+RawDoc: TypeAlias = Union[str, bytes]
 
 try:
     from ruamel.yaml import YAML

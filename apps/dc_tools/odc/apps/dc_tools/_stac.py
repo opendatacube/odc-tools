@@ -4,7 +4,7 @@ Tools for STAC to EO3 translation
 
 import math
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, TypeAlias
 from uuid import UUID
 
 from datacube.metadata import ds2stac
@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 from ._docs import odc_uuid
 
-Document = Dict[str, Any]
+Document: TypeAlias = dict[str, Any]
 
 # This is an old hack, should be refactored out
 DEA_LANDSAT_PRODUCTS = ["ga_ls8c_ard_3", "ga_ls7e_ard_3", "ga_ls8t_ard_3"]
