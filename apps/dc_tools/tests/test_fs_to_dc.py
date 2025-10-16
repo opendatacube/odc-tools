@@ -39,7 +39,7 @@ def test_archive_less_mature(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"fs-to-dc failed with output: {result.output}"
     assert dc.index.datasets.get(final_dsid) is None
     assert dc.index.datasets.get(nrt_dsid).archived_time is None
 
@@ -54,7 +54,7 @@ def test_archive_less_mature(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"fs-to-dc failed with output: {result.output}"
     assert dc.index.datasets.get(final_dsid).archived_time is None
     assert dc.index.datasets.get(nrt_dsid).archived_time is not None
 
@@ -76,7 +76,7 @@ def test_dont_archive_less_mature(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"fs-to-dc failed with output: {result.output}"
     assert dc.index.datasets.get(final_dsid) is None
     assert dc.index.datasets.get(nrt_dsid).archived_time is None
 
@@ -90,7 +90,7 @@ def test_dont_archive_less_mature(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"fs-to-dc failed with output: {result.output}"
     assert dc.index.datasets.get(final_dsid).archived_time is None
     assert dc.index.datasets.get(nrt_dsid).archived_time is None
 
@@ -112,7 +112,7 @@ def test_keep_more_mature(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"fs-to-dc failed with output: {result.output}"
     assert dc.index.datasets.get(nrt_dsid) is None
     assert dc.index.datasets.get(final_dsid).archived_time is None
 
@@ -127,6 +127,6 @@ def test_keep_more_mature(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"fs-to-dc failed with output: {result.output}"
     assert dc.index.datasets.get(final_dsid).archived_time is None
     assert dc.index.datasets.get(nrt_dsid) is None
