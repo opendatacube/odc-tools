@@ -55,20 +55,20 @@ def aws_env(monkeypatch) -> None:
 @pytest.fixture
 def mocked_aws_s3_env():
     """
-    Run a Fake Local S3 Service on http://localhost:5000 and redirect odc.aio
-    to use it via an env variable.
+    Run Mock S3 Server and patch environment to use it
     """
 
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(ip_address="127.0.0.1", port=0)
     server.start()
+    _host, _port = server.get_host_and_port()
     # run tests
-    os.environ["AWS_S3_ENDPOINT"] = "http://localhost:5000"
+    os.environ["AWS_S3_ENDPOINT"] = f"http://{_host}:{_port}"
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
     os.environ["AWS_SECURITY_TOKEN"] = "testing"
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-    yield boto3.resource("s3", endpoint_url="http://localhost:5000")
+    yield boto3.resource("s3", endpoint_url=f"http://{_host}:{_port}")
     del os.environ["AWS_S3_ENDPOINT"]
     server.stop()
 
