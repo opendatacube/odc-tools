@@ -48,6 +48,9 @@ dependencies:
   - sphinx-autodoc-typehints
   - nbsphinx
 
+  # TODO: Fix --archive-less-mature flag then remove following line
+  - click<8.3 # Fix GHA test failures
+
   - pip=24
   - pip:
       # odc.apps.dc-tools
