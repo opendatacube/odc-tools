@@ -1,7 +1,10 @@
 """Test thredds downloader code"""
 
 import pytest
-from odc.azure import download_yamls, find_blobs
+
+pytest.importorskip("azure")
+
+from odc.azure import download_yamls, find_blobs  # noqa: E402
 
 
 @pytest.mark.xfail(reason="Libcloud azure tests are broken")
