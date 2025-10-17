@@ -1,7 +1,10 @@
 """Test thredds downloader code"""
 
 import pytest
-from odc.thredds import download_yamls, thredds_find_glob
+
+pytest.importorskip("thredds_crawler")
+
+from odc.thredds import download_yamls, thredds_find_glob  # noqa: E402
 
 
 # It's too slow to fail, disabling this for now
