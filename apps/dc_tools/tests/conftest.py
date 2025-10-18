@@ -446,6 +446,6 @@ def odc_db_for_archive(odc_test_db_with_products: Datacube, env_name):
             ["--stac", "--glob", filename, str(TEST_DATA_FOLDER), "--env", env_name],
         )
         print(result.output)
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"Output: {result.output}"
 
     return odc_test_db_with_products

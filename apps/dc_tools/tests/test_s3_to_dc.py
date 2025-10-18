@@ -39,21 +39,21 @@ def test_redrive_to_queue_cli(aws_env) -> None:
         redrive_cli,
         [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", "string_test"],
     )
-    assert returned.exit_code == 1
+    assert returned.exit_code == 1, f"Output: {returned.output}"
 
     # Invalid value 0
     returned = runner.invoke(
         redrive_cli,
         [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", 0],
     )
-    assert returned.exit_code == 1
+    assert returned.exit_code == 1, f"Output: {returned.output}"
 
     # Valid value 1
     returned = runner.invoke(
         redrive_cli,
         [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", 1],
     )
-    assert returned.exit_code == 0
+    assert returned.exit_code == 0, f"Output: {returned.output}"
     assert (
         int(get_queue(ALIVE_QUEUE_NAME).attributes.get("ApproximateNumberOfMessages"))
         == 1
@@ -64,7 +64,7 @@ def test_redrive_to_queue_cli(aws_env) -> None:
         redrive_cli,
         [str(DEAD_QUEUE_NAME), str(ALIVE_QUEUE_NAME), "--limit", None],
     )
-    assert returned.exit_code == 0
+    assert returned.exit_code == 0, f"Output: {returned.output}"
     assert (
         int(get_queue(DEAD_QUEUE_NAME).attributes.get("ApproximateNumberOfMessages"))
         == 0
@@ -91,14 +91,14 @@ def test_s3_to_dc_skips_already_indexed_datasets(
     ]
 
     # The first run should succeed and index all 25 datasets
-    assert results[0].exit_code == 0
+    assert results[0].exit_code == 0, f"Output: {results[0].output}"
     assert (
         results[0].output
         == "Added 25 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
 
     # The second run should succeed by SKIPPING all 25 datasets
-    assert results[1].exit_code == 0
+    assert results[1].exit_code == 0, f"Output: {results[1].output}"
     assert (
         results[1].output
         == "Added 0 datasets, skipped 25 datasets and failed 0 datasets.\n"
@@ -121,7 +121,7 @@ def test_s3_to_dc_stac(
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
@@ -143,7 +143,7 @@ def test_s3_to_dc_stac_update_if_exist(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
@@ -168,7 +168,7 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(
         ],
     )
     print(f"s3-to-dc exit_code: {result.exit_code}, output:{result.output}")
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
@@ -189,7 +189,7 @@ def test_s3_to_dc_fails_to_index_non_dataset_yaml(
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 1, f"Output: {result.output}"
     assert (
         result.output == "Added 0 datasets, skipped 0 datasets and failed 1 datasets.\n"
     )
@@ -211,7 +211,7 @@ def test_s3_to_dc_partially_succeeds_when_given_invalid_and_valid_dataset_yamls(
             env_name,
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 1, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 1 datasets.\n"
     )
@@ -234,7 +234,7 @@ def test_s3_to_dc_list_absolute_urls(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 3 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
@@ -255,7 +255,7 @@ def test_s3_to_dc_no_product(
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
     )
@@ -274,7 +274,7 @@ def test_s3_to_dc_no_product(
         ],
         catch_exceptions=False,
     )
-    assert result2.exit_code == 0
+    assert result2.exit_code == 0, f"Output: {result2.output}"
     assert (
         result2.output
         == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
@@ -297,7 +297,7 @@ def test_convert_bools(mocked_s3_datasets, odc_test_db_with_products, env_name) 
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     ds = dc.index.datasets.get("5f94dd81-241f-559a-9362-05b223d45ae1")
     # boolean values converted to strings
     assert ds.metadata.noise_removal_applied == "true"
