@@ -87,4 +87,4 @@ def test_indexing_cli(
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"

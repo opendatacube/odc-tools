@@ -56,7 +56,7 @@ def test_indexing_cli(bbox, product, odc_db, env_name) -> None:
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert f"Product definition added for {product}" in result.output
     assert "Added 4 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
 
@@ -73,6 +73,6 @@ def test_indexing_cli(bbox, product, odc_db, env_name) -> None:
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert f"Product definition added for {product}" in result.output
     assert "Added 0 Datasets, failed 0 Datasets, skipped 4 Datasets" in result.output

@@ -47,7 +47,7 @@ def test_stac_to_dc_earthsearch(odc_test_db_with_products, env_name) -> None:
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
     assert "Added 10 Datasets, failed 0 Datasets, skipped 0 Datasets" in result.output
 
 
@@ -66,7 +66,7 @@ def test_stac_to_dc_usgs(odc_test_db_with_products, env_name) -> None:
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
 
 
 def test_stac_to_dc_planetarycomputer(odc_test_db_with_products, env_name) -> None:
@@ -81,4 +81,4 @@ def test_stac_to_dc_planetarycomputer(odc_test_db_with_products, env_name) -> No
             env_name,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"

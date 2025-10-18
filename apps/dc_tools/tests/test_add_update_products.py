@@ -45,7 +45,7 @@ def test_add_products(local_csv, odc_db, env_name) -> None:
         ],
     )
     print(f"CLI Output: {result.output}")
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
 
 
 @pytest.fixture

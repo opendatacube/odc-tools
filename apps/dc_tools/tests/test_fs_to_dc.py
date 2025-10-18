@@ -19,7 +19,7 @@ def test_fs_to_fc_yaml(test_data_dir, env_name, odc_test_db_with_products) -> No
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"Output: {result.output}"
 
 
 def test_archive_less_mature(
