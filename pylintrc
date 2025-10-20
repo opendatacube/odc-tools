@@ -63,6 +63,7 @@ attr-rgx=[a-z_][a-z0-9_]{0,50}$
 argument-rgx=[a-z_][a-z0-9_]{0,50}$
 
 # Regular expression which should only match correct variable names
+# Permit any name for variables starting with an underscore.
 variable-rgx=[a-z_][a-z0-9_]{0,50}$|_(.*)$
 
 # Regular expression which should only match correct attribute names in class
