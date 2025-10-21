@@ -46,7 +46,7 @@ from odc.apps.dc_tools.utils import (
 from pystac import Item
 
 
-def doc_error(uri, doc) -> None:
+def doc_error(uri, doc, exc: Exception) -> None:
     """Log the internal errors parsing docs"""
     logging.exception("Failed to parse doc at %s", uri)
 
