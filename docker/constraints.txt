@@ -39,7 +39,7 @@ cryptography==44.0.0
 dask==2024.10.0
 dask-expr==1.1.16
 dask-image==2024.5.3
-datacube==1.9.9
+datacube==1.9.10
 datadog==0.50.2
 decorator==5.1.1
 deepdiff==8.6.1

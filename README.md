@@ -170,7 +170,7 @@ channels:
   - conda-forge
 dependencies:
   # Datacube
-  - datacube>=1.9.9
+  - datacube>=1.9.10
 
   # odc.ui
   - ipywidgets

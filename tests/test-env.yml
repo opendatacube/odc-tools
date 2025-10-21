@@ -10,7 +10,7 @@ dependencies:
   - python=3.12
 
   # Datacube
-  - datacube>=1.9.9
+  - datacube>=1.9.10
   - sqlalchemy>=2.0
 
   # odc.ui
