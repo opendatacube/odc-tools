@@ -6,7 +6,7 @@ authors = [
     {name = "Open Data Cube", email = "earth.observation@ga.gov.au"},
 ]
 dependencies = [
-    "datacube>=1.9.2",
+    "datacube>=1.9.2,<1.10.0",
     "ipyleaflet",
     "ipython",
     "ipywidgets>=8.0",
