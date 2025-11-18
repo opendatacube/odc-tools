@@ -195,9 +195,7 @@ def cli(
     else:
         # Check datacube connection and products
         candidate_products = product.split()
-        odc_products = dc.list_products().name.values
-
-        odc_products = set(odc_products)
+        odc_products = set(dc.list_products().name.values)
         if not set(candidate_products).issubset(odc_products):
             missing_products = list(set(candidate_products) - odc_products)
             print(
