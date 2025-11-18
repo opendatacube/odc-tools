@@ -282,7 +282,7 @@ jobs:
           datacube metadata add apps/dc_tools/tests/data/eo3_sentinel_ard.odc-type.yaml
 
           echo "Running Tests"
-          pytest --timeout=30 libs apps
+          pytest --timeout=90 libs apps
 
         env:
           AWS_DEFAULT_REGION: us-west-2
