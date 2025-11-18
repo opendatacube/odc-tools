@@ -28,7 +28,7 @@ pgdata=$(pwd)/.dbdata
 initdb -D ${pgdata} --auth-host=md5 --encoding=UTF8
 start_db
 createdb datacube
-datacube system init
+uv run datacube system init
 # add any new metadata types
-# datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
-datacube metadata add apps/dc_tools/tests/data/eo3_sentinel_ard.odc-type.yaml
+# uv run datacube metadata add "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
+uv run datacube metadata add apps/dc_tools/tests/data/eo3_sentinel_ard.odc-type.yaml

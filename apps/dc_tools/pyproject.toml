@@ -33,9 +33,12 @@ tests = [
     "flask",
     "flask_cors",
     "moto",
+    "odc-apps-dc-tools[azure,gcp,thredds]",
     "psycopg2",
     "pytest",
+    "pytest-cov",
     "pytest_httpserver",
+    "pytest-timeout",
 ]
 azure = [
     "odc-cloud[AZURE]",
