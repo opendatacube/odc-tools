@@ -378,7 +378,7 @@ def odc_db(cfg_env):
 
     with index._db._engine.begin() as conn:  # pylint:disable=protected-access
         if index.name == "pg_index":
-            pgres_core.drop_db(conn)
+            pgres_core.drop_schema(conn)
             # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
             # and attempts to recreate them. WTF TODO FIX
             remove_postgres_dynamic_indexes()
@@ -386,7 +386,7 @@ def odc_db(cfg_env):
             #     with conn.cursor() as cur:
             #         cur.execute("DROP SCHEMA IF EXISTS agdc CASCADE;")
         else:
-            pgis_core.drop_db(conn)
+            pgis_core.drop_schema(conn)
 
             remove_postgis_dynamic_indexes()
 
