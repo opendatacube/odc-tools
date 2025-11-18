@@ -73,58 +73,11 @@ jobs:
           ./scripts/build-wheels.sh ./wheels/dev
           find ./wheels/dev -type f
 
-  build-test-env-base:
-    timeout-minutes: 15
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        id: conda_cache
-        with:
-          path: |
-            tests/env
-          key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
-
-      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f # v3.2.0
-        if: steps.conda_cache.outputs.cache-hit != 'true'
-        with:
-          channels: conda-forge,defaults
-          channel-priority: true
-          activate-environment: ""
-          mamba-version: "*"
-          use-mamba: true
-
-      - name: Dump Conda Environment Info
-        shell: bash -l {0}
-        if: steps.conda_cache.outputs.cache-hit != 'true'
-        run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
-          printenv | sort
-
-      - name: Build Python Environment for Testing
-        shell: bash -l {0}
-        if: steps.conda_cache.outputs.cache-hit != 'true'
-        run: |
-          mamba env create -f tests/test-env.yml -p tests/env
-
-      - name: Check Python Env
-        shell: bash -l {0}
-        if: steps.conda_cache.outputs.cache-hit != 'true'
-        run: |
-          mamba env export -p tests/env
-
   test-with-coverage:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-    needs:
-      - build-test-env-base
     services:
       # Label used to access the service container
       postgres:
@@ -145,36 +98,21 @@ jobs:
           - 5432:5432
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-
-      - name: Get Conda Environment from Cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        id: conda_cache
-        with:
-          path: |
-            tests/env
-          key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
-
-      - name: Update PATH
-        shell: bash
-        run: |
-          echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
-          export PATH="$(pwd)/tests/env/bin"
+      - name: Install uv
+        uses: astral-sh/setup-uv@5a7eac68fb9809dea845d802897dc5c723910fa3 # v7.1.3
 
       - name: Install in Edit mode
         shell: bash
         run: |
-          which python
-          which datacube
-
-          ./scripts/dev-install.sh --no-deps
+          ./scripts/dev-install.sh --extra tests
 
       - name: Setup Test DB
         shell: bash
         run: |
           echo "Launching test db"
-          datacube --version
-          datacube system init
-          pip list --format=freeze
+          uv run datacube --version
+          uv run datacube system init
+          uv pip list --format=freeze
 
         env:
           ODC_DEFAULT_DB_URL: postgresql://postgres:postgres@localhost/datacube
@@ -182,10 +120,10 @@ jobs:
       - name: Run Tests
         shell: bash
         run: |
-          datacube system check
+          uv run datacube system check
 
           echo "Running Tests"
-          pytest --cov=. \
+          uv run pytest --cov=. \
           --cov-report=html \
           --cov-report=xml:coverage.xml \
           --timeout=90 \
@@ -211,7 +149,6 @@ jobs:
     runs-on: ubuntu-latest
 
     needs:
-      - build-test-env-base
       - build-wheels
 
     services:
@@ -242,27 +179,13 @@ jobs:
           path: ./wheels
           key: wheels-${{ github.sha }}
 
-      - name: Get Conda Environment from Cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        id: conda_cache
-        with:
-          path: |
-            tests/env
-          key: ${{ runner.os }}-test-env-${{ hashFiles('tests/test-env.yml') }}
-
-      - name: Update PATH
-        shell: bash
-        run: |
-          echo "$(pwd)/tests/env/bin" >> $GITHUB_PATH
-
       - name: Install wheels for testing
         shell: bash
         run: |
           which python
-          which datacube
-
           ls -lh wheels/clean
-          python -m pip install --no-deps wheels/clean/*whl
+          python -m pip install psycopg2
+          python -m pip install wheels/clean/*whl
           python -m pip check || true
 
       - name: Start Test DB
@@ -281,6 +204,8 @@ jobs:
           # from "https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/master/product_metadata/eo3_sentinel_ard.odc-type.yaml"
           datacube metadata add apps/dc_tools/tests/data/eo3_sentinel_ard.odc-type.yaml
 
+          python -m pip install deepdiff docker flask flask_cors moto pytest \
+              pytest-cov pytest-httpserver pytest-timeout
           echo "Running Tests"
           pytest --timeout=90 libs apps
 

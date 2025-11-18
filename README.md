@@ -136,101 +136,20 @@ The following steps are used in the GitHub Actions workflow `main.yml`
 
 ```bash
 
-# build environment from file
-mamba env create -f tests/test-env.yml
-
-# this environment name is defined in tests/test-env.yml file
-conda activate odc-tools-tests
-
-# install additional packages
-./scripts/dev-install.sh --no-deps
+# install all packages in edit mode
+./scripts/dev-install.sh --extra tests
 
 # setup database for testing
 ./scripts/setup-test-db.sh
 
 # run test
 echo "Running Tests"
-pytest --cov=. \
+uv run pytest --cov=. \
 --cov-report=html \
 --cov-report=xml:coverage.xml \
 --timeout=30 \
 libs apps
-
-# Optional, to delete the environment
-conda env remove -n odc-tools-tests
 ```
-
-Use `conda env update -f <file>` to install all needed dependencies for
-`odc-tools` libraries and apps.
-
-<details><summary>Conda `environment.yaml` (click to expand)</summary><div markdown="1">
-
-```yaml
-channels:
-  - conda-forge
-dependencies:
-  # Datacube
-  - datacube>=1.9.10
-
-  # odc.ui
-  - ipywidgets
-  - ipyleaflet
-  - tqdm
-
-  # odc-apps-dc-tools
-  - pystac>=1.2.0
-  - pystac-client>=0.4.0
-  - azure-storage-blob
-  - fsspec
-  - lxml  # needed for thredds-crawler
-  - datadog
-
-  # odc.{aio,aws}: aiobotocore/boto3
-  #  pin aiobotocore for easier resolution of dependencies
-  - aiobotocore==1.3.3
-  - boto3
-
-  # odc.io
-  - ruamel.yaml
-
-  # odc.cloud
-  - requests-cache
-
-  # for dev
-  - pylint
-  - autopep8
-  - flake8
-  - isort
-  - black
-  - mypy
-
-  # For tests
-  - pytest
-  - pytest-httpserver
-  - pytest-cov
-  - pytest-timeout
-  - moto
-  - deepdiff
-
-  - pip>=20
-  - pip:
-      # odc.apps.dc-tools
-      - thredds-crawler
-      - rio-stac
-
-      # tests
-      - pytest-depends
-
-      # odc.ui
-      - jupyter-ui-poll
-
-      # odc-tools libs
-      - odc-ui
-
-      # odc-tools CLI apps
-      - odc-apps-dc-tools
-```
-</div></details>
 
 Release Process
 ===============
