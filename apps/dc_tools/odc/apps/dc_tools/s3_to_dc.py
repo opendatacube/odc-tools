@@ -148,12 +148,13 @@ def dump_to_odc(
                     dataset["properties"][prop] = "false"
         if transform:
             item = Item.from_dict(dataset)
-            dataset, uri, stac = item_to_meta_uri(
+            dataset, new_uri, stac = item_to_meta_uri(
                 item,
                 dc,
                 rename_product=rename_product,
                 url_string_replace=url_string_replace,
             )
+            uri = new_uri or uri
         try:
             index_update_dataset(
                 dataset,

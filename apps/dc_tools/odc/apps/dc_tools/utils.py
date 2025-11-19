@@ -301,29 +301,34 @@ def statsd_gauge_reporting(value, tags=None, statsd_setting="localhost:8125") ->
     statsd.gauge("datacube_index", value, tags=tags)
 
 
-def item_to_meta_uri(
-    item: Item,
-    dc: Datacube,
-    rename_product: Optional[str] = None,
-    url_string_replace: tuple[str, str] | None = None,
-) -> Tuple[Dataset, str, Dict[str, Any]]:
+def get_self_link(item: Item) -> str | None:
+    uri = None
     for link in item.links:
         if link.rel == "self":
             uri = link.target
 
         # Override self with canonical
         if link.rel == "canonical":
-            uri = link.target
-            break
+            return link.target
+    return uri
 
+
+def item_to_meta_uri(
+    item: Item,
+    dc: Datacube,
+    rename_product: Optional[str] = None,
+    url_string_replace: tuple[str, str] | None = None,
+) -> Tuple[Dataset, str | None, Dict[str, Any]]:
     if rename_product is not None:
         item.properties["odc:product"] = rename_product
 
     # If we need to modify URLs, do it for the main URL and the asset links
+    uri = get_self_link(item)
     if url_string_replace is not None:
         old_url, new_url = url_string_replace
 
-        uri = uri.replace(old_url, new_url)
+        if uri is not None:
+            uri = uri.replace(old_url, new_url)
 
         for asset in item.assets.values():
             asset.href = asset.href.replace(old_url, new_url)
