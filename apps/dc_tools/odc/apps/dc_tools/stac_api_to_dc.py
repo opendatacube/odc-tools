@@ -78,6 +78,10 @@ def process_item(
     **kwargs,
 ) -> None:
     dataset, uri, stac = item_to_meta_uri(item, dc, rename_product, url_string_replace)
+    if uri is None:
+        raise ValueError(
+            f"The links field did not contain a self-reference for item {item}"
+        )
     doc2ds = Doc2Dataset(dc.index, **kwargs)
     index_update_dataset(
         dataset,
