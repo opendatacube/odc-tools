@@ -348,7 +348,7 @@ def item_to_meta_uri(
         )
 
     # Convert the STAC Item to a Dataset
-    dataset = next(stac2ds([item]))
+    dataset = next(stac2ds([item], {"asset_absolute_paths": False}))
     # And assign the product ID
     dataset.product = product
 
