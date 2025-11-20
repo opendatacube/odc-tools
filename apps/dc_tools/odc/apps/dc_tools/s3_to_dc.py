@@ -294,17 +294,15 @@ def cli(
     # Grab the URL from the resulting S3 item
     if is_glob:
         fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-        document_stream = (
+        document_stream = fetcher(
             url.url
             for url in s3_find_glob(uris[0], skip_check=skip_check, s3=fetcher, **opts)
         )
     else:
         # if working with absolute URLs, no need for all the globbing logic
-        fetcher = SimpleFetcher(
-            aws_unsigned=no_sign_request,
-            request_opts=opts,
-        )
-        document_stream = uris
+        document_stream = SimpleFetcher(
+            aws_unsigned=no_sign_request, request_opts=opts
+        )(uris)
 
     if url_string_replace:
         url_string_replace_tuple = tuple(url_string_replace.split(","))
@@ -316,7 +314,7 @@ def cli(
         url_string_replace_tuple = None
 
     added, failed, skipped = dump_to_odc(
-        fetcher(document_stream),
+        document_stream,
         dc,
         candidate_products,
         skip_lineage=skip_lineage,
