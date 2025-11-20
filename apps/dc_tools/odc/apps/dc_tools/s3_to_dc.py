@@ -313,9 +313,11 @@ def cli(
     if url_string_replace:
         url_string_replace_tuple = tuple(url_string_replace.split(","))
         if len(url_string_replace_tuple) != 2:
-            raise ValueError(
-                "url_string_replace must be two strings separated by a comma"
+            print(
+                "url_string_replace must be two strings separated by a comma",
+                file=sys.stderr,
             )
+            sys.exit(1)
     else:
         url_string_replace_tuple = None
 
