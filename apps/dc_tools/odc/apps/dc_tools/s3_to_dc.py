@@ -292,17 +292,23 @@ def cli(
                 )
     # Get a generator from supplied S3 Uri for candidate documents
     # Grab the URL from the resulting S3 item
-    if is_glob:
-        fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-        document_stream = fetcher(
-            url.url
-            for url in s3_find_glob(uris[0], skip_check=skip_check, s3=fetcher, **opts)
-        )
-    else:
-        # if working with absolute URLs, no need for all the globbing logic
-        document_stream = SimpleFetcher(
-            aws_unsigned=no_sign_request, request_opts=opts
-        )(uris)
+    try:
+        if is_glob:
+            fetcher = S3Fetcher(aws_unsigned=no_sign_request)
+            document_stream = fetcher(
+                url.url
+                for url in s3_find_glob(
+                    uris[0], skip_check=skip_check, s3=fetcher, **opts
+                )
+            )
+        else:
+            # if working with absolute URLs, no need for all the globbing logic
+            document_stream = SimpleFetcher(
+                aws_unsigned=no_sign_request, request_opts=opts
+            )(uris)
+    except OSError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     if url_string_replace:
         url_string_replace_tuple = tuple(url_string_replace.split(","))
