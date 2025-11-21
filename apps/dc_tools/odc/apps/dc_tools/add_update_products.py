@@ -152,7 +152,7 @@ def cli(
             failed, ["app: add_update_products", "action:failed"], statsd_setting
         )
         statsd_gauge_reporting(
-            failed, ["app: add_update_products", "action:updated"], statsd_setting
+            updated, ["app: add_update_products", "action:updated"], statsd_setting
         )
 
     # If nothing failed then this exists with success code 0
