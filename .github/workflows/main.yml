@@ -221,6 +221,7 @@ jobs:
       && (github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/pypi/publish')
     timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         pkg:
           - odc-cloud
