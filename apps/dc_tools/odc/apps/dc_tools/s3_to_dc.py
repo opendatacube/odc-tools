@@ -223,23 +223,17 @@ def cli(
                 )
     # Get a generator from supplied S3 Uri for candidate documents
     # Grab the URL from the resulting S3 item
-    try:
-        if is_glob:
-            fetcher = S3Fetcher(aws_unsigned=no_sign_request)
-            document_stream = fetcher(
-                url.url
-                for url in s3_find_glob(
-                    uris[0], skip_check=skip_check, s3=fetcher, **opts
-                )
-            )
-        else:
-            # if working with absolute URLs, no need for all the globbing logic
-            document_stream = SimpleFetcher(
-                aws_unsigned=no_sign_request, request_opts=opts
-            )(uris)
-    except OSError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    if is_glob:
+        fetcher = S3Fetcher(aws_unsigned=no_sign_request)
+        document_stream = fetcher(
+            url.url
+            for url in s3_find_glob(uris[0], skip_check=skip_check, s3=fetcher, **opts)
+        )
+    else:
+        # if working with absolute URLs, no need for all the globbing logic
+        document_stream = SimpleFetcher(
+            aws_unsigned=no_sign_request, request_opts=opts
+        )(uris)
 
     if url_string_replace:
         url_string_replace_tuple = tuple(url_string_replace.split(","))
@@ -264,48 +258,53 @@ def cli(
     failed = 0
     skipped = 0
     found_docs = False
-    for uri, dataset in parse_doc_stream(
-        ((doc.url, doc.data) for doc in document_stream), on_error=doc_error
-    ):
-        if dataset is None:
-            skipped += 1
-            continue
-        found_docs = True
-        if convert_bools:
-            for prop, val in dataset["properties"].items():
-                if val is True:
-                    dataset["properties"][prop] = "true"
-                elif val is False:
-                    dataset["properties"][prop] = "false"
-        stac_doc = None
-        if stac:
-            item = Item.from_dict(dataset)
-            dataset, new_uri, stac_doc = item_to_meta_uri(
-                item,
-                dc,
-                rename_product=rename_product,
-                url_string_replace=url_string_replace_tuple,
-            )
-            uri = new_uri or uri
-        try:
-            index_update_dataset(
-                dataset,
-                uri,
-                dc,
-                doc2ds,
-                update=update,
-                update_if_exists=update_if_exists,
-                allow_unsafe=allow_unsafe,
-                archive_less_mature=archive_less_mature,
-                publish_action=publish_action,
-                stac_doc=stac_doc,
-            )
-            added += 1
-        except IndexingError:
-            logging.exception("Failed to index dataset %s", uri)
-            failed += 1
-        except DatasetExists:
-            skipped += 1
+    try:
+        for uri, dataset in parse_doc_stream(
+            ((doc.url, doc.data) for doc in document_stream), on_error=doc_error
+        ):
+            if dataset is None:
+                skipped += 1
+                continue
+            found_docs = True
+            if convert_bools:
+                for prop, val in dataset["properties"].items():
+                    if val is True:
+                        dataset["properties"][prop] = "true"
+                    elif val is False:
+                        dataset["properties"][prop] = "false"
+            stac_doc = None
+            if stac:
+                item = Item.from_dict(dataset)
+                dataset, new_uri, stac_doc = item_to_meta_uri(
+                    item,
+                    dc,
+                    rename_product=rename_product,
+                    url_string_replace=url_string_replace_tuple,
+                )
+                uri = new_uri or uri
+            try:
+                index_update_dataset(
+                    dataset,
+                    uri,
+                    dc,
+                    doc2ds,
+                    update=update,
+                    update_if_exists=update_if_exists,
+                    allow_unsafe=allow_unsafe,
+                    archive_less_mature=archive_less_mature,
+                    publish_action=publish_action,
+                    stac_doc=stac_doc,
+                )
+                added += 1
+            except IndexingError:
+                logging.exception("Failed to index dataset %s", uri)
+                failed += 1
+            except DatasetExists:
+                skipped += 1
+    except OSError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     if not found_docs:
         raise click.ClickException("Doc stream was empty")
 
