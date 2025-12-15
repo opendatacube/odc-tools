@@ -44,6 +44,7 @@ from odc.apps.dc_tools.utils import (
     verify_lineage,
 )
 from pystac import Item
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 
 def doc_error(uri, doc, exc: Exception) -> None:
@@ -186,8 +187,11 @@ def cli(
     if request_payer:
         opts["RequestPayer"] = "requester"
 
-    dc = Datacube(env=cfg_env)
-
+    try:
+        dc = Datacube(env=cfg_env)
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     # if it's a uri, a product wasn't provided, and 'product' is actually another uri
     if product.startswith("s3://"):
         candidate_products = []
