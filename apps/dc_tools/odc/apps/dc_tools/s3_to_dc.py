@@ -6,7 +6,7 @@ and index datasets found into RDS
 import logging
 import sys
 from types import SimpleNamespace
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import botocore
 import click
@@ -108,78 +108,6 @@ class SimpleFetcher:
             yield SimpleNamespace(url=url, data=data)
 
 
-def dump_to_odc(
-    document_stream,
-    dc: Datacube,
-    products: list,
-    transform=None,
-    update=False,
-    update_if_exists=False,
-    allow_unsafe=False,
-    archive_less_mature=None,
-    publish_action=None,
-    rename_product: None | str = None,
-    url_string_replace: None | tuple[str, str] | None = None,
-    convert_bools: bool = False,
-    **kwargs,
-) -> Tuple[int, int, int]:
-    doc2ds = Doc2Dataset(dc.index, products=products, **kwargs)
-
-    ds_added = 0
-    ds_failed = 0
-    ds_skipped = 0
-    uris_docs = parse_doc_stream(
-        ((doc.url, doc.data) for doc in document_stream),
-        on_error=doc_error,
-    )
-
-    found_docs = False
-    for uri, dataset in uris_docs:
-        if dataset is None:
-            ds_skipped += 1
-            continue
-        found_docs = True
-        stac = None
-        if convert_bools:
-            for prop, val in dataset["properties"].items():
-                if val is True:
-                    dataset["properties"][prop] = "true"
-                elif val is False:
-                    dataset["properties"][prop] = "false"
-        if transform:
-            item = Item.from_dict(dataset)
-            dataset, new_uri, stac = item_to_meta_uri(
-                item,
-                dc,
-                rename_product=rename_product,
-                url_string_replace=url_string_replace,
-            )
-            uri = new_uri or uri
-        try:
-            index_update_dataset(
-                dataset,
-                uri,
-                dc,
-                doc2ds,
-                update=update,
-                update_if_exists=update_if_exists,
-                allow_unsafe=allow_unsafe,
-                archive_less_mature=archive_less_mature,
-                publish_action=publish_action,
-                stac_doc=stac,
-            )
-            ds_added += 1
-        except IndexingError:
-            logging.exception("Failed to index dataset %s", uri)
-            ds_failed += 1
-        except DatasetExists:
-            ds_skipped += 1
-    if not found_docs:
-        raise click.ClickException("Doc stream was empty")
-
-    return ds_added, ds_failed, ds_skipped
-
-
 @click.command("s3-to-dc")
 @environment_option
 @pass_config
@@ -217,25 +145,25 @@ def dump_to_odc(
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
     cfg_env,
-    log,
-    skip_lineage,
-    fail_on_missing_lineage,
-    verify_lineage,
-    stac,
-    update,
-    update_if_exists,
-    allow_unsafe,
-    skip_check,
-    no_sign_request,
-    statsd_setting,
-    request_payer,
-    archive_less_mature,
-    publish_action,
-    rename_product,
-    url_string_replace,
-    convert_bools,
-    uris,
-    product,
+    log: str,
+    skip_lineage: bool,
+    fail_on_missing_lineage: bool,
+    verify_lineage: bool,
+    stac: bool,
+    update: bool,
+    update_if_exists: bool,
+    allow_unsafe: bool,
+    skip_check: bool,
+    no_sign_request: bool,
+    statsd_setting: str,
+    request_payer: bool,
+    archive_less_mature: int | None,
+    publish_action: str,
+    rename_product: str | None,
+    url_string_replace: str | None,
+    convert_bools: bool,
+    uris: list[str],
+    product: str,
 ) -> None:
     """
     Iterate through files in an S3 bucket and add them to datacube.
@@ -267,9 +195,7 @@ def cli(
     else:
         # Check datacube connection and products
         candidate_products = product.split()
-        odc_products = dc.list_products().name.values
-
-        odc_products = set(odc_products)
+        odc_products = set(dc.list_products().name.values)
         if not set(candidate_products).issubset(odc_products):
             missing_products = list(set(candidate_products) - odc_products)
             print(
@@ -322,23 +248,62 @@ def cli(
     else:
         url_string_replace_tuple = None
 
-    added, failed, skipped = dump_to_odc(
-        document_stream,
-        dc,
-        candidate_products,
+    doc2ds = Doc2Dataset(
+        dc.index,
+        products=candidate_products,
         skip_lineage=skip_lineage,
         fail_on_missing_lineage=fail_on_missing_lineage,
         verify_lineage=verify_lineage,
-        transform=stac,
-        update=update,
-        update_if_exists=update_if_exists,
-        allow_unsafe=allow_unsafe,
-        archive_less_mature=archive_less_mature,
-        publish_action=publish_action,
-        rename_product=rename_product,
-        url_string_replace=url_string_replace_tuple,
-        convert_bools=convert_bools,
     )
+
+    added = 0
+    failed = 0
+    skipped = 0
+    found_docs = False
+    for uri, dataset in parse_doc_stream(
+        ((doc.url, doc.data) for doc in document_stream), on_error=doc_error
+    ):
+        if dataset is None:
+            skipped += 1
+            continue
+        found_docs = True
+        if convert_bools:
+            for prop, val in dataset["properties"].items():
+                if val is True:
+                    dataset["properties"][prop] = "true"
+                elif val is False:
+                    dataset["properties"][prop] = "false"
+        stac_doc = None
+        if stac:
+            item = Item.from_dict(dataset)
+            dataset, new_uri, stac_doc = item_to_meta_uri(
+                item,
+                dc,
+                rename_product=rename_product,
+                url_string_replace=url_string_replace_tuple,
+            )
+            uri = new_uri or uri
+        try:
+            index_update_dataset(
+                dataset,
+                uri,
+                dc,
+                doc2ds,
+                update=update,
+                update_if_exists=update_if_exists,
+                allow_unsafe=allow_unsafe,
+                archive_less_mature=archive_less_mature,
+                publish_action=publish_action,
+                stac_doc=stac_doc,
+            )
+            added += 1
+        except IndexingError:
+            logging.exception("Failed to index dataset %s", uri)
+            failed += 1
+        except DatasetExists:
+            skipped += 1
+    if not found_docs:
+        raise click.ClickException("Doc stream was empty")
 
     print(
         f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets."
