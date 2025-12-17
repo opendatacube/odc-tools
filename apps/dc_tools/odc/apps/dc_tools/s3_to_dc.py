@@ -306,7 +306,8 @@ def cli(
         sys.exit(1)
 
     if not found_docs:
-        raise click.ClickException("Doc stream was empty")
+        print("Doc stream was empty", file=sys.stderr)
+        sys.exit(1)
 
     print(
         f"Added {added} datasets, skipped {skipped} datasets and failed {failed} datasets."
