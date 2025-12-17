@@ -248,7 +248,7 @@ def cli(
             f"Unknown product {product}, must be one of {' '.join(PRODUCTS)}"
         )
 
-    dc = Datacube(env=cfg_env)
+    dc = Datacube(env=cfg_env, app="cop-dem-to-dc")
 
     if add_product:
         add_cop_dem_product(dc, product)

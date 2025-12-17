@@ -182,7 +182,7 @@ def cli(
     verify_lineage: bool,
 ) -> None:
     # Set up the datacube first, to ensure we have a connection
-    dc = Datacube(env=cfg_env)
+    dc = Datacube(env=cfg_env, app="azure-to-dc")
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
     yaml_urls = find_blobs(

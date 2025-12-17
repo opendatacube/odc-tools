@@ -62,7 +62,7 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
 ) -> None:
-    dc = datacube.Datacube(env=cfg_env)
+    dc = datacube.Datacube(env=cfg_env, app="fs-to-dc")
     doc2ds = Doc2Dataset(
         dc.index,
         skip_lineage=skip_lineage,

@@ -178,7 +178,7 @@ def cli(
 
         return n_failed
 
-    dc = datacube.Datacube(env=env)
+    dc = datacube.Datacube(env=env, app="index-from-tar")
 
     if len(input_fname) == 0:
         input_fname = ("-",)

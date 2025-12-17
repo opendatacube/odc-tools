@@ -96,7 +96,7 @@ def cli(
     yaml_contents = download_yamls(yaml_urls)
 
     # Consume generator and fetch YAML's
-    dc = Datacube(env=cfg_env)
+    dc = Datacube(env=cfg_env, app="thredds-to-dc")
     added, failed = dump_list_to_odc(
         yaml_contents,
         dc,

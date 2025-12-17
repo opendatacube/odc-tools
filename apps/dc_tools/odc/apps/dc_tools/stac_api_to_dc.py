@@ -246,7 +246,7 @@ def cli(
     config["max_items"] = limit
 
     # Do the thing
-    dc = Datacube(env=cfg_env)
+    dc = Datacube(env=cfg_env, app="stac-api-to-dc")
     added, failed, skipped = stac_api_to_odc(
         dc,
         update_if_exists,

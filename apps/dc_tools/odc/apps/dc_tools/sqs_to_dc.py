@@ -376,7 +376,7 @@ def cli(
     queue = sqs.get_queue_by_name(QueueName=queue_name)
 
     # Do the thing
-    dc = Datacube(env=cfg_env)
+    dc = Datacube(env=cfg_env, app="sqs-to-dc")
     success, failed, skipped = queue_to_odc(
         queue,
         dc,

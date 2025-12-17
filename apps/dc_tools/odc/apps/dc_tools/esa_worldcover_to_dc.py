@@ -262,7 +262,7 @@ def cli(  # pylint: disable=too-many-positional-arguments
     # Select map version
     select_map_version(version)
 
-    dc = Datacube(env=cfg_env)
+    dc = Datacube(env=cfg_env, app="esa-worldcover-to-dc")
 
     if add_product:
         add_odc_product(dc)
