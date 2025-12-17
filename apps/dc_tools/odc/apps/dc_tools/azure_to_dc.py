@@ -32,6 +32,7 @@ from odc.apps.dc_tools.utils import (
     verify_lineage,
 )
 from odc.azure import download_blob, find_blobs
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 
 def stream_blob_urls(account_url, container_name, credential, blobs: List[str]):
@@ -182,7 +183,11 @@ def cli(
     verify_lineage: bool,
 ) -> None:
     # Set up the datacube first, to ensure we have a connection
-    dc = Datacube(env=cfg_env, app="azure-to-dc")
+    try:
+        dc = Datacube(env=cfg_env, app="azure-to-dc")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"Opening AZ Container {container_name} on {account_url}")
     print(f"Searching on prefix '{prefix}' for files matching suffix '{suffix}'")
     yaml_urls = find_blobs(

@@ -31,6 +31,7 @@ from odc.apps.dc_tools.utils import (
 )
 from pystac.item import Item
 from pystac_client import Client
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -246,7 +247,11 @@ def cli(
     config["max_items"] = limit
 
     # Do the thing
-    dc = Datacube(env=cfg_env, app="stac-api-to-dc")
+    try:
+        dc = Datacube(env=cfg_env, app="stac-api-to-dc")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     added, failed, skipped = stac_api_to_odc(
         dc,
         update_if_exists,

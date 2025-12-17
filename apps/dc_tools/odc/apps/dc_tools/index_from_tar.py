@@ -7,6 +7,7 @@ from odc.io.timer import RateEstimator
 
 import datacube
 from datacube.utils.changes import allow_any
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from ._docs import from_yaml_doc_stream
 from ._stac import stac_transform
 
@@ -178,7 +179,11 @@ def cli(
 
         return n_failed
 
-    dc = datacube.Datacube(env=env, app="index-from-tar")
+    try:
+        dc = datacube.Datacube(env=env, app="index-from-tar")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
     if len(input_fname) == 0:
         input_fname = ("-",)

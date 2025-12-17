@@ -41,6 +41,7 @@ from odc.apps.dc_tools.utils import (
     verify_lineage,
     publish_action,
 )
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from ._stac import ds_to_stac
 
 # Added log handler
@@ -376,7 +377,11 @@ def cli(
     queue = sqs.get_queue_by_name(QueueName=queue_name)
 
     # Do the thing
-    dc = Datacube(env=cfg_env, app="sqs-to-dc")
+    try:
+        dc = Datacube(env=cfg_env, app="sqs-to-dc")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     success, failed, skipped = queue_to_odc(
         queue,
         dc,

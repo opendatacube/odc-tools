@@ -4,6 +4,7 @@ and dump them into a Datacube instance
 
 import click
 import logging
+import sys
 from odc.thredds import download_yamls, thredds_find_glob
 from typing import List, Tuple
 
@@ -11,6 +12,7 @@ from datacube import Datacube
 from datacube.cfg import ODCEnvironment
 from datacube.ui.click import environment_option, pass_config
 from odc.apps.dc_tools.utils import statsd_gauge_reporting, statsd_setting
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from ._docs import from_yaml_doc_stream
 
 
@@ -96,7 +98,11 @@ def cli(
     yaml_contents = download_yamls(yaml_urls)
 
     # Consume generator and fetch YAML's
-    dc = Datacube(env=cfg_env, app="thredds-to-dc")
+    try:
+        dc = Datacube(env=cfg_env, app="thredds-to-dc")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     added, failed = dump_list_to_odc(
         yaml_contents,
         dc,

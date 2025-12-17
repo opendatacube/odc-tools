@@ -12,12 +12,14 @@ The config file contains the grid mappings to band names:
 
 import click
 import logging
+import sys
 import yaml
 from pathlib import Path
 
 from datacube import Datacube
 from datacube.storage import BandInfo
 from datacube.testutils.io import native_geobox
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 _LOG = logging.getLogger(__name__)
 
@@ -32,7 +34,11 @@ _LOG = logging.getLogger(__name__)
 @click.pass_context
 def cli(ctx, datacube_config) -> None:
     """Specify datacube index to be used for the given datacube config"""
-    ctx.obj = Datacube(config=datacube_config, app="export-md").index
+    try:
+        ctx.obj = Datacube(config=datacube_config, app="export-md").index
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 @cli.command()
