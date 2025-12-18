@@ -27,6 +27,7 @@ from odc.apps.dc_tools.utils import (
     statsd_setting,
     publish_action,
 )
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 PRODUCT = (
     "https://raw.githubusercontent.com/opendatacube/"
@@ -258,11 +259,13 @@ def cli(  # pylint: disable=too-many-positional-arguments
     """
     Index the ESA WorldCover product automatically.
     """
-
     # Select map version
     select_map_version(version)
-
-    dc = Datacube(env=cfg_env)
+    try:
+        dc = Datacube(env=cfg_env, app="esa-worldcover-to-dc")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
     if add_product:
         add_odc_product(dc)

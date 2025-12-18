@@ -189,7 +189,7 @@ def cli(
         opts["RequestPayer"] = "requester"
 
     try:
-        dc = Datacube(env=cfg_env)
+        dc = Datacube(env=cfg_env, app="s3-to-dc")
     except (OperationalError, ProgrammingError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)

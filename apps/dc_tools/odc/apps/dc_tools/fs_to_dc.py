@@ -1,6 +1,7 @@
 import click
 import json
 import logging
+import sys
 import yaml
 from pathlib import Path
 import pystac
@@ -22,6 +23,7 @@ from odc.apps.dc_tools.utils import (
     transform_stac,
     verify_lineage,
 )
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -62,7 +64,11 @@ def cli(
     fail_on_missing_lineage,
     verify_lineage,
 ) -> None:
-    dc = datacube.Datacube(env=cfg_env)
+    try:
+        dc = datacube.Datacube(env=cfg_env, app="fs-to-dc")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     doc2ds = Doc2Dataset(
         dc.index,
         skip_lineage=skip_lineage,

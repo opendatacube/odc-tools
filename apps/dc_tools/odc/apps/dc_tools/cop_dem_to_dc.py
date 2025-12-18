@@ -28,6 +28,7 @@ from odc.apps.dc_tools.utils import (
     statsd_gauge_reporting,
     statsd_setting,
 )
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 PRODUCTS = {
     "cop_30": (
@@ -247,8 +248,11 @@ def cli(
         raise ValueError(
             f"Unknown product {product}, must be one of {' '.join(PRODUCTS)}"
         )
-
-    dc = Datacube(env=cfg_env)
+    try:
+        dc = Datacube(env=cfg_env, app="cop-dem-to-dc")
+    except (OperationalError, ProgrammingError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
     if add_product:
         add_cop_dem_product(dc, product)
