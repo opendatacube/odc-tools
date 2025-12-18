@@ -29,6 +29,7 @@ from odc.apps.dc_tools.utils import (
     fail_on_missing_lineage,
     index_update_dataset,
     item_to_meta_uri,
+    get_self_link,
     no_sign_request,
     publish_action,
     rename_product,
@@ -275,6 +276,8 @@ def cli(
             stac_doc = None
             if stac:
                 item = Item.from_dict(dataset)
+                if get_self_link(item) is None:
+                    item.set_self_href(uri)
                 dataset, new_uri, stac_doc = item_to_meta_uri(
                     item,
                     dc,
