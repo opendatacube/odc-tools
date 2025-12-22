@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "click<8.3", # Test failures/bad --archive-less-mature defn
-    "datacube>=1.9.10,<1.10.0",
+    "datacube>=1.9.12,<1.10.0",
     "datadog",
     "fsspec",
     "odc-cloud[ASYNC]>=0.2.3",
