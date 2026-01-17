@@ -13,17 +13,19 @@ affine
 
 # need to constrain this one for pip-sake
 # Fixing this allows pip resolution without constraints.txt
-aiobotocore[boto3,awscli]>2.1
+aiobotocore>=3.1
 aiohttp
+awscli
 azure-storage-blob
 bottleneck>=1.3.5
+boto3
 click
 
 # Make sure dask has all the features enabled
-dask[complete]>=2023.2.0,<2024.11.0
-dask_image>=2023.2.0,<2024.11.0
+dask[complete]
+dask_image
 
-datacube[dev]>=1.9.10
+datacube[postgres,psycopg3]>=1.9.13
 datadog
 # things needed for tests that might not be referenced in setup.py
 deepdiff
