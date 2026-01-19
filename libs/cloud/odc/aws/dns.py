@@ -75,8 +75,7 @@ def cli(args):
         print(msg, file=sys.stderr)
 
     def display_help():
-        print(
-            """Modify DNS record of EC2 instance:
+        print("""Modify DNS record of EC2 instance:
 
 arguments: domain_name|tag/<tag name containing domain name> [auto|delete|ip]
 
@@ -86,8 +85,7 @@ Examples:
   test.devbox.dea.ga.gov.au 3.44.10.22
   tag/domain auto
   tag/domain delete
-"""
-        )
+""")
 
     n = len(args)
     if n == 0:

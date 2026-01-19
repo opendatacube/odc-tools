@@ -2,6 +2,7 @@
 """
 Index the ESA Worldcover data automatically.
 """
+
 import click
 import concurrent.futures
 import logging

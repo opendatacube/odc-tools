@@ -35,56 +35,46 @@ def test_mtl():
     assert doc == expect
 
     with pytest.raises(ValueError):
-        parse_mtl(
-            """
+        parse_mtl("""
         GROUP = a
         END_GROUP = b
-        """
-        )
+        """)
 
     with pytest.raises(ValueError):
-        parse_mtl(
-            """
+        parse_mtl("""
         GROUP = a
         GROUP = b
         END_GROUP = b
         END_GROUP = a
         END_GROUP = a
-        """
-        )
+        """)
 
     # test duplicate keys: values
     with pytest.raises(ValueError):
-        parse_mtl(
-            """
+        parse_mtl("""
         a = 10
         a = 3
-        """
-        )
+        """)
 
     # test duplicate keys: values/subtrees
     with pytest.raises(ValueError):
-        parse_mtl(
-            """
+        parse_mtl("""
         GROUP = a
         b = 10
           GROUP = b
           END_GROUP = b
         END_GROUP = a
-        """
-        )
+        """)
 
     assert parse_mtl("") == {}
     assert parse_mtl("END") == {}
 
 
 def test_parse_yaml():
-    o = parse_yaml(
-        """
+    o = parse_yaml("""
 a: 3
 b: foo
-"""
-    )
+""")
 
     assert o["a"] == 3 and o["b"] == "foo"
     assert set(o) == {"a", "b"}

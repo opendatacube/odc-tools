@@ -9,7 +9,6 @@ from odc.aws.queue import get_queue, get_queues, redrive_queue
 from odc.apps.dc_tools.s3_to_dc import cli as s3_to_dc
 from odc.apps.dc_tools.redrive_to_queue import cli as redrive_cli
 
-
 ALIVE_QUEUE_NAME = "mock-alive-queue"
 DEAD_QUEUE_NAME = "mock-dead-queue"
 

@@ -2,6 +2,7 @@
 """
 Index the Copernicus DEM automatically.
 """
+
 import click
 import concurrent.futures
 import logging
