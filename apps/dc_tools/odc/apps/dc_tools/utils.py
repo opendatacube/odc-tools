@@ -112,7 +112,6 @@ archive_less_mature = click.option(
     "--archive-less-mature",
     is_flag=False,
     flag_value=500,
-    default=None,
     type=int,
     help=(
         "Archive existing any datasets that match product, "

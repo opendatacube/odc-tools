@@ -6,7 +6,7 @@ authors = [
     {name = "Open Data Cube", email = "earth.observation@ga.gov.au"},
 ]
 dependencies = [
-    "click<8.3", # Test failures/bad --archive-less-mature defn
+    "click>8.3.0",
     "datacube>=1.9.14,<1.10.0",
     "datadog",
     "fsspec",
