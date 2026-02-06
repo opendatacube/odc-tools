@@ -11,6 +11,7 @@ import yaml
 from click.testing import CliRunner
 from datacube import Datacube
 from datacube.cfg import ODCConfig, ODCEnvironment
+from datacube.drivers.common_psql import drop_schema
 from datacube.drivers.postgis import _core as pgis_core
 from datacube.drivers.postgres import _core as pgres_core
 from datacube.index import index_connect
@@ -378,7 +379,7 @@ def odc_db(cfg_env):
 
     with index._db._engine.begin() as conn:  # pylint:disable=protected-access
         if index.name == "pg_index":
-            pgres_core.drop_schema(conn)
+            drop_schema(conn, pgres_core.SCHEMA_NAME)
             # We need to run this as well, I think because SQLAlchemy grabs them into it's MetaData,
             # and attempts to recreate them. WTF TODO FIX
             remove_postgres_dynamic_indexes()
@@ -386,7 +387,7 @@ def odc_db(cfg_env):
             #     with conn.cursor() as cur:
             #         cur.execute("DROP SCHEMA IF EXISTS agdc CASCADE;")
         else:
-            pgis_core.drop_schema(conn)
+            drop_schema(conn, pgis_core.SCHEMA_NAME)
 
             remove_postgis_dynamic_indexes()
 
