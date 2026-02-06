@@ -28,7 +28,8 @@ azure = [
     "azure-storage-blob",
 ]
 async = [
-    "aiobotocore[boto3]>=1.0",
+    "aiobotocore>=1.0",
+    "boto3",
 ]
 
 [build-system]
