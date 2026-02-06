@@ -41,5 +41,4 @@ def test_download_yamls():
     results = download_yamls(account_url, container_name, credential, test_blob_names)
     assert results
     assert len(results) == 1
-    print(results)
     assert results[0][0] is not None

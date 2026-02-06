@@ -37,7 +37,6 @@ def test_download_yaml():
     results = download_yamls(test_urls)
     assert results
     assert len(results) == 3
-    print(results)
     assert results[0][0] is not None
     assert results[1][0] is None
     assert results[1][2] == "Yaml not found"
