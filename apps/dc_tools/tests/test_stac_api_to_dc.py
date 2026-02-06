@@ -13,8 +13,6 @@ def test_rewrite_urls(landsat_stac, odc_test_db_with_products):
 
     item = Item.from_dict(landsat_stac)
 
-    print(item.self_href)
-
     _, uri, _ = item_to_meta_uri(
         item,
         odc_test_db_with_products,

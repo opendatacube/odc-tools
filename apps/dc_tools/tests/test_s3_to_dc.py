@@ -166,7 +166,6 @@ def test_s3_to_dc_stac_update_if_exist_allow_unsafe(
             env_name,
         ],
     )
-    print(f"s3-to-dc exit_code: {result.exit_code}, output:{result.output}")
     assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"

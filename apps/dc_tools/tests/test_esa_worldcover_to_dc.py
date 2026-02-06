@@ -50,7 +50,6 @@ def test_get_dem_tile_uris(bbox) -> None:
         "v100/2020/map/ESA_WorldCover_10m_2020_v100_N03E003_Map.tif"
     )
 
-    print(uris)
     assert len(uris) == 4
 
 

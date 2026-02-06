@@ -96,7 +96,6 @@ def test_s3_publishing_action_from_stac(
         catch_exceptions=False,
     )
 
-    print(f"s3-to-dc exit_code: {result.exit_code}, output:{result.output}")
     assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
@@ -135,7 +134,6 @@ def test_s3_publishing_action_from_eo3(
         catch_exceptions=False,
     )
 
-    print(f"s3-to-dc exit_code: {result.exit_code}, output:{result.output}")
     assert result.exit_code == 0, f"Output: {result.output}"
     assert (
         result.output == "Added 1 datasets, skipped 0 datasets and failed 0 datasets.\n"
@@ -204,7 +202,6 @@ def test_sqs_publishing(
         ],
         catch_exceptions=False,
     )
-    print(f"sqs-to-dc exit_code: {result.exit_code}, output:{result.output}")
 
     assert result.exit_code == 0, f"Output: {result.output}"
 
@@ -263,7 +260,6 @@ def test_sqs_publishing_archive_flag(
         ],
         catch_exceptions=False,
     )
-    print(f"sqs-to-dc exit_code: {result.exit_code}, output:{result.output}")
 
     assert result.exit_code == 0, f"Output: {result.output}"
 
@@ -361,7 +357,6 @@ def test_with_archive_less_mature(
         ],
         catch_exceptions=False,
     )
-    print(f"fs-to-dc exit_code: {nrt_result.exit_code}, " "output:{nrt_result.output}")
 
     assert nrt_result.exit_code == 0, f"Output: {nrt_result.output}"
     assert dc.index.datasets.get(nrt_dsid) is not None
@@ -389,9 +384,6 @@ def test_with_archive_less_mature(
             env_name,
         ],
         catch_exceptions=False,
-    )
-    print(
-        f"fs-to-dc exit_code: {final_result.exit_code}, " "output:{final_result.output}"
     )
 
     assert final_result.exit_code == 0, f"Output: {final_result.output}"
