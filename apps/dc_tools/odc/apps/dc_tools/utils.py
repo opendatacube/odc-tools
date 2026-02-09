@@ -121,7 +121,7 @@ archive_less_mature = click.option(
         "Can specify a millisecond amount of leniency for comparing timestamps "
         "to account for the possibility of slight differences between matching datasets "
         "(default is 500ms)."
-    )
+    ),
 )
 
 publish_action = click.option(
