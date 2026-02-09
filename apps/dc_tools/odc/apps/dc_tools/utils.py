@@ -120,7 +120,13 @@ archive_less_mature = click.option(
         "fail if a matching dataset with higher or equal dataset-maturity."
         "Can specify an of leniency for comparing timestamps, provided in milliseconds. "
         "Default value is 500ms."
-    ),
+"Archive any existing datasets that match product, "
+"time, and region-code, but have a lower maturity. "
+"If any matching datasets have higher or equal maturity, "
+"the dataset add/update will fail.\n"
+"Can specify a millisecond amount of leniency for comparing timestamps "
+"to account for the possibility of slight differences between matching datasets "
+"(default is 500ms)."
 )
 
 publish_action = click.option(
