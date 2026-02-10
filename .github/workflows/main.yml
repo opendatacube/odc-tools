@@ -38,7 +38,7 @@ jobs:
         with:
           python-version: 3.12
 
-      - uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         id: wheels_cache
         with:
           path: ./wheels
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Get Wheels from Cache
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         id: wheels_cache
         with:
           path: ./wheels
@@ -267,7 +267,7 @@ jobs:
            wheel \
            twine
           python -m pip freeze
-      - uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         id: wheels_cache
         if: steps.cfg.outputs.publish == 'yes'
         with:
