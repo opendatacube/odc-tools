@@ -28,6 +28,7 @@ from odc.apps.dc_tools.utils import (
     IndexingError,
     allow_unsafe,
     archive,
+    convert_bools,
     fail_on_missing_lineage,
     index_update_dataset,
     limit,
@@ -205,18 +206,19 @@ def queue_to_odc(
     queue,
     dc: Datacube,
     products: list,
-    record_path=None,
-    transform=None,
-    limit=None,
-    update=False,
-    update_if_exists=False,
-    no_sign_request=False,
-    archive=False,
-    allow_unsafe=False,
-    odc_metadata_link=False,
-    region_code_list_uri=None,
-    archive_less_mature=None,
-    publish_action=None,
+    record_path: tuple | None = None,
+    transform: bool | None = None,
+    limit: int | None = None,
+    update: bool = False,
+    update_if_exists: bool = False,
+    no_sign_request: bool = False,
+    archive: bool = False,
+    allow_unsafe: bool = False,
+    odc_metadata_link: str | None = None,
+    region_code_list_uri: str | None = None,
+    archive_less_mature: int | None = None,
+    publish_action: str | None = None,
+    convert_bools: bool = False,
     **kwargs,
 ) -> Tuple[int, int, int]:
     ds_success = 0
@@ -241,7 +243,7 @@ def queue_to_odc(
     # This is a generator of messages
     messages = get_messages(queue, limit)
 
-    for message in messages:
+    for message in messages:  # pylint: disable=too-many-nested-blocks
         try:
             # Extract metadata from message
             metadata = extract_metadata_from_message(message)
@@ -255,14 +257,25 @@ def queue_to_odc(
                     # Extract metadata and URI from a STAC or similar
                     # json structure for indexing
                     metadata, uri = handle_json_message(metadata, odc_metadata_link)
-                    if transform:
-                        stac_doc = metadata
-                        metadata = next(stac2ds([pystac.Item.from_dict(metadata)]))
                 else:
                     # Extract metadata from an S3 bucket notification
                     # or similar for indexing
                     metadata, uri = handle_bucket_notification_message(
                         message, metadata, record_path, no_sign_request=no_sign_request
+                    )
+                if convert_bools:
+                    for prop, val in metadata["properties"].items():
+                        if val is True:
+                            metadata["properties"][prop] = "true"
+                        elif val is False:
+                            metadata["properties"][prop] = "false"
+                if transform:
+                    stac_doc = metadata
+                    metadata = next(
+                        stac2ds(
+                            [pystac.Item.from_dict(metadata)],
+                            {"asset_absolute_paths": False},
+                        )
                     )
 
                 # If we have a region_code filter, do it here
@@ -347,6 +360,7 @@ def queue_to_odc(
 )
 @archive_less_mature
 @publish_action
+@convert_bools
 @click.argument("queue_name", type=str, nargs=1)
 @click.argument("product", type=str, nargs=1)
 def cli(
@@ -360,13 +374,14 @@ def cli(
     allow_unsafe,
     archive,
     limit,
-    statsd_setting,
     no_sign_request,
+    statsd_setting,
     odc_metadata_link,
     record_path,
     region_code_list_uri,
     archive_less_mature,
     publish_action,
+    convert_bools,
     queue_name,
     product,
 ) -> None:
@@ -402,6 +417,7 @@ def cli(
         region_code_list_uri=region_code_list_uri,
         archive_less_mature=archive_less_mature,
         publish_action=publish_action,
+        convert_bools=convert_bools,
     )
 
     result_msg = ""

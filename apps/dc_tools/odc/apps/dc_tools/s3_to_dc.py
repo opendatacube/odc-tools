@@ -26,6 +26,7 @@ from odc.apps.dc_tools.utils import (
     IndexingError,
     allow_unsafe,
     archive_less_mature,
+    convert_bools,
     fail_on_missing_lineage,
     index_update_dataset,
     item_to_meta_uri,
@@ -137,12 +138,7 @@ class SimpleFetcher:
 @publish_action
 @rename_product
 @url_string_replace
-@click.option(
-    "--convert-bools",
-    is_flag=True,
-    default=False,
-    help="Convert boolean properties to strings for backwards compatibility",
-)
+@convert_bools
 @click.argument("uris", nargs=-1)
 @click.argument("product", type=str, nargs=1, required=False)
 def cli(
