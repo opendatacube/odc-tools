@@ -26,7 +26,7 @@ repos:
         #        name: isort (python)
         #        args: [ "--profile", "black", "--filter-files" ]
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 26.1.0
+    rev: 26.3.0
     hooks:
       - id: black
   - repo: https://github.com/PyCQA/pylint
