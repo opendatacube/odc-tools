@@ -177,6 +177,13 @@ url_string_replace = click.option(
     help="Replace a string in the STAC API URLs, e.g., 'https://stac.example.com,s3://stac.example.org'",
 )
 
+convert_bools = click.option(
+    "--convert-bools",
+    is_flag=True,
+    default=False,
+    help="Convert boolean properties to strings for backwards compatibility",
+)
+
 
 def index_update_dataset(
     dataset: dict | Dataset,
